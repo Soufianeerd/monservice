@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Ensure all form inputs have dark text, preventing issues with dark mode preferences on white backgrounds */
+input, select, textarea {
+  color: #111827 !important;
+}
+
+input::placeholder, select::placeholder, textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Accessibilité: Focus Ring global pour la navigation au clavier */
+*:focus-visible {
+  outline: 2px solid #4f46e5 !important; /* Indigo 600 */
+  outline-offset: 2px !important;
+}
+
+/* Accessibilité: Amélioration du contraste des boutons gris */
+button.text-gray-400 {
+  color: #4b5563 !important; /* text-gray-600 pour un meilleur contraste */
+}
+button.text-gray-400:hover {
+  color: #1f2937 !important; /* text-gray-800 au survol */
+}
+button.text-gray-500 {
+  color: #374151 !important; /* text-gray-700 */
+}
+button.text-gray-500:hover {
+  color: #111827 !important; /* text-gray-900 au survol */
+}
+
