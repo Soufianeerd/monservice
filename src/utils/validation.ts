@@ -6,8 +6,19 @@ export const clientSchema = z.object({
   email: z.union([z.string().email('Email invalide'), z.literal('')]).optional(),
   phone: z.string().trim().optional(),
   address: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  zipCode: z.string().trim().optional(),
+  website: z.string().trim().optional(),
   industry: z.string().trim().optional(),
+  customIndustry: z.string().trim().optional(),
   country: z.string().trim().optional(),
+  
+  // Contact principal
+  contactFirstName: z.string().trim().optional(),
+  contactLastName: z.string().trim().optional(),
+  contactEmail: z.union([z.string().email('Email invalide'), z.literal('')]).optional(),
+  contactPhone: z.string().trim().optional(),
+  contactPosition: z.string().trim().optional(),
 });
 
 // Formulaire Contact
