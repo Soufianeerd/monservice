@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
 import { notificationRepository } from '@/lib/data';
+import { notificationService } from '@/lib/services/notification.service';
 import { Notification } from '@/lib/data/interfaces';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, AlertCircle } from 'lucide-react';
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,13 +40,13 @@ export default function NotificationsPage() {
   }, [user]);
 
   const handleMarkAsRead = async (id: string) => {
-    await notificationRepository.markAsRead(id);
+    await notificationService.markAsRead(id);
     fetchNotifications();
   };
 
   const handleMarkAllAsRead = async () => {
-    if (!user) return;
-    await notificationRepository.markAllAsRead(user.id);
+    if (!user || !organization) return;
+    await notificationService.markAllAsRead(organization.id, user.id);
     fetchNotifications();
   };
 
@@ -56,7 +57,13 @@ export default function NotificationsPage() {
     });
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const getPriorityClasses = (priority: string) => {
+    if (priority === 'high') return 'text-red-600 border-red-500';
+    if (priority === 'medium') return 'text-yellow-600 border-yellow-500';
+    return 'text-gray-900 border-gray-200';
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
@@ -87,16 +94,20 @@ export default function NotificationsPage() {
             {notifications.map((notif) => (
               <li 
                 key={notif.id} 
-                className={`p-6 hover:bg-gray-50 transition-colors ${!notif.read ? 'bg-indigo-50/20' : ''}`}
+                className={`p-6 hover:bg-gray-50 transition-colors border-l-4 ${!notif.isRead ? 'bg-indigo-50/20' : ''} ${getPriorityClasses(notif.priority)}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0 pr-4">
                     {notif.link ? (
-                      <Link href={notif.link} className="text-base font-medium text-indigo-600 hover:text-indigo-800">
+                      <Link href={notif.link} onClick={() => !notif.isRead && handleMarkAsRead(notif.id)} className="text-base font-medium text-indigo-600 hover:text-indigo-800 flex items-center">
+                        {notif.priority === 'high' && <AlertCircle className="w-4 h-4 text-red-500 mr-2" />}
                         {notif.title}
                       </Link>
                     ) : (
-                      <p className="text-base font-medium text-gray-900">{notif.title}</p>
+                      <p className="text-base font-medium text-gray-900 flex items-center">
+                        {notif.priority === 'high' && <AlertCircle className="w-4 h-4 text-red-500 mr-2" />}
+                        {notif.title}
+                      </p>
                     )}
                     <p className="text-sm text-gray-600 mt-1">{notif.message}</p>
                     <div className="flex items-center mt-2 text-xs text-gray-400">
@@ -104,7 +115,7 @@ export default function NotificationsPage() {
                       {formatDate(notif.createdAt)}
                     </div>
                   </div>
-                  {!notif.read && (
+                  {!notif.isRead && (
                     <button 
                       onClick={() => handleMarkAsRead(notif.id)}
                       className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"

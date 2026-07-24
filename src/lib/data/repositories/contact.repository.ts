@@ -11,6 +11,19 @@ export class ContactRepository extends BaseRepository<Contact> {
     await this.simulateLatency();
     return this.items.filter(i => i.organizationId === organizationId).map(i => ({ ...i }));
   }
+
+  async findByClientId(clientId: string): Promise<Contact[]> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    return this.items.filter(i => i.clientId === clientId).map(i => ({ ...i }));
+  }
+
+  async deleteByClientId(clientId: string): Promise<void> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    this.items = this.items.filter(item => item.clientId !== clientId);
+    this.persist();
+  }
 }
 
 export const contactRepository = new ContactRepository();

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { dealRepository, clientRepository } from '@/lib/data';
-import { Deal, Client, DealStage } from '@/lib/data/interfaces';
+import { Deal, Client, DealStatus } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import DealPipeline from '@/components/crm/DealPipeline';
 
@@ -13,33 +13,56 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const loadData = async () => {
-    if (!user?.organizationId) return;
-    try {
-      await Promise.resolve();
-      setLoading(true);
-      const [dealsData, clientsData] = await Promise.all([
-        dealRepository.findByOrganization(user.organizationId),
-        clientRepository.findByOrganization(user.organizationId)
-      ]);
-
-      setDeals(dealsData);
-      setClients(clientsData);
-    } catch (error) {
-      console.error('Erreur', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    loadData();
-  }, [user?.organizationId]);
+    if (!user?.organizationId) return;
+    const organizationId = user.organizationId;
 
-  const handleStageChange = async (dealId: string, newStage: DealStage) => {
-    await dealRepository.update(dealId, { stage: newStage, updatedAt: new Date().toISOString() });
-    loadData(); // Reload data to reflect changes
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        const [dealsData, clientsData] = await Promise.all([
+          dealRepository.findByOrganization(organizationId),
+          clientRepository.findByOrganization(organizationId)
+        ]);
+
+        if (isMounted) {
+          setDeals(dealsData);
+          setClients(clientsData);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.organizationId, refreshTrigger]);
+
+  const handleStatusChange = async (dealId: string, newStatus: DealStatus) => {
+    // Mise à jour optimiste pour une meilleure UX
+    setDeals(currentDeals => 
+      currentDeals.map(deal => 
+        deal.id === dealId ? { ...deal, status: newStatus, updatedAt: new Date().toISOString() } : deal
+      )
+    );
+    
+    try {
+      await dealRepository.update(dealId, { status: newStatus, updatedAt: new Date().toISOString() });
+      setRefreshTrigger(prev => prev + 1); // Rafraîchissement en arrière-plan
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut', error);
+      setRefreshTrigger(prev => prev + 1); // Annulation/rafraîchissement en cas d'erreur
+    }
   };
 
   return (
@@ -58,7 +81,7 @@ export default function DealsPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>
       ) : (
-        <DealPipeline deals={deals} clients={clients} onStageChange={handleStageChange} />
+        <DealPipeline deals={deals} clients={clients} onStatusChange={handleStatusChange} />
       )}
     </div>
   );

@@ -3,15 +3,25 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
-import { clientRepository } from '@/lib/data';
+import { clientRepository, contactRepository, dealRepository, invoiceRepository, taskRepository } from '@/lib/data';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
+import ClientDeleteModal from '@/components/crm/ClientDeleteModal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
+import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card';
 
 export default function ClientsPage() {
   const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [associatedCounts, setAssociatedCounts] = useState({ contacts: 0, deals: 0, invoices: 0, tasks: 0 });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadClients = async () => {
     if (!user?.organizationId) return;
@@ -31,10 +41,36 @@ export default function ClientsPage() {
     loadClients();
   }, [user?.organizationId]);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce client ?")) return;
-    await clientRepository.delete(id);
-    loadClients();
+  const handleDeleteClick = async (client: Client) => {
+    // Récupérer les comptes des entités associées
+    const contacts = await contactRepository.findByClientId(client.id);
+    const deals = await dealRepository.findByClientId(client.id);
+    const invoices = await invoiceRepository.findByClientId(client.id);
+    const tasks = await taskRepository.findByClientId(client.id);
+    
+    setClientToDelete(client);
+    setAssociatedCounts({
+      contacts: contacts.length,
+      deals: deals.length,
+      invoices: invoices.length,
+      tasks: tasks.length,
+    });
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return;
+    setIsDeleting(true);
+    try {
+      await clientRepository.deleteWithCascade(clientToDelete.id);
+      await loadClients();
+    } catch (error) {
+      console.error('Erreur lors de la suppression', error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setClientToDelete(null);
+    }
   };
 
   const filteredClients = clients.filter(c => 
@@ -58,12 +94,14 @@ export default function ClientsPage() {
       </div>
 
       <div className="mb-4">
-        <input 
+        <Input 
           type="text" 
           placeholder="Rechercher par nom ou email..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          className="max-w-md"
+          label="Recherche"
+          hideLabel
         />
       </div>
 
@@ -72,38 +110,81 @@ export default function ClientsPage() {
       ) : filteredClients.length === 0 ? (
         <div className="text-center py-12 text-gray-500">Aucun client trouvé.</div>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Téléphone</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredClients.map((client) => (
-                <tr key={client.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.email || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.phone || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                    <Link href={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900 inline-flex items-center">
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                    <Link href={`/clients/${client.id}/edit`} className="text-blue-600 hover:text-blue-900 inline-flex items-center">
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                    <button onClick={() => handleDelete(client.id)} className="text-red-600 hover:text-red-900 inline-flex items-center">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {/* Vue mobile: Cartes */}
+          <div className="sm:hidden space-y-4">
+            {filteredClients.map((client) => (
+              <Card key={client.id}>
+                <CardHeader>
+                  <span className="font-bold text-gray-900">{client.name}</span>
+                </CardHeader>
+                <CardBody>
+                  <div>{client.email || <span className="text-gray-400 italic">Pas d'email</span>}</div>
+                  <div>{client.phone || <span className="text-gray-400 italic">Pas de téléphone</span>}</div>
+                </CardBody>
+                <CardFooter>
+                  <Link href={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Voir ${client.name}`}>
+                    <Eye className="h-5 w-5" />
+                  </Link>
+                  <Link href={`/clients/${client.id}/edit`} className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier ${client.name}`}>
+                    <Edit className="h-5 w-5" />
+                  </Link>
+                  <button onClick={() => handleDeleteClick(client)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${client.name}`}>
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {/* Vue desktop: Tableau */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>Nom</TableHeader>
+                  <TableHeader>Email</TableHeader>
+                  <TableHeader>Téléphone</TableHeader>
+                  <TableHeader className="text-right">Actions</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredClients.map((client) => (
+                  <TableRow key={client.id}>
+                    <TableCell className="font-medium text-gray-900">{client.name}</TableCell>
+                    <TableCell>{client.email || '-'}</TableCell>
+                    <TableCell>{client.phone || '-'}</TableCell>
+                    <TableCell className="text-right space-x-3">
+                      <Link href={`/clients/${client.id}`} className="text-indigo-600 hover:text-indigo-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Voir ${client.name}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                      <Link href={`/clients/${client.id}/edit`} className="text-blue-600 hover:text-blue-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier ${client.name}`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                      <button onClick={() => handleDeleteClick(client)} className="text-red-600 hover:text-red-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${client.name}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
+      )}
+
+      {clientToDelete && (
+        <ClientDeleteModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setClientToDelete(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          clientName={clientToDelete.name}
+          associatedCounts={associatedCounts}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );

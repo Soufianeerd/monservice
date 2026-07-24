@@ -7,19 +7,35 @@ export class NotificationRepository extends BaseRepository<Notification> {
     super(notificationsFixture);
   }
 
-  async findByUser(userId: string): Promise<Notification[]> {
+  async findByOrganization(organizationId: string): Promise<Notification[]> {
+    this.ensureLoaded();
     await this.simulateLatency();
-    return this.items.filter(item => item.userId === userId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return this.items.filter(item => item.organizationId === organizationId);
+  }
+
+  async findByUser(userId: string): Promise<Notification[]> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    return this.items.filter(item => item.userId === userId || item.userId === '').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getUnreadCount(organizationId: string, userId: string): Promise<number> {
+    const items = await this.findByOrganization(organizationId);
+    return items.filter(item => !item.isRead && (item.userId === userId || item.userId === '')).length;
   }
 
   async markAsRead(id: string): Promise<Notification | undefined> {
-    const res = await this.update(id, { read: true });
+    const res = await this.update(id, { isRead: true });
     return res || undefined;
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
-    await this.simulateLatency();
-    this.items = this.items.map(item => item.userId === userId ? { ...item, read: true } : item);
+  async markAllAsRead(organizationId: string, userId: string): Promise<void> {
+    const items = await this.findByOrganization(organizationId);
+    for (const item of items) {
+      if (!item.isRead && (item.userId === userId || item.userId === '')) {
+        await this.update(item.id, { isRead: true });
+      }
+    }
   }
 }
 

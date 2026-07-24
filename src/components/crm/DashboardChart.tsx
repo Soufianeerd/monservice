@@ -19,7 +19,7 @@ export default function DashboardChart({ data }: DashboardChartProps) {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">Évolution du CA (6 derniers mois)</h3>
+      <h2 className="text-lg font-medium text-gray-900 mb-6">Évolution du CA (6 derniers mois)</h2>
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: 20, bottom: 20 }}>

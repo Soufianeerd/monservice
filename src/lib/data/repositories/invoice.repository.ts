@@ -18,6 +18,17 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
     return this.items.filter((i) => i.clientId === clientId);
   }
 
+  async findByClientId(clientId: string): Promise<Invoice[]> {
+    return this.findByClient(clientId);
+  }
+
+  async deleteByClientId(clientId: string): Promise<void> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    this.items = this.items.filter(item => item.clientId !== clientId);
+    this.persist();
+  }
+
   async findByStatus(status: string): Promise<Invoice[]> {
     await this.simulateLatency();
     return this.items.filter((i) => i.status === status);
@@ -39,6 +50,23 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
     }
     
     return formatInvoiceNumber(type, year, maxNum + 1);
+  }
+
+  async updatePaymentStatus(id: string, status: string): Promise<Invoice | null> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index === -1) return null;
+
+    const invoice = this.items[index];
+    invoice.status = status as any;
+    if (status === 'paid') {
+      invoice.paidAt = new Date().toISOString();
+    }
+    invoice.updatedAt = new Date().toISOString();
+    
+    this.persist();
+    return { ...invoice };
   }
 }
 

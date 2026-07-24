@@ -7,6 +7,7 @@ import { Bell, Menu } from 'lucide-react';
 import GlobalSearchBar from '@/components/crm/GlobalSearchBar';
 import NotificationCenter from '@/components/crm/NotificationCenter';
 import { notificationRepository } from '@/lib/data';
+import { notificationService } from '@/lib/services/notification.service';
 import { Notification } from '@/lib/data/interfaces';
 
 interface HeaderProps {
@@ -22,14 +23,21 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (user) {
-      notificationRepository.findByUser(user.id).then(setNotifications);
-    }
-  }, [user]);
+    const initNotifications = async () => {
+      if (user && organization) {
+        // Générer les alertes métier dynamiquement (une fois par session)
+        await notificationService.generateNotifications(organization.id);
+        const fetched = await notificationRepository.findByUser(user.id);
+        setNotifications(fetched);
+      }
+    };
+    initNotifications();
+  }, [user, organization]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,20 +50,20 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
   }, []);
 
   const handleMarkAsRead = async (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    await notificationRepository.markAsRead(id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    await notificationService.markAsRead(id);
     if (user) notificationRepository.findByUser(user.id).then(setNotifications);
   };
 
   const handleMarkAllAsRead = async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    if (user) {
-      await notificationRepository.markAllAsRead(user.id);
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    if (user && organization) {
+      await notificationService.markAllAsRead(organization.id, user.id);
       notificationRepository.findByUser(user.id).then(setNotifications);
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -64,7 +72,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
         <div className="flex items-center w-1/3">
           <button 
             type="button"
-            className="md:hidden p-2 -ml-2 mr-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+            className="md:hidden p-2 -ml-2 mr-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
             onClick={onMenuClick}
             aria-label="Ouvrir le menu"
           >
@@ -98,7 +106,8 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
           <div className="relative" ref={notifRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="relative p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+              aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && mounted && (
@@ -119,7 +128,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
           {mounted ? (
             <>
-              <Link href="/profile" className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors">
+              <Link href="/profile" className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Profil utilisateur">
                 <div className="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold mr-2">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
@@ -129,7 +138,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
               </Link>
               <button
                 onClick={logout}
-                className="text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-md transition-colors"
+                className="text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 Déconnexion
               </button>

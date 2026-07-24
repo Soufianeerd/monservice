@@ -13,30 +13,32 @@ export class ClientRepository extends BaseRepository<Client> {
   }
 
   async delete(id: string): Promise<boolean> {
-    const success = await super.delete(id);
-    if (success) {
-      // Cascade delete Contacts
-      const { contactRepository } = await import('./contact.repository');
-      const contacts = await contactRepository.getAll();
-      for (const contact of contacts.filter(c => c.clientId === id)) {
-        await contactRepository.delete(contact.id);
-      }
+    return super.delete(id);
+  }
 
-      // Cascade delete Deals
-      const { dealRepository } = await import('./deal.repository');
-      const deals = await dealRepository.getAll();
-      for (const deal of deals.filter(d => d.clientId === id)) {
-        await dealRepository.delete(deal.id);
-      }
+  async deleteWithCascade(id: string): Promise<{ contacts: any[], deals: any[], invoices: any[], tasks: any[] }> {
+    const { contactRepository } = await import('./contact.repository');
+    const { dealRepository } = await import('./deal.repository');
+    const { invoiceRepository } = await import('./invoice.repository');
+    const { taskRepository } = await import('./task.repository');
 
-      // Cascade delete Invoices
-      const { invoiceRepository } = await import('./invoice.repository');
-      const invoices = await invoiceRepository.getAll();
-      for (const invoice of invoices.filter(i => i.clientId === id)) {
-        await invoiceRepository.delete(invoice.id);
-      }
-    }
-    return success;
+    // Récupérer les entités associées pour la confirmation (si nécessaire, ou juste pour l'historique)
+    const contacts = await contactRepository.findByClientId(id);
+    const deals = await dealRepository.findByClientId(id);
+    const invoices = await invoiceRepository.findByClientId(id);
+    const tasks = await taskRepository.findByClientId(id);
+
+    // Supprimer les entités associées
+    await contactRepository.deleteByClientId(id);
+    await dealRepository.deleteByClientId(id);
+    await invoiceRepository.deleteByClientId(id);
+    await taskRepository.deleteByClientId(id);
+
+    // Supprimer le client
+    await this.delete(id);
+
+    // Retourner les informations
+    return { contacts, deals, invoices, tasks };
   }
 }
 

@@ -72,7 +72,7 @@ export default function CalendarView() {
               borderColor: '#047857',
               extendedProps: {
                 type: 'deal',
-                status: deal.stage,
+                status: deal.status,
                 originalId: deal.id
               }
             });

@@ -24,7 +24,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <Users className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">Clients</h3>
+          <h2 className="text-sm font-medium text-gray-500">Clients</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{clientsCount}</p>
         </div>
       </div>
@@ -34,7 +34,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <Briefcase className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">Deals Actifs</h3>
+          <h2 className="text-sm font-medium text-gray-500">Deals Actifs</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{activeDealsCount}</p>
         </div>
       </div>
@@ -44,7 +44,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <CheckSquare className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">Tâches en cours</h3>
+          <h2 className="text-sm font-medium text-gray-500">Tâches en cours</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{ongoingTasksCount}</p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <TrendingUp className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">CA Généré</h3>
+          <h2 className="text-sm font-medium text-gray-500">CA Généré</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
         </div>
       </div>
@@ -64,7 +64,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <FileText className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">Total Facturé</h3>
+          <h2 className="text-sm font-medium text-gray-500">Total Facturé</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(totalInvoiced)}</p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function DashboardStats({ clientsCount, activeDealsCount, ongoing
           <AlertCircle className="h-6 w-6" />
         </div>
         <div>
-          <h3 className="text-sm font-medium text-gray-500">Total Impayé</h3>
+          <h2 className="text-sm font-medium text-gray-500">Total Impayé</h2>
           <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(totalUnpaid)}</p>
         </div>
       </div>

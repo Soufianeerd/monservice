@@ -1,4 +1,5 @@
 import { clientRepository, contactRepository, dealRepository, taskRepository, productRepository, invoiceRepository } from '@/lib/data';
+import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 
 export interface SearchResult {
   id: string;
@@ -56,7 +57,7 @@ export async function globalSearch(query: string, organizationId: string): Promi
         id: deal.id,
         type: 'DEAL',
         title: deal.name,
-        subtitle: `${deal.value} € - ${deal.stage}`,
+        subtitle: `${deal.value} € - ${DEAL_STATUS_LABELS[deal.status] || deal.status}`,
         url: `/deals/${deal.id}`
       });
     }

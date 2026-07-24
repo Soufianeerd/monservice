@@ -61,7 +61,7 @@ export default function NewInvoicePage() {
         totalHT: data.totalHT,
         taxAmount: data.taxAmount,
         totalTTC: data.totalTTC,
-        status: data.type === 'invoice' ? 'draft' : 'proposal',
+        status: 'draft',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });

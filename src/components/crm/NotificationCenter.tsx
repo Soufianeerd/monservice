@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Notification } from '@/lib/data/interfaces';
-import { Bell, Check, Clock } from 'lucide-react';
+import { Bell, Check, Clock, AlertCircle } from 'lucide-react';
 
 interface NotificationCenterProps {
   notifications: Notification[];
@@ -12,7 +12,7 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ notifications, onMarkAsRead, onMarkAllAsRead }: NotificationCenterProps) {
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -29,6 +29,12 @@ export default function NotificationCenter({ notifications, onMarkAsRead, onMark
       return `Il y a ${hours} h`;
     }
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+
+  const getPriorityClasses = (priority: string) => {
+    if (priority === 'high') return 'text-red-600 bg-red-50 border-red-100';
+    if (priority === 'medium') return 'text-yellow-600 bg-yellow-50 border-yellow-100';
+    return 'text-gray-500 bg-white border-transparent';
   };
 
   return (
@@ -63,27 +69,33 @@ export default function NotificationCenter({ notifications, onMarkAsRead, onMark
             {notifications.map((notif) => (
               <li 
                 key={notif.id} 
-                className={`p-4 hover:bg-gray-50 transition-colors ${!notif.read ? 'bg-indigo-50/30' : ''}`}
+                className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${!notif.isRead ? 'bg-indigo-50/30' : ''} ${getPriorityClasses(notif.priority)}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0 pr-2">
                     {notif.link ? (
-                      <Link href={notif.link} className="text-sm font-medium text-gray-900 hover:text-indigo-600 truncate block">
-                        {notif.title}
+                      <Link href={notif.link} onClick={() => !notif.isRead && onMarkAsRead(notif.id)} className="text-sm font-medium text-gray-900 hover:text-indigo-600 block mb-1">
+                        <span className="flex items-center">
+                          {notif.priority === 'high' && <AlertCircle className="w-3 h-3 text-red-500 mr-1" />}
+                          {notif.title}
+                        </span>
                       </Link>
                     ) : (
-                      <p className="text-sm font-medium text-gray-900 truncate">{notif.title}</p>
+                      <p className="text-sm font-medium text-gray-900 flex items-center mb-1">
+                        {notif.priority === 'high' && <AlertCircle className="w-3 h-3 text-red-500 mr-1" />}
+                        {notif.title}
+                      </p>
                     )}
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.message}</p>
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{notif.message}</p>
                     <div className="flex items-center mt-2 text-xs text-gray-400">
                       <Clock className="w-3 h-3 mr-1" />
                       {formatDate(notif.createdAt)}
                     </div>
                   </div>
-                  {!notif.read && (
+                  {!notif.isRead && (
                     <button 
                       onClick={() => onMarkAsRead(notif.id)}
-                      className="text-gray-400 hover:text-green-600"
+                      className="text-gray-400 hover:text-green-600 ml-2"
                       title="Marquer comme lu"
                     >
                       <Check className="w-4 h-4" />

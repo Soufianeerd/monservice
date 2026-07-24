@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Deal, Invoice, Task, Client } from '@/lib/data/interfaces';
+import { Deal, Invoice, Task, Client, DealStatus } from '@/lib/data/interfaces';
+import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 
 interface AdvancedReportsProps {
   deals: Deal[];
@@ -38,10 +39,10 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
 
   // 2. Répartition des Deals par statut
   const dealsByStage = React.useMemo(() => {
-    const stages = ['Prospect', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu'];
+    const stages: DealStatus[] = ['prospect', 'qualification', 'proposal', 'negotiation', 'won', 'lost'];
     return stages.map(stage => ({
-      name: stage,
-      value: deals.filter(d => d.stage === stage).length
+      name: DEAL_STATUS_LABELS[stage],
+      value: deals.filter(d => d.status === stage).length
     })).filter(item => item.value > 0);
   }, [deals]);
 
@@ -56,7 +57,7 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
     return Object.entries(clientRevenue)
       .map(([clientId, total]) => {
         const client = clients.find(c => c.id === clientId);
-        return { name: client?.name || 'Inconnu', total };
+        return { name: client?.name || 'Client supprimé', total };
       })
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
@@ -73,7 +74,7 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.totalHT, 0);
   const totalPending = unpaidInvoices.reduce((sum, i) => sum + i.totalHT, 0);
   const conversionRate = deals.length > 0 
-    ? Math.round((deals.filter(d => d.stage === 'Gagné').length / deals.length) * 100) 
+    ? Math.round((deals.filter(d => d.status === 'won').length / deals.length) * 100) 
     : 0;
 
   const formatCurrency = (value: number) => {
@@ -121,7 +122,7 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <RechartsTooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                <RechartsTooltip formatter={(value: unknown) => typeof value === 'number' || typeof value === 'string' ? formatCurrency(Number(value)) : ''} />
                 <Legend />
                 <Bar dataKey="CA" fill="#4f46e5" name="CA HT Encaissé" />
               </BarChart>
@@ -143,7 +144,7 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: { name?: string; percent?: number }) => `${name || ''} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
                   {dealsByStage.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

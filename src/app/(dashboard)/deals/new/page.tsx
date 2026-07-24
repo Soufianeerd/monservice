@@ -27,7 +27,7 @@ export default function NewDealPage() {
       const newDeal = await dealRepository.create({
         name: data.name || '',
         value: data.value || 0,
-        stage: data.stage || 'Prospect',
+        status: data.status || 'prospect',
         clientId: data.clientId || '',
         expectedCloseDate: data.expectedCloseDate || '',
         organizationId: user.organizationId,

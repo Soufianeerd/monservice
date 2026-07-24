@@ -13,7 +13,7 @@ export abstract class BaseRepository<T extends { id: string }> {
     this.storageKey = `monservice_data_${this.constructor.name}`;
   }
 
-  private ensureLoaded() {
+  protected ensureLoaded() {
     if (this.loaded) return;
     this.loaded = true;
     
@@ -33,7 +33,7 @@ export abstract class BaseRepository<T extends { id: string }> {
     this.persist();
   }
 
-  private persist() {
+  protected persist() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(this.storageKey, JSON.stringify(this.items));
     }

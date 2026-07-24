@@ -51,7 +51,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
           </Link>
           <button
             type="button"
-            className="md:hidden p-2 text-gray-400 hover:text-white"
+            className="md:hidden p-2 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
             onClick={() => setIsOpen?.(false)}
             aria-label="Fermer le menu"
           >
@@ -72,7 +72,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
                     isActive
                       ? 'bg-gray-800 text-white'
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors`}
+                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                 >
                   <span className="mr-3 text-lg" aria-hidden="true">{item.icon}</span>
                   {item.name}

@@ -3,9 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
-
-// We will fetch search results from our API or utility
-import { globalSearch, SearchResult } from '@/utils/search';
+import { searchService, SearchResult } from '@/lib/services/search.service';
 import { useAuth } from '@/components/auth/AuthContext';
 
 export default function GlobalSearchBar() {
@@ -15,6 +13,7 @@ export default function GlobalSearchBar() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,8 +48,9 @@ export default function GlobalSearchBar() {
       }
       setLoading(true);
       try {
-        const data = await globalSearch(query, user.organizationId);
+        const data = await searchService.search(query, user.organizationId);
         setResults(data.slice(0, 8)); // limit to 8 in dropdown
+        setSelectedIndex(-1);
       } catch (error) {
         console.error(error);
       } finally {
@@ -72,9 +72,25 @@ export default function GlobalSearchBar() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Escape') {
+      setIsOpen(false);
+      inputRef.current?.blur();
+      return;
+    }
+    
+    if (!isOpen || results.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (query.trim()) {
+      setSelectedIndex(prev => (prev < results.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < results.length) {
+        handleSelect(results[selectedIndex].link);
+      } else if (query.trim()) {
         setIsOpen(false);
         router.push(`/search?q=${encodeURIComponent(query)}`);
       }
@@ -108,20 +124,27 @@ export default function GlobalSearchBar() {
       {isOpen && query.trim().length >= 2 && (
         <div className="absolute mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 overflow-hidden z-50 max-h-96 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-sm text-gray-500 text-center">Recherche...</div>
+            <div className="p-4 text-sm text-gray-500 text-center flex justify-center items-center">
+              <svg className="animate-spin h-5 w-5 mr-3 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Recherche...
+            </div>
           ) : results.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500 text-center">Aucun résultat trouvé pour "{query}"</div>
+            <div className="p-4 text-sm text-gray-500 text-center">Aucun résultat trouvé pour &quot;{query}&quot;</div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {results.map((result) => (
+              {results.map((result, index) => (
                 <li key={`${result.type}-${result.id}`}>
                   <button
-                    onClick={() => handleSelect(result.url)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 focus:outline-none focus:bg-gray-50 transition-colors"
+                    onClick={() => handleSelect(result.link)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    className={`w-full text-left px-4 py-3 focus:outline-none transition-colors ${selectedIndex === index ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-indigo-600 truncate">{result.title}</p>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 capitalize">
                         {result.type}
                       </span>
                     </div>

@@ -34,8 +34,9 @@ export const contactSchema = z.object({
 // Formulaire Deal
 export const dealSchema = z.object({
   name: z.string().trim().min(1, 'Le nom est requis'),
-  value: z.coerce.number().min(0, 'Le montant doit être positif'),
-  stage: z.enum(['Prospect', 'Qualification', 'Proposition', 'Négociation', 'Gagné', 'Perdu']),
+  value: z.number().min(0, 'Le montant doit être positif'),
+  status: z.enum(['prospect', 'qualification', 'negotiation', 'proposal', 'won', 'lost']),
+  description: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   clientId: z.string().trim().min(1, 'Veuillez sélectionner un client'),
 });
@@ -64,17 +65,19 @@ export const productSchema = z.object({
 export const invoiceSchema = z.object({
   clientId: z.string().trim().min(1, 'Veuillez sélectionner un client'),
   type: z.enum(['invoice', 'quote']),
+  status: z.enum(['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled']),
   date: z.string().min(1, 'La date est requise'),
   dueDate: z.string().optional(),
   lines: z.array(z.object({
     id: z.string().optional(),
     productId: z.string().optional(),
     description: z.string().trim().min(1, 'La description est requise'),
-    quantity: z.coerce.number().positive('La quantité doit être > 0'),
-    unitPrice: z.coerce.number().min(0, 'Le prix doit être >= 0'),
-    taxRate: z.coerce.number().min(0).max(100),
-    discount: z.coerce.number().min(0).max(100).optional(),
+    quantity: z.number().positive('La quantité doit être > 0'),
+    unitPrice: z.number().min(0, 'Le prix doit être >= 0'),
+    taxRate: z.number().min(0).max(100),
+    discount: z.number().min(0).max(100).optional(),
   })).min(1, 'Ajoutez au moins une ligne'),
+  notes: z.string().optional(),
 });
 
 // Formulaire Organisation

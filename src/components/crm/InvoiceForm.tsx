@@ -24,10 +24,10 @@ export default function InvoiceForm({ initialData, clients, products, onSubmit, 
   const router = useRouter();
   
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormData>({
-    // @ts-ignore Zod coerce input type mismatch
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       type: initialData?.type || 'invoice',
+      status: initialData?.status || 'draft',
       clientId: initialData?.clientId || '',
       date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',

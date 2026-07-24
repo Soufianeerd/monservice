@@ -26,7 +26,7 @@ export default function EditInvoicePage() {
       if (!id || !user?.organizationId) return;
       try {
         const inv = await invoiceRepository.getById(id);
-        if (!inv || (inv.status !== 'draft' && inv.status !== 'proposal')) {
+        if (!inv || (inv.status !== 'draft' && inv.status !== 'sent')) {
           alert("Ce document ne peut pas être modifié.");
           router.push(`/invoices/${id}`);
           return;

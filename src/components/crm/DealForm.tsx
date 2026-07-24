@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { Deal, Client } from '@/lib/data/interfaces';
+import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 
 import { dealSchema } from '@/utils/validation';
 
@@ -27,19 +28,19 @@ export default function DealForm({ initialData, clients, onSubmit, isSubmitting 
     : '';
 
   const { register, handleSubmit, formState: { errors } } = useForm<DealFormData>({
-    // @ts-ignore Zod coerce input type mismatch
     resolver: zodResolver(dealSchema),
     defaultValues: {
       name: initialData?.name || '',
       value: initialData?.value || 0,
-      stage: initialData?.stage || 'Prospect',
+      status: initialData?.status || 'prospect',
       clientId: initialData?.clientId || '',
       expectedCloseDate: formattedDate,
+      description: initialData?.description || '',
     }
   });
 
   return (
-    <form onSubmit={handleSubmit(data => onSubmit(data as any))} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form onSubmit={handleSubmit(data => onSubmit(data))} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom du deal *</label>
         <input
@@ -79,20 +80,17 @@ export default function DealForm({ initialData, clients, onSubmit, isSubmitting 
         </div>
 
         <div>
-          <label htmlFor="stage" className="block text-sm font-medium text-gray-700">Étape *</label>
+          <label htmlFor="status" className="block text-sm font-medium text-gray-700">Étape *</label>
           <select
-            id="stage"
-            {...register('stage')}
+            id="status"
+            {...register('status')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
           >
-            <option value="Prospect">Prospect</option>
-            <option value="Qualification">Qualification</option>
-            <option value="Proposition">Proposition</option>
-            <option value="Négociation">Négociation</option>
-            <option value="Gagné">Gagné</option>
-            <option value="Perdu">Perdu</option>
+            {Object.entries(DEAL_STATUS_LABELS).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
           </select>
-          {errors.stage && <p className="mt-1 text-sm text-red-600">{errors.stage.message}</p>}
+          {errors.status && <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>}
         </div>
       </div>
 

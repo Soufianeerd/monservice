@@ -1,6 +1,6 @@
 import { InvoiceLine } from './invoice-line.interface';
 
-export type InvoiceStatus = 'draft' | 'proposal' | 'sent' | 'viewed' | 'accepted' | 'refused' | 'paid' | 'overdue' | 'expired' | 'converted';
+export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled';
 
 export interface Invoice {
   id: string;
@@ -10,6 +10,8 @@ export interface Invoice {
   date: string;
   dueDate?: string;
   paidAt?: string;
+  paymentLink?: string;
+  stripePaymentIntentId?: string;
   clientId: string;
   lines: InvoiceLine[];
   totalHT: number;

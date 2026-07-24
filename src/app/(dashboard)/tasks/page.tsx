@@ -7,6 +7,11 @@ import { taskRepository, userRepository } from '@/lib/data';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import KanbanBoard from '@/components/crm/KanbanBoard';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
+import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 type TaskWithUser = Task & { assignedUserName: string };
 
@@ -77,12 +82,12 @@ export default function TasksPage() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityVariant = (priority: string): 'default' | 'success' | 'warning' | 'error' | 'info' => {
     switch(priority) {
-      case 'Haute': return 'bg-red-100 text-red-800';
-      case 'Moyenne': return 'bg-yellow-100 text-yellow-800';
-      case 'Basse': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Haute': return 'error';
+      case 'Moyenne': return 'warning';
+      case 'Basse': return 'success';
+      default: return 'default';
     }
   };
 
@@ -100,33 +105,42 @@ export default function TasksPage() {
       </div>
 
       <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-4">
-        <input 
-          type="text" 
-          placeholder="Rechercher une tâche..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 max-w-md px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-        />
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 bg-white rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-        >
-          <option value="">Tous les statuts</option>
-          <option value="À faire">À faire</option>
-          <option value="En cours">En cours</option>
-          <option value="Terminé">Terminé</option>
-        </select>
-        <select
-          value={selectedPriority}
-          onChange={(e) => setSelectedPriority(e.target.value)}
-          className="px-4 py-2 border border-gray-300 bg-white rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-        >
-          <option value="">Toutes priorités</option>
-          <option value="Haute">Haute</option>
-          <option value="Moyenne">Moyenne</option>
-          <option value="Basse">Basse</option>
-        </select>
+        <div className="flex-1 max-w-md">
+          <Input 
+            type="text" 
+            placeholder="Rechercher une tâche..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            label="Recherche"
+            hideLabel
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            label="Filtrer par statut"
+            hideLabel
+          >
+            <option value="">Tous les statuts</option>
+            <option value="À faire">À faire</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+          </Select>
+        </div>
+        <div className="w-full sm:w-48">
+          <Select
+            value={selectedPriority}
+            onChange={(e) => setSelectedPriority(e.target.value)}
+            label="Filtrer par priorité"
+            hideLabel
+          >
+            <option value="">Toutes priorités</option>
+            <option value="Haute">Haute</option>
+            <option value="Moyenne">Moyenne</option>
+            <option value="Basse">Basse</option>
+          </Select>
+        </div>
       </div>
 
       <div className="flex justify-between items-center mb-4">
@@ -153,52 +167,84 @@ export default function TasksPage() {
       ) : view === 'kanban' ? (
         <KanbanBoard tasks={filteredTasks} onStatusChange={handleStatusChange} />
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priorité</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigné à</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Échéance</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTasks.map((task) => (
-                <tr key={task.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{task.title}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center">
-                      {getStatusIcon(task.status)}
-                      {task.status}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.assignedUserName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {task.dueDate ? new Intl.DateTimeFormat('fr-FR').format(new Date(task.dueDate)) : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                    <Link href={`/tasks/${task.id}`} className="text-indigo-600 hover:text-indigo-900 inline-flex">
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                    <Link href={`/tasks/${task.id}/edit`} className="text-blue-600 hover:text-blue-900 inline-flex">
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                    <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-900 inline-flex">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {/* Vue mobile: Cartes */}
+          <div className="sm:hidden space-y-4">
+            {filteredTasks.map((task) => (
+              <Card key={task.id}>
+                <CardHeader>
+                  <span className="font-bold text-gray-900">{task.title}</span>
+                  <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+                </CardHeader>
+                <CardBody>
+                  <div className="flex items-center text-gray-700">
+                    {getStatusIcon(task.status)}
+                    {task.status}
+                  </div>
+                  <div>Assigné à: {task.assignedUserName}</div>
+                  {task.dueDate && <div>Échéance: {new Intl.DateTimeFormat('fr-FR').format(new Date(task.dueDate))}</div>}
+                </CardBody>
+                <CardFooter>
+                  <Link href={`/tasks/${task.id}`} className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Voir ${task.title}`}>
+                    <Eye className="h-5 w-5" />
+                  </Link>
+                  <Link href={`/tasks/${task.id}/edit`} className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier ${task.title}`}>
+                    <Edit className="h-5 w-5" />
+                  </Link>
+                  <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${task.title}`}>
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {/* Vue desktop: Tableau */}
+          <div className="hidden sm:block">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>Titre</TableHeader>
+                  <TableHeader>Statut</TableHeader>
+                  <TableHeader>Priorité</TableHeader>
+                  <TableHeader>Assigné à</TableHeader>
+                  <TableHeader>Échéance</TableHeader>
+                  <TableHeader className="text-right">Actions</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredTasks.map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell className="font-medium text-gray-900">{task.title}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        {getStatusIcon(task.status)}
+                        {task.status}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getPriorityVariant(task.priority)}>{task.priority}</Badge>
+                    </TableCell>
+                    <TableCell>{task.assignedUserName}</TableCell>
+                    <TableCell>
+                      {task.dueDate ? new Intl.DateTimeFormat('fr-FR').format(new Date(task.dueDate)) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right space-x-3">
+                      <Link href={`/tasks/${task.id}`} className="text-indigo-600 hover:text-indigo-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Voir ${task.title}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                      <Link href={`/tasks/${task.id}/edit`} className="text-blue-600 hover:text-blue-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier ${task.title}`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                      <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-900 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${task.title}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>

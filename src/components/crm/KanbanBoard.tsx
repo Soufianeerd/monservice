@@ -35,16 +35,16 @@ export default function KanbanBoard({ tasks, onStatusChange }: KanbanBoardProps)
 
   // Simulating drag and drop with simple buttons for now (full drag and drop requires dnd-kit or react-beautiful-dnd)
   return (
-    <div className="flex flex-nowrap gap-4 overflow-x-auto pb-4">
+    <div className="flex flex-nowrap gap-4 overflow-x-auto pb-4 snap-x">
       {columns.map(col => {
         const columnTasks = tasks.filter(t => t.status === col.id);
         return (
-          <div key={col.id} className="min-w-[300px] w-80 bg-gray-50 rounded-lg p-4 flex-shrink-0 flex flex-col max-h-[70vh]">
+          <div key={col.id} className="min-w-[300px] w-80 sm:w-72 bg-gray-50 rounded-lg p-4 flex-shrink-0 flex flex-col max-h-[70vh] snap-center">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+              <h2 className="font-semibold text-gray-700 flex items-center gap-2">
                 {getStatusIcon(col.id)}
                 {col.title}
-              </h3>
+              </h2>
               <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium">
                 {columnTasks.length}
               </span>
@@ -58,15 +58,15 @@ export default function KanbanBoard({ tasks, onStatusChange }: KanbanBoardProps)
                       {task.priority}
                     </span>
                     <div className="flex space-x-2">
-                      <Link href={`/tasks/${task.id}`} className="text-gray-400 hover:text-indigo-600">
+                      <Link href={`/tasks/${task.id}`} className="text-gray-400 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Voir la tâche ${task.title}`}>
                         <Eye className="h-4 w-4" />
                       </Link>
-                      <Link href={`/tasks/${task.id}/edit`} className="text-gray-400 hover:text-blue-600">
+                      <Link href={`/tasks/${task.id}/edit`} className="text-gray-400 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier la tâche ${task.title}`}>
                         <Edit className="h-4 w-4" />
                       </Link>
                     </div>
                   </div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-1 leading-tight">{task.title}</h4>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1 leading-tight">{task.title}</h3>
                   
                   {task.dueDate && (
                     <div className="text-xs text-gray-500 mb-2">
@@ -87,8 +87,9 @@ export default function KanbanBoard({ tasks, onStatusChange }: KanbanBoardProps)
                         <button
                           key={c.id}
                           onClick={() => onStatusChange(task.id, c.id)}
-                          className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 px-1.5 py-1 rounded"
+                          className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 px-1.5 py-1 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           title={`Déplacer vers ${c.title}`}
+                          aria-label={`Déplacer vers ${c.title}`}
                         >
                           {c.title.charAt(0)}
                         </button>

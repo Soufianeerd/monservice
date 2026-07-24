@@ -8,6 +8,8 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { organizationRepository } from '@/lib/data';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import DocumentPDF from './DocumentPDF';
+import StripePaymentButton from './StripePaymentButton';
+import { generateInvoicePDF, generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 
 interface InvoiceDetailProps {
   invoice: Invoice;
@@ -75,13 +77,22 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
         </div>
         <div className="flex flex-wrap gap-2">
           {organization && client && (
-            <PDFDownloadLink
-              document={<DocumentPDF invoice={invoice} client={client} organization={organization} />}
-              fileName={`${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`}
+            <button
+              onClick={async () => {
+                try {
+                  const blob = isQuote 
+                    ? await generateQuotePDF(invoice as any, organization, client)
+                    : await generateInvoicePDF(invoice, organization, client);
+                  downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
+                } catch (err) {
+                  console.error(err);
+                  alert('Erreur lors de la génération du PDF');
+                }
+              }}
               className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
-              {({ loading }) => (loading ? 'Chargement PDF...' : 'Télécharger PDF')}
-            </PDFDownloadLink>
+              Télécharger PDF
+            </button>
           )}
 
           <button
@@ -118,6 +129,11 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
               Marquer comme payée
             </button>
           )}
+
+          {(!isQuote && invoice.status !== 'paid' && invoice.status !== 'draft' && organization) && (
+            <StripePaymentButton invoiceId={invoice.id} organizationId={organization.id} />
+          )}
+
           {invoice.status === 'draft' && (
             <Link
               href={`/invoices/${invoice.id}/edit`}

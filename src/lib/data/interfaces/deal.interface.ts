@@ -1,13 +1,17 @@
-export type DealStage = 'Prospect' | 'Qualification' | 'Proposition' | 'Négociation' | 'Gagné' | 'Perdu';
+export type DealStatus = 'prospect' | 'qualification' | 'negotiation' | 'proposal' | 'won' | 'lost';
 
 export interface Deal {
   id: string;
   name: string;
   value: number;
-  stage: DealStage;
+  status: DealStatus;
   clientId: string;
   organizationId: string;
   expectedCloseDate: string;
+  description?: string;
+  signature?: string;
+  signedAt?: string;
+  signatureToken?: string;
   createdAt: string;
   updatedAt: string;
 }

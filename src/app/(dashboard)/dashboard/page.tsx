@@ -25,9 +25,9 @@ export default function DashboardPage() {
         ]);
 
         // Stats
-        const activeDeals = deals.filter(d => ['Prospect', 'Qualification', 'Proposition', 'Négociation'].includes(d.stage)).length;
+        const activeDeals = deals.filter(d => ['prospect', 'qualification', 'proposal', 'negotiation'].includes(d.status)).length;
         const ongoingTasks = tasks.filter(t => t.status === 'En cours' || t.status === 'À faire').length;
-        const wonDeals = deals.filter(d => d.stage === 'Gagné');
+        const wonDeals = deals.filter(d => d.status === 'won');
         const revenue = wonDeals.reduce((sum, d) => sum + d.value, 0);
 
         const allInvoices = invoices.filter(i => i.type === 'invoice');

@@ -93,7 +93,7 @@ export const invoicesFixture: Invoice[] = [
     totalHT: 1950,
     taxAmount: 390,
     totalTTC: 2340,
-    status: 'proposal',
+    status: 'sent',
     createdAt: new Date('2026-07-20T08:00:00Z').toISOString(),
     updatedAt: new Date('2026-07-20T08:00:00Z').toISOString(),
   },

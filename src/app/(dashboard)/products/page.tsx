@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
 import { productRepository } from '@/lib/data';
 import { Product } from '@/lib/data/interfaces';
+import { Input } from '@/components/ui/Input';
+import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
+import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card';
+import { Edit, Trash2 } from 'lucide-react';
 
 export default function ProductsPage() {
   const { user } = useAuth();
@@ -58,60 +62,92 @@ export default function ProductsPage() {
 
       <div className="bg-white shadow rounded-lg border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <input
+          <Input
             type="text"
             placeholder="Rechercher un produit..."
-            className="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+            label="Recherche"
+            hideLabel
           />
         </div>
         
         {loading ? (
           <div className="p-8 text-center text-gray-500">Chargement...</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix HT</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TVA</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-500">{product.description}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(product.unitPrice)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.taxRate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                      <Link href={`/products/${product.id}/edit`} className="text-indigo-600 hover:text-indigo-900">
-                        Modifier
-                      </Link>
-                      <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">
-                        Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filteredProducts.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Aucun produit trouvé.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="p-4 space-y-4">
+            {/* Vue mobile: Cartes */}
+            <div className="sm:hidden space-y-4">
+              {filteredProducts.map((product) => (
+                <Card key={product.id}>
+                  <CardHeader>
+                    <span className="font-bold text-gray-900">{product.name}</span>
+                    <span className="font-semibold text-gray-900">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(product.unitPrice)}</span>
+                  </CardHeader>
+                  <CardBody>
+                    <div className="text-sm text-gray-500">{product.description}</div>
+                    <div className="text-sm text-gray-500">TVA: {product.taxRate}%</div>
+                  </CardBody>
+                  <CardFooter>
+                    <Link href={`/products/${product.id}/edit`} className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label={`Modifier ${product.name}`}>
+                      <Edit className="h-5 w-5" />
+                    </Link>
+                    <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${product.name}`}>
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </CardFooter>
+                </Card>
+              ))}
+              {filteredProducts.length === 0 && (
+                <div className="text-center py-6 text-sm text-gray-500">Aucun produit trouvé.</div>
+              )}
+            </div>
+
+            {/* Vue desktop: Tableau */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Nom</TableHeader>
+                    <TableHeader>Prix HT</TableHeader>
+                    <TableHeader>TVA</TableHeader>
+                    <TableHeader className="text-right">Actions</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredProducts.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div className="text-sm text-gray-500">{product.description}</div>
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">
+                        {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(product.unitPrice)}
+                      </TableCell>
+                      <TableCell>
+                        {product.taxRate}%
+                      </TableCell>
+                      <TableCell className="text-right space-x-3">
+                        <Link href={`/products/${product.id}/edit`} className="text-indigo-600 hover:text-indigo-900 inline-flex focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded p-1" aria-label={`Modifier ${product.name}`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                        <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900 inline-flex focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1" aria-label={`Supprimer ${product.name}`}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-gray-500">
+                        Aucun produit trouvé.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </div>
