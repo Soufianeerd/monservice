@@ -26,7 +26,7 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
     ? new Date(initialData.dueDate).toISOString().split('T')[0]
     : '';
 
-  const { register, handleSubmit, formState: { errors } } = useForm<TaskFormInput, any, TaskFormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<TaskFormInput, undefined, TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
       title: initialData?.title || '',
@@ -114,7 +114,7 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
         </div>
 
         <div>
-          <label htmlFor="entityId" className="block text-sm font-medium text-gray-700">ID de l'entité liée</label>
+          <label htmlFor="entityId" className="block text-sm font-medium text-gray-700">ID de l&apos;entité liée</label>
           <input
             type="text"
             id="entityId"

@@ -20,8 +20,7 @@ interface ProductFormProps {
 export default function ProductForm({ initialData, onSubmit, isSubmitting }: ProductFormProps) {
   const router = useRouter();
   
-  const { register, handleSubmit, formState: { errors } } = useForm<ProductFormData>({
-    // @ts-ignore Zod coerce input type mismatch
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof productSchema>, unknown, ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: initialData?.name || '',
@@ -32,7 +31,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting }: Pro
   });
 
   return (
-    <form onSubmit={handleSubmit(data => onSubmit(data as any))} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom du produit/service *</label>
         <input
