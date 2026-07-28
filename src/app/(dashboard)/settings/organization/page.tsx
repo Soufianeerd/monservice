@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { organizationRepository } from '@/lib/data/repositories/organization.repository';
 import { Organization } from '@/lib/data/interfaces';
 import Skeleton from '@/components/crm/Skeleton';
+import StripeConnectButton from '@/components/settings/StripeConnectButton';
 
 export default function OrganizationSettingsPage() {
   const { user, organization } = useAuth();
@@ -99,6 +100,14 @@ export default function OrganizationSettingsPage() {
         onSubmit={handleSubmit}
         isSubmitting={saving}
       />
+
+      <div className="mt-12 pt-8 border-t border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Paiements & Facturation</h2>
+        <p className="text-gray-600 mb-6">
+          Connectez votre compte Stripe pour pouvoir recevoir des paiements en ligne de la part de vos clients.
+        </p>
+        <StripeConnectButton organizationId={currentOrg.id} isConnected={!!currentOrg.stripeAccountId} />
+      </div>
     </div>
   );
 }

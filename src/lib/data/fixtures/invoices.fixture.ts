@@ -70,6 +70,7 @@ export const invoicesFixture: Invoice[] = [
     number: 'D-2026-0001',
     date: new Date('2026-07-20T08:00:00Z').toISOString(),
     clientId: 'a642dc5c-bd69-4f7f-8566-6819934fcab1', // TechCorp
+    requestId: 'req-1', // Link to the request
     lines: [
       {
         id: '4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a',

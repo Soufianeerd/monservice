@@ -12,12 +12,23 @@ export interface Invoice {
   paidAt?: string;
   paymentLink?: string;
   stripePaymentIntentId?: string;
+  paymentIntentId?: string;
   clientId: string;
+  requestId?: string;
+  professionalId?: string;
+  message?: string;
   lines: InvoiceLine[];
   totalHT: number;
   taxAmount: number;
   totalTTC: number;
   status: InvoiceStatus;
+  
+  // Signature
+  signature?: string;
+  signatureDate?: string;
+  signatureIp?: string;
+  signedAt?: string;
+
   createdAt: string;
   updatedAt: string;
 }

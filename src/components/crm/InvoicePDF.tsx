@@ -85,10 +85,10 @@ export function InvoicePDF({ invoice, organization, client }: InvoicePDFProps) {
         </View>
 
         <View style={styles.footer}>
-          {/* <Text>{organization.legalNotice || 'Mentions légales non définies'}</Text>
+          <Text>{organization.legalNotice || 'Mentions légales non définies'}</Text>
           <Text>{organization.paymentTerms || 'Paiement à 30 jours'}</Text>
-          <Text>{organization.bankDetails || 'Coordonnées bancaires non définies'}</Text> */}
-          <Text>Merci de votre confiance.</Text>
+          <Text>{organization.bankDetails || 'Coordonnées bancaires non définies'}</Text>
+          <Text style={{ marginTop: 5 }}>Merci de votre confiance.</Text>
         </View>
       </Page>
     </Document>

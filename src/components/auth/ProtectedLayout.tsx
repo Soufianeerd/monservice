@@ -10,9 +10,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      // Redirect to login but save the attempted URL if needed later
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+      } else {
+        if (user.profileType === 'client' && !pathname.startsWith('/client') && !pathname.startsWith('/settings')) {
+          router.push('/client/dashboard');
+        } else if (user.profileType === 'professional' && pathname.startsWith('/client')) {
+          router.push('/dashboard');
+        }
+      }
     }
   }, [user, isLoading, router, pathname]);
 

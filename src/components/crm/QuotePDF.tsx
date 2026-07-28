@@ -70,7 +70,10 @@ export function QuotePDF({ deal, organization, client }: QuotePDFProps) {
         )}
 
         <View style={styles.footer}>
-          <Text>Ce devis est soumis aux conditions générales de vente.</Text>
+          <Text>{organization.legalNotice || 'Mentions légales non définies'}</Text>
+          <Text>{organization.paymentTerms || 'Conditions de paiement : Acompte 30% à la commande'}</Text>
+          <Text>{organization.bankDetails || 'Coordonnées bancaires non définies'}</Text>
+          <Text style={{ marginTop: 5 }}>Ce devis est soumis aux conditions générales de vente.</Text>
         </View>
       </Page>
     </Document>

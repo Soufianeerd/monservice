@@ -4,155 +4,314 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { UserIcon, BriefcaseIcon, Building2Icon, StethoscopeIcon, LaptopIcon, HammerIcon, MoreHorizontalIcon, ArrowLeftIcon } from 'lucide-react';
+import { ProfileType } from '@/lib/data/interfaces';
 
 export default function RegisterForm() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [orgName, setOrgName] = useState('');
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    profileType: '' as ProfileType | '',
+    sector: '',
+    orgName: '',
+    acceptedTerms: false,
+  });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { register } = useAuth();
   const router = useRouter();
 
+  const handleNext = () => {
+    setError('');
+    if (step === 1) {
+      if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+        setError('Veuillez remplir tous les champs obligatoires.');
+        return;
+      }
+      if (formData.password.length < 8) {
+        setError('Le mot de passe doit contenir au moins 8 caractères.');
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Les mots de passe ne correspondent pas.');
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      if (!formData.profileType) {
+        setError('Veuillez choisir un profil.');
+        return;
+      }
+      if (formData.profileType === 'client') {
+        setStep(4); // Skip sector step for clients
+      } else {
+        setStep(3);
+      }
+    } else if (step === 3) {
+      if (!formData.sector || !formData.orgName) {
+        setError('Veuillez renseigner votre secteur et le nom de votre entreprise.');
+        return;
+      }
+      setStep(4);
+    }
+  };
+
+  const handleBack = () => {
+    setError('');
+    if (step === 4 && formData.profileType === 'client') {
+      setStep(2);
+    } else if (step > 1) {
+      setStep(step - 1);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    if (!name || !email || !password || !confirmPassword || !orgName) {
-      setError('Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+    if (!formData.acceptedTerms) {
+      setError('Vous devez accepter les conditions générales.');
       return;
     }
 
     setIsSubmitting(true);
-    const success = await register(name, email, password, orgName);
+    const success = await register(
+      formData.name,
+      formData.email,
+      formData.password,
+      formData.profileType === 'professional' ? formData.orgName : undefined,
+      formData.profileType as ProfileType,
+      formData.profileType === 'professional' ? formData.sector : undefined
+    );
     setIsSubmitting(false);
 
     if (success) {
-      router.push('/dashboard');
+      if (formData.profileType === 'client') {
+        router.push('/dashboard'); // Temporarily, until we have /client/dashboard
+      } else {
+        router.push('/dashboard');
+      }
     } else {
       setError('Un compte avec cet email existe déjà.');
     }
   };
 
+  const sectors = [
+    { id: 'health', name: 'Santé & Bien-être', icon: <StethoscopeIcon className="w-6 h-6" /> },
+    { id: 'freelance', name: 'Consultant & Freelance', icon: <LaptopIcon className="w-6 h-6" /> },
+    { id: 'artisan', name: 'Artisan & Bâtiment', icon: <HammerIcon className="w-6 h-6" /> },
+    { id: 'other', name: 'Autre', icon: <MoreHorizontalIcon className="w-6 h-6" /> },
+  ];
+
   return (
-    <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 w-full max-w-md mx-auto">
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-            {error}
+    <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 w-full max-w-xl mx-auto">
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-2">
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className={`h-2 flex-1 mx-1 rounded-full ${s <= step ? 'bg-indigo-600' : 'bg-gray-200'}`} />
+          ))}
+        </div>
+        <p className="text-center text-sm font-medium text-gray-500">Étape {step} sur 4</p>
+      </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+
+      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+        {/* STEP 1: Basic Info */}
+        {step === 1 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Vos informations personnelles</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Votre nom complet *</label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Adresse email *</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Mot de passe *</label>
+              <input
+                type="password"
+                required
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Confirmer le mot de passe *</label>
+              <input
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
           </div>
         )}
 
-        <div>
-          <label htmlFor="orgName" className="block text-sm font-medium text-gray-700">
-            Nom de votre entreprise *
-          </label>
-          <div className="mt-1">
-            <input
-              id="orgName"
-              name="orgName"
-              type="text"
-              required
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              className="text-gray-900 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
+        {/* STEP 2: Profile Type */}
+        {step === 2 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Quel est votre profil ?</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, profileType: 'client' })}
+                className={`relative flex flex-col items-center p-6 border rounded-lg focus:outline-none transition-all ${
+                  formData.profileType === 'client' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600' : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <UserIcon className={`w-12 h-12 mb-3 ${formData.profileType === 'client' ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <span className={`block text-sm font-medium ${formData.profileType === 'client' ? 'text-indigo-900' : 'text-gray-900'}`}>Je suis un particulier</span>
+                <span className="block mt-1 text-xs text-gray-500 text-center">Je cherche un professionnel pour un projet</span>
+              </button>
 
-        <hr className="border-gray-200" />
-        
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Votre nom complet *
-          </label>
-          <div className="mt-1">
-            <input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="text-gray-900 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, profileType: 'professional' })}
+                className={`relative flex flex-col items-center p-6 border rounded-lg focus:outline-none transition-all ${
+                  formData.profileType === 'professional' ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600' : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <BriefcaseIcon className={`w-12 h-12 mb-3 ${formData.profileType === 'professional' ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <span className={`block text-sm font-medium ${formData.profileType === 'professional' ? 'text-indigo-900' : 'text-gray-900'}`}>Je suis un professionnel</span>
+                <span className="block mt-1 text-xs text-gray-500 text-center">Je propose mes services</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Adresse email *
-          </label>
-          <div className="mt-1">
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="text-gray-900 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
+        {/* STEP 3: Sector (Professional only) */}
+        {step === 3 && formData.profileType === 'professional' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Informations professionnelles</h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nom de votre entreprise *</label>
+              <input
+                type="text"
+                required
+                value={formData.orgName}
+                onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Secteur d'activité *</label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {sectors.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, sector: s.id })}
+                    className={`flex items-center p-4 border rounded-lg focus:outline-none transition-all ${
+                      formData.sector === s.id ? 'border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <div className={`mr-3 ${formData.sector === s.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      {s.icon}
+                    </div>
+                    <span className={`text-sm font-medium ${formData.sector === s.id ? 'text-indigo-900' : 'text-gray-900'}`}>
+                      {s.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Mot de passe *
-          </label>
-          <div className="mt-1">
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="text-gray-900 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
+        {/* STEP 4: Review */}
+        {step === 4 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Récapitulatif</h3>
+            
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
+              <p><span className="font-medium text-gray-700">Nom :</span> {formData.name}</p>
+              <p><span className="font-medium text-gray-700">Email :</span> {formData.email}</p>
+              <p><span className="font-medium text-gray-700">Profil :</span> {formData.profileType === 'client' ? 'Particulier' : 'Professionnel'}</p>
+              {formData.profileType === 'professional' && (
+                <>
+                  <p><span className="font-medium text-gray-700">Entreprise :</span> {formData.orgName}</p>
+                  <p><span className="font-medium text-gray-700">Secteur :</span> {sectors.find(s => s.id === formData.sector)?.name}</p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-start mt-4">
+              <div className="flex items-center h-5">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={formData.acceptedTerms}
+                  onChange={(e) => setFormData({ ...formData, acceptedTerms: e.target.checked })}
+                  className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="terms" className="font-medium text-gray-700">
+                  J'accepte les <Link href="/conditions" className="text-indigo-600 hover:underline">conditions générales d'utilisation</Link> et la <Link href="/confidentialite" className="text-indigo-600 hover:underline">politique de confidentialité</Link>.
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-            Confirmer le mot de passe *
-          </label>
-          <div className="mt-1">
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="text-gray-900 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
-
-        <div>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 transition-colors"
-          >
-            {isSubmitting ? 'Création en cours...' : 'Créer mon compte'}
-          </button>
+        {/* Navigation Buttons */}
+        <div className="flex justify-between pt-4 mt-6 border-t border-gray-200">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+            >
+              <ArrowLeftIcon className="w-4 h-4 mr-2" /> Retour
+            </button>
+          ) : <div></div>}
+          
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+            >
+              Suivant
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-70"
+            >
+              {isSubmitting ? 'Création en cours...' : 'Valider mon inscription'}
+            </button>
+          )}
         </div>
       </form>
 

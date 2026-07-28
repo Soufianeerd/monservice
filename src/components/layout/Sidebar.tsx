@@ -6,6 +6,9 @@ import { X } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+  { name: 'Marketplace', href: '/marketplace', icon: '🌍' },
+  { name: 'Mes devis', href: '/quotes', icon: '📝' },
+  { name: 'Messagerie', href: '/messages', icon: '💬' },
   { name: 'Calendrier', href: '/calendar', icon: '📅' },
   { name: 'Rapports', href: '/reports', icon: '📈' },
   { name: 'Activité', href: '/activity', icon: '⚡' },

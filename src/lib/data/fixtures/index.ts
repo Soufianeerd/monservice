@@ -7,5 +7,7 @@ export * from './tasks.fixture';
 export * from './products.fixture';
 export * from './invoices.fixture';
 export * from './message-templates.fixture';
+export * from './requests.fixture';
+export * from './messages.fixture';
 export * from './notifications.fixture';
 export * from './activity-logs.fixture';

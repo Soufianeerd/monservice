@@ -12,7 +12,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password?: string, orgName?: string) => Promise<boolean>;
+  register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<boolean>;
   updateUser: (data: Partial<User>) => Promise<void>;
 }
 
@@ -71,17 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password?: string, orgName?: string) => {
+  const register = async (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => {
     setIsLoading(true);
     try {
       const existingUser = await userRepository.findByEmail(email);
       if (existingUser) return false;
 
       let orgId = undefined;
-      if (orgName) {
+      if (orgName && profileType === 'professional') {
         const newOrg = await organizationRepository.create({
           name: orgName,
-          industry: 'Non spécifié',
+          industry: sector || 'Non spécifié',
+          sector,
+          profileType: 'professional',
+          isPublic: true,
           country: 'France',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -97,6 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password: hashedPassword,
         role: 'admin',
+        profileType: profileType || 'client',
+        sector,
+        onboardingCompleted: false,
+        onboardingStep: 0,
         organizationId: orgId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

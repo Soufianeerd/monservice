@@ -2,6 +2,9 @@ export interface Organization {
   id: string;
   name: string;
   industry: string;
+  sector?: string;
+  profileType?: 'professional';
+  isPublic: boolean;
   customIndustry?: string;
   country: string;
   address?: string;
@@ -15,4 +18,26 @@ export interface Organization {
   logo?: string;
   createdAt: string;
   updatedAt: string;
+  slug?: string;
+  description?: string;
+  services?: string[];
+  coverImage?: string;
+  interventionRadius?: number;
+  postalCode?: string;
+  isPublished?: boolean;
+  socialLinks?: {
+    facebook?: string;
+    linkedin?: string;
+    instagram?: string;
+    twitter?: string;
+  };
+  
+  // Connect
+  stripeAccountId?: string;
+  stripeAccountStatus?: 'pending' | 'active' | 'disabled';
+  
+  // Billing Config
+  legalNotice?: string;
+  paymentTerms?: string;
+  bankDetails?: string;
 }

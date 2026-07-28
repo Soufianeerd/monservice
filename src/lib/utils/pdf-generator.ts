@@ -1,5 +1,5 @@
 import React from 'react';
-import { pdf } from '@react-pdf/renderer';
+import { pdf, DocumentProps } from '@react-pdf/renderer';
 import { InvoicePDF } from '@/components/crm/InvoicePDF';
 import { QuotePDF } from '@/components/crm/QuotePDF';
 import { Invoice, Deal, Organization } from '@/lib/data/interfaces';
@@ -10,7 +10,7 @@ export async function generateInvoicePDF(
   client: { name: string; email?: string; address?: string }
 ): Promise<Blob> {
   const doc = InvoicePDF({ invoice, organization, client });
-  return await pdf(doc as any).toBlob();
+  return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 
 export async function generateQuotePDF(
@@ -19,7 +19,7 @@ export async function generateQuotePDF(
   client: { name: string; email?: string; address?: string }
 ): Promise<Blob> {
   const doc = QuotePDF({ deal, organization, client });
-  return await pdf(doc as any).toBlob();
+  return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 
 export function downloadPDF(pdfBlob: Blob, filename: string): void {

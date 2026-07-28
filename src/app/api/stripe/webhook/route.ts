@@ -1,6 +1,8 @@
 import { stripe } from '@/lib/stripe';
 import { invoiceRepository } from '@/lib/data/repositories/invoice.repository';
+import { userRepository } from '@/lib/data/repositories/user.repository';
 import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -8,11 +10,10 @@ export async function POST(req: Request) {
   const payload = await req.text();
   const signature = req.headers.get('stripe-signature');
 
-  let event;
+  let event: Stripe.Event;
 
   try {
     if (!signature || !endpointSecret) {
-      // In development/testing without proper secret, just parse the JSON
       console.warn('Webhook secret or signature missing, using unverified payload');
       event = JSON.parse(payload);
     } else {
@@ -23,22 +24,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 
-  // Handle the event
   switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
       
-      const invoiceId = session.metadata?.invoiceId;
-      
-      if (invoiceId) {
-        try {
-          await invoiceRepository.updatePaymentStatus(invoiceId, 'paid');
-          console.log(`Facture ${invoiceId} marquée comme payée suite au webhook Stripe`);
-        } catch (error) {
-          console.error(`Erreur lors de la mise à jour de la facture ${invoiceId}`, error);
+      // Mode subscription (SaaS)
+      if (session.mode === 'subscription') {
+        const userId = session.metadata?.userId;
+        const tier = session.metadata?.tier as 'starter' | 'pro' | 'business' | 'free';
+        if (userId && tier) {
+          try {
+            await userRepository.updateSubscription(userId, tier, 'active', session.customer as string);
+            console.log(`Abonnement ${tier} activé pour l'utilisateur ${userId}`);
+          } catch (error) {
+            console.error(`Erreur abonnement user ${userId}`, error);
+          }
+        }
+      } 
+      // Mode payment (Facture client)
+      else if (session.mode === 'payment') {
+        const invoiceId = session.metadata?.invoiceId;
+        if (invoiceId) {
+          try {
+            await invoiceRepository.markAsPaid(invoiceId, session.payment_intent as string);
+            console.log(`Facture ${invoiceId} marquée comme payée`);
+          } catch (error) {
+            console.error(`Erreur facture ${invoiceId}`, error);
+          }
         }
       }
       break;
+    }
+    case 'customer.subscription.updated': {
+      // Pour l'instant, on ignore les mises à jour mineures ou on peut synchroniser le statut
+      break;
+    }
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object as Stripe.Subscription;
+      // on pourrait retrouver l'utilisateur par stripeCustomerId et le passer en 'free'
+      break;
+    }
     default:
       console.log(`Unhandled event type ${event.type}`);
   }

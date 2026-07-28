@@ -18,6 +18,11 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
     return this.items.filter((i) => i.clientId === clientId);
   }
 
+  async findByProfessional(professionalId: string): Promise<Invoice[]> {
+    await this.simulateLatency();
+    return this.items.filter((i) => i.professionalId === professionalId || i.organizationId === professionalId);
+  }
+
   async findByClientId(clientId: string): Promise<Invoice[]> {
     return this.findByClient(clientId);
   }
@@ -63,6 +68,47 @@ export class InvoiceRepository extends BaseRepository<Invoice> {
     if (status === 'paid') {
       invoice.paidAt = new Date().toISOString();
     }
+    invoice.updatedAt = new Date().toISOString();
+    
+    this.persist();
+    return { ...invoice };
+  }
+
+  async markAsPaid(invoiceId: string, paymentIntentId?: string): Promise<Invoice | null> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    const index = this.items.findIndex((item) => item.id === invoiceId);
+    if (index === -1) return null;
+
+    const invoice = this.items[index];
+    invoice.status = 'paid';
+    invoice.paidAt = new Date().toISOString();
+    if (paymentIntentId) {
+      invoice.paymentIntentId = paymentIntentId;
+    }
+    invoice.updatedAt = new Date().toISOString();
+    
+    this.persist();
+    return { ...invoice };
+  }
+
+  async updateSignature(id: string, signatureData: { signature: string; signatureIp?: string }): Promise<Invoice | null> {
+    this.ensureLoaded();
+    await this.simulateLatency();
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index === -1) return null;
+
+    const invoice = this.items[index];
+    invoice.signature = signatureData.signature;
+    invoice.signatureIp = signatureData.signatureIp;
+    invoice.signedAt = new Date().toISOString();
+    invoice.signatureDate = invoice.signedAt;
+    
+    // For a quote, we can transition it to 'paid' or 'accepted' to mark as signed
+    if (invoice.type === 'quote') {
+      invoice.status = 'paid';
+    }
+    
     invoice.updatedAt = new Date().toISOString();
     
     this.persist();
