@@ -5,13 +5,15 @@ import { User, Organization } from '@/lib/data/interfaces';
 import { userRepository, organizationRepository } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import bcrypt from 'bcryptjs';
+import { createClient } from '@/utils/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   organization: Organization | null;
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<boolean>;
   updateUser: (data: Partial<User>) => Promise<void>;
 }
@@ -20,15 +22,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
 
-  // Load session from local storage on mount
   useEffect(() => {
-    async function loadSession() {
-      const storedUserId = localStorage.getItem('monservice_user_id');
-      if (storedUserId) {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      
+      if (session?.user) {
+        const storedUserId = session.user.id;
         const foundUser = await userRepository.getById(storedUserId);
         if (foundUser) {
           setUser(foundUser);
@@ -36,44 +41,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const org = await organizationRepository.getById(foundUser.organizationId);
             setOrganization(org);
           }
-        } else {
-          localStorage.removeItem('monservice_user_id');
         }
+      } else {
+        setUser(null);
+        setOrganization(null);
       }
       setIsLoading(false);
-    }
-    loadSession();
-  }, []);
+    });
 
-  const login = async (email: string, password?: string) => {
-    setIsLoading(true);
-    try {
-      const foundUser = await userRepository.findByEmail(email);
-      if (foundUser && password) {
-        // Use bcrypt to compare password if it's a real hash, or simple comparison for dummy fixtures
-        const isMatch = foundUser.password?.startsWith('$2a$') 
-          ? bcrypt.compareSync(password, foundUser.password)
-          : foundUser.password === password;
-
-        if (isMatch) {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        const storedUserId = session.user.id;
+        const foundUser = await userRepository.getById(storedUserId);
+        if (foundUser) {
           setUser(foundUser);
-          localStorage.setItem('monservice_user_id', foundUser.id);
           if (foundUser.organizationId) {
             const org = await organizationRepository.getById(foundUser.organizationId);
             setOrganization(org);
           }
-          return true;
         }
       }
-      return false;
+      setIsLoading(false);
+    });
+
+    return () => subscription?.subscription?.unsubscribe();
+  }, [supabase]);
+
+  const login = async (email: string, password?: string) => {
+    if (!password) return false;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Login error:', error);
+        return false;
+      }
+      return true;
     } finally {
       setIsLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => {
+    if (!password) return false;
     setIsLoading(true);
     try {
+      // 1. Sign up in Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            profileType,
+          },
+        },
+      });
+
+      if (error || !data.user) {
+        console.error('Signup error:', error);
+        return false;
+      }
+
+      // 2. Create in our local repository
       const existingUser = await userRepository.findByEmail(email);
       if (existingUser) return false;
 
@@ -93,9 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOrganization(newOrg);
       }
 
-      const hashedPassword = password ? bcrypt.hashSync(password, 10) : undefined;
+      const hashedPassword = bcrypt.hashSync(password, 10);
 
       const newUser = await userRepository.create({
+        id: data.user.id,
         name,
         email,
         password: hashedPassword,
@@ -110,17 +142,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       setUser(newUser);
-      localStorage.setItem('monservice_user_id', newUser.id);
       return true;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setOrganization(null);
-    localStorage.removeItem('monservice_user_id');
     router.push('/');
   };
 

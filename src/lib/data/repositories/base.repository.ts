@@ -56,12 +56,12 @@ export abstract class BaseRepository<T extends { id: string }> {
     return item ? { ...item } : null;
   }
 
-  async create(data: Omit<T, 'id'>): Promise<T> {
+  async create(data: Omit<T, 'id'> & { id?: string }): Promise<T> {
     this.ensureLoaded();
     await this.simulateLatency();
     const newItem = {
       ...data,
-      id: generateId(),
+      id: data.id || generateId(),
     } as T;
     this.items.push(newItem);
     this.persist();
