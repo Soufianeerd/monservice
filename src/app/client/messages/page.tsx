@@ -3,7 +3,8 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Message, User } from '@/lib/data/interfaces';
-import { messageRepository, userRepository } from '@/lib/data/repositories';
+import { messageRepository } from '@/lib/data/repositories';
+import { userService } from '@/lib/services/user.service';
 import { useEffect, useState } from 'react';
 import MessageList from '@/components/client/MessageList';
 
@@ -33,7 +34,7 @@ export default function ClientMessagesPage() {
 
       const formattedConvos = await Promise.all(
         Array.from(convosMap.entries()).map(async ([otherId, data]) => {
-          const otherUser = await userRepository.getById(otherId);
+          const otherUser = await userService.getUserProfile(otherId);
           return {
             otherUserId: otherId,
             otherUserName: otherUser?.name || 'Utilisateur inconnu',

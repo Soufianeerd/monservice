@@ -1,5 +1,4 @@
 export * from './base.repository';
-export * from './user.repository';
 export * from './organization.repository';
 export * from './client.repository';
 export * from './contact.repository';

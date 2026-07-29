@@ -2,34 +2,45 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Organization } from '@/lib/data/interfaces';
-import { userRepository, organizationRepository } from '@/lib/data';
+import { organizationRepository } from '@/lib/data'; // Organization will be migrated in Session 3
+import { userService } from '@/lib/services/user.service';
 import { useRouter } from 'next/navigation';
-import bcrypt from 'bcryptjs';
+import { createClient } from '@/utils/supabase/client';
+import { Session } from '@supabase/supabase-js';
+import { cleanupLocalStorage } from '@/utils/storage-cleanup';
 
 interface AuthContextType {
   user: User | null;
   organization: Organization | null;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<boolean>;
-  logout: () => void;
-  register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<boolean>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<{ success: boolean; error?: string }>;
   updateUser: (data: Partial<User>) => Promise<void>;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
 
-  // Load session from local storage on mount
   useEffect(() => {
-    async function loadSession() {
-      const storedUserId = localStorage.getItem('monservice_user_id');
-      if (storedUserId) {
-        const foundUser = await userRepository.getById(storedUserId);
+    let refreshInterval: NodeJS.Timeout;
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        cleanupLocalStorage(); // Clean old local storage if logged in via Supabase
+        
+        const storedUserId = currentSession.user.id;
+        const foundUser = await userService.getUserProfile(storedUserId);
         if (foundUser) {
           setUser(foundUser);
           if (foundUser.organizationId) {
@@ -37,46 +48,117 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setOrganization(org);
           }
         } else {
-          localStorage.removeItem('monservice_user_id');
+          // Fallback if the user exists in auth but not in the 'users' table yet
+          setUser({
+            id: storedUserId,
+            name: currentSession.user.user_metadata?.name || 'Utilisateur',
+            email: currentSession.user.email || '',
+            role: 'member',
+            profileType: currentSession.user.user_metadata?.profileType || 'client',
+            onboardingCompleted: false,
+            onboardingStep: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         }
+      } else {
+        setUser(null);
+        setOrganization(null);
       }
       setIsLoading(false);
-    }
-    loadSession();
-  }, []);
+    });
 
-  const login = async (email: string, password?: string) => {
-    setIsLoading(true);
-    try {
-      const foundUser = await userRepository.findByEmail(email);
-      if (foundUser && password) {
-        // Use bcrypt to compare password if it's a real hash, or simple comparison for dummy fixtures
-        const isMatch = foundUser.password?.startsWith('$2a$') 
-          ? bcrypt.compareSync(password, foundUser.password)
-          : foundUser.password === password;
-
-        if (isMatch) {
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      if (initialSession?.user) {
+        cleanupLocalStorage();
+        
+        const storedUserId = initialSession.user.id;
+        const foundUser = await userService.getUserProfile(storedUserId);
+        if (foundUser) {
           setUser(foundUser);
-          localStorage.setItem('monservice_user_id', foundUser.id);
           if (foundUser.organizationId) {
             const org = await organizationRepository.getById(foundUser.organizationId);
             setOrganization(org);
           }
-          return true;
+        } else {
+          setUser({
+            id: storedUserId,
+            name: initialSession.user.user_metadata?.name || 'Utilisateur',
+            email: initialSession.user.email || '',
+            role: 'member',
+            profileType: initialSession.user.user_metadata?.profileType || 'client',
+            onboardingCompleted: false,
+            onboardingStep: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         }
       }
-      return false;
+      setIsLoading(false);
+    });
+
+    // Auto-refresh session every 5 minutes (300000ms)
+    refreshInterval = setInterval(async () => {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.warn('Failed to refresh session passively:', error.message);
+      } else if (data.session) {
+        setSession(data.session);
+      }
+    }, 300000);
+
+    return () => {
+      subscription?.subscription?.unsubscribe();
+      clearInterval(refreshInterval);
+    };
+  }, [supabase]);
+
+  const login = async (email: string, password?: string) => {
+    if (!password) return { success: false, error: 'Mot de passe requis' };
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Login error:', error.message);
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network Error')) {
+          return { success: false, error: 'Erreur réseau. Vérifiez votre connexion internet.' };
+        }
+        return { success: false, error: 'Identifiants incorrects.' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.error('Unexpected login error:', err);
+      return { success: false, error: 'Le serveur est temporairement indisponible.' };
     } finally {
       setIsLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => {
+    if (!password) return { success: false, error: 'Mot de passe requis' };
     setIsLoading(true);
     try {
-      const existingUser = await userRepository.findByEmail(email);
-      if (existingUser) return false;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            profileType,
+          },
+        },
+      });
 
+      if (error || !data.user) {
+        console.error('Signup error:', error?.message);
+        if (error?.message.includes('Failed to fetch') || error?.message.includes('Network Error')) {
+          return { success: false, error: 'Erreur réseau. Vérifiez votre connexion internet.' };
+        }
+        return { success: false, error: 'Erreur lors de l\'inscription. Cet email est peut-être déjà utilisé.' };
+      }
+
+      // Organization management remains local for now
       let orgId = undefined;
       if (orgName && profileType === 'professional') {
         const newOrg = await organizationRepository.create({
@@ -93,51 +175,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOrganization(newOrg);
       }
 
-      const hashedPassword = password ? bcrypt.hashSync(password, 10) : undefined;
-
-      const newUser = await userRepository.create({
+      // We attempt to create the user in the Supabase 'users' table if it exists
+      await supabase.from('users').insert([{
+        id: data.user.id,
         name,
         email,
-        password: hashedPassword,
         role: 'admin',
         profileType: profileType || 'client',
         sector,
         onboardingCompleted: false,
         onboardingStep: 0,
         organizationId: orgId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      }]);
 
-      setUser(newUser);
-      localStorage.setItem('monservice_user_id', newUser.id);
-      return true;
+      return { success: true };
+    } catch (err: any) {
+      console.error('Unexpected register error:', err);
+      return { success: false, error: 'Le serveur est temporairement indisponible.' };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setOrganization(null);
-    localStorage.removeItem('monservice_user_id');
+    cleanupLocalStorage();
     router.push('/');
   };
 
   const updateUser = async (data: Partial<User>) => {
     if (!user) return;
-    const updateData = { ...data };
-    if (updateData.password) {
-      updateData.password = bcrypt.hashSync(updateData.password, 10);
-    }
-    const updated = await userRepository.update(user.id, updateData);
+    const updated = await userService.updateUserProfile(user.id, data);
     if (updated) {
       setUser(updated);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, organization, isLoading, login, logout, register, updateUser }}>
+    <AuthContext.Provider value={{ user, organization, isLoading, login, logout, register, updateUser, session }}>
       {children}
     </AuthContext.Provider>
   );

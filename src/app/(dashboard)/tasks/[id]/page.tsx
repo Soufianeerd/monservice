@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft, Trash2 } from 'lucide-react';
-import { taskRepository, userRepository } from '@/lib/data';
+import { taskRepository } from '@/lib/data';
+import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 
@@ -23,7 +24,7 @@ export default function TaskDetailPage() {
       if (t && t.organizationId === currentUser.organizationId) {
         setTask(t);
         if (t.assignedTo) {
-          const u = await userRepository.getById(t.assignedTo);
+          const u = await userService.getUserProfile(t.assignedTo);
           setAssignedUser(u);
         }
       } else {

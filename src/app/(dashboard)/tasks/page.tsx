@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Plus, CheckCircle, Clock, Circle } from 'lucide-react';
-import { taskRepository, userRepository } from '@/lib/data';
+import { taskRepository } from '@/lib/data';
+import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import KanbanBoard from '@/components/crm/KanbanBoard';
@@ -32,7 +33,7 @@ export default function TasksPage() {
       setLoading(true);
       const [tasksData, usersData] = await Promise.all([
         taskRepository.findByOrganization(user.organizationId),
-        userRepository.getAll() // Note: filter by org in real app, here we just use all as users are few
+        userService.getAllUsers()
       ]);
 
       const userMap = new Map(usersData.map(u => [u.id, u.name]));

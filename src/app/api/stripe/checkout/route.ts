@@ -1,12 +1,12 @@
 import { createSubscriptionCheckout } from '@/lib/stripe/billing';
 import { NextResponse } from 'next/server';
-import { userRepository } from '@/lib/data/repositories/user.repository';
+import { userService } from '@/lib/services/user.service';
 
 export async function POST(req: Request) {
   try {
     const { userId, organizationId, tier } = await req.json();
 
-    const user = await userRepository.getById(userId);
+    const user = await userService.getUserProfile(userId);
     if (!user) {
       return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 });
     }

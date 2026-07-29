@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TaskForm from '@/components/crm/TaskForm';
-import { taskRepository, userRepository, activityLogRepository } from '@/lib/data';
+import { taskRepository, activityLogRepository } from '@/lib/data';
+import { userService } from '@/lib/services/user.service';
 import { generateId } from '@/lib/utils/id-generator';
 import { User, Task } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -16,7 +17,7 @@ export default function NewTaskPage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      userRepository.getAll().then(allUsers => {
+      userService.getAllUsers().then(allUsers => {
         setUsers(allUsers.filter(u => u.organizationId === user.organizationId));
       });
     }

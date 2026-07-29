@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import TaskForm from '@/components/crm/TaskForm';
-import { taskRepository, userRepository } from '@/lib/data';
+import { taskRepository } from '@/lib/data';
+import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 
@@ -21,7 +22,7 @@ export default function EditTaskPage() {
       if (!user?.organizationId) return;
       const [t, usersData] = await Promise.all([
         taskRepository.getById(params.id as string),
-        userRepository.getAll()
+        userService.getAllUsers()
       ]);
       
       if (t && t.organizationId === user.organizationId) {

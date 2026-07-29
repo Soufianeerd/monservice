@@ -3,7 +3,8 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Message, User } from '@/lib/data/interfaces';
-import { messageRepository, userRepository } from '@/lib/data/repositories';
+import { messageRepository } from '@/lib/data/repositories';
+import { userService } from '@/lib/services/user.service';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 import MessageThread from '@/components/client/MessageThread';
@@ -24,7 +25,7 @@ export default function ProfessionalMessageDetailPage({ params }: { params: Prom
     const fetchData = async () => {
       if (!user?.id) return;
       
-      const u = await userRepository.getById(otherUserId);
+      const u = await userService.getUserProfile(otherUserId);
       if (u) setOtherUser(u);
 
       const msgs = await messageRepository.findConversation(user.id, otherUserId);

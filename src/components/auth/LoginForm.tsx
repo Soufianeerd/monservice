@@ -4,39 +4,38 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     
     if (!email || !password) {
-      setError('Veuillez remplir tous les champs.');
+      toast.error('Veuillez remplir tous les champs.');
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
+    setIsSubmitting(true);
+    const result = await login(email, password);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast.success('Connexion réussie !');
       router.push('/dashboard');
     } else {
-      setError('Identifiants incorrects.');
+      toast.error(result.error || 'Identifiants incorrects.');
     }
   };
 
   return (
     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 w-full max-w-md mx-auto">
       <form className="space-y-6" onSubmit={handleSubmit}>
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-            {error}
-          </div>
-        )}
         
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -85,9 +84,10 @@ export default function LoginForm() {
         <div>
           <button
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+            disabled={isSubmitting}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:opacity-50"
           >
-            Se connecter
+            {isSubmitting ? 'Connexion...' : 'Se connecter'}
           </button>
         </div>
       </form>

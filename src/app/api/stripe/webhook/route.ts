@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { invoiceRepository } from '@/lib/data/repositories/invoice.repository';
-import { userRepository } from '@/lib/data/repositories/user.repository';
+import { userService } from '@/lib/services/user.service';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -34,7 +34,11 @@ export async function POST(req: Request) {
         const tier = session.metadata?.tier as 'starter' | 'pro' | 'business' | 'free';
         if (userId && tier) {
           try {
-            await userRepository.updateSubscription(userId, tier, 'active', session.customer as string);
+            await userService.updateUserProfile(userId, { 
+              subscriptionTier: tier, 
+              subscriptionStatus: 'active', 
+              stripeCustomerId: session.customer as string 
+            });
             console.log(`Abonnement ${tier} activé pour l'utilisateur ${userId}`);
           } catch (error) {
             console.error(`Erreur abonnement user ${userId}`, error);

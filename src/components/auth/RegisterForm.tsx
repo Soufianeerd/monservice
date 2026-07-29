@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { UserIcon, BriefcaseIcon, Building2Icon, StethoscopeIcon, LaptopIcon, HammerIcon, MoreHorizontalIcon, ArrowLeftIcon } from 'lucide-react';
 import { ProfileType } from '@/lib/data/interfaces';
 
+import { toast } from 'react-hot-toast';
+
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -19,31 +21,29 @@ export default function RegisterForm() {
     orgName: '',
     acceptedTerms: false,
   });
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { register } = useAuth();
   const router = useRouter();
 
   const handleNext = () => {
-    setError('');
     if (step === 1) {
       if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-        setError('Veuillez remplir tous les champs obligatoires.');
+        toast.error('Veuillez remplir tous les champs obligatoires.');
         return;
       }
       if (formData.password.length < 8) {
-        setError('Le mot de passe doit contenir au moins 8 caractères.');
+        toast.error('Le mot de passe doit contenir au moins 8 caractères.');
         return;
       }
       if (formData.password !== formData.confirmPassword) {
-        setError('Les mots de passe ne correspondent pas.');
+        toast.error('Les mots de passe ne correspondent pas.');
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!formData.profileType) {
-        setError('Veuillez choisir un profil.');
+        toast.error('Veuillez choisir un profil.');
         return;
       }
       if (formData.profileType === 'client') {
@@ -53,7 +53,7 @@ export default function RegisterForm() {
       }
     } else if (step === 3) {
       if (!formData.sector || !formData.orgName) {
-        setError('Veuillez renseigner votre secteur et le nom de votre entreprise.');
+        toast.error('Veuillez renseigner votre secteur et le nom de votre entreprise.');
         return;
       }
       setStep(4);
@@ -61,7 +61,6 @@ export default function RegisterForm() {
   };
 
   const handleBack = () => {
-    setError('');
     if (step === 4 && formData.profileType === 'client') {
       setStep(2);
     } else if (step > 1) {
@@ -71,15 +70,14 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     
     if (!formData.acceptedTerms) {
-      setError('Vous devez accepter les conditions générales.');
+      toast.error('Vous devez accepter les conditions générales.');
       return;
     }
 
     setIsSubmitting(true);
-    const success = await register(
+    const result = await register(
       formData.name,
       formData.email,
       formData.password,
@@ -89,14 +87,15 @@ export default function RegisterForm() {
     );
     setIsSubmitting(false);
 
-    if (success) {
+    if (result.success) {
+      toast.success('Compte créé avec succès !');
       if (formData.profileType === 'client') {
         router.push('/dashboard'); // Temporarily, until we have /client/dashboard
       } else {
         router.push('/dashboard');
       }
     } else {
-      setError('Un compte avec cet email existe déjà.');
+      toast.error(result.error || 'Erreur lors de la création du compte. Vérifiez si l\'email est déjà utilisé.');
     }
   };
 
@@ -118,12 +117,6 @@ export default function RegisterForm() {
         </div>
         <p className="text-center text-sm font-medium text-gray-500">Étape {step} sur 4</p>
       </div>
-
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
 
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {/* STEP 1: Basic Info */}
