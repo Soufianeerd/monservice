@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
 
-const navigation = [
+const professionalNavItems = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
   { name: 'Marketplace', href: '/marketplace', icon: '🌍' },
   { name: 'Mes devis', href: '/quotes', icon: '📝' },
@@ -23,6 +24,15 @@ const navigation = [
   { name: 'Paramètres Org.', href: '/settings/organization', icon: '⚙️' },
 ];
 
+const clientNavItems = [
+  { name: 'Tableau de bord', href: '/client/dashboard', icon: '📊' },
+  { name: 'Mes demandes', href: '/client/requests', icon: '📝' },
+  { name: 'Devis reçus', href: '/client/quotes', icon: '📄' },
+  { name: 'Mes factures', href: '/client/invoices', icon: '💳' },
+  { name: 'Messagerie', href: '/client/messages', icon: '💬' },
+  { name: 'Profil', href: '/client/profile', icon: '👤' },
+];
+
 interface SidebarProps {
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
@@ -30,6 +40,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
+  const role = useRole();
+  const navItems = role === 'client' ? clientNavItems : professionalNavItems;
 
   return (
     <>
@@ -49,7 +61,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
         }`}
       >
         <div className="flex items-center justify-between h-16 bg-gray-950 px-4">
-          <Link href="/dashboard" className="font-bold text-xl tracking-wider">
+          <Link href={role === 'client' ? '/client/dashboard' : '/dashboard'} className="font-bold text-xl tracking-wider">
             MonService
           </Link>
           <button
@@ -64,7 +76,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
         
         <div className="flex-1 overflow-y-auto">
           <nav className="px-2 py-4 space-y-1">
-            {navigation.map((item) => {
+            {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link

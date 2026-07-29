@@ -49,12 +49,38 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Si authentifié et sur login/register → rediriger vers dashboard
-  if (user && ['/login', '/register'].includes(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    const profileType = user.user_metadata?.profileType || 'professional';
-    url.pathname = profileType === 'client' ? '/client/dashboard' : '/dashboard';
-    return NextResponse.redirect(url);
+  // Vérification des rôles si l'utilisateur est connecté
+  if (user) {
+    const profileType = user.user_metadata?.profileType;
+    const pathname = request.nextUrl.pathname;
+
+    // Rediriger login/register vers le bon dashboard
+    if (['/login', '/register'].includes(pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = profileType === 'client' ? '/client/dashboard' : '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // Un client tente d'accéder au dashboard professionnel
+    if (profileType === 'client' && pathname.startsWith('/dashboard')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/client/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // Un professionnel tente d'accéder au dashboard client
+    if (profileType === 'professional' && pathname.startsWith('/client')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // Accès à la racine
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = profileType === 'client' ? '/client/dashboard' : '/dashboard';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

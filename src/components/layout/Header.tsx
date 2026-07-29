@@ -128,7 +128,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
           {mounted ? (
             <>
-              <Link href="/profile" className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Profil utilisateur">
+              <Link href={user?.profileType === 'client' ? '/client/profile' : '/profile'} className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Profil utilisateur">
                 <div className="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold mr-2">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>

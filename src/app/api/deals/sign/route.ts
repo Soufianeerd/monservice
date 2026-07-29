@@ -1,8 +1,17 @@
 import { dealRepository } from '@/lib/data/repositories/deal.repository';
 import { NextResponse } from 'next/server';
 
+import { createClient } from '@/utils/supabase/server';
+
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
     const { dealId, signatureData } = await req.json();
 
     if (!dealId || !signatureData) {
