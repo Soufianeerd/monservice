@@ -1,7 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Documentation 2026
-- [Authentification et Sécurité (Supabase)](./doc2026/authentication.md)
+## Documentation (doc2026)
+L'ensemble de la documentation technique pour la version 2026 se trouve dans le dossier `/doc2026` :
+- [Architecture d'Authentification (Supabase)](doc2026/authentication.md)
+- [RBAC & Cloisonnement des Rôles](doc2026/rbac.md)
 
 ## Getting Started
 

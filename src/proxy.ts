@@ -64,14 +64,14 @@ export async function proxy(request: NextRequest) {
     // Un client tente d'accéder au dashboard professionnel
     if (profileType === 'client' && pathname.startsWith('/dashboard')) {
       const url = request.nextUrl.clone();
-      url.pathname = '/client/dashboard';
+      url.pathname = '/forbidden';
       return NextResponse.redirect(url);
     }
 
     // Un professionnel tente d'accéder au dashboard client
     if (profileType === 'professional' && pathname.startsWith('/client')) {
       const url = request.nextUrl.clone();
-      url.pathname = '/dashboard';
+      url.pathname = '/forbidden';
       return NextResponse.redirect(url);
     }
 

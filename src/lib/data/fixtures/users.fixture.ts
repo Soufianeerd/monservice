@@ -42,5 +42,31 @@ export const usersFixture: User[] = [
     organizationId: '2cf1bb68-2a82-4148-af7b-ba52d3aef657', // Cabinet Conseil
     createdAt: new Date('2026-03-20T10:15:00Z').toISOString(),
     updatedAt: new Date('2026-03-20T10:15:00Z').toISOString(),
+  },
+  {
+    id: 'f9d1b392-4161-49b0-9db0-a36cced478f1',
+    name: 'Test Client',
+    email: 'client@monservice.com',
+    password: defaultPasswordHash,
+    role: 'member',
+    profileType: 'client',
+    onboardingCompleted: true,
+    onboardingStep: 0,
+    organizationId: undefined, // Les clients n'ont pas d'organisation
+    createdAt: new Date('2026-04-20T10:15:00Z').toISOString(),
+    updatedAt: new Date('2026-04-20T10:15:00Z').toISOString(),
+  },
+  {
+    id: 'a1b2c3d4-e5f6-7890-1234-56789abcdef0',
+    name: 'Freelance Test',
+    email: 'freelance@monservice.com',
+    password: defaultPasswordHash,
+    role: 'admin',
+    profileType: 'professional',
+    onboardingCompleted: true,
+    onboardingStep: 0,
+    organizationId: '5f9b4c20-a6d1-4148-af7b-ba52d3aef123', // Org Freelance
+    createdAt: new Date('2026-05-20T10:15:00Z').toISOString(),
+    updatedAt: new Date('2026-05-20T10:15:00Z').toISOString(),
   }
 ];
