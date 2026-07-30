@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Deal, Client } from '@/lib/data/interfaces';
 import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 
-import { dealSchema } from '@/utils/validation';
+import { dealSchema } from '@/lib/validation/schemas';
 
 export type DealFormData = z.infer<typeof dealSchema>;
 

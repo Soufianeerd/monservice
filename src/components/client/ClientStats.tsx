@@ -4,9 +4,9 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { MessageSquareIcon, FileTextIcon, FileCheckIcon, CreditCardIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { invoiceRepository } from '@/lib/data/repositories';
-import { requestService } from '@/lib/services/request.service';
+import { dashboardService } from '@/lib/services/dashboard.service';
 import { messageService } from '@/lib/services/message.service';
+import { handleError } from '@/lib/utils/error-handler';
 
 export default function ClientStats({ clientId }: { clientId: string }) {
   const [stats, setStats] = useState({
@@ -20,20 +20,19 @@ export default function ClientStats({ clientId }: { clientId: string }) {
     const fetchStats = async () => {
       if (!clientId) return;
 
-      const requests = await requestService.findByClientId(clientId);
-      const invoices = await invoiceRepository.findByClientId(clientId);
-      const unreadCount = await messageService.getUnreadCount(clientId);
+      try {
+        const clientStats = await dashboardService.getClientStats(clientId);
+        const unreadCount = await messageService.getUnreadCount(clientId);
 
-      const activeReqs = requests.filter(r => r.status === 'published' || r.status === 'in_progress').length;
-      const quotes = invoices.filter(i => i.type === 'quote' && i.status === 'sent').length;
-      const unpaid = invoices.filter(i => i.type === 'invoice' && i.status !== 'paid' && i.status !== 'cancelled').length;
-
-      setStats({
-        activeRequests: activeReqs,
-        pendingQuotes: quotes,
-        unpaidInvoices: unpaid,
-        unreadMessages: unreadCount,
-      });
+        setStats({
+          activeRequests: clientStats.activeRequests,
+          pendingQuotes: clientStats.pendingQuotes,
+          unpaidInvoices: clientStats.unpaidInvoices,
+          unreadMessages: unreadCount,
+        });
+      } catch (error) {
+        handleError(error, "Erreur lors du chargement des statistiques");
+      }
     };
     
     fetchStats();

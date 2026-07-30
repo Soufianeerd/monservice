@@ -1,8 +1,11 @@
-import { db } from '@/lib/db';
-import { deals } from '@/lib/db/schema';
+import { db } from '../db';
+import { deals } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { generateId } from '@/lib/utils/id-generator';
-import { Deal } from '@/lib/data/interfaces';
+import { Deal } from '../data/interfaces';
+import { generateId } from '../utils/id-generator';
+import { dealSchema } from '../validation/schemas';
+import { AppError } from '../utils/error-handler';
+import { userService } from './user.service';
 
 export const dealService = {
   async findAll(organizationId: string): Promise<Deal[]> {
@@ -25,23 +28,43 @@ export const dealService = {
     return { ...result[0], status: result[0].status as any, description: result[0].description || undefined, signature: result[0].signature || undefined, signedAt: result[0].signedAt || undefined, signatureToken: result[0].signatureToken || undefined };
   },
 
-  async create(data: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> {
+  async create(data: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Deal> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== data.organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
+
+    const validated = dealSchema.parse(data);
+    const id = generateId();
     const now = new Date().toISOString();
     const newDeal = {
-      id: generateId(),
-      ...data,
+      id,
+      ...validated,
+      expectedCloseDate: validated.expectedCloseDate || new Date().toISOString(),
       signature: data.signature ? JSON.stringify(data.signature) : null,
+      description: data.description || null,
+      signedAt: null,
+      signatureToken: null,
       createdAt: now,
       updatedAt: now,
     };
     await db.insert(deals).values(newDeal);
-    return { ...newDeal, signature: data.signature };
+    return this.findById(id, data.organizationId) as Promise<Deal>;
   },
 
-  async update(id: string, organizationId: string, data: Partial<Deal>): Promise<Deal | null> {
+  async update(id: string, organizationId: string, data: Partial<Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>>, userId: string): Promise<Deal | null> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
+
+    const partialSchema = dealSchema.partial();
+    const validated = partialSchema.parse(data);
+
     const updated = {
-      ...data,
+      ...validated,
       signature: data.signature !== undefined ? (data.signature ? JSON.stringify(data.signature) : null) : undefined,
+      description: data.description !== undefined ? data.description : undefined,
       updatedAt: new Date().toISOString(),
     };
     await db.update(deals)
@@ -50,7 +73,15 @@ export const dealService = {
     return await this.findById(id, organizationId);
   },
 
-  async delete(id: string, organizationId: string): Promise<void> {
+  async updateStatus(id: string, status: Deal['status'], organizationId: string, userId: string): Promise<Deal | null> {
+    return this.update(id, organizationId, { status }, userId);
+  },
+
+  async delete(id: string, organizationId: string, userId: string): Promise<void> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
     await db.delete(deals).where(and(eq(deals.id, id), eq(deals.organizationId, organizationId)));
   },
 };

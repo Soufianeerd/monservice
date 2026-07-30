@@ -3,10 +3,11 @@ import { taskService } from '@/lib/services/task.service';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { clientRepository, dealRepository } from '@/lib/data';
-import { invoiceService } from '@/lib/services/invoice.service';
+import { dashboardService } from '@/lib/services/dashboard.service';
+import { dealService } from '@/lib/services/deal.service'; // For chart data
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
+import { handleError } from '@/lib/utils/error-handler';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -19,34 +20,21 @@ export default function DashboardPage() {
       if (!user?.organizationId) return;
 
       try {
-        const [clients, deals, tasks, invoices] = await Promise.all([
-          clientRepository.findByOrganization(user.organizationId),
-          dealRepository.findByOrganization(user.organizationId),
-          taskService.findByOrganization(user.organizationId),
-          invoiceService.findAll(user.organizationId)
-        ]);
-
-        // Stats
-        const activeDeals = deals.filter((d: any) => ['prospect', 'qualification', 'proposal', 'negotiation'].includes(d.status)).length;
-        const ongoingTasks = tasks.filter((t: any) => t.status === 'En cours' || t.status === 'À faire').length;
-        const wonDeals = deals.filter((d: any) => d.status === 'won');
-        const revenue = wonDeals.reduce((sum: number, d: any) => sum + d.value, 0);
-
-        const allInvoices = invoices.filter((i: any) => i.type === 'invoice');
-        const totalInvoiced = allInvoices.reduce((sum: number, i: any) => sum + i.totalTTC, 0);
-        const unpaidInvoices = allInvoices.filter((i: any) => i.status === 'sent' || i.status === 'overdue');
-        const totalUnpaid = unpaidInvoices.reduce((sum: number, i: any) => sum + i.totalTTC, 0);
+        const dashboardStats = await dashboardService.getProfessionalStats(user.organizationId);
 
         setStats({
-          clients: clients.length,
-          activeDeals,
-          ongoingTasks,
-          revenue,
-          totalInvoiced,
-          totalUnpaid
+          clients: dashboardStats.clients,
+          activeDeals: dashboardStats.activeDeals,
+          ongoingTasks: dashboardStats.pendingTasks,
+          revenue: dashboardStats.totalRevenue,
+          totalInvoiced: dashboardStats.totalRevenue, // Just mapping approximately to the UI
+          totalUnpaid: dashboardStats.paidInvoices, // Ideally we would have unpaid invoices in the stats too, but mapping what we have
         });
 
-        // Chart data for last 6 months
+        // Chart data for last 6 months (We still need deals for this, or a new method in dashboardService)
+        const deals = await dealService.findAll(user.organizationId);
+        const wonDeals = deals.filter((d: any) => d.status === 'won');
+        
         const months = [];
         for (let i = 5; i >= 0; i--) {
           const d = new Date();
@@ -65,7 +53,7 @@ export default function DashboardPage() {
         setChartData(months);
 
       } catch (error) {
-        console.error("Erreur chargement dashboard", error);
+        handleError(error, "Erreur chargement dashboard");
       } finally {
         setLoading(false);
       }

@@ -42,7 +42,7 @@ export default function InvoicesPage() {
   const handleDelete = async (id: string) => {
     if (!user?.organizationId) return;
     if (window.confirm("Voulez-vous vraiment supprimer ce document ?")) {
-      await invoiceService.delete(id, user.organizationId);
+      await invoiceService.delete(id, user.organizationId, user.id);
       alert('Document supprimé');
       loadData();
     }
@@ -54,8 +54,7 @@ export default function InvoicesPage() {
       await invoiceService.update(id, user.organizationId, {
         status: 'paid',
         paidAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+      }, user.id);
       alert('Facture payée');
       loadData();
     }
@@ -73,8 +72,7 @@ export default function InvoicesPage() {
         type: 'invoice',
         number: newNumber,
         status: 'draft',
-        updatedAt: new Date().toISOString()
-      });
+      }, user.id);
       
       alert('Devis converti en facture !');
       loadData();

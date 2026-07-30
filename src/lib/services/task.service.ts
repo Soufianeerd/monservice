@@ -1,8 +1,11 @@
-import { db } from '@/lib/db';
-import { tasks } from '@/lib/db/schema';
+import { db } from '../db';
+import { tasks } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { generateId } from '@/lib/utils/id-generator';
-import { Task } from '@/lib/data/interfaces';
+import { generateId } from '../utils/id-generator';
+import { Task } from '../data/interfaces';
+import { taskSchema } from '../validation/schemas';
+import { AppError } from '../utils/error-handler';
+import { userService } from './user.service';
 
 export const taskService = {
   async findAll(organizationId: string): Promise<Task[]> {
@@ -29,15 +32,22 @@ export const taskService = {
     return results.map(r => ({ ...r, status: r.status as any, priority: r.priority as any, entityType: r.entityType as any, entityId: r.entityId || undefined, assignedTo: r.assignedTo || undefined, description: r.description || '', dueDate: r.dueDate || '' }));
   },
 
-  async create(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+  async create(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Task> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== data.organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
+
+    const validated = taskSchema.parse(data);
     const now = new Date().toISOString();
     const newTask = {
       id: generateId(),
-      ...data,
+      ...validated,
       entityId: data.entityId || null,
       assignedTo: data.assignedTo || null,
       description: data.description || null,
       entityType: data.entityType || null,
+      dueDate: data.dueDate || null,
       createdAt: now,
       updatedAt: now,
     };
@@ -45,23 +55,42 @@ export const taskService = {
     return this.findById(newTask.id, data.organizationId) as Promise<Task>;
   },
 
-  async update(id: string, organizationId: string, data: Partial<Task>): Promise<Task | null> {
+  async update(id: string, organizationId: string, data: Partial<Task>, userId: string): Promise<Task | null> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
+
+    const partialSchema = taskSchema.partial();
+    const validated = partialSchema.parse(data);
+
     const updated = {
-      ...data,
+      ...validated,
       updatedAt: new Date().toISOString(),
     };
-    if (data.entityId === undefined) delete updated.entityId;
-    if (data.assignedTo === undefined) delete updated.assignedTo;
-    if (data.description === undefined) delete updated.description;
-    if (data.entityType === undefined) delete updated.entityType;
+    
+    // Explicitly map undefined to null or omit
+    const finalUpdate: any = { ...updated };
+    if (data.entityId === undefined) delete finalUpdate.entityId;
+    if (data.assignedTo === undefined) delete finalUpdate.assignedTo;
+    if (data.description === undefined) delete finalUpdate.description;
+    if (data.entityType === undefined) delete finalUpdate.entityType;
 
     await db.update(tasks)
-      .set(updated as any)
+      .set(finalUpdate)
       .where(and(eq(tasks.id, id), eq(tasks.organizationId, organizationId)));
     return await this.findById(id, organizationId);
   },
 
-  async delete(id: string, organizationId: string): Promise<void> {
+  async markAsDone(id: string, organizationId: string, userId: string): Promise<Task | null> {
+    return this.update(id, organizationId, { status: 'completed' }, userId);
+  },
+
+  async delete(id: string, organizationId: string, userId: string): Promise<void> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.organizationId !== organizationId) {
+      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
     await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.organizationId, organizationId)));
   },
 };

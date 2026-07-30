@@ -8,9 +8,13 @@ import { useRouter } from 'next/navigation';
 import { Invoice, Client, Product, InvoiceLine } from '@/lib/data/interfaces';
 import { generateId } from '@/lib/utils/id-generator';
 
-import { invoiceSchema } from '@/utils/validation';
+import { invoiceSchema, invoiceLineSchema } from '@/lib/validation/schemas';
 
-export type InvoiceFormData = z.infer<typeof invoiceSchema>;
+const invoiceFormSchema = invoiceSchema.extend({
+  lines: z.array(invoiceLineSchema).min(1, "Au moins une ligne est requise")
+});
+
+export type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 
 interface InvoiceFormProps {
   initialData?: Invoice;
@@ -24,7 +28,7 @@ export default function InvoiceForm({ initialData, clients, products, onSubmit, 
   const router = useRouter();
   
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormData>({
-    resolver: zodResolver(invoiceSchema),
+    resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
       type: initialData?.type || 'invoice',
       status: initialData?.status || 'draft',

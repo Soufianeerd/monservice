@@ -3,7 +3,9 @@ import { messages } from '../db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { Message } from '../data/interfaces/message.interface';
 import { generateId } from '../utils/id-generator';
-
+import { messageSchema } from '../validation/schemas';
+import { AppError } from '../utils/error-handler';
+import { userService } from './user.service';
 
 export const messageService = {
   async getMessagesByRequestId(requestId: string): Promise<Message[]> {
@@ -55,17 +57,31 @@ export const messageService = {
     }
   },
 
-  async create(data: Omit<Message, 'id' | 'createdAt' | 'read'>): Promise<Message> {
+  async markThreadAsRead(userId: string, otherUserId: string): Promise<void> {
+    // Mark as read all messages where the current user is the receiver and the other user is the sender
+    await db.update(messages)
+      .set({ isRead: true, updatedAt: new Date().toISOString() })
+      .where(and(eq(messages.receiverId, userId), eq(messages.senderId, otherUserId), eq(messages.isRead, false)));
+  },
+
+  async create(data: Omit<Message, 'id' | 'createdAt' | 'read'>, userId: string): Promise<Message> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.id !== data.senderId) {
+      throw new AppError('Unauthorized to send message as this user', 403, 'UNAUTHORIZED');
+    }
+
+    const validated = messageSchema.parse(data);
+
     const id = generateId();
     const now = new Date().toISOString();
     
     await db.insert(messages).values({
       id,
-      senderId: data.senderId,
-      receiverId: data.receiverId,
-      content: data.content,
-      requestId: data.requestId || null,
-      organizationId: data.organizationId,
+      senderId: validated.senderId,
+      receiverId: validated.receiverId,
+      content: validated.content,
+      requestId: validated.requestId || null,
+      organizationId: validated.organizationId,
       isRead: false,
       createdAt: now,
       updatedAt: now,

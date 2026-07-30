@@ -3,6 +3,9 @@ import { requests } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Request } from '../data/interfaces/request.interface';
 import { generateId } from '../utils/id-generator';
+import { requestSchema } from '../validation/schemas';
+import { AppError } from '../utils/error-handler';
+import { userService } from './user.service';
 
 
 export const requestService = {
@@ -55,20 +58,31 @@ export const requestService = {
     }));
   },
 
-  async create(data: Omit<Request, 'id' | 'createdAt' | 'updatedAt'>): Promise<Request> {
+  async create(data: Omit<Request, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Request> {
+    const user = await userService.getUserProfile(userId);
+    if (!user || user.id !== data.clientId) {
+      throw new AppError('Unauthorized to create request for this client', 403, 'UNAUTHORIZED');
+    }
+
+    const validated = requestSchema.parse({
+      ...data,
+      deadline: data.preferredDate,
+      visibility: data.isPublic ? 'public' : 'private',
+    });
+
     const id = generateId();
     const now = new Date().toISOString();
     
     await db.insert(requests).values({
       id,
       clientId: data.clientId,
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      budget: data.budget ? data.budget.toString() : null,
-      deadline: data.preferredDate || null,
-      status: data.status,
-      visibility: data.isPublic ? 'public' : 'private',
+      title: validated.title,
+      description: validated.description,
+      category: validated.category,
+      budget: validated.budget ? validated.budget.toString() : null,
+      deadline: validated.deadline || null,
+      status: validated.status as any,
+      visibility: validated.visibility as any,
       createdAt: now,
       updatedAt: now,
     });
@@ -76,7 +90,11 @@ export const requestService = {
     return this.findById(id) as Promise<Request>;
   },
 
-  async update(id: string, data: Partial<Omit<Request, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Request | null> {
+  async update(id: string, data: Partial<Omit<Request, 'id' | 'createdAt' | 'updatedAt'>>, userId: string): Promise<Request | null> {
+    const req = await this.findById(id);
+    if (!req) throw new AppError('Request not found', 404, 'NOT_FOUND');
+    if (req.clientId !== userId) throw new AppError('Unauthorized', 403, 'UNAUTHORIZED');
+
     const updates: any = { updatedAt: new Date().toISOString() };
     
     if (data.title !== undefined) updates.title = data.title;
@@ -92,7 +110,24 @@ export const requestService = {
     return this.findById(id);
   },
 
-  async delete(id: string): Promise<boolean> {
+  async publish(id: string, userId: string): Promise<Request | null> {
+    const request = await this.findById(id);
+    if (!request) throw new AppError('Request not found', 404, 'NOT_FOUND');
+    if (request.clientId !== userId) throw new AppError('Unauthorized', 403, 'UNAUTHORIZED');
+    if (request.status === 'published') throw new AppError('Already published', 400, 'BAD_REQUEST');
+
+    await db.update(requests)
+      .set({ status: 'published', visibility: 'public', updatedAt: new Date().toISOString() })
+      .where(eq(requests.id, id));
+
+    return this.findById(id);
+  },
+
+  async delete(id: string, userId: string): Promise<boolean> {
+    const req = await this.findById(id);
+    if (!req) return false;
+    if (req.clientId !== userId) throw new AppError('Unauthorized', 403, 'UNAUTHORIZED');
+
     await db.delete(requests).where(eq(requests.id, id));
     return true;
   }

@@ -8,6 +8,7 @@ import { dealService } from '@/lib/services/deal.service';
 import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Deal, Client } from '@/lib/data/interfaces';
+import { handleError } from '@/lib/utils/error-handler';
 
 export default function NewDealPage() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function NewDealPage() {
         clientId: data.clientId || '',
         organizationId: user.organizationId,
         description: data.description || '',
-      });
+      }, user.id);
 
       await activityLogRepository.create({
         organizationId: user.organizationId,
@@ -48,7 +49,7 @@ export default function NewDealPage() {
       alert('Opportunité créée !');
       router.push('/deals');
     } catch (error) {
-      console.error('Erreur', error);
+      handleError(error, "Erreur lors de la création de l'opportunité");
       setIsSubmitting(false);
     }
   };

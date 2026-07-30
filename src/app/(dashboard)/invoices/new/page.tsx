@@ -9,6 +9,7 @@ import { activityLogRepository } from '@/lib/data';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
+import { handleError } from '@/lib/utils/error-handler';
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function NewInvoicePage() {
         taxAmount: data.taxAmount || 0,
         totalTTC: data.totalTTC || 0,
         message: data.notes, // Notes from form mapping to message
-      }, (lines || []) as any);
+      }, (lines || []) as any, user.id);
 
       await activityLogRepository.create({
         organizationId: user.organizationId,
@@ -77,8 +78,7 @@ export default function NewInvoicePage() {
       router.push('/invoices');
       router.refresh();
     } catch (error) {
-      console.error('Erreur lors de la création', error);
-      alert('Une erreur est survenue.');
+      handleError(error, "Erreur lors de la création du document");
     } finally {
       setIsSubmitting(false);
     }

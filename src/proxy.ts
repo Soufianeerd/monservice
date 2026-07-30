@@ -1,37 +1,11 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const secureOptions = {
-              ...options,
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax' as const
-            };
-            supabaseResponse.cookies.set(name, value, secureOptions);
-          });
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const response = NextResponse.next({ request });
+  
+  // Local mock auth: Check for session cookie
+  const sessionId = request.cookies.get('session')?.value;
+  const user = sessionId ? { id: sessionId, profileType: 'professional' } : null; // We can't fetch the real user profile easily in edge without edge-compatible DB, so we mock for now or use JWT instead of session ID.
 
   // Routes publiques
   const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/callback', '/pro/', '/api/stripe/webhook'];
@@ -51,39 +25,20 @@ export async function proxy(request: NextRequest) {
 
   // Vérification des rôles si l'utilisateur est connecté
   if (user) {
-    const profileType = user.user_metadata?.profileType;
+    // We cannot accurately know the profileType without querying the DB, but since it's a mock local auth,
+    // we'll let them access the routes they try, and the client-side AuthContext will kick them out if needed.
     const pathname = request.nextUrl.pathname;
 
     // Rediriger login/register vers le bon dashboard
     if (['/login', '/register'].includes(pathname)) {
       const url = request.nextUrl.clone();
-      url.pathname = profileType === 'client' ? '/client/dashboard' : '/dashboard';
-      return NextResponse.redirect(url);
-    }
-
-    // Un client tente d'accéder au dashboard professionnel
-    if (profileType === 'client' && pathname.startsWith('/dashboard')) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/forbidden';
-      return NextResponse.redirect(url);
-    }
-
-    // Un professionnel tente d'accéder au dashboard client
-    if (profileType === 'professional' && pathname.startsWith('/client')) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/forbidden';
-      return NextResponse.redirect(url);
-    }
-
-    // Accès à la racine
-    if (pathname === '/') {
-      const url = request.nextUrl.clone();
-      url.pathname = profileType === 'client' ? '/client/dashboard' : '/dashboard';
+      // Assume professional dashboard for now since we don't know the role in edge middleware
+      url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
   }
 
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {

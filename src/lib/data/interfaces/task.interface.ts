@@ -1,5 +1,5 @@
-export type TaskStatus = 'À faire' | 'En cours' | 'En attente' | 'Terminé';
-export type TaskPriority = 'Basse' | 'Moyenne' | 'Haute';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'todo';
+export type TaskPriority = 'low' | 'medium' | 'high';
 
 export type TaskEntityType = 'client' | 'contact' | 'deal' | 'invoice' | 'quote' | null;
 

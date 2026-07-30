@@ -1,5 +1,4 @@
 'use client';
-import { taskService } from '@/lib/services/task.service';
 
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -8,26 +7,15 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useAuth } from '@/components/auth/AuthContext';
-import { dealRepository, invoiceRepository  } from '@/lib/data';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: Date;
-  end?: Date;
-  allDay?: boolean;
-  backgroundColor?: string;
-  borderColor?: string;
-  extendedProps: {
-    type: 'task' | 'deal' | 'invoice';
-    status?: string;
-    originalId: string;
-  };
-}
+import { calendarService } from '@/lib/services/calendar.service';
+import { taskService } from '@/lib/services/task.service';
+import { dealService } from '@/lib/services/deal.service';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { handleError } from '@/lib/utils/error-handler';
 
 export default function CalendarView() {
   const { user } = useAuth();
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,71 +24,48 @@ export default function CalendarView() {
       setIsLoading(true);
       
       try {
-        const [tasks, deals, invoices] = await Promise.all([
-          taskService.findByOrganization(user.organizationId),
-          dealRepository.findByOrganization(user.organizationId),
-          invoiceRepository.findByOrganization(user.organizationId)
-        ]);
+        // Fetch 1 year past and 2 years future for simplicity, since FullCalendar standard event array expects all loaded events.
+        const dStart = new Date();
+        dStart.setFullYear(dStart.getFullYear() - 1);
+        const dEnd = new Date();
+        dEnd.setFullYear(dEnd.getFullYear() + 2);
 
-        const formattedEvents: CalendarEvent[] = [];
+        const rawEvents = await calendarService.getEvents(
+          user.organizationId,
+          dStart.toISOString(),
+          dEnd.toISOString()
+        );
 
-        tasks.forEach(task => {
-          if (task.dueDate) {
-            formattedEvents.push({
-              id: `task_${task.id}`,
-              title: `Tâche: ${task.title}`,
-              start: new Date(task.dueDate),
-              allDay: true,
-              backgroundColor: '#4f46e5', // Indigo
-              borderColor: '#4338ca',
-              extendedProps: {
-                type: 'task',
-                status: task.status,
-                originalId: task.id
-              }
-            });
+        const formattedEvents = rawEvents.map((evt: any) => {
+          let backgroundColor = '#4f46e5';
+          let borderColor = '#4338ca';
+
+          if (evt.type === 'deal') {
+            backgroundColor = '#059669';
+            borderColor = '#047857';
+          } else if (evt.type === 'invoice') {
+            backgroundColor = '#dc2626';
+            borderColor = '#b91c1c';
           }
-        });
 
-        deals.forEach(deal => {
-          if (deal.expectedCloseDate) {
-            formattedEvents.push({
-              id: `deal_${deal.id}`,
-              title: `Deal: ${deal.name}`,
-              start: new Date(deal.expectedCloseDate),
-              allDay: true,
-              backgroundColor: '#059669', // Emerald
-              borderColor: '#047857',
-              extendedProps: {
-                type: 'deal',
-                status: deal.status,
-                originalId: deal.id
-              }
-            });
-          }
-        });
-
-        invoices.forEach(invoice => {
-          if (invoice.dueDate) {
-            formattedEvents.push({
-              id: `invoice_${invoice.id}`,
-              title: `Échéance Facture: ${invoice.number}`,
-              start: new Date(invoice.dueDate),
-              allDay: true,
-              backgroundColor: '#dc2626', // Red
-              borderColor: '#b91c1c',
-              extendedProps: {
-                type: 'invoice',
-                status: invoice.status,
-                originalId: invoice.id
-              }
-            });
-          }
+          return {
+            id: `${evt.type}_${evt.id}`,
+            title: evt.title,
+            start: new Date(evt.date),
+            allDay: true,
+            backgroundColor,
+            borderColor,
+            extendedProps: {
+              type: evt.type,
+              status: evt.status,
+              originalId: evt.id
+            }
+          };
         });
 
         setEvents(formattedEvents);
       } catch (error) {
-        console.error("Failed to load events", error);
+        handleError(error, "Erreur lors du chargement des événements");
       } finally {
         setIsLoading(false);
       }
@@ -119,14 +84,14 @@ export default function CalendarView() {
 
     try {
       if (type === 'task') {
-        await taskService.update(originalId, user.organizationId, { dueDate: newStart.toISOString() });
+        await taskService.update(originalId, user.organizationId, { dueDate: newStart.toISOString() }, user.id);
       } else if (type === 'deal') {
-        await dealRepository.update(originalId, { expectedCloseDate: newStart.toISOString() });
+        await dealService.update(originalId, user.organizationId, { expectedCloseDate: newStart.toISOString() }, user.id);
       } else if (type === 'invoice') {
-        await invoiceRepository.update(originalId, { dueDate: newStart.toISOString().split('T')[0] });
+        await invoiceService.update(originalId, user.organizationId, { dueDate: newStart.toISOString().split('T')[0] }, user.id);
       }
     } catch (error) {
-      console.error("Failed to update event", error);
+      handleError(error, "Erreur lors de la mise à jour de l'événement");
       info.revert();
     }
   };
@@ -137,7 +102,7 @@ export default function CalendarView() {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Chargement du calendrier...</div>;
+    return <div className="p-8 text-center text-gray-500 animate-pulse">Chargement du calendrier...</div>;
   }
 
   return (

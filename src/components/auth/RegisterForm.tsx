@@ -244,7 +244,7 @@ export default function RegisterForm() {
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Récapitulatif</h3>
             
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm text-gray-900">
               <p><span className="font-medium text-gray-700">Nom :</span> {formData.name}</p>
               <p><span className="font-medium text-gray-700">Email :</span> {formData.email}</p>
               <p><span className="font-medium text-gray-700">Profil :</span> {formData.profileType === 'client' ? 'Particulier' : 'Professionnel'}</p>

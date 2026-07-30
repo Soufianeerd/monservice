@@ -24,7 +24,7 @@ export default function NewRequestPage() {
       preferredDate: data.preferredDate,
       status: 'draft',
       clientId: user.id
-    });
+    }, user.id);
     
     router.push('/client/requests');
   };

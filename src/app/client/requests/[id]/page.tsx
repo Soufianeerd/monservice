@@ -39,7 +39,20 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">{request.title}</h1>
-        <div className="space-x-3">
+        <div className="space-x-3 flex items-center">
+          {request.status !== 'published' && (
+            <button 
+              onClick={async () => {
+                if(window.confirm('Voulez-vous vraiment publier cette demande ?')) {
+                  await requestService.publish(request.id, user?.id || '');
+                  alert('Demande publiée !');
+                  window.location.reload();
+                }
+              }}
+              className="bg-indigo-600 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700">
+              Publier
+            </button>
+          )}
           <Link href={`/client/requests/${request.id}/edit`} className="bg-white px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Modifier</Link>
         </div>
       </div>

@@ -25,7 +25,7 @@ export default function EditRequestPage({ params }: { params: Promise<{ id: stri
   }, [id, user]);
 
   const handleSubmit = async (data: Partial<Request>) => {
-    await requestService.update(id, data);
+    await requestService.update(id, data, user?.id || '');
     router.push('/client/requests');
   };
 
