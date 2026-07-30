@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { dealRepository, clientRepository } from '@/lib/data';
+import { dealService } from '@/lib/services/deal.service';
+import { clientService } from '@/lib/services/client.service';
 import { Deal, Client, DealStatus } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import DealPipeline from '@/components/crm/DealPipeline';
@@ -24,8 +25,8 @@ export default function DealsPage() {
     const fetchData = async () => {
       try {
         const [dealsData, clientsData] = await Promise.all([
-          dealRepository.findByOrganization(organizationId),
-          clientRepository.findByOrganization(organizationId)
+          dealService.findAll(organizationId),
+          clientService.findAll(organizationId)
         ]);
 
         if (isMounted) {
@@ -49,6 +50,7 @@ export default function DealsPage() {
   }, [user?.organizationId, refreshTrigger]);
 
   const handleStatusChange = async (dealId: string, newStatus: DealStatus) => {
+    if (!user?.organizationId) return;
     // Mise à jour optimiste pour une meilleure UX
     setDeals(currentDeals => 
       currentDeals.map(deal => 
@@ -57,7 +59,7 @@ export default function DealsPage() {
     );
     
     try {
-      await dealRepository.update(dealId, { status: newStatus, updatedAt: new Date().toISOString() });
+      await dealService.update(dealId, user.organizationId, { status: newStatus });
       setRefreshTrigger(prev => prev + 1); // Rafraîchissement en arrière-plan
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut', error);

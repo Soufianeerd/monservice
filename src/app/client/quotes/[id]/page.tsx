@@ -3,7 +3,8 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Invoice, Request } from '@/lib/data/interfaces';
-import { invoiceRepository, requestRepository } from '@/lib/data/repositories';
+
+import { invoiceService } from '@/lib/services/invoice.service';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,6 +12,7 @@ import { useEffect, useState, use } from 'react';
 import { generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { DownloadIcon } from 'lucide-react';
 import { organizationRepository } from '@/lib/data';
+import { requestService } from '@/lib/services/request.service';
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -23,21 +25,26 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     const fetchData = async () => {
-      const q = await invoiceRepository.getById(id);
-      if (q && q.clientId === user?.id && q.type === 'quote') {
+      if (!user?.id) return;
+      const q = await invoiceService.getById(id);
+      if (q && q.clientId === user.id && q.type === 'quote') {
         setQuote(q);
         // Mark as viewed if it was just sent
         if (q.status === 'sent') {
-          await invoiceRepository.update(q.id, { status: 'viewed' });
-          setQuote({ ...q, status: 'viewed' });
+          // This requires pro organizationId but wait, client does not know it
+          // We can use the professionalId / organizationId of the quote!
+          await invoiceService.update(q.id, q.organizationId, { status: 'viewed' });
         }
+        
         if (q.requestId) {
-          const req = await requestRepository.findById(q.requestId);
-          if (req) setRequest(req);
+          const req = await requestService.findById(q.requestId);
+          setRequest(req || null);
         }
       }
     };
-    if (user?.id) fetchData();
+    if (user) {
+      fetchData();
+    }
   }, [id, user]);
 
   const handleAccept = async () => {
@@ -48,7 +55,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const handleDecline = async () => {
     if (!quote) return;
     if (confirm('Êtes-vous sûr de vouloir refuser ce devis ?')) {
-      await invoiceRepository.update(quote.id, { status: 'cancelled' });
+      await invoiceService.update(quote.id, quote.organizationId, { status: 'cancelled' });
       setQuote({ ...quote, status: 'cancelled' });
     }
   };

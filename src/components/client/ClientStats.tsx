@@ -3,8 +3,10 @@
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { MessageSquareIcon, FileTextIcon, FileCheckIcon, CreditCardIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { requestRepository, messageRepository } from '@/lib/data/repositories';
+
 import { invoiceRepository } from '@/lib/data/repositories';
+import { requestService } from '@/lib/services/request.service';
+import { messageService } from '@/lib/services/message.service';
 
 export default function ClientStats({ clientId }: { clientId: string }) {
   const [stats, setStats] = useState({
@@ -18,9 +20,9 @@ export default function ClientStats({ clientId }: { clientId: string }) {
     const fetchStats = async () => {
       if (!clientId) return;
 
-      const requests = await requestRepository.findByClient(clientId);
-      const invoices = await invoiceRepository.findByClient(clientId);
-      const unreadCount = await messageRepository.countUnreadForUser(clientId);
+      const requests = await requestService.findByClientId(clientId);
+      const invoices = await invoiceRepository.findByClientId(clientId);
+      const unreadCount = await messageService.getUnreadCount(clientId);
 
       const activeReqs = requests.filter(r => r.status === 'published' || r.status === 'in_progress').length;
       const quotes = invoices.filter(i => i.type === 'quote' && i.status === 'sent').length;

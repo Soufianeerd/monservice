@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceRepository } from '@/lib/data/repositories';
+import { invoiceService } from '@/lib/services/invoice.service';
 import { useEffect, useState, use } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -20,13 +20,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [invoice, setInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const inv = await invoiceRepository.getById(id);
-      if (inv && inv.clientId === user?.id && inv.type === 'invoice') {
-        setInvoice(inv);
+    async function loadData() {
+      if (!user?.id) return;
+      try {
+        const inv = await invoiceService.getById(id);
+        
+        if (inv && inv.clientId === user.id && inv.type === 'invoice') {
+          setInvoice(inv);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de la facture:', error);
       }
-    };
-    if (user?.id) fetchData();
+    }
+    loadData();
   }, [id, user]);
 
   const handleDownload = async () => {

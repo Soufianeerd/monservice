@@ -2,13 +2,16 @@
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState, use } from 'react';
+import { RequestStatus } from '@/lib/data/interfaces';
+import { invoiceService } from '@/lib/services/invoice.service';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository, invoiceRepository } from '@/lib/data/repositories';
+import { invoiceRepository  } from '@/lib/data/repositories';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import RespondToRequestForm from '@/components/marketplace/RespondToRequestForm';
 import { Card, CardBody } from '@/components/ui/Card';
 import { generateId } from '@/lib/utils/id-generator';
+import { requestService } from '@/lib/services/request.service';
 
 export default function RespondToRequestPage({ params }: { params: Promise<{ requestId: string }> }) {
   const resolvedParams = use(params);
@@ -20,7 +23,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
   const [error, setError] = useState('');
 
   useEffect(() => {
-    requestRepository.findById(requestId).then(req => {
+    requestService.findById(requestId).then(req => {
       setRequest(req || null);
     });
   }, [requestId]);
@@ -40,35 +43,31 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         return;
       }
 
-      const nextNumber = await invoiceRepository.getNextNumber('quote', new Date().getFullYear());
-      
-      const newInvoiceData = {
-        organizationId: user.organizationId,
-        professionalId: user.organizationId,
-        type: 'quote' as const,
+      const nextNumber = await invoiceService.getNextInvoiceNumber(user.organizationId, 'quote');
+
+      const lines = [{
+        description: "Prestation : " + request.title,
+        quantity: 1,
+        unitPrice: data.amount,
+        taxRate: 20,
+        discount: 0,
+        amountHT: data.amount,
+        amountTTC: data.amount * 1.2
+      }];
+
+      await invoiceService.create({
+        type: 'quote',
         number: nextNumber,
         date: new Date().toISOString(),
+        status: 'sent',
         clientId: request.clientId,
-        requestId: request.id,
-        status: 'sent' as const,
-        message: data.message,
+        organizationId: user.organizationId,
         totalHT: data.amount,
-        taxAmount: data.amount * 0.2, // 20% mock TVA
+        taxAmount: data.amount * 0.2,
         totalTTC: data.amount * 1.2,
-        lines: [{
-          id: generateId(),
-          invoiceId: '',
-          description: "Prestation : " + request.title,
-          quantity: 1,
-          unitPrice: data.amount,
-          taxRate: 20,
-          discount: 0
-        }],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      await invoiceRepository.create(newInvoiceData);
+        message: data.message,
+        requestId: request.id,
+      }, lines as any);
       
       // In a real app, notify client here
       alert("Devis envoyé avec succès au client !");

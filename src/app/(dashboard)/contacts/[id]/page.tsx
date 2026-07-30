@@ -1,36 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft } from 'lucide-react';
-import { contactRepository, clientRepository } from '@/lib/data';
+import { contactService } from '@/lib/services/contact.service';
+import { clientService } from '@/lib/services/client.service';
 import { Contact, Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Button } from '@/components/ui/Button';
+import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import QuickActions from '@/components/crm/QuickActions';
 
-export default function ContactDetailPage() {
+export default function ContactDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [contact, setContact] = useState<Contact | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       if (!user?.organizationId) return;
-      const c = await contactRepository.getById(params.id as string);
-      if (c && c.organizationId === user.organizationId) {
-        setContact(c);
-        const cli = await clientRepository.getById(c.clientId);
-        setClient(cli);
-      } else {
-        router.push('/contacts');
+      try {
+        const c = await contactService.findById(params.id as string, user.organizationId);
+        if (c) {
+          setContact(c);
+          if (c.clientId) {
+            const cl = await clientService.findById(c.clientId, user.organizationId);
+            setClient(cl);
+          }
+        } else {
+          router.push('/contacts');
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    load();
+    
+    if (user) loadData();
   }, [params.id, user, router]);
 
   if (loading) return <div className="p-8 text-center animate-pulse">Chargement...</div>;

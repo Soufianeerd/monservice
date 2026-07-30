@@ -1,8 +1,5 @@
-import { invoiceRepository } from '@/lib/data/repositories/invoice.repository';
-import { requestRepository } from '@/lib/data/repositories/request.repository';
 import { NextResponse } from 'next/server';
-// import { notificationService } from '@/lib/services/notification.service'; // We will create this or use a simple console.log for now
-
+import { invoiceService } from '@/lib/services/invoice.service';
 import { createClient } from '@/utils/supabase/server';
 
 export async function POST(req: Request) {
@@ -14,33 +11,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { quoteId, signature } = body;
+    const { quoteId, signatureData } = await req.json();
+
+    if (!quoteId || !signatureData) {
+      return NextResponse.json({ error: 'Devis ID et données de signature requis' }, { status: 400 });
+    }
+
+    const quote = await invoiceService.getById(quoteId);
     
-    // In a real app, you would get the IP address from req headers
-    const signatureIp = req.headers.get('x-forwarded-for') || '127.0.0.1';
-
-    const quote = await invoiceRepository.getById(quoteId);
-
-    if (!quote || quote.type !== 'quote') {
+    if (!quote) {
       return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 });
     }
 
-    if (quote.status === 'paid' || quote.signature) {
+    if (quote.signature) {
       return NextResponse.json({ error: 'Ce devis est déjà signé' }, { status: 400 });
     }
 
-    const updatedQuote = await invoiceRepository.updateSignature(quoteId, {
-      signature,
-      signatureIp
-    });
-
-    if (quote.requestId) {
-      await requestRepository.update(quote.requestId, { status: 'in_progress' });
-    }
-
-    // TODO: Send notification to the professional
-    console.log(`[NOTIFICATION] Le devis ${quote.number} a été signé par le client.`);
+    const updatedQuote = await invoiceService.updateSignature(quoteId, signatureData);
 
     return NextResponse.json({ success: true, quote: updatedQuote });
   } catch (error) {

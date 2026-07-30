@@ -1,63 +1,74 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { invoiceRepository, clientRepository, productRepository } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Edit, Trash2, FileText, Send, Download, DollarSign } from 'lucide-react';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { clientService } from '@/lib/services/client.service';
 import { Invoice, Client, Product } from '@/lib/data/interfaces';
+import { useAuth } from '@/components/auth/AuthContext';
 import InvoiceDetail from '@/components/crm/InvoiceDetail';
-// import toast from 'react-hot-toast';
 
-export default function InvoiceDetailPage() {
-  const params = useParams();
-  const id = params?.id as string;
+export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-
+  const { user } = useAuth();
+  
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [client, setClient] = useState<Client | undefined>(undefined);
+  const [client, setClient] = useState<Client | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    if (!id) return;
-    try {
-      const inv = await invoiceRepository.getById(id);
-      if (inv) {
-        setInvoice(inv);
-        const [c, p] = await Promise.all([
-          clientRepository.getById(inv.clientId),
-          productRepository.findByOrganization(inv.organizationId)
-        ]);
-        if (c) setClient(c);
-        setProducts(p);
-      } else {
-        router.push('/invoices');
-      }
-    } catch (error) {
-      console.error('Erreur', error);
-      alert('Erreur lors du chargement');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-  }, [id, router]);
+    async function loadData() {
+      if (!user?.organizationId) return;
+      try {
+        const id = params.id;
+        const [inv, allProducts] = await Promise.all([
+          invoiceService.findById(id, user.organizationId),
+          import('@/lib/services/product.service').then(m => m.productService.findAll(user.organizationId!))
+        ]);
+        
+        if (inv) {
+          setInvoice(inv);
+          if (inv.clientId) {
+            const cli = await clientService.findById(inv.clientId, user.organizationId);
+            setClient(cli);
+          }
+          setProducts(allProducts);
+        } else {
+          router.push('/invoices');
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (user) loadData();
+  }, [params.id, user, router]);
 
   const handleMarkAsPaid = async () => {
-    if (invoice) {
-      await invoiceRepository.update(invoice.id, {
+    if (!user?.organizationId || !invoice) return;
+    if (window.confirm("Marquer cette facture comme payée ?")) {
+      await invoiceService.update(invoice.id, user.organizationId, {
         status: 'paid',
         paidAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
       });
-      loadData();
+      alert('Facture payée');
+      router.refresh();
+      const inv = await invoiceService.findById(invoice.id, user.organizationId);
+      setInvoice(inv);
     }
   };
 
   const handleDelete = async () => {
-    if (invoice) {
-      await invoiceRepository.delete(invoice.id);
+    if (!user?.organizationId || !invoice) return;
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
+      await invoiceService.delete(invoice.id, user.organizationId);
+      alert('Document supprimé');
+      router.push('/invoices');
     }
   };
 
@@ -68,7 +79,7 @@ export default function InvoiceDetailPage() {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <InvoiceDetail 
         invoice={invoice} 
-        client={client} 
+        client={client || undefined} 
         products={products} 
         onMarkAsPaid={handleMarkAsPaid}
         onDelete={handleDelete}

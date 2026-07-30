@@ -2,19 +2,21 @@
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
+import { useState, useEffect } from 'react';
+import { invoiceService } from '@/lib/services/invoice.service';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceRepository } from '@/lib/data/repositories';
-import { useEffect, useState } from 'react';
 import InvoiceList from '@/components/client/InvoiceList';
 
 export default function ClientInvoicesPage() {
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
-      invoiceRepository.findByClient(user.id).then(allInvoices => {
+      invoiceService.findByClient(user.id).then(allInvoices => {
         setInvoices(allInvoices.filter(i => i.type === 'invoice').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setLoading(false);
       });
     }
   }, [user]);

@@ -3,10 +3,11 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Message, User } from '@/lib/data/interfaces';
-import { messageRepository } from '@/lib/data/repositories';
+
 import { userService } from '@/lib/services/user.service';
 import { useEffect, useState } from 'react';
 import MessageList from '@/components/client/MessageList';
+import { messageService } from '@/lib/services/message.service';
 
 export default function ClientMessagesPage() {
   const { user } = useAuth();
@@ -16,7 +17,7 @@ export default function ClientMessagesPage() {
     const fetchConversations = async () => {
       if (!user?.id) return;
 
-      const messages = await messageRepository.findByClient(user.id);
+      const messages = await messageService.findByUser(user.id);
       
       const convosMap = new Map<string, { lastMessage: Message, unreadCount: number }>();
       

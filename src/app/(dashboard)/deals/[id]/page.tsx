@@ -1,42 +1,55 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft, Trash2 } from 'lucide-react';
-import { dealRepository, clientRepository } from '@/lib/data';
+import { dealService } from '@/lib/services/deal.service';
+import { clientService } from '@/lib/services/client.service';
 import { Deal, Client } from '@/lib/data/interfaces';
 import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 import { useAuth } from '@/components/auth/AuthContext';
 
-export default function DealDetailPage() {
+export default function DealDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       if (!user?.organizationId) return;
-      const d = await dealRepository.getById(params.id as string);
-      if (d && d.organizationId === user.organizationId) {
-        setDeal(d);
-        const cli = await clientRepository.getById(d.clientId);
-        setClient(cli);
-      } else {
-        router.push('/deals');
+      try {
+        const d = await dealService.findById(params.id as string, user.organizationId);
+        if (d) {
+          setDeal(d);
+          if (d.clientId) {
+            const cli = await clientService.findById(d.clientId, user.organizationId);
+            setClient(cli);
+          }
+        } else {
+          router.push('/deals');
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    load();
+    
+    if (user) loadData();
   }, [params.id, user, router]);
 
   const handleDelete = async () => {
+    if (!user?.organizationId) return;
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce deal ?")) return;
-    await dealRepository.delete(params.id as string);
-    router.push('/deals');
+    try {
+      await dealService.delete(params.id as string, user.organizationId);
+      router.push('/deals');
+    } catch (error) {
+      console.error('Erreur', error);
+    }
   };
 
   if (loading) return <div className="p-8 text-center animate-pulse">Chargement...</div>;

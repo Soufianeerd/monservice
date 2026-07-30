@@ -35,7 +35,7 @@ export default function QuickActions({ entityType, entity }: QuickActionsProps) 
   };
 
   const handleWhatsAppAction = () => {
-    if (hasPhone) {
+    if (hasPhone && entity.phone) {
       const cleanPhone = entity.phone.replace(/[^0-9+]/g, '');
       window.open(`https://wa.me/${cleanPhone}`, '_blank');
     }
@@ -84,8 +84,8 @@ export default function QuickActions({ entityType, entity }: QuickActionsProps) 
 
       <button 
         onClick={() => {
-          if (hasEmail) handleCopy(entity.email, 'email');
-          else if (hasPhone) handleCopy(entity.phone, 'phone');
+          if (hasEmail && entity.email) handleCopy(entity.email, 'email');
+          else if (hasPhone && entity.phone) handleCopy(entity.phone, 'phone');
         }}
         disabled={!hasEmail && !hasPhone}
         className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"

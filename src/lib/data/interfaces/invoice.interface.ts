@@ -8,15 +8,15 @@ export interface Invoice {
   type: 'invoice' | 'quote';
   number: string;
   date: string;
-  dueDate?: string;
-  paidAt?: string;
-  paymentLink?: string;
-  stripePaymentIntentId?: string;
-  paymentIntentId?: string;
+  dueDate?: string | null;
+  paidAt?: string | null;
+  paymentLink?: string | null;
+  stripePaymentIntentId?: string | null;
+  paymentIntentId?: string | null;
   clientId: string;
-  requestId?: string;
-  professionalId?: string;
-  message?: string;
+  requestId?: string | null;
+  professionalId?: string | null;
+  message?: string | null;
   lines: InvoiceLine[];
   totalHT: number;
   taxAmount: number;
@@ -24,10 +24,10 @@ export interface Invoice {
   status: InvoiceStatus;
   
   // Signature
-  signature?: string;
-  signatureDate?: string;
-  signatureIp?: string;
-  signedAt?: string;
+  signature?: string | null;
+  signatureDate?: string | null;
+  signatureIp?: string | null;
+  signedAt?: string | null;
 
   createdAt: string;
   updatedAt: string;

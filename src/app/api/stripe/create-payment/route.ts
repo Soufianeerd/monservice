@@ -1,29 +1,37 @@
-import { createInvoicePaymentSession } from '@/lib/stripe/payment';
-import { invoiceRepository } from '@/lib/data/repositories/invoice.repository';
-import { organizationRepository } from '@/lib/data/repositories/organization.repository';
 import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { invoiceService } from '@/lib/services/invoice.service';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16' as any, // Cast pour éviter les erreurs de type strictes
+});
 
 export async function POST(req: Request) {
   try {
-    const { invoiceId, organizationId } = await req.json(); // client ID or pro ID depending on the context
+    const { invoiceId } = await req.json();
 
-    const invoice = await invoiceRepository.getById(invoiceId);
+    if (!invoiceId) {
+      return NextResponse.json({ error: 'Invoice ID manquant' }, { status: 400 });
+    }
+
+    const invoice = await invoiceService.getById(invoiceId);
 
     if (!invoice) {
-      return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 });
+      return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
     if (invoice.status === 'paid') {
-      return NextResponse.json({ error: 'Cette facture est déjà payée' }, { status: 400 });
+      return NextResponse.json({ error: 'Facture déjà payée' }, { status: 400 });
     }
 
     const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/client/invoices/${invoice.id}?payment=success`;
     const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/client/invoices/${invoice.id}?payment=cancel`;
 
+    const { createInvoicePaymentSession } = await import('@/lib/stripe/payment');
     const paymentUrl = await createInvoicePaymentSession(invoice, successUrl, cancelUrl);
     return NextResponse.json({ url: paymentUrl });
   } catch (error) {
     console.error('Erreur Stripe:', error);
-    return NextResponse.json({ error: 'Erreur lors de la création du paiement' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur lors de la création de la session de paiement' }, { status: 500 });
   }
 }

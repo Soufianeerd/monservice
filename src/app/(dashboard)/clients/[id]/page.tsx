@@ -1,25 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft } from 'lucide-react';
-import { clientRepository } from '@/lib/data';
+import { clientService } from '@/lib/services/client.service';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import QuickActions from '@/components/crm/QuickActions';
 
-export default function ClientDetailPage() {
+export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const data = await clientRepository.getById(params.id as string);
-      if (data && data.organizationId === user?.organizationId) {
+      if (!user?.organizationId) return;
+      const data = await clientService.findById(params.id, user.organizationId);
+      if (data) {
         setClient(data);
       } else {
         router.push('/clients');

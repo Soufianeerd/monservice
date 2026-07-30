@@ -3,12 +3,13 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState, use } from 'react';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository } from '@/lib/data/repositories';
+
 import { Card, CardBody } from '@/components/ui/Card';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MapPinIcon, CalendarIcon, CoinsIcon, BriefcaseIcon } from 'lucide-react';
+import { requestService } from '@/lib/services/request.service';
 
 export default function RequestMarketplaceDetailPage({ params }: { params: Promise<{ requestId: string }> }) {
   const resolvedParams = use(params);
@@ -17,7 +18,7 @@ export default function RequestMarketplaceDetailPage({ params }: { params: Promi
   const [request, setRequest] = useState<Request | null>(null);
 
   useEffect(() => {
-    requestRepository.findById(requestId).then(req => {
+    requestService.findById(requestId).then(req => {
       // In a real app, verify that the request is public and not owned by the user.
       if (req) {
         setRequest(req);

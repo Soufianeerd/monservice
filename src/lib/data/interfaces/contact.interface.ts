@@ -5,6 +5,7 @@ export interface Contact {
   email: string;
   phone: string;
   position: string;
+  isPrimary?: boolean;
   clientId: string;
   organizationId: string;
   createdAt: string;

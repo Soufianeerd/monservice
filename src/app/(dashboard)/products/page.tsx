@@ -2,48 +2,51 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthContext';
-import { productRepository } from '@/lib/data';
+import { Edit, Trash2, Plus, Package } from 'lucide-react';
+import { productService } from '@/lib/services/product.service';
 import { Product } from '@/lib/data/interfaces';
+import { useAuth } from '@/components/auth/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
 import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card';
-import { Edit, Trash2 } from 'lucide-react';
 
 export default function ProductsPage() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     if (!user?.organizationId) return;
-    await Promise.resolve();
-      setLoading(true);
     try {
-      const data = await productRepository.findByOrganization(user.organizationId);
+      const data = await productService.findAll(user.organizationId);
       setProducts(data);
     } catch (error) {
-      console.error('Erreur chargement produits', error);
+      console.error('Erreur', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProducts();
-  }, [user]);
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.organizationId]);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Voulez-vous vraiment supprimer ce produit ?")) {
-      await productRepository.delete(id);
-      loadProducts();
+    if (!user?.organizationId) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit/service ?")) return;
+    try {
+      await productService.delete(id, user.organizationId);
+      await loadData();
+    } catch (error) {
+      console.error('Erreur', error);
     }
   };
 
   const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.description.toLowerCase().includes(searchTerm.toLowerCase())
+    p.name.toLowerCase().includes(search.toLowerCase()) || 
+    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -65,8 +68,8 @@ export default function ProductsPage() {
           <Input
             type="text"
             placeholder="Rechercher un produit..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
             label="Recherche"
             hideLabel

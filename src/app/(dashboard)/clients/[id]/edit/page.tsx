@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
-import { clientRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
-import { Client } from '@/lib/data/interfaces';
+import { activityLogRepository } from '@/lib/data';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Client } from '@/lib/data/interfaces';
 
-export default function EditClientPage() {
+export default function EditClientPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,8 +17,9 @@ export default function EditClientPage() {
 
   useEffect(() => {
     async function load() {
-      const data = await clientRepository.getById(params.id as string);
-      if (data && data.organizationId === user?.organizationId) {
+      if (!user?.organizationId) return;
+      const data = await clientService.findById(params.id as string, user.organizationId);
+      if (data) {
         setClient(data);
       } else {
         router.push('/clients');
@@ -30,12 +30,12 @@ export default function EditClientPage() {
   }, [params.id, user, router]);
 
   const handleSubmit = async (data: Partial<Client>) => {
+    if (!user?.organizationId) return;
     setIsSubmitting(true);
     const id = params.id as string;
     try {
-      await clientRepository.update(id as string, {
+      await clientService.update(id, user.organizationId, {
         ...data,
-        updatedAt: new Date().toISOString(),
       });
 
       if (user) {

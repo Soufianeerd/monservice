@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { clientService } from '@/lib/services/client.service';
+import { productService } from '@/lib/services/product.service';
+import { activityLogRepository } from '@/lib/data';
 import { useAuth } from '@/components/auth/AuthContext';
-import { invoiceRepository, clientRepository, productRepository, activityLogRepository } from '@/lib/data';
-import { Client, Product } from '@/lib/data/interfaces';
+import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
-// import toast from 'react-hot-toast';
-import { generateId } from '@/lib/utils/id-generator';
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -23,8 +24,8 @@ export default function NewInvoicePage() {
       if (!user?.organizationId) return;
       try {
         const [clientsData, productsData] = await Promise.all([
-          clientRepository.findByOrganization(user.organizationId),
-          productRepository.findByOrganization(user.organizationId)
+          clientService.findAll(user.organizationId),
+          productService.findAll(user.organizationId)
         ]);
         setClients(clientsData);
         setProducts(productsData);
@@ -34,7 +35,8 @@ export default function NewInvoicePage() {
         setLoading(false);
       }
     }
-    loadData();
+    
+    if (user) loadData();
   }, [user]);
 
   const handleSubmit = async (data: InvoiceFormData & { totalHT: number; taxAmount: number; totalTTC: number }) => {
@@ -42,29 +44,24 @@ export default function NewInvoicePage() {
     
     setIsSubmitting(true);
     try {
-      const year = new Date(data.date).getFullYear();
-      const number = await invoiceRepository.getNextNumber(data.type, year);
+      const type = data.type || 'invoice';
+      const number = await invoiceService.getNextInvoiceNumber(user.organizationId, type);
       
-      const linesWithIds = data.lines.map(line => ({
-        ...line,
-        id: line.id || generateId()
-      }));
+      const { lines, ...rest } = data;
 
-      const newInvoice = await invoiceRepository.create({
-        organizationId: user.organizationId,
-        type: data.type,
+      const newInvoice = await invoiceService.create({
+        type: type as any,
         number,
-        date: new Date(data.date).toISOString(),
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-        clientId: data.clientId,
-        lines: linesWithIds as any,
-        totalHT: data.totalHT,
-        taxAmount: data.taxAmount,
-        totalTTC: data.totalTTC,
+        date: data.date || new Date().toISOString(),
+        dueDate: data.dueDate,
         status: 'draft',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+        clientId: data.clientId || '',
+        organizationId: user.organizationId,
+        totalHT: data.totalHT || 0,
+        taxAmount: data.taxAmount || 0,
+        totalTTC: data.totalTTC || 0,
+        message: data.notes, // Notes from form mapping to message
+      }, (lines || []) as any);
 
       await activityLogRepository.create({
         organizationId: user.organizationId,

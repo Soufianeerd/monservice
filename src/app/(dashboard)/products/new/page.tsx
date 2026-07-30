@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthContext';
-import { productRepository, activityLogRepository } from '@/lib/data';
 import ProductForm from '@/components/crm/ProductForm';
+import { activityLogRepository } from '@/lib/data';
+import { productService } from '@/lib/services/product.service';
+import { useAuth } from '@/components/auth/AuthContext';
 import { Product } from '@/lib/data/interfaces';
-// import toast from 'react-hot-toast';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -18,14 +18,12 @@ export default function NewProductPage() {
     
     setIsSubmitting(true);
     try {
-      const newProduct = await productRepository.create({
-        organizationId: user.organizationId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        name: data.name!,
+      const newProduct = await productService.create({
+        name: data.name || '',
         description: data.description || '',
         unitPrice: data.unitPrice || 0,
-        taxRate: data.taxRate ?? 20,
+        taxRate: data.taxRate || 20,
+        organizationId: user.organizationId,
       });
 
       await activityLogRepository.create({
@@ -34,7 +32,7 @@ export default function NewProductPage() {
         action: 'CREATE',
         entityType: 'PRODUCT',
         entityId: newProduct.id,
-        details: `Création du produit ${data.name}`,
+        details: `Création du produit/service ${data.name}`,
         createdAt: new Date().toISOString(),
       });
 

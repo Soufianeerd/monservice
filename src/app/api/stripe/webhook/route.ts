@@ -1,30 +1,36 @@
-import { stripe } from '@/lib/stripe';
-import { invoiceRepository } from '@/lib/data/repositories/invoice.repository';
-import { userService } from '@/lib/services/user.service';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { userService } from '@/lib/services/user.service';
 
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16' as any,
+});
 
 export async function POST(req: Request) {
-  const payload = await req.text();
-  const signature = req.headers.get('stripe-signature');
+  const body = await req.text();
+  const sig = req.headers.get('stripe-signature') as string;
 
   let event: Stripe.Event;
 
   try {
-    if (!signature || !endpointSecret) {
-      console.warn('Webhook secret or signature missing, using unverified payload');
-      event = JSON.parse(payload);
-    } else {
-      event = stripe.webhooks.constructEvent(payload, signature, endpointSecret);
-    }
+    event = stripe.webhooks.constructEvent(
+      body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET || ''
+    );
   } catch (err: any) {
-    console.error(`Webhook signature verification failed.`, err.message);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error(`Webhook Error: ${err.message}`);
+    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
+  // Handle the event
   switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      console.log('PaymentIntent was successful!');
+      break;
+    
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       
@@ -50,7 +56,7 @@ export async function POST(req: Request) {
         const invoiceId = session.metadata?.invoiceId;
         if (invoiceId) {
           try {
-            await invoiceRepository.markAsPaid(invoiceId, session.payment_intent as string);
+            await invoiceService.markAsPaid(invoiceId, session.payment_intent as string);
             console.log(`Facture ${invoiceId} marquée comme payée`);
           } catch (error) {
             console.error(`Erreur facture ${invoiceId}`, error);
@@ -60,12 +66,10 @@ export async function POST(req: Request) {
       break;
     }
     case 'customer.subscription.updated': {
-      // Pour l'instant, on ignore les mises à jour mineures ou on peut synchroniser le statut
       break;
     }
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription;
-      // on pourrait retrouver l'utilisateur par stripeCustomerId et le passer en 'free'
       break;
     }
     default:

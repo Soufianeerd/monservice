@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ContactForm from '@/components/crm/ContactForm';
-import { contactRepository, clientRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
-import { Contact, Client } from '@/lib/data/interfaces';
+import { activityLogRepository } from '@/lib/data';
+import { contactService } from '@/lib/services/contact.service';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Contact, Client } from '@/lib/data/interfaces';
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function NewContactPage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      clientRepository.findByOrganization(user.organizationId).then(setClients);
+      clientService.findAll(user.organizationId).then(setClients);
     }
   }, [user]);
 
@@ -24,16 +25,14 @@ export default function NewContactPage() {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newContact = await contactRepository.create({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
+      const newContact = await contactService.create({
+        firstName: data.firstName || 'Nouveau',
+        lastName: data.lastName || 'Contact',
         email: data.email || '',
         phone: data.phone || '',
         position: data.position || '',
         clientId: data.clientId || '',
         organizationId: user.organizationId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
 
       await activityLogRepository.create({
@@ -42,7 +41,7 @@ export default function NewContactPage() {
         action: 'CREATE',
         entityType: 'CONTACT',
         entityId: newContact.id,
-        details: `Création du contact ${data.firstName} ${data.lastName}`,
+        details: `Création du contact ${newContact.firstName} ${newContact.lastName}`,
         createdAt: new Date().toISOString(),
       });
 

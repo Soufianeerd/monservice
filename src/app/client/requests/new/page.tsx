@@ -3,9 +3,10 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository } from '@/lib/data/repositories';
+
 import RequestForm from '@/components/client/RequestForm';
 import { useRouter } from 'next/navigation';
+import { requestService } from '@/lib/services/request.service';
 
 export default function NewRequestPage() {
   const { user } = useAuth();
@@ -14,7 +15,7 @@ export default function NewRequestPage() {
   const handleSubmit = async (data: Partial<Request>) => {
     if (!user?.id) return;
     
-    await requestRepository.create({
+    await requestService.create({
       title: data.title!,
       description: data.description!,
       category: data.category!,

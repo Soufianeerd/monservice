@@ -1,8 +1,10 @@
+import { taskService } from '@/lib/services/task.service';
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { clientRepository, dealRepository, taskRepository, invoiceRepository } from '@/lib/data';
+import { clientRepository, dealRepository } from '@/lib/data';
+import { invoiceService } from '@/lib/services/invoice.service';
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
 
@@ -20,20 +22,20 @@ export default function DashboardPage() {
         const [clients, deals, tasks, invoices] = await Promise.all([
           clientRepository.findByOrganization(user.organizationId),
           dealRepository.findByOrganization(user.organizationId),
-          taskRepository.findByOrganization(user.organizationId),
-          invoiceRepository.findByOrganization(user.organizationId) // I also need to import invoiceRepository
+          taskService.findByOrganization(user.organizationId),
+          invoiceService.findAll(user.organizationId)
         ]);
 
         // Stats
-        const activeDeals = deals.filter(d => ['prospect', 'qualification', 'proposal', 'negotiation'].includes(d.status)).length;
-        const ongoingTasks = tasks.filter(t => t.status === 'En cours' || t.status === 'À faire').length;
-        const wonDeals = deals.filter(d => d.status === 'won');
-        const revenue = wonDeals.reduce((sum, d) => sum + d.value, 0);
+        const activeDeals = deals.filter((d: any) => ['prospect', 'qualification', 'proposal', 'negotiation'].includes(d.status)).length;
+        const ongoingTasks = tasks.filter((t: any) => t.status === 'En cours' || t.status === 'À faire').length;
+        const wonDeals = deals.filter((d: any) => d.status === 'won');
+        const revenue = wonDeals.reduce((sum: number, d: any) => sum + d.value, 0);
 
-        const allInvoices = invoices.filter(i => i.type === 'invoice');
-        const totalInvoiced = allInvoices.reduce((sum, i) => sum + i.totalTTC, 0);
-        const unpaidInvoices = allInvoices.filter(i => i.status === 'sent' || i.status === 'overdue');
-        const totalUnpaid = unpaidInvoices.reduce((sum, i) => sum + i.totalTTC, 0);
+        const allInvoices = invoices.filter((i: any) => i.type === 'invoice');
+        const totalInvoiced = allInvoices.reduce((sum: number, i: any) => sum + i.totalTTC, 0);
+        const unpaidInvoices = allInvoices.filter((i: any) => i.status === 'sent' || i.status === 'overdue');
+        const totalUnpaid = unpaidInvoices.reduce((sum: number, i: any) => sum + i.totalTTC, 0);
 
         setStats({
           clients: clients.length,
@@ -53,10 +55,10 @@ export default function DashboardPage() {
           const year = d.getFullYear();
           const monthIdx = d.getMonth();
 
-          const monthRevenue = wonDeals.filter(deal => {
+          const monthRevenue = wonDeals.filter((deal: any) => {
             const dealDate = new Date(deal.updatedAt);
             return dealDate.getMonth() === monthIdx && dealDate.getFullYear() === year;
-          }).reduce((sum, deal) => sum + deal.value, 0);
+          }).reduce((sum: number, deal: any) => sum + deal.value, 0);
 
           months.push({ month: monthStr, revenue: monthRevenue });
         }

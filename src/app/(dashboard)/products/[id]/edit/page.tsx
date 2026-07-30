@@ -1,69 +1,62 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { productRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
+import { useRouter } from 'next/navigation';
+import ProductForm from '@/components/crm/ProductForm';
+import { activityLogRepository } from '@/lib/data';
+import { productService } from '@/lib/services/product.service';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Product } from '@/lib/data/interfaces';
-import ProductForm, { ProductFormData } from '@/components/crm/ProductForm';
-// import toast from 'react-hot-toast';
 
-export default function EditProductPage() {
+export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
-  const id = params?.id as string;
-  
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadProduct() {
-      if (!id) return;
+    async function loadData() {
+      if (!user?.organizationId) return;
       try {
-        const data = await productRepository.getById(id);
-        if (data) setProduct(data);
-        else router.push('/products');
+        const data = await productService.findById(params.id as string, user.organizationId);
+        if (data) {
+          setProduct(data);
+        } else {
+          router.push('/products');
+        }
       } catch (error) {
         console.error('Erreur', error);
       } finally {
         setLoading(false);
       }
     }
-    loadProduct();
-  }, [id, router]);
+    
+    if (user) loadData();
+  }, [params.id, user, router]);
 
-  const handleSubmit = async (data: ProductFormData) => {
-    const id = params?.id as string;
-    if (!id) return;
+  const handleSubmit = async (data: Partial<Product>) => {
+    if (!user?.organizationId) return;
     setIsSubmitting(true);
+    const id = params.id as string;
     try {
-      await productRepository.update(id, {
+      await productService.update(id, user.organizationId, {
         ...data,
-        updatedAt: new Date().toISOString(),
       });
 
-      if (user) {
-        await activityLogRepository.create({
-          organizationId: user.organizationId || '',
-          userId: user.id,
-          action: 'UPDATE',
-          entityType: 'PRODUCT',
-          entityId: id,
-          details: `Mise à jour du produit ${data.name}`,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await activityLogRepository.create({
+        organizationId: user.organizationId,
+        userId: user.id,
+        action: 'UPDATE',
+        entityType: 'PRODUCT',
+        entityId: id,
+        details: `Mise à jour du produit/service ${data.name}`,
+        createdAt: new Date().toISOString(),
+      });
 
-      alert('Produit mis à jour !');
       router.push('/products');
-      router.refresh();
     } catch (error) {
-      console.error('Erreur', error);
-      alert('Erreur lors de la mise à jour.');
-    } finally {
+      console.error('Erreur lors de la modification', error);
       setIsSubmitting(false);
     }
   };

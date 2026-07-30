@@ -1,4 +1,5 @@
-import { notificationRepository, taskRepository, invoiceRepository, dealRepository } from '@/lib/data';
+import { taskService } from '@/lib/services/task.service';
+import { notificationRepository, invoiceRepository, dealRepository } from '@/lib/data';
 import { generateId } from '@/lib/utils/id-generator';
 import { Notification, NotificationType } from '@/lib/data/interfaces';
 
@@ -8,7 +9,7 @@ export class NotificationService {
 
     // Récupérer toutes les entités de l'organisation
     const [tasks, invoices, deals] = await Promise.all([
-      taskRepository.findByOrganization(organizationId),
+      taskService.findByOrganization(organizationId),
       invoiceRepository.findByOrganization(organizationId),
       dealRepository.findByOrganization(organizationId),
     ]);

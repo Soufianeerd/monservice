@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import DealForm, { DealFormData } from '@/components/crm/DealForm';
-import { dealRepository, clientRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
-import { Deal, Client } from '@/lib/data/interfaces';
+import { useRouter } from 'next/navigation';
+import DealForm from '@/components/crm/DealForm';
+import { activityLogRepository } from '@/lib/data';
+import { dealService } from '@/lib/services/deal.service';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Deal, Client } from '@/lib/data/interfaces';
 
-export default function EditDealPage() {
+export default function EditDealPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -18,49 +18,52 @@ export default function EditDealPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       if (!user?.organizationId) return;
-      const [d, clientsData] = await Promise.all([
-        dealRepository.getById(params.id as string),
-        clientRepository.findByOrganization(user.organizationId)
-      ]);
-      
-      if (d && d.organizationId === user.organizationId) {
-        setDeal(d);
-        setClients(clientsData);
-      } else {
-        router.push('/deals');
+      try {
+        const [dealData, clientsData] = await Promise.all([
+          dealService.findById(params.id as string, user.organizationId),
+          clientService.findAll(user.organizationId)
+        ]);
+
+        if (dealData) {
+          setDeal(dealData);
+          setClients(clientsData);
+        } else {
+          router.push('/deals');
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    load();
+    
+    if (user) loadData();
   }, [params.id, user, router]);
 
-  const handleSubmit = async (data: DealFormData) => {
+  const handleSubmit = async (data: Partial<Deal>) => {
+    if (!user?.organizationId) return;
     setIsSubmitting(true);
-    const id = params?.id as string;
-    if (!id) return;
+    const id = params.id as string;
     try {
-      await dealRepository.update(id, {
+      await dealService.update(id, user.organizationId, {
         ...data,
-        updatedAt: new Date().toISOString(),
       });
 
-      if (user) {
-        await activityLogRepository.create({
-          organizationId: user.organizationId || '',
-          userId: user.id,
-          action: 'UPDATE',
-          entityType: 'DEAL',
-          entityId: id,
-          details: `Mise à jour de l'opportunité ${data.name}`,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await activityLogRepository.create({
+        organizationId: user.organizationId,
+        userId: user.id,
+        action: 'UPDATE',
+        entityType: 'DEAL',
+        entityId: id,
+        details: `Mise à jour du deal ${data.name}`,
+        createdAt: new Date().toISOString(),
+      });
 
       router.push('/deals');
     } catch (error) {
-      console.error('Erreur', error);
+      console.error('Erreur lors de la modification', error);
       setIsSubmitting(false);
     }
   };

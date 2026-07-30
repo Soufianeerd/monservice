@@ -1,9 +1,10 @@
 'use client';
+import { taskService } from '@/lib/services/task.service';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TaskForm from '@/components/crm/TaskForm';
-import { taskRepository, activityLogRepository } from '@/lib/data';
+import { activityLogRepository  } from '@/lib/data';
 import { userService } from '@/lib/services/user.service';
 import { generateId } from '@/lib/utils/id-generator';
 import { User, Task } from '@/lib/data/interfaces';
@@ -27,7 +28,7 @@ export default function NewTaskPage() {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newTask = await taskRepository.create({
+      const newTask = await taskService.create({
         title: data.title || '',
         description: data.description || '',
         status: data.status || 'À faire',
@@ -37,8 +38,6 @@ export default function NewTaskPage() {
         entityType: data.entityType,
         entityId: data.entityId,
         organizationId: user.organizationId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
       router.push('/tasks');
     } catch (error) {

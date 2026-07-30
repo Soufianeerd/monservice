@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState } from 'react';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceRepository } from '@/lib/data/repositories';
+import { invoiceService } from '@/lib/services/invoice.service';
 import QuotesSentList from '@/components/marketplace/QuotesSentList';
 
 export default function QuotesSentPage() {
@@ -12,7 +12,7 @@ export default function QuotesSentPage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      invoiceRepository.findByProfessional(user.organizationId).then(invs => {
+      invoiceService.findByProfessional(user.organizationId).then(invs => {
         // Only keep quotes
         setQuotes(invs.filter(i => i.type === 'quote').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       });

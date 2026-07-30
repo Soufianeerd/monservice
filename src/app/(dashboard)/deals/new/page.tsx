@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DealForm from '@/components/crm/DealForm';
-import { dealRepository, clientRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
-import { Client, Deal } from '@/lib/data/interfaces';
+import { activityLogRepository } from '@/lib/data';
+import { dealService } from '@/lib/services/deal.service';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Deal, Client } from '@/lib/data/interfaces';
 
 export default function NewDealPage() {
   const router = useRouter();
@@ -16,23 +17,22 @@ export default function NewDealPage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      clientRepository.findByOrganization(user.organizationId).then(setClients);
+      clientService.findAll(user.organizationId).then(setClients);
     }
-  }, [user?.organizationId]);
+  }, [user]);
 
   const handleSubmit = async (data: Partial<Deal>) => {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newDeal = await dealRepository.create({
-        name: data.name || '',
+      const newDeal = await dealService.create({
+        name: data.name || 'Nouveau Deal',
         value: data.value || 0,
         status: data.status || 'prospect',
+        expectedCloseDate: data.expectedCloseDate || new Date().toISOString(),
         clientId: data.clientId || '',
-        expectedCloseDate: data.expectedCloseDate || '',
         organizationId: user.organizationId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        description: data.description || '',
       });
 
       await activityLogRepository.create({
@@ -41,7 +41,7 @@ export default function NewDealPage() {
         action: 'CREATE',
         entityType: 'DEAL',
         entityId: newDeal.id,
-        details: `Création de l'opportunité ${data.name}`,
+        details: `Création du deal ${data.name}`,
         createdAt: new Date().toISOString(),
       });
 

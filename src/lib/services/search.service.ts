@@ -1,4 +1,5 @@
-import { clientRepository, contactRepository, dealRepository, invoiceRepository, productRepository, taskRepository } from '@/lib/data';
+import { taskService } from '@/lib/services/task.service';
+import { clientRepository, contactRepository, dealRepository, invoiceRepository, productRepository } from '@/lib/data';
 
 export interface SearchResult {
   id: string;
@@ -22,7 +23,7 @@ export class SearchService {
       dealRepository.findByOrganization(organizationId),
       invoiceRepository.findByOrganization(organizationId),
       productRepository.findByOrganization(organizationId),
-      taskRepository.findByOrganization(organizationId),
+      taskService.findByOrganization(organizationId),
     ]);
 
     const results: SearchResult[] = [];
@@ -88,14 +89,14 @@ export class SearchService {
 
     // Produits
     products.forEach(product => {
-      if (product.name.toLowerCase().includes(normalizedQuery)) {
+      if (product.name.toLowerCase().includes(normalizedQuery) || product.description?.toLowerCase().includes(normalizedQuery)) {
         results.push({
           id: product.id,
           title: product.name,
-          subtitle: `${product.unitPrice}€`,
+          subtitle: `${product.unitPrice} € HT - ${product.description || ''}`,
           type: 'product',
           link: `/products/${product.id}`,
-          score: this.calculateScore(normalizedQuery, product.name),
+          score: this.calculateScore(normalizedQuery, product.name, product.description),
         });
       }
     });
@@ -118,7 +119,7 @@ export class SearchService {
     return results.sort((a, b) => b.score - a.score).slice(0, 20);
   }
 
-  private calculateScore(query: string, ...fields: (string | undefined)[]): number {
+  private calculateScore(query: string, ...fields: (string | null | undefined)[]): number {
     let score = 0;
     for (const field of fields) {
       if (field) {

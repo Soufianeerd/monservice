@@ -1,9 +1,10 @@
+import { taskService } from '@/lib/services/task.service';
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Plus, CheckCircle, Clock, Circle } from 'lucide-react';
-import { taskRepository } from '@/lib/data';
+
 import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -32,7 +33,7 @@ export default function TasksPage() {
       await Promise.resolve();
       setLoading(true);
       const [tasksData, usersData] = await Promise.all([
-        taskRepository.findByOrganization(user.organizationId),
+        taskService.findByOrganization(user.organizationId),
         userService.getAllUsers()
       ]);
 
@@ -58,13 +59,14 @@ export default function TasksPage() {
   }, [user?.organizationId]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) return;
-    await taskRepository.delete(id);
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?") || !user?.organizationId) return;
+    await taskService.delete(id, user.organizationId);
     loadData();
   };
 
   const handleStatusChange = async (taskId: string, newStatus: Task['status']) => {
-    await taskRepository.update(taskId, { status: newStatus });
+    if (!user?.organizationId) return;
+    await taskService.update(taskId, user.organizationId, { status: newStatus });
     loadData();
   };
 

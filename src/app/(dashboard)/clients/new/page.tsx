@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
-import { clientRepository, activityLogRepository } from '@/lib/data';
+import { activityLogRepository } from '@/lib/data';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client } from '@/lib/data/interfaces';
 
@@ -16,7 +17,7 @@ export default function NewClientPage() {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newClient = await clientRepository.create({
+      const newClient = await clientService.create({
         name: data.name || 'Nouveau Client',
         email: data.email || '',
         phone: data.phone || '',
@@ -33,8 +34,6 @@ export default function NewClientPage() {
         contactPhone: data.contactPhone || '',
         contactPosition: data.contactPosition || '',
         organizationId: user.organizationId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
       
       await activityLogRepository.create({

@@ -3,9 +3,10 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState } from 'react';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository } from '@/lib/data/repositories';
+
 import RequestDiscoveryFilters, { DiscoveryFilters } from '@/components/marketplace/RequestDiscoveryFilters';
 import RequestDiscoveryList from '@/components/marketplace/RequestDiscoveryList';
+import { requestService } from '@/lib/services/request.service';
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -14,7 +15,7 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      requestRepository.findPublic(user.organizationId, filters).then(setRequests);
+      requestService.findPublic().then(setRequests);
     }
   }, [user, filters]);
 

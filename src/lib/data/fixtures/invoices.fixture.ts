@@ -19,6 +19,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 150,
         taxRate: 20,
         discount: 0,
+        description: 'Consultation',
+        totalHT: 1500,
+        totalTTC: 1800,
       },
       {
         id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e',
@@ -28,6 +31,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 650,
         taxRate: 20,
         discount: 10, // 10% discount
+        description: 'Dev',
+        totalHT: 2925,
+        totalTTC: 3510,
       }
     ],
     totalHT: 1500 + 2925, // 10*150 + 5*650*0.9
@@ -54,6 +60,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 1200,
         taxRate: 20,
         discount: 0,
+        description: 'Formation',
+        totalHT: 2400,
+        totalTTC: 2880,
       }
     ],
     totalHT: 2400,
@@ -80,6 +89,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 550,
         taxRate: 20,
         discount: 0,
+        description: 'Design',
+        totalHT: 1650,
+        totalTTC: 1980,
       },
       {
         id: '5e6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b',
@@ -89,6 +101,8 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 300,
         taxRate: 20,
         discount: 0,
+        totalHT: 300,
+        totalTTC: 360,
       }
     ],
     totalHT: 1950,
@@ -115,6 +129,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 150,
         taxRate: 20,
         discount: 0,
+        description: 'Consultation',
+        totalHT: 300,
+        totalTTC: 360,
       }
     ],
     totalHT: 300,
@@ -141,6 +158,9 @@ export const invoicesFixture: Invoice[] = [
         unitPrice: 650,
         taxRate: 20,
         discount: 0,
+        description: 'Dev',
+        totalHT: 650,
+        totalTTC: 780,
       }
     ],
     totalHT: 650,

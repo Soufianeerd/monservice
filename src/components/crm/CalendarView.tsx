@@ -1,4 +1,5 @@
 'use client';
+import { taskService } from '@/lib/services/task.service';
 
 import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -7,7 +8,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useAuth } from '@/components/auth/AuthContext';
-import { taskRepository, dealRepository, invoiceRepository } from '@/lib/data';
+import { dealRepository, invoiceRepository  } from '@/lib/data';
 
 interface CalendarEvent {
   id: string;
@@ -36,7 +37,7 @@ export default function CalendarView() {
       
       try {
         const [tasks, deals, invoices] = await Promise.all([
-          taskRepository.findByOrganization(user.organizationId),
+          taskService.findByOrganization(user.organizationId),
           dealRepository.findByOrganization(user.organizationId),
           invoiceRepository.findByOrganization(user.organizationId)
         ]);
@@ -114,11 +115,11 @@ export default function CalendarView() {
     const originalId = event.extendedProps.originalId;
     const type = event.extendedProps.type;
 
-    if (!newStart) return;
+    if (!newStart || !user?.organizationId) return;
 
     try {
       if (type === 'task') {
-        await taskRepository.update(originalId, { dueDate: newStart.toISOString() });
+        await taskService.update(originalId, user.organizationId, { dueDate: newStart.toISOString() });
       } else if (type === 'deal') {
         await dealRepository.update(originalId, { expectedCloseDate: newStart.toISOString() });
       } else if (type === 'invoice') {

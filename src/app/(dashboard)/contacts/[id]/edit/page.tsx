@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ContactForm from '@/components/crm/ContactForm';
-import { contactRepository, clientRepository, activityLogRepository } from '@/lib/data';
-import { generateId } from '@/lib/utils/id-generator';
-import { Contact, Client } from '@/lib/data/interfaces';
+import { activityLogRepository } from '@/lib/data';
+import { contactService } from '@/lib/services/contact.service';
+import { clientService } from '@/lib/services/client.service';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Contact, Client } from '@/lib/data/interfaces';
 
-export default function EditContactPage() {
+export default function EditContactPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams();
   const { user } = useAuth();
   const [contact, setContact] = useState<Contact | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -18,49 +18,52 @@ export default function EditContactPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       if (!user?.organizationId) return;
-      const [c, clientsData] = await Promise.all([
-        contactRepository.getById(params.id as string),
-        clientRepository.findByOrganization(user.organizationId)
-      ]);
-      
-      if (c && c.organizationId === user.organizationId) {
-        setContact(c);
-        setClients(clientsData);
-      } else {
-        router.push('/contacts');
+      try {
+        const [contactData, clientsData] = await Promise.all([
+          contactService.findById(params.id as string, user.organizationId),
+          clientService.findAll(user.organizationId)
+        ]);
+
+        if (contactData) {
+          setContact(contactData);
+          setClients(clientsData);
+        } else {
+          router.push('/contacts');
+        }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
-    load();
+    
+    if (user) loadData();
   }, [params.id, user, router]);
 
   const handleSubmit = async (data: Partial<Contact>) => {
+    if (!user?.organizationId) return;
     setIsSubmitting(true);
-    const id = params?.id as string;
-    if (!id) return;
+    const id = params.id as string;
     try {
-      await contactRepository.update(id, {
+      await contactService.update(id, user.organizationId, {
         ...data,
-        updatedAt: new Date().toISOString(),
       });
 
-      if (user) {
-        await activityLogRepository.create({
-          organizationId: user.organizationId || '',
-          userId: user.id,
-          action: 'UPDATE',
-          entityType: 'CONTACT',
-          entityId: id,
-          details: `Mise à jour du contact ${data.firstName} ${data.lastName}`,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await activityLogRepository.create({
+        organizationId: user.organizationId,
+        userId: user.id,
+        action: 'UPDATE',
+        entityType: 'CONTACT',
+        entityId: id,
+        details: `Mise à jour du contact ${data.firstName} ${data.lastName}`,
+        createdAt: new Date().toISOString(),
+      });
 
       router.push('/contacts');
     } catch (error) {
-      console.error('Erreur', error);
+      console.error('Erreur lors de la modification', error);
       setIsSubmitting(false);
     }
   };

@@ -1,20 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { clientService } from '@/lib/services/client.service';
+import { productService } from '@/lib/services/product.service';
+import { activityLogRepository } from '@/lib/data';
 import { useAuth } from '@/components/auth/AuthContext';
-import { invoiceRepository, clientRepository, productRepository, activityLogRepository } from '@/lib/data';
-import { Invoice, Client, Product } from '@/lib/data/interfaces';
+import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
-// import toast from 'react-hot-toast';
-import { generateId } from '@/lib/utils/id-generator';
 
-export default function EditInvoicePage() {
-  const params = useParams();
-  const id = params?.id as string;
+export default function EditInvoicePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user } = useAuth();
-
+  
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,65 +22,61 @@ export default function EditInvoicePage() {
 
   useEffect(() => {
     async function loadData() {
-      if (!id || !user?.organizationId) return;
+      if (!user?.organizationId) return;
       try {
-        const inv = await invoiceRepository.getById(id);
-        if (!inv || (inv.status !== 'draft' && inv.status !== 'sent')) {
-          alert("Ce document ne peut pas être modifié.");
-          router.push(`/invoices/${id}`);
-          return;
-        }
-
-        setInvoice(inv);
-        
-        const [clientsData, productsData] = await Promise.all([
-          clientRepository.findByOrganization(user.organizationId),
-          productRepository.findByOrganization(user.organizationId)
+        const id = params.id;
+        const [inv, clientsData, productsData] = await Promise.all([
+          invoiceService.findById(id, user.organizationId),
+          clientService.findAll(user.organizationId),
+          productService.findAll(user.organizationId)
         ]);
+        
+        if (inv) {
+          setInvoice(inv);
+        } else {
+          router.push('/invoices');
+        }
+        
         setClients(clientsData);
         setProducts(productsData);
       } catch (error) {
         console.error('Erreur', error);
-        alert('Erreur lors du chargement');
       } finally {
         setLoading(false);
       }
     }
-    loadData();
-  }, [id, user, router]);
+    
+    if (user) loadData();
+  }, [params.id, user, router]);
 
   const handleSubmit = async (data: InvoiceFormData & { totalHT: number; taxAmount: number; totalTTC: number }) => {
-    if (!invoice) return;
+    if (!user?.organizationId || !invoice) return;
     
     setIsSubmitting(true);
     try {
-      const linesWithIds = data.lines.map(line => ({
-        ...line,
-        id: line.id || generateId()
-      }));
+      const { lines, ...rest } = data;
 
-      await invoiceRepository.update(invoice.id, {
-        clientId: data.clientId,
-        date: new Date(data.date).toISOString(),
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-        lines: linesWithIds as any,
-        totalHT: data.totalHT,
-        taxAmount: data.taxAmount,
-        totalTTC: data.totalTTC,
-        updatedAt: new Date().toISOString(),
+      await invoiceService.update(invoice.id, user.organizationId, {
+        type: data.type as any,
+        date: data.date || new Date().toISOString(),
+        dueDate: data.dueDate,
+        clientId: data.clientId || '',
+        totalHT: data.totalHT || 0,
+        taxAmount: data.taxAmount || 0,
+        totalTTC: data.totalTTC || 0,
+        message: data.notes,
+        lines: (lines || []) as any,
       });
 
-      if (user) {
-        await activityLogRepository.create({
-          organizationId: user.organizationId || '',
-          userId: user.id,
-          action: 'UPDATE',
-          entityType: 'INVOICE',
-          entityId: invoice.id,
-          details: `Mise à jour du document ${invoice.number}`,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await activityLogRepository.create({
+        organizationId: user.organizationId,
+        userId: user.id,
+        action: 'UPDATE',
+        entityType: 'INVOICE',
+        entityId: invoice.id,
+        details: `Modification du ${data.type === 'invoice' ? 'facture' : 'devis'} ${invoice.number}`,
+        createdAt: new Date().toISOString(),
+      });
       
       alert('Document mis à jour avec succès !');
       router.push(`/invoices/${invoice.id}`);

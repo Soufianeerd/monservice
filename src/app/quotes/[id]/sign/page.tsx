@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceRepository } from '@/lib/data';
+import { invoiceService } from '@/lib/services/invoice.service';
 import SignaturePad from '@/components/crm/SignaturePad';
 
 export default function QuoteSignPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,7 +20,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     const fetchQuote = async () => {
       try {
-        const q = await invoiceRepository.getById(id);
+        const q = await invoiceService.getById(id);
         if (q && q.type === 'quote') {
           setQuote(q);
         } else {

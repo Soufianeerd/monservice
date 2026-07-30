@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthContext';
-import { invoiceRepository, clientRepository } from '@/lib/data';
+import { Plus, Edit, Trash2, Eye, FileText, Send, CheckCircle, Clock, XCircle, Search, Filter } from 'lucide-react';
+import { invoiceService } from '@/lib/services/invoice.service';
+import { clientService } from '@/lib/services/client.service';
 import { Invoice, Client } from '@/lib/data/interfaces';
+import { useAuth } from '@/components/auth/AuthContext';
+import { PlusCircle } from 'lucide-react';
 import InvoiceList from '@/components/crm/InvoiceList';
-// import toast from 'react-hot-toast';
 
 export default function InvoicesPage() {
   const { user } = useAuth();
@@ -16,14 +18,14 @@ export default function InvoicesPage() {
 
   const loadData = async () => {
     if (!user?.organizationId) return;
-    await Promise.resolve();
-      setLoading(true);
+    setLoading(true);
     try {
-      const [invoicesData, clientsData] = await Promise.all([
-        invoiceRepository.findByOrganization(user.organizationId),
-        clientRepository.findByOrganization(user.organizationId)
+      const [invsData, clientsData] = await Promise.all([
+        invoiceService.findAll(user.organizationId),
+        clientService.findAll(user.organizationId)
       ]);
-      setInvoices(invoicesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      
+      setInvoices(invsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setClients(clientsData);
     } catch (error) {
       console.error('Erreur chargement données', error);
@@ -38,16 +40,18 @@ export default function InvoicesPage() {
   }, [user]);
 
   const handleDelete = async (id: string) => {
+    if (!user?.organizationId) return;
     if (window.confirm("Voulez-vous vraiment supprimer ce document ?")) {
-      await invoiceRepository.delete(id);
+      await invoiceService.delete(id, user.organizationId);
       alert('Document supprimé');
       loadData();
     }
   };
 
   const handleMarkAsPaid = async (id: string) => {
+    if (!user?.organizationId) return;
     if (window.confirm("Marquer cette facture comme payée ?")) {
-      await invoiceRepository.update(id, {
+      await invoiceService.update(id, user.organizationId, {
         status: 'paid',
         paidAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -58,13 +62,14 @@ export default function InvoicesPage() {
   };
 
   const handleConvertQuote = async (id: string) => {
+    if (!user?.organizationId) return;
     if (window.confirm("Convertir ce devis en facture ?")) {
-      const quote = await invoiceRepository.getById(id);
+      const quote = await invoiceService.findById(id, user.organizationId);
       if (!quote) return;
       
-      const newNumber = await invoiceRepository.getNextNumber('invoice', new Date().getFullYear());
+      const newNumber = await invoiceService.getNextInvoiceNumber(user.organizationId, 'invoice');
       
-      await invoiceRepository.update(id, {
+      await invoiceService.update(id, user.organizationId, {
         type: 'invoice',
         number: newNumber,
         status: 'draft',

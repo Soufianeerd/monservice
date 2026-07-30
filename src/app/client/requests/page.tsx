@@ -4,10 +4,11 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useEffect, useState } from 'react';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository } from '@/lib/data/repositories';
+
 import RequestList from '@/components/client/RequestList';
 import Link from 'next/link';
 import { PlusIcon } from 'lucide-react';
+import { requestService } from '@/lib/services/request.service';
 
 export default function ClientRequestsPage() {
   const { user } = useAuth();
@@ -15,13 +16,13 @@ export default function ClientRequestsPage() {
 
   useEffect(() => {
     if (user?.id) {
-      requestRepository.findByClient(user.id).then(setRequests);
+      requestService.findByClientId(user.id).then(setRequests);
     }
   }, [user]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
-      await requestRepository.delete(id);
+      await requestService.delete(id);
       setRequests(requests.filter(r => r.id !== id));
     }
   };

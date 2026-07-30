@@ -1,4 +1,5 @@
-import { clientRepository, contactRepository, dealRepository, taskRepository, productRepository, invoiceRepository } from '@/lib/data';
+import { taskService } from '@/lib/services/task.service';
+import { clientRepository, contactRepository, dealRepository, productRepository, invoiceRepository } from '@/lib/data';
 import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 
 export interface SearchResult {
@@ -17,7 +18,7 @@ export async function globalSearch(query: string, organizationId: string): Promi
     clientRepository.findByOrganization(organizationId),
     contactRepository.findByOrganization(organizationId),
     dealRepository.findByOrganization(organizationId),
-    taskRepository.findByOrganization(organizationId),
+    taskService.findByOrganization(organizationId),
     productRepository.findByOrganization(organizationId),
     invoiceRepository.findByOrganization(organizationId)
   ]);
@@ -78,7 +79,7 @@ export async function globalSearch(query: string, organizationId: string): Promi
 
   // Search products
   products.forEach(product => {
-    if (product.name.toLowerCase().includes(normalizedQuery) || product.description.toLowerCase().includes(normalizedQuery)) {
+    if (product.name.toLowerCase().includes(normalizedQuery) || product.description?.toLowerCase().includes(normalizedQuery)) {
       results.push({
         id: product.id,
         type: 'PRODUCT',

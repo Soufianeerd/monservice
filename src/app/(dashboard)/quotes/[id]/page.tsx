@@ -1,46 +1,67 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthContext';
-import { useEffect, useState, use } from 'react';
+import { invoiceService } from '@/lib/services/invoice.service';
+
 import { Invoice, Request } from '@/lib/data/interfaces';
-import { invoiceRepository, requestRepository } from '@/lib/data/repositories';
 import Link from 'next/link';
 import { Card, CardBody } from '@/components/ui/Card';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { use } from 'react';
+import { requestService } from '@/lib/services/request.service';
 
 export default function QuoteSentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const router = useRouter();
   const { user } = useAuth();
   const [quote, setQuote] = useState<Invoice | null>(null);
   const [request, setRequest] = useState<Request | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const q = await invoiceRepository.getById(id);
-      if (q && q.professionalId === user?.organizationId && q.type === 'quote') {
-        setQuote(q);
-        if (q.requestId) {
-          const req = await requestRepository.findById(q.requestId);
-          setRequest(req || null);
+      if (!user?.organizationId) return;
+      try {
+        const q = await invoiceService.getById(id);
+        if (q && q.organizationId === user.organizationId && q.type === 'quote') {
+          setQuote(q);
+          if (q.requestId) {
+            const req = await requestService.findById(q.requestId);
+            setRequest(req || null);
+          }
+        } else {
+          router.push('/quotes');
         }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        setLoading(false);
       }
     };
-    if (user?.organizationId) {
-      fetchData();
-    }
-  }, [id, user]);
+    if (user) fetchData();
+  }, [id, user, router]);
 
   const handleCancel = async () => {
-    if (!quote) return;
+    if (!user?.organizationId || !quote) return;
     if (confirm("Voulez-vous annuler ce devis ? Il n'y aura plus de suite.")) {
-      await invoiceRepository.update(quote.id, { status: 'cancelled' });
-      setQuote({ ...quote, status: 'cancelled' });
+      try {
+        await invoiceService.update(quote.id, user.organizationId, { status: 'cancelled' });
+        if (quote.requestId) {
+          await requestService.update(quote.requestId, { status: 'published' });
+        }
+        setQuote({ ...quote, status: 'cancelled' });
+      } catch (error) {
+        console.error('Erreur', error);
+      }
     }
   };
 
-  if (!quote) return <div className="p-6">Chargement...</div>;
+  if (loading) return <div className="p-6">Chargement...</div>;
+  if (!quote) return <div className="p-6">Devis non trouvé</div>;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-6">

@@ -1,9 +1,10 @@
+import { taskService } from '@/lib/services/task.service';
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import TaskForm from '@/components/crm/TaskForm';
-import { taskRepository } from '@/lib/data';
+
 import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -20,12 +21,10 @@ export default function EditTaskPage() {
   useEffect(() => {
     async function load() {
       if (!user?.organizationId) return;
-      const [t, usersData] = await Promise.all([
-        taskRepository.getById(params.id as string),
-        userService.getAllUsers()
-      ]);
+      const t = await taskService.findById(params.id as string, user.organizationId);
+      const usersData = await userService.getAllUsers();
       
-      if (t && t.organizationId === user.organizationId) {
+      if (t) {
         setTask(t);
         setUsers(usersData.filter(u => u.organizationId === user.organizationId));
       } else {
@@ -39,9 +38,9 @@ export default function EditTaskPage() {
   const handleSubmit = async (data: Partial<Task>) => {
     setIsSubmitting(true);
     try {
-      await taskRepository.update(params.id as string, {
+      if (!user?.organizationId) return;
+      await taskService.update(params.id as string, user.organizationId, {
         ...data,
-        updatedAt: new Date().toISOString(),
       });
       router.push('/tasks');
     } catch (error) {

@@ -1,10 +1,11 @@
+import { taskService } from '@/lib/services/task.service';
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft, Trash2 } from 'lucide-react';
-import { taskRepository } from '@/lib/data';
+
 import { userService } from '@/lib/services/user.service';
 import { Task, User } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -20,7 +21,7 @@ export default function TaskDetailPage() {
   useEffect(() => {
     async function load() {
       if (!currentUser?.organizationId) return;
-      const t = await taskRepository.getById(params.id as string);
+      const t = await taskService.findById(params.id as string, currentUser.organizationId);
       if (t && t.organizationId === currentUser.organizationId) {
         setTask(t);
         if (t.assignedTo) {
@@ -36,8 +37,8 @@ export default function TaskDetailPage() {
   }, [params.id, currentUser, router]);
 
   const handleDelete = async () => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) return;
-    await taskRepository.delete(params.id as string);
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?") || !currentUser?.organizationId) return;
+    await taskService.delete(params.id as string, currentUser.organizationId);
     router.push('/tasks');
   };
 

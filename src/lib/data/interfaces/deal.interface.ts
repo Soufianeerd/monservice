@@ -8,10 +8,10 @@ export interface Deal {
   clientId: string;
   organizationId: string;
   expectedCloseDate: string;
-  description?: string;
-  signature?: string;
-  signedAt?: string;
-  signatureToken?: string;
+  description?: string | null;
+  signature?: string | null;
+  signedAt?: string | null;
+  signatureToken?: string | null;
   createdAt: string;
   updatedAt: string;
 }

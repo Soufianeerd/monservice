@@ -1,9 +1,11 @@
 'use client';
+import { taskService } from '@/lib/services/task.service';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
-import { clientRepository, contactRepository, dealRepository, invoiceRepository, taskRepository } from '@/lib/data';
+import { contactRepository, dealRepository, invoiceRepository } from '@/lib/data';
+import { clientService } from '@/lib/services/client.service';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import ClientDeleteModal from '@/components/crm/ClientDeleteModal';
@@ -26,9 +28,8 @@ export default function ClientsPage() {
   const loadClients = async () => {
     if (!user?.organizationId) return;
     try {
-      await Promise.resolve();
       setLoading(true);
-      const data = await clientRepository.findByOrganization(user.organizationId);
+      const data = await clientService.findAll(user.organizationId);
       setClients(data);
     } catch (error) {
       console.error('Erreur lors du chargement des clients', error);
@@ -46,7 +47,7 @@ export default function ClientsPage() {
     const contacts = await contactRepository.findByClientId(client.id);
     const deals = await dealRepository.findByClientId(client.id);
     const invoices = await invoiceRepository.findByClientId(client.id);
-    const tasks = await taskRepository.findByClientId(client.id);
+    const tasks = user?.organizationId ? await taskService.findByEntity('client', client.id, user.organizationId) : [];
     
     setClientToDelete(client);
     setAssociatedCounts({
@@ -59,10 +60,12 @@ export default function ClientsPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!clientToDelete) return;
+    if (!clientToDelete || !user?.organizationId) return;
     setIsDeleting(true);
     try {
-      await clientRepository.deleteWithCascade(clientToDelete.id);
+      // Pour l'instant, on supprime seulement le client via le service
+      // TODO: Gérer la suppression en cascade avec les futurs services
+      await clientService.delete(clientToDelete.id, user.organizationId);
       await loadClients();
     } catch (error) {
       console.error('Erreur lors de la suppression', error);

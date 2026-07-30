@@ -1,8 +1,10 @@
 'use client';
+import { taskService } from '@/lib/services/task.service';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { dealRepository, invoiceRepository, taskRepository, clientRepository } from '@/lib/data';
+import { dealRepository, clientRepository } from '@/lib/data';
+import { invoiceService } from '@/lib/services/invoice.service';
 import { Deal, Invoice, Task, Client } from '@/lib/data/interfaces';
 import AdvancedReports from '@/components/crm/AdvancedReports';
 
@@ -22,8 +24,8 @@ export default function ReportsPage() {
       try {
         const [d, i, t, c] = await Promise.all([
           dealRepository.findByOrganization(user.organizationId),
-          invoiceRepository.findByOrganization(user.organizationId),
-          taskRepository.findByOrganization(user.organizationId),
+          invoiceService.findAll(user.organizationId),
+          taskService.findByOrganization(user.organizationId),
           clientRepository.findByOrganization(user.organizationId)
         ]);
         setDeals(d);

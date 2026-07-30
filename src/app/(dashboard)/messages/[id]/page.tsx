@@ -3,13 +3,14 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Message, User } from '@/lib/data/interfaces';
-import { messageRepository } from '@/lib/data/repositories';
+
 import { userService } from '@/lib/services/user.service';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 import MessageThread from '@/components/client/MessageThread';
 import { SendIcon } from 'lucide-react';
 import Link from 'next/link';
+import { messageService } from '@/lib/services/message.service';
 
 export default function ProfessionalMessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -22,38 +23,47 @@ export default function ProfessionalMessageDetailPage({ params }: { params: Prom
   const [newMessage, setNewMessage] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       if (!user?.id) return;
       
-      const u = await userService.getUserProfile(otherUserId);
-      if (u) setOtherUser(u);
+      try {
+        const u = await userService.getUserProfile(otherUserId);
+        if (u) setOtherUser(u);
 
-      const msgs = await messageRepository.findConversation(user.id, otherUserId);
-      setMessages(msgs);
+        const history = await messageService.getConversation(user.id, otherUserId);
+        setMessages(history);
 
-      for (const msg of msgs) {
-        if (msg.receiverId === user.id && !msg.read) {
-          await messageRepository.markAsRead(msg.id);
+        const unreadIds = history.filter(m => m.receiverId === user.id && !m.read).map(m => m.id);
+        if (unreadIds.length > 0) {
+          await messageService.markAsRead(unreadIds);
         }
+      } catch (error) {
+        console.error('Erreur', error);
+      } finally {
+        
       }
     };
-    fetchData();
+    load();
   }, [otherUserId, user]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user?.id) return;
+    if (!newMessage.trim() || !user || !otherUser) return;
+    
+    
+    try {
+      const msg = await messageService.create({
+        senderId: user.id,
+        receiverId: otherUser.id,
+        content: newMessage.trim(),
+        organizationId: user.organizationId || ''
+      });
 
-    const msg = await messageRepository.create({
-      senderId: user.id,
-      receiverId: otherUserId,
-      content: newMessage.trim(),
-      read: false,
-      organizationId: user.organizationId || ''
-    });
-
-    setMessages([...messages, msg]);
-    setNewMessage('');
+      setMessages([...messages, msg]);
+      setNewMessage('');
+    } finally {
+      
+    }
   };
 
   if (!otherUser) return <div>Chargement...</div>;

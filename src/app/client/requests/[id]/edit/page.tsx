@@ -3,10 +3,11 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Request } from '@/lib/data/interfaces';
-import { requestRepository } from '@/lib/data/repositories';
+
 import RequestForm from '@/components/client/RequestForm';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
+import { requestService } from '@/lib/services/request.service';
 
 export default function EditRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -16,7 +17,7 @@ export default function EditRequestPage({ params }: { params: Promise<{ id: stri
   const [request, setRequest] = useState<Request | null>(null);
 
   useEffect(() => {
-    requestRepository.findById(id).then(req => {
+    requestService.findById(id).then(req => {
       if (req && req.clientId === user?.id) {
         setRequest(req);
       }
@@ -24,7 +25,7 @@ export default function EditRequestPage({ params }: { params: Promise<{ id: stri
   }, [id, user]);
 
   const handleSubmit = async (data: Partial<Request>) => {
-    await requestRepository.update(id, data);
+    await requestService.update(id, data);
     router.push('/client/requests');
   };
 

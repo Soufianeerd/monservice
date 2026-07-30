@@ -31,8 +31,12 @@ export default function InvoiceForm({ initialData, clients, products, onSubmit, 
       clientId: initialData?.clientId || '',
       date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
-      lines: initialData?.lines.length ? initialData.lines : [{
-        productId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 20, discount: 0
+      lines: initialData?.lines.length ? initialData.lines.map(line => ({
+        ...line,
+        productId: line.productId || undefined,
+        discount: line.discount || 0
+      })) : [{
+        productId: undefined, description: '', quantity: 1, unitPrice: 0, taxRate: 20, discount: 0
       }],
     }
   });
@@ -77,7 +81,7 @@ export default function InvoiceForm({ initialData, clients, products, onSubmit, 
     if (product) {
       setValue(`lines.${index}.description`, product.name);
       setValue(`lines.${index}.unitPrice`, product.unitPrice);
-      setValue(`lines.${index}.taxRate`, product.taxRate);
+      setValue(`lines.${index}.taxRate`, product.taxRate || 0);
     }
   };
 

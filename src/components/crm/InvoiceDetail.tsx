@@ -81,8 +81,8 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
               onClick={async () => {
                 try {
                   const blob = isQuote 
-                    ? await generateQuotePDF(invoice as any, organization, client)
-                    : await generateInvoicePDF(invoice, organization, client);
+                    ? await generateQuotePDF(invoice as any, organization, client as any)
+                    : await generateInvoicePDF(invoice, organization, client as any);
                   downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
                 } catch (err) {
                   console.error(err);
@@ -176,7 +176,8 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {invoice.lines.map((line) => {
-              const lineTotalHT = line.quantity * line.unitPrice * (1 - line.discount / 100);
+              const discount = line.discount || 0;
+              const lineTotalHT = line.quantity * line.unitPrice * (1 - discount / 100);
               return (
                 <tr key={line.id}>
                   <td className="px-4 py-3 text-sm text-gray-900">
@@ -187,7 +188,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(line.unitPrice)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 text-right">{line.taxRate}%</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-right">{line.discount > 0 ? `${line.discount}%` : '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 text-right">{discount > 0 ? `${discount}%` : '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(lineTotalHT)}
                   </td>
