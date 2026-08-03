@@ -1,13 +1,11 @@
-import { taskService } from '@/lib/services/task.service';
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { dashboardService } from '@/lib/services/dashboard.service';
-import { dealService } from '@/lib/services/deal.service'; // For chart data
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
 import { handleError } from '@/lib/utils/error-handler';
+import { Deal } from '@/lib/data/interfaces/deal.interface';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -20,7 +18,8 @@ export default function DashboardPage() {
       if (!user?.organizationId) return;
 
       try {
-        const dashboardStats = await dashboardService.getProfessionalStats(user.organizationId);
+        const { getDashboardStatsAction, getDashboardDealsAction } = await import('@/app/actions/dashboard');
+        const dashboardStats = await getDashboardStatsAction(user.organizationId);
 
         setStats({
           clients: dashboardStats.clients,
@@ -32,8 +31,8 @@ export default function DashboardPage() {
         });
 
         // Chart data for last 6 months (We still need deals for this, or a new method in dashboardService)
-        const deals = await dealService.findAll(user.organizationId);
-        const wonDeals = deals.filter((d: any) => d.status === 'won');
+        const deals = await getDashboardDealsAction(user.organizationId);
+        const wonDeals = deals.filter((d: Deal) => d.status === 'won');
         
         const months = [];
         for (let i = 5; i >= 0; i--) {
@@ -43,10 +42,10 @@ export default function DashboardPage() {
           const year = d.getFullYear();
           const monthIdx = d.getMonth();
 
-          const monthRevenue = wonDeals.filter((deal: any) => {
+          const monthRevenue = wonDeals.filter((deal: Deal) => {
             const dealDate = new Date(deal.updatedAt);
             return dealDate.getMonth() === monthIdx && dealDate.getFullYear() === year;
-          }).reduce((sum: number, deal: any) => sum + deal.value, 0);
+          }).reduce((sum: number, deal: Deal) => sum + deal.value, 0);
 
           months.push({ month: monthStr, revenue: monthRevenue });
         }

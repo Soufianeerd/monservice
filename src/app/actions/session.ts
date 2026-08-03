@@ -1,8 +1,10 @@
 'use server';
 
 import { userService } from '@/lib/services/user.service';
+import { organizationRepository } from '@/lib/data';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { User } from '@/lib/data/interfaces/user.interface';
 
 export async function loginAction(email: string, password?: string) {
   try {
@@ -24,7 +26,7 @@ export async function loginAction(email: string, password?: string) {
     });
 
     return { success: true, user };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Login error:', err);
     return { success: false, error: 'Erreur serveur.' };
   }
@@ -43,4 +45,12 @@ export async function getSessionAction() {
 
   const user = await userService.getUserProfile(sessionId);
   return { user };
+}
+
+export async function getOrganizationAction(id: string) {
+  return await organizationRepository.getById(id);
+}
+
+export async function updateUserAction(id: string, data: Partial<User>) {
+  return await userService.updateUserProfile(id, data);
 }

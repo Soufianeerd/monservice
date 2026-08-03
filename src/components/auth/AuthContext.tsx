@@ -2,8 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Organization } from '@/lib/data/interfaces';
-import { organizationRepository } from '@/lib/data'; // Organization will be migrated in Session 3
-import { userService } from '@/lib/services/user.service';
 import { useRouter } from 'next/navigation';
 // Supabase imports removed
 // import { createClient } from '@/utils/supabase/client';
@@ -18,14 +16,14 @@ interface AuthContextType {
   logout: () => Promise<void>;
   register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<{ success: boolean; error?: string }>;
   updateUser: (data: Partial<User>) => Promise<void>;
-  session: any | null;
+  session: unknown | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<any | null>(null);
+  const [session, setSession] = useState<unknown | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -42,8 +40,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           cleanupLocalStorage(); // Clean old local storage if logged in
           setUser(foundUser);
           if (foundUser.organizationId) {
-            const org = await organizationRepository.getById(foundUser.organizationId);
-            setOrganization(org);
+            const { getOrganizationAction } = await import('@/app/actions/session');
+            const org = await getOrganizationAction(foundUser.organizationId);
+            setOrganization(org as Organization);
           }
         }
       } catch (err) {
@@ -73,14 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: result.error || 'Identifiants incorrects.' };
       }
       
-      setUser(result.user as any);
+      setUser(result.user as User);
       if (result.user?.organizationId) {
-        const org = await organizationRepository.getById(result.user.organizationId);
-        setOrganization(org);
+        const { getOrganizationAction } = await import('@/app/actions/session');
+        const org = await getOrganizationAction(result.user.organizationId);
+        setOrganization(org as Organization);
       }
       
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Unexpected login error:', err);
       return { success: false, error: 'Le serveur est temporairement indisponible.' };
     } finally {
@@ -110,15 +110,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Update local state with the newly created user
-      setUser(result.user as any);
+      setUser(result.user as User);
       
       if (result.user?.organizationId) {
-        const org = await organizationRepository.getById(result.user.organizationId);
-        setOrganization(org);
+        const { getOrganizationAction } = await import('@/app/actions/session');
+        const org = await getOrganizationAction(result.user.organizationId);
+        setOrganization(org as Organization);
       }
 
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Unexpected register error:', err);
       return { success: false, error: 'Le serveur est temporairement indisponible.' };
     } finally {
@@ -141,9 +142,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = async (data: Partial<User>) => {
     if (!user) return;
-    const updated = await userService.updateUserProfile(user.id, data);
+    const { updateUserAction } = await import('@/app/actions/session');
+    const updated = await updateUserAction(user.id, data);
     if (updated) {
-      setUser(updated);
+      setUser(updated as User);
     }
   };
 

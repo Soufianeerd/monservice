@@ -6,8 +6,12 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Menu } from 'lucide-react';
 import GlobalSearchBar from '@/components/crm/GlobalSearchBar';
 import NotificationCenter from '@/components/crm/NotificationCenter';
-import { notificationRepository } from '@/lib/data';
-import { notificationService } from '@/lib/services/notification.service';
+import { 
+  generateNotificationsAction, 
+  getUserNotificationsAction, 
+  markNotificationAsReadAction, 
+  markAllNotificationsAsReadAction 
+} from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
 
 interface HeaderProps {
@@ -31,8 +35,8 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     const initNotifications = async () => {
       if (user && organization) {
         // Générer les alertes métier dynamiquement (une fois par session)
-        await notificationService.generateNotifications(organization.id);
-        const fetched = await notificationRepository.findByUser(user.id);
+        await generateNotificationsAction(organization.id);
+        const fetched = await getUserNotificationsAction(user.id);
         setNotifications(fetched);
       }
     };
@@ -51,15 +55,17 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
   const handleMarkAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await notificationService.markAsRead(id);
-    if (user) notificationRepository.findByUser(user.id).then(setNotifications);
+    await markNotificationAsReadAction(id);
+    if (user) {
+      getUserNotificationsAction(user.id).then(setNotifications);
+    }
   };
 
   const handleMarkAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     if (user && organization) {
-      await notificationService.markAllAsRead(organization.id, user.id);
-      notificationRepository.findByUser(user.id).then(setNotifications);
+      await markAllNotificationsAsReadAction(organization.id, user.id);
+      getUserNotificationsAction(user.id).then(setNotifications);
     }
   };
 
