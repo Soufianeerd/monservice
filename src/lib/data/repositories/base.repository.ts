@@ -1,5 +1,11 @@
 import { generateId } from '../../utils/id-generator';
 
+/**
+ * @deprecated DANGER TECHNIQUE / DETTE TECHNIQUE
+ * Ce système basé sur localStorage est en cours de migration.
+ * Ne plus utiliser pour les nouvelles fonctionnalités.
+ * Utiliser les services de src/lib/services reliés à Drizzle ORM et SQLite.
+ */
 const SIMULATED_LATENCY = 100; // ms (reduced for better UX)
 
 export abstract class BaseRepository<T extends { id: string }> {
