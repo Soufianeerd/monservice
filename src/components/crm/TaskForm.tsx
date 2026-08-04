@@ -31,8 +31,8 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
     defaultValues: {
       title: initialData?.title || '',
       description: initialData?.description || '',
-      status: initialData?.status || 'À faire',
-      priority: initialData?.priority || 'Moyenne',
+      status: initialData?.status || 'todo',
+      priority: initialData?.priority || 'medium',
       assignedTo: initialData?.assignedTo || '',
       dueDate: formattedDate,
       entityType: initialData?.entityType || '',
@@ -72,10 +72,10 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
             {...register('status')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
           >
-            <option value="À faire">À faire</option>
-            <option value="En cours">En cours</option>
-            <option value="En attente">En attente</option>
-            <option value="Terminé">Terminé</option>
+            <option value="todo">À faire</option>
+            <option value="in_progress">En cours</option>
+            <option value="pending">En attente</option>
+            <option value="completed">Terminé</option>
           </select>
           {errors.status && <p role="alert" className="mt-1 text-sm text-red-600">{errors.status.message}</p>}
         </div>
@@ -87,9 +87,9 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
             {...register('priority')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
           >
-            <option value="Basse">Basse</option>
-            <option value="Moyenne">Moyenne</option>
-            <option value="Haute">Haute</option>
+            <option value="low">Basse</option>
+            <option value="medium">Moyenne</option>
+            <option value="high">Haute</option>
           </select>
           {errors.priority && <p role="alert" className="mt-1 text-sm text-red-600">{errors.priority.message}</p>}
         </div>

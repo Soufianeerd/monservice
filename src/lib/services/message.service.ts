@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/server';
 import { messages } from '../db/schema';
 import { eq, and, or } from 'drizzle-orm';
 import { Message } from '../data/interfaces/message.interface';

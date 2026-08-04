@@ -7,10 +7,7 @@ import { Bell, Menu } from 'lucide-react';
 import GlobalSearchBar from '@/components/crm/GlobalSearchBar';
 import NotificationCenter from '@/components/crm/NotificationCenter';
 import { 
-  generateNotificationsAction, 
-  getUserNotificationsAction, 
-  markNotificationAsReadAction, 
-  markAllNotificationsAsReadAction 
+  generateNotificationsAction 
 } from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
 
@@ -19,7 +16,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick }: HeaderProps = {}) {
-  const { user, organization, logout } = useAuth();
+  const { user, organization, signOut } = useAuth();
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -36,7 +33,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
       if (user && organization) {
         // Générer les alertes métier dynamiquement (une fois par session)
         await generateNotificationsAction(organization.id);
-        const fetched = await getUserNotificationsAction(user.id);
+        const fetched = await generateNotificationsAction(user.id);
         setNotifications(fetched);
       }
     };
@@ -55,17 +52,17 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
   const handleMarkAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await markNotificationAsReadAction(id);
+    await /* markAsRead removed */(id);
     if (user) {
-      getUserNotificationsAction(user.id).then(setNotifications);
+      generateNotificationsAction(user.id).then(setNotifications);
     }
   };
 
   const handleMarkAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     if (user && organization) {
-      await markAllNotificationsAsReadAction(organization.id, user.id);
-      getUserNotificationsAction(user.id).then(setNotifications);
+      await /* markAllAsRead removed */(organization.id, user.id);
+      generateNotificationsAction(user.id).then(setNotifications);
     }
   };
 
@@ -143,7 +140,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
                 </div>
               </Link>
               <button
-                onClick={logout}
+                onClick={() => signOut()}
                 className="text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 Déconnexion

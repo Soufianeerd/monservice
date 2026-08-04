@@ -4,13 +4,13 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Message, User } from '@/lib/data/interfaces';
 
-import { userService } from '@/lib/services/user.service';
+import * as userActions from '@/app/actions/user.actions';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 import MessageThread from '@/components/client/MessageThread';
 import { SendIcon } from 'lucide-react';
 import Link from 'next/link';
-import { messageService } from '@/lib/services/message.service';
+import * as messageActions from '@/app/actions/message.actions';
 
 export default function MessageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -27,16 +27,16 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
       if (!user?.id) return;
       
       try {
-        const u = await userService.getUserProfile(otherUserId);
+        const u = await userActions.getUserProfileAction(otherUserId);
         if (u) setOtherUser(u);
 
-        const history = await messageService.getConversation(user.id, otherUserId);
+        const history = await messageActions.getConversationAction(user.id, otherUserId);
         setMessages(history);
         
         // Mark as read
         const unreadIds = history.filter(m => m.receiverId === user.id && !m.read).map(m => m.id);
         if (unreadIds.length > 0) {
-          await messageService.markAsRead(unreadIds);
+          await messageActions.markAsReadAction(unreadIds);
         }
       } catch (error) {
         console.error('Erreur', error);
@@ -53,7 +53,7 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
     
     
     try {
-      const msg = await messageService.create({
+      const msg = await messageActions.createAction({
         senderId: user.id,
         receiverId: otherUser.id,
         content: newMessage.trim(),

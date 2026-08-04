@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft } from 'lucide-react';
-import { clientService } from '@/lib/services/client.service';
+import * as clientActions from '@/app/actions/client.actions';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import QuickActions from '@/components/crm/QuickActions';
 
-export default function ClientDetailPage({ params }: { params: { id: string } }) {
+export default function ClientDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
@@ -18,7 +19,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   useEffect(() => {
     async function load() {
       if (!user?.organizationId) return;
-      const data = await clientService.findById(params.id, user.organizationId);
+      const data = await clientActions.findByIdAction(params.id, user.organizationId);
       if (data) {
         setClient(data);
       } else {
@@ -33,14 +34,8 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   if (!client) return null;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => router.back()} className="text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-end">
         <Link href={`/clients/${client.id}/edit`} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
           <Edit className="h-4 w-4 mr-2" />
           Modifier

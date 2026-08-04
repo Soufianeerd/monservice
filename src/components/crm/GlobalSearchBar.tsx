@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
-import { searchService, SearchResult } from '@/lib/services/search.service';
+import type { SearchResult } from '@/utils/search';
+import { searchAction } from '@/app/actions/search.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 
 export default function GlobalSearchBar() {
@@ -48,7 +49,7 @@ export default function GlobalSearchBar() {
       }
       setLoading(true);
       try {
-        const data = await searchService.search(query, user.organizationId);
+        const data = await searchAction(query, user.organizationId);
         setResults(data.slice(0, 8)); // limit to 8 in dropdown
         setSelectedIndex(-1);
       } catch (error) {
@@ -89,7 +90,7 @@ export default function GlobalSearchBar() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (selectedIndex >= 0 && selectedIndex < results.length) {
-        handleSelect(results[selectedIndex].link);
+        handleSelect(results[selectedIndex].url as string);
       } else if (query.trim()) {
         setIsOpen(false);
         router.push(`/search?q=${encodeURIComponent(query)}`);
@@ -138,7 +139,7 @@ export default function GlobalSearchBar() {
               {results.map((result, index) => (
                 <li key={`${result.type}-${result.id}`}>
                   <button
-                    onClick={() => handleSelect(result.link)}
+                    onClick={() => handleSelect(result.url as string)}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={`w-full text-left px-4 py-3 focus:outline-none transition-colors ${selectedIndex === index ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
                   >

@@ -6,7 +6,7 @@ import { Request } from '@/lib/data/interfaces';
 
 import RequestDiscoveryFilters, { DiscoveryFilters } from '@/components/marketplace/RequestDiscoveryFilters';
 import RequestDiscoveryList from '@/components/marketplace/RequestDiscoveryList';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (user?.organizationId) {
-      requestService.findPublic().then(setRequests);
+      requestActions.findPublicAction().then(setRequests);
     }
   }, [user, filters]);
 

@@ -7,7 +7,7 @@ import { Request } from '@/lib/data/interfaces';
 import RequestForm from '@/components/client/RequestForm';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function EditRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -17,7 +17,7 @@ export default function EditRequestPage({ params }: { params: Promise<{ id: stri
   const [request, setRequest] = useState<Request | null>(null);
 
   useEffect(() => {
-    requestService.findById(id).then(req => {
+    requestActions.findByIdAction(id).then(req => {
       if (req && req.clientId === user?.id) {
         setRequest(req);
       }
@@ -25,7 +25,7 @@ export default function EditRequestPage({ params }: { params: Promise<{ id: stri
   }, [id, user]);
 
   const handleSubmit = async (data: Partial<Request>) => {
-    await requestService.update(id, data, user?.id || '');
+    await requestActions.updateAction(id, data, user?.id || '');
     router.push('/client/requests');
   };
 

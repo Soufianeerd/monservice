@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/server';
 import { requests } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Request } from '../data/interfaces/request.interface';

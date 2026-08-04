@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { Request } from '@/lib/data/interfaces';
 

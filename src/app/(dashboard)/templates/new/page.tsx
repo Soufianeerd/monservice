@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthContext';
-import { messageTemplateRepository } from '@/lib/data';
+import * as messageTemplateActions from '@/app/actions/message-template.actions';
 import TemplateForm, { TemplateFormData } from '@/components/crm/TemplateForm';
 import { generateId } from '@/lib/utils/id-generator';
 
@@ -17,7 +17,7 @@ export default function NewTemplatePage() {
     
     setIsSubmitting(true);
     try {
-      await messageTemplateRepository.create({
+      await messageTemplateActions.createAction({
         ...data,
         subject: data.subject || '',
         organizationId: user.organizationId,

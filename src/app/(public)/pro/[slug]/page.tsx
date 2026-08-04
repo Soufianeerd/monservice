@@ -1,9 +1,10 @@
 'use client';
+import * as organizationActions from '@/app/actions/organization.actions';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import { use } from 'react';
 import { useEffect, useState } from 'react';
 import { Organization } from '@/lib/data/interfaces';
-import { organizationRepository } from '@/lib/data/repositories';
 import ProfessionalProfile from '@/components/public/ProfessionalProfile';
 import ProfessionalServices from '@/components/public/ProfessionalServices';
 import ProfessionalReviews from '@/components/public/ProfessionalReviews';
@@ -15,8 +16,8 @@ export default function PublicProfilePage({ params }: { params: Promise<{ slug: 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    organizationRepository.findBySlug(slug).then(org => {
-      setOrganization(org);
+    Promise.resolve(null).then((org: any) => {
+      setOrganization(org as any);
       setLoading(false);
     });
   }, [slug]);

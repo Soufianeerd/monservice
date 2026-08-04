@@ -10,25 +10,25 @@ interface KanbanBoardProps {
 
 export default function KanbanBoard({ tasks, onStatusChange }: KanbanBoardProps) {
   const columns: { title: Task['status'], id: Task['status'] }[] = [
-    { title: 'À faire', id: 'À faire' },
-    { title: 'En cours', id: 'En cours' },
-    { title: 'En attente', id: 'En attente' },
-    { title: 'Terminé', id: 'Terminé' },
+    { title: 'todo', id: 'todo' },
+    { title: 'in_progress', id: 'in_progress' },
+    { title: 'pending', id: 'pending' },
+    { title: 'completed', id: 'completed' },
   ];
 
   const getPriorityColor = (priority: string) => {
     switch(priority) {
-      case 'Haute': return 'bg-red-100 text-red-800';
-      case 'Moyenne': return 'bg-yellow-100 text-yellow-800';
-      case 'Basse': return 'bg-green-100 text-green-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch(status) {
-      case 'Terminé': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'En cours': return <Clock className="h-4 w-4 text-blue-500" />;
+      case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'in_progress': return <Clock className="h-4 w-4 text-blue-500" />;
       default: return <Circle className="h-4 w-4 text-gray-400" />;
     }
   };

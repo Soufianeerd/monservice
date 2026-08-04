@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { invoiceRepository  } from '@/lib/data/repositories';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { ClockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 interface ActivityItem {
   id: string;
@@ -24,8 +24,8 @@ export default function ClientRecentActivity({ clientId }: { clientId: string })
     const fetchActivity = async () => {
       if (!clientId) return;
 
-      const requests = await requestService.findByClientId(clientId);
-      const invoices = await invoiceRepository.findByClientId(clientId);
+      const requests = await requestActions.findByClientIdAction(clientId);
+      const invoices = await invoiceActions.findByClientAction(clientId);
 
       const items: ActivityItem[] = [
         ...requests.map(r => ({

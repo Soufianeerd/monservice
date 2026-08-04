@@ -6,7 +6,7 @@ import { Request } from '@/lib/data/interfaces';
 
 import RequestForm from '@/components/client/RequestForm';
 import { useRouter } from 'next/navigation';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function NewRequestPage() {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ export default function NewRequestPage() {
   const handleSubmit = async (data: Partial<Request>) => {
     if (!user?.id) return;
     
-    await requestService.create({
+    await requestActions.createAction({
       title: data.title!,
       description: data.description!,
       category: data.category!,

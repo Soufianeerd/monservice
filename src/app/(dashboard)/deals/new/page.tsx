@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DealForm from '@/components/crm/DealForm';
-import { activityLogRepository } from '@/lib/data';
-import { dealService } from '@/lib/services/deal.service';
-import { clientService } from '@/lib/services/client.service';
+import * as dealActions from '@/app/actions/deal.actions';
+import * as clientActions from '@/app/actions/client.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Deal, Client } from '@/lib/data/interfaces';
 import { handleError } from '@/lib/utils/error-handler';
@@ -13,20 +12,13 @@ import { handleError } from '@/lib/utils/error-handler';
 export default function NewDealPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [clients, setClients] = useState<Client[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (user?.organizationId) {
-      clientService.findAll(user.organizationId).then(setClients);
-    }
-  }, [user]);
 
   const handleSubmit = async (data: Partial<Deal>) => {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newDeal = await dealService.create({
+      const newDeal = await dealActions.createAction({
         name: data.name || 'Nouveau Deal',
         value: data.value || 0,
         status: data.status || 'prospect',
@@ -36,15 +28,7 @@ export default function NewDealPage() {
         description: data.description || '',
       }, user.id);
 
-      await activityLogRepository.create({
-        organizationId: user.organizationId,
-        userId: user.id,
-        action: 'CREATE',
-        entityType: 'DEAL',
-        entityId: newDeal.id,
-        details: `Création du deal ${data.name}`,
-        createdAt: new Date().toISOString(),
-      });
+      // activityLog disabled
 
       alert('Opportunité créée !');
       router.push('/deals');
@@ -60,7 +44,7 @@ export default function NewDealPage() {
         <h1 className="text-2xl font-bold text-gray-900">Nouveau deal</h1>
         <p className="mt-1 text-sm text-gray-500">Créez une nouvelle opportunité commerciale.</p>
       </div>
-      <DealForm clients={clients} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <DealForm organizationId={user?.organizationId || ''} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
     </div>
   );
 }

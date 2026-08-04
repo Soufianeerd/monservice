@@ -1,7 +1,7 @@
 'use server';
+import { organizationService } from '@/lib/services/organization.service';
 
 import { userService } from '@/lib/services/user.service';
-import { organizationRepository } from '@/lib/data';
 import { ProfileType } from '@/lib/data/interfaces';
 import { cookies } from 'next/headers';
 import { generateId } from '@/lib/utils/id-generator';
@@ -23,7 +23,7 @@ export async function registerAction(data: {
 
     let orgId = undefined;
     if (data.orgName && data.profileType === 'professional') {
-      const newOrg = await organizationRepository.create({
+      const newOrg = await organizationService.create({
         name: data.orgName,
         industry: data.sector || 'Non spécifié',
         sector: data.sector,
@@ -51,16 +51,8 @@ export async function registerAction(data: {
       organizationId: orgId,
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('session', newUser.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: '/',
-    });
-
     return { success: true, user: newUser };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Register error:', err);
     return { success: false, error: 'Erreur serveur.' };
   }

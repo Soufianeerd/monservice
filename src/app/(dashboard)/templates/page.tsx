@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
-import { messageTemplateRepository } from '@/lib/data';
+import * as messageTemplateActions from '@/app/actions/message-template.actions';
 import { MessageTemplate } from '@/lib/data/interfaces';
 import { Mail, MessageSquare } from 'lucide-react';
 
@@ -17,7 +17,7 @@ export default function TemplatesPage() {
     await Promise.resolve();
       setLoading(true);
     try {
-      const data = await messageTemplateRepository.findByOrganization(user.organizationId);
+      const data = await messageTemplateActions.findAllAction(user.organizationId);
       setTemplates(data);
     } catch (error) {
       console.error('Erreur chargement modèles', error);
@@ -32,7 +32,7 @@ export default function TemplatesPage() {
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Voulez-vous vraiment supprimer ce modèle ?")) {
-      await messageTemplateRepository.delete(id);
+      await messageTemplateActions.deleteAction(id);
       loadTemplates();
     }
   };

@@ -1,11 +1,11 @@
 'use client';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Invoice, Client, Product, Organization } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
-import { organizationRepository } from '@/lib/data';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import DocumentPDF from './DocumentPDF';
 import StripePaymentButton from './StripePaymentButton';
@@ -27,7 +27,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
   useEffect(() => {
     async function loadOrg() {
       if (user?.organizationId) {
-        const org = await organizationRepository.getById(user.organizationId);
+        const org = await getByIdAction(user.organizationId);
         setOrganization(org || null);
       }
     }

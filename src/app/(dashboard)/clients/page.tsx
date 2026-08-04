@@ -1,11 +1,14 @@
 'use client';
-import { taskService } from '@/lib/services/task.service';
+
+import * as taskActions from '@/app/actions/task.actions';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
-import { contactRepository, dealRepository, invoiceRepository } from '@/lib/data';
-import { clientService } from '@/lib/services/client.service';
+import * as contactActions from '@/app/actions/contact.actions';
+import * as dealActions from '@/app/actions/deal.actions';
+import * as invoiceActions from '@/app/actions/invoice.actions';
+import * as clientActions from '@/app/actions/client.actions';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import ClientDeleteModal from '@/components/crm/ClientDeleteModal';
@@ -29,7 +32,7 @@ export default function ClientsPage() {
     if (!user?.organizationId) return;
     try {
       setLoading(true);
-      const data = await clientService.findAll(user.organizationId);
+      const data = await clientActions.findAllAction(user.organizationId);
       setClients(data);
     } catch (error) {
       console.error('Erreur lors du chargement des clients', error);
@@ -44,10 +47,10 @@ export default function ClientsPage() {
 
   const handleDeleteClick = async (client: Client) => {
     // Récupérer les comptes des entités associées
-    const contacts = await contactRepository.findByClientId(client.id);
-    const deals = await dealRepository.findByClientId(client.id);
-    const invoices = await invoiceRepository.findByClientId(client.id);
-    const tasks = user?.organizationId ? await taskService.findByEntity('client', client.id, user.organizationId) : [];
+    const contacts = await contactActions.findByClientIdAction(client.id, user?.organizationId);
+    const deals = await dealActions.findByClientIdAction(client.id, user?.organizationId);
+    const invoices = await invoiceActions.findByClientAction(client.id);
+    const tasks = user?.organizationId ? await taskActions.findByEntityAction('client', client.id, user.organizationId) : [];
     
     setClientToDelete(client);
     setAssociatedCounts({
@@ -65,7 +68,7 @@ export default function ClientsPage() {
     try {
       // Pour l'instant, on supprime seulement le client via le service
       // TODO: Gérer la suppression en cascade avec les futurs services
-      await clientService.delete(clientToDelete.id, user.organizationId);
+      await clientActions.deleteWithCascadeAction(clientToDelete.id, user.organizationId, user.id);
       await loadClients();
     } catch (error) {
       console.error('Erreur lors de la suppression', error);

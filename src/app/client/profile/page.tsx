@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import ClientProfileForm from '@/components/client/ClientProfileForm';
-import { userService } from '@/lib/services/user.service';
+import * as userActions from '@/app/actions/user.actions';
 import { useState } from 'react';
 
 export default function ClientProfilePage() {
@@ -12,7 +12,7 @@ export default function ClientProfilePage() {
 
   const handleSubmit = async (data: any) => {
     if (user?.id) {
-      await userService.updateUserProfile(user.id, data);
+      await userActions.updateUserProfileAction(user.id, data);
       setMessage('Profil mis à jour avec succès. (Rechargez la page pour voir les changements dans le menu)');
       setTimeout(() => setMessage(''), 5000);
     }

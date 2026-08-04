@@ -8,6 +8,7 @@ import { UserIcon, BriefcaseIcon, Building2Icon, StethoscopeIcon, LaptopIcon, Ha
 import { ProfileType } from '@/lib/data/interfaces';
 
 import { toast } from 'react-hot-toast';
+import { registerAction } from '@/app/actions/auth';
 
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
@@ -23,7 +24,7 @@ export default function RegisterForm() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { register } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
 
   const handleNext = () => {
@@ -77,24 +78,32 @@ export default function RegisterForm() {
     }
 
     setIsSubmitting(true);
-    const result = await register(
-      formData.name,
-      formData.email,
-      formData.password,
-      formData.profileType === 'professional' ? formData.orgName : undefined,
-      formData.profileType as ProfileType,
-      formData.profileType === 'professional' ? formData.sector : undefined
-    );
-    setIsSubmitting(false);
+    const result = await registerAction({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      orgName: formData.profileType === 'professional' ? formData.orgName : undefined,
+      profileType: formData.profileType as ProfileType,
+      sector: formData.profileType === 'professional' ? formData.sector : undefined
+    });
 
     if (result.success) {
-      toast.success('Compte créé avec succès !');
-      if (formData.profileType === 'client') {
-        router.push('/dashboard'); // Temporarily, until we have /client/dashboard
+      const signInResult = await signIn('credentials', { 
+        email: formData.email, 
+        password: formData.password, 
+        redirect: false 
+      });
+      setIsSubmitting(false);
+
+      if (signInResult?.error) {
+        toast.error('Compte créé, mais erreur lors de la connexion automatique.');
+        router.push('/login');
       } else {
+        toast.success('Compte créé avec succès !');
         router.push('/dashboard');
       }
     } else {
+      setIsSubmitting(false);
       toast.error(result.error || 'Erreur lors de la création du compte. Vérifiez si l\'email est déjà utilisé.');
     }
   };

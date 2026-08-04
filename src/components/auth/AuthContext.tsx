@@ -1,165 +1,100 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SessionProvider, useSession, signIn, signOut } from 'next-auth/react';
+import { Session } from 'next-auth';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Organization } from '@/lib/data/interfaces';
-import { useRouter } from 'next/navigation';
-// Supabase imports removed
-// import { createClient } from '@/utils/supabase/client';
-// import { Session } from '@supabase/supabase-js';
-import { cleanupLocalStorage } from '@/utils/storage-cleanup';
 
 interface AuthContextType {
   user: User | null;
   organization: Organization | null;
+  session: Session | null;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  register: (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: typeof signIn;
+  signOut: typeof signOut;
   updateUser: (data: Partial<User>) => Promise<void>;
-  session: unknown | null;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthProviderInner>{children}</AuthProviderInner>
+    </SessionProvider>
+  );
+}
+
+function AuthProviderInner({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<unknown | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [prevSession, setPrevSession] = useState<Session | null>(null);
+
+  // Sync state with session during rendering to avoid effect cascading renders
+  if (session !== prevSession) {
+    setPrevSession(session);
+    if (session?.user) {
+      const sessionUser = session.user as User;
+      setUser(sessionUser);
+      if (!sessionUser.organizationId) {
+        setOrganization(null);
+      }
+    } else {
+      setUser(null);
+      setOrganization(null);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
+    async function loadOrg(orgId: string) {
       try {
-        const { getSessionAction } = await import('@/app/actions/session');
-        const { user: foundUser } = await getSessionAction();
-
-        if (foundUser && mounted) {
-          cleanupLocalStorage(); // Clean old local storage if logged in
-          setUser(foundUser);
-          if (foundUser.organizationId) {
-            const { getOrganizationAction } = await import('@/app/actions/session');
-            const org = await getOrganizationAction(foundUser.organizationId);
-            setOrganization(org as Organization);
-          }
-        }
+        const { getOrganizationAction } = await import('@/app/actions/session');
+        const org = await getOrganizationAction(orgId);
+        if (mounted) setOrganization(org);
       } catch (err) {
-        console.error('Error loading session:', err);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
+        console.error('Error loading organization:', err);
       }
     }
 
-    loadSession();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const login = async (email: string, password?: string) => {
-    if (!password) return { success: false, error: 'Mot de passe requis' };
-    setIsLoading(true);
-    try {
-      const { loginAction } = await import('@/app/actions/session');
-      const result = await loginAction(email, password);
-      
-      if (!result.success) {
-        return { success: false, error: result.error || 'Identifiants incorrects.' };
+    if (session?.user) {
+      const sessionUser = session.user as User;
+      if (sessionUser.organizationId) {
+        loadOrg(sessionUser.organizationId);
       }
-      
-      setUser(result.user as User);
-      if (result.user?.organizationId) {
-        const { getOrganizationAction } = await import('@/app/actions/session');
-        const org = await getOrganizationAction(result.user.organizationId);
-        setOrganization(org as Organization);
-      }
-      
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Unexpected login error:', err);
-      return { success: false, error: 'Le serveur est temporairement indisponible.' };
-    } finally {
-      setIsLoading(false);
     }
-  };
 
-  const register = async (name: string, email: string, password?: string, orgName?: string, profileType?: User['profileType'], sector?: string) => {
-    if (!password) return { success: false, error: 'Mot de passe requis' };
-    setIsLoading(true);
-    try {
-      // Use dynamic import to avoid Server Action issues on client side if needed, 
-      // or just import the action at the top. Since it's a 'use client' file, we can import server actions directly.
-      const { registerAction } = await import('@/app/actions/auth');
-      
-      const result = await registerAction({
-        name,
-        email,
-        password,
-        orgName,
-        profileType,
-        sector
-      });
-
-      if (!result.success) {
-        return { success: false, error: result.error || "Erreur lors de l'inscription." };
-      }
-
-      // Update local state with the newly created user
-      setUser(result.user as User);
-      
-      if (result.user?.organizationId) {
-        const { getOrganizationAction } = await import('@/app/actions/session');
-        const org = await getOrganizationAction(result.user.organizationId);
-        setOrganization(org as Organization);
-      }
-
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('Unexpected register error:', err);
-      return { success: false, error: 'Le serveur est temporairement indisponible.' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      const { logoutAction } = await import('@/app/actions/session');
-      await logoutAction();
-    } catch (e) {
-      console.error(e);
-    }
-    setUser(null);
-    setOrganization(null);
-    cleanupLocalStorage();
-    router.push('/');
-  };
+    return () => { mounted = false; };
+  }, [session]);
 
   const updateUser = async (data: Partial<User>) => {
-    if (!user) return;
-    const { updateUserAction } = await import('@/app/actions/session');
-    const updated = await updateUserAction(user.id, data);
-    if (updated) {
-      setUser(updated as User);
+    if (!user?.id) return;
+    try {
+      const { updateUserAction } = await import('@/app/actions/session');
+      await updateUserAction(user.id, data);
+      setUser(prev => prev ? { ...prev, ...data } : prev);
+    } catch (err) {
+      console.error('Error updating user:', err);
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, organization, isLoading, login, logout, register, updateUser, session }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    organization,
+    session,
+    isLoading: status === 'loading',
+    signIn,
+    signOut,
+    updateUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
-}
+};

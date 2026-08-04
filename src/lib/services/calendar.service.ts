@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/server';
 import { tasks, invoices, deals } from '../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
@@ -46,6 +46,32 @@ export const calendarService = {
       )
     );
 
-    return [...tasksEvents, ...invoicesEvents, ...dealsEvents];
+    const allEvents = [...tasksEvents, ...invoicesEvents, ...dealsEvents];
+    return allEvents.map((evt) => {
+      let backgroundColor = '#4f46e5';
+      let borderColor = '#4338ca';
+
+      if (evt.type === 'deal') {
+        backgroundColor = '#059669';
+        borderColor = '#047857';
+      } else if (evt.type === 'invoice') {
+        backgroundColor = '#dc2626';
+        borderColor = '#b91c1c';
+      }
+
+      return {
+        id: `${evt.type}_${evt.id}`,
+        title: evt.title,
+        start: evt.date,
+        allDay: true,
+        backgroundColor,
+        borderColor,
+        extendedProps: {
+          type: evt.type,
+          status: evt.status,
+          originalId: evt.id
+        }
+      };
+    });
   },
 };

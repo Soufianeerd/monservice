@@ -1,16 +1,16 @@
 'use client';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useEffect, useState, use } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateInvoicePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { DownloadIcon } from 'lucide-react';
 import InvoicePaymentButton from '@/components/client/InvoicePaymentButton';
-import { organizationRepository } from '@/lib/data';
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -23,7 +23,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     async function loadData() {
       if (!user?.id) return;
       try {
-        const inv = await invoiceService.getById(id);
+        const inv = await invoiceActions.getByIdAction(id);
         
         if (inv && inv.clientId === user.id && inv.type === 'invoice') {
           setInvoice(inv);
@@ -38,7 +38,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const handleDownload = async () => {
     if (invoice && user?.organizationId) {
       try {
-        const org = await organizationRepository.getById(user.organizationId) || await organizationRepository.getById(invoice.organizationId);
+        const org = await getByIdAction(user.organizationId) || await getByIdAction(invoice.organizationId);
         if (!org) return;
         const client = { name: user.name || 'Client', email: user.email };
         const blob = await generateInvoicePDF(invoice, org, client);

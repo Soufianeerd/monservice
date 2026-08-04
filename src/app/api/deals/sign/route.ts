@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const updatedDeal = await dealService.update(dealId, dbUser.organizationId, { 
       signature: signatureData, 
       signedAt: new Date().toISOString() 
-    });
+    }, dbUser.id);
 
     return NextResponse.json({ success: true, deal: updatedDeal });
   } catch (error) {

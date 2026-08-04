@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { Deal, Client } from '@/lib/data/interfaces';
 import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
+import * as clientActions from '@/app/actions/client.actions';
 
 import { dealSchema } from '@/lib/validation/schemas';
 
@@ -14,13 +15,20 @@ export type DealFormData = z.infer<typeof dealSchema>;
 
 interface DealFormProps {
   initialData?: Deal;
-  clients: Client[];
+  organizationId: string;
   onSubmit: (data: DealFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
 
-export default function DealForm({ initialData, clients, onSubmit, isSubmitting }: DealFormProps) {
+export default function DealForm({ initialData, organizationId, onSubmit, isSubmitting }: DealFormProps) {
   const router = useRouter();
+  const [clients, setClients] = useState<Client[]>([]);
+
+  useEffect(() => {
+    if (organizationId) {
+      clientActions.findAllAction(organizationId).then(setClients);
+    }
+  }, [organizationId]);
   
   // Convert date to YYYY-MM-DD for input type="date"
   const formattedDate = initialData?.expectedCloseDate 
@@ -28,14 +36,14 @@ export default function DealForm({ initialData, clients, onSubmit, isSubmitting 
     : '';
 
   const { register, handleSubmit, formState: { errors } } = useForm<DealFormData>({
-    resolver: zodResolver(dealSchema),
+    resolver: zodResolver(dealSchema) as any,
     defaultValues: {
       name: initialData?.name || '',
       value: initialData?.value || 0,
-      status: initialData?.status || 'prospect',
+      status: initialData?.status || 'negotiation',
       clientId: initialData?.clientId || '',
       expectedCloseDate: formattedDate,
-      description: initialData?.description || '',
+      notes: initialData?.description || '',
     }
   });
 

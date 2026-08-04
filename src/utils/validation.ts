@@ -45,8 +45,8 @@ export const dealSchema = z.object({
 export const taskSchema = z.object({
   title: z.string().trim().min(1, 'Le titre est requis'),
   description: z.string().trim().optional(),
-  status: z.enum(['À faire', 'En cours', 'En attente', 'Terminé']),
-  priority: z.enum(['Basse', 'Moyenne', 'Haute']),
+  status: z.enum(['todo', 'in_progress', 'pending', 'completed', 'cancelled']),
+  priority: z.enum(['low', 'medium', 'high']),
   dueDate: z.string().min(1, "La date d'échéance est requise"),
   assignedTo: z.string().optional(),
   entityType: z.enum(['client', 'contact', 'deal', 'invoice', 'quote', '']).optional().transform(v => v === '' ? undefined : v),

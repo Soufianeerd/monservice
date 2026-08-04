@@ -1,15 +1,12 @@
 import { taskService } from '@/lib/services/task.service';
-import { clientRepository, contactRepository, dealRepository, invoiceRepository, productRepository } from '@/lib/data';
+import { SearchResult } from '@/utils/search';
+import { clientService } from './client.service';
+import { contactService } from './contact.service';
+import { dealService } from './deal.service';
+import { invoiceService } from './invoice.service';
+import { productService } from './product.service';
 
-export interface SearchResult {
-  id: string;
-  title: string;
-  subtitle?: string;
-  type: 'client' | 'contact' | 'deal' | 'invoice' | 'product' | 'task';
-  link: string;
-  score: number;
-}
-
+// SearchResult moved to utils/search
 export class SearchService {
   async search(query: string, organizationId: string): Promise<SearchResult[]> {
     if (!query || query.length < 2) return [];
@@ -18,11 +15,11 @@ export class SearchService {
     
     // Recherche parallèle dans tous les repositories
     const [clients, contacts, deals, invoices, products, tasks] = await Promise.all([
-      clientRepository.findByOrganization(organizationId),
-      contactRepository.findByOrganization(organizationId),
-      dealRepository.findByOrganization(organizationId),
-      invoiceRepository.findByOrganization(organizationId),
-      productRepository.findByOrganization(organizationId),
+      clientService.findAll(organizationId),
+      contactService.findAll(organizationId),
+      dealService.findAll(organizationId),
+      invoiceService.findAll(organizationId),
+      productService.findAll(organizationId),
       taskService.findByOrganization(organizationId),
     ]);
 
@@ -36,8 +33,8 @@ export class SearchService {
           id: client.id,
           title: client.name,
           subtitle: client.email || 'Client',
-          type: 'client',
-          link: `/clients/${client.id}`,
+          type: 'CLIENT',
+          url: `/clients/${client.id}`,
           score: this.calculateScore(normalizedQuery, client.name, client.email),
         });
       }
@@ -52,8 +49,8 @@ export class SearchService {
           id: contact.id,
           title: fullName,
           subtitle: contact.email || 'Contact',
-          type: 'contact',
-          link: `/contacts/${contact.id}`,
+          type: 'CONTACT',
+          url: `/contacts/${contact.id}`,
           score: this.calculateScore(normalizedQuery, fullName, contact.email),
         });
       }
@@ -66,8 +63,8 @@ export class SearchService {
           id: deal.id,
           title: deal.name,
           subtitle: `${deal.status} - ${deal.value}€`,
-          type: 'deal',
-          link: `/deals/${deal.id}`,
+          type: 'DEAL',
+          url: `/deals/${deal.id}`,
           score: this.calculateScore(normalizedQuery, deal.name),
         });
       }
@@ -80,8 +77,8 @@ export class SearchService {
           id: invoice.id,
           title: invoice.number,
           subtitle: `${invoice.totalTTC}€ - ${invoice.status}`,
-          type: 'invoice',
-          link: `/invoices/${invoice.id}`,
+          type: 'INVOICE',
+          url: `/invoices/${invoice.id}`,
           score: this.calculateScore(normalizedQuery, invoice.number),
         });
       }
@@ -94,8 +91,8 @@ export class SearchService {
           id: product.id,
           title: product.name,
           subtitle: `${product.unitPrice} € HT - ${product.description || ''}`,
-          type: 'product',
-          link: `/products/${product.id}`,
+          type: 'PRODUCT',
+          url: `/products/${product.id}`,
           score: this.calculateScore(normalizedQuery, product.name, product.description),
         });
       }
@@ -108,15 +105,15 @@ export class SearchService {
           id: task.id,
           title: task.title,
           subtitle: `${task.status} - ${task.priority}`,
-          type: 'task',
-          link: `/tasks/${task.id}`,
+          type: 'TASK',
+          url: `/tasks/${task.id}`,
           score: this.calculateScore(normalizedQuery, task.title),
         });
       }
     });
 
     // Trier par score (pertinence)
-    return results.sort((a, b) => b.score - a.score).slice(0, 20);
+    return results.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 20);
   }
 
   private calculateScore(query: string, ...fields: (string | null | undefined)[]): number {

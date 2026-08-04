@@ -1,4 +1,4 @@
-import { checkAndSendReminders } from '@/lib/services/reminder.service';
+import { reminderService } from '@/lib/services/reminder.service';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request) {
@@ -13,8 +13,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    const sentReminders = await checkAndSendReminders(organizationId);
-    return NextResponse.json({ success: true, count: sentReminders?.length || 0 });
+    const sentReminders = await reminderService.checkAndSendReminders(organizationId);
+    return NextResponse.json({ success: true, count: sentReminders?.sent || 0 });
   } catch (error: any) {
     console.error('Erreur Reminder Check:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Invoice } from '@/lib/data/interfaces';
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useEffect, useState } from 'react';
 import QuoteList from '@/components/client/QuoteList';
 
@@ -13,7 +13,7 @@ export default function ClientQuotesPage() {
 
   useEffect(() => {
     if (user?.id) {
-      invoiceService.findByClient(user.id).then(invoices => {
+      invoiceActions.findByClientAction(user.id).then(invoices => {
         setQuotes(invoices.filter(i => i.type === 'quote').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       });
     }

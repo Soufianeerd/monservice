@@ -8,7 +8,7 @@ import { Request } from '@/lib/data/interfaces';
 import RequestList from '@/components/client/RequestList';
 import Link from 'next/link';
 import { PlusIcon } from 'lucide-react';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function ClientRequestsPage() {
   const { user } = useAuth();
@@ -16,13 +16,13 @@ export default function ClientRequestsPage() {
 
   useEffect(() => {
     if (user?.id) {
-      requestService.findByClientId(user.id).then(setRequests);
+      requestActions.findByClientIdAction(user.id).then(setRequests);
     }
   }, [user]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
-      await requestService.delete(id);
+      await requestActions.deleteAction(id);
       setRequests(requests.filter(r => r.id !== id));
     }
   };

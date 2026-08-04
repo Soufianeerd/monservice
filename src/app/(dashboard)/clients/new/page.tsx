@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
-import { activityLogRepository } from '@/lib/data';
-import { clientService } from '@/lib/services/client.service';
+import * as clientActions from '@/app/actions/client.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client } from '@/lib/data/interfaces';
 
@@ -17,7 +16,7 @@ export default function NewClientPage() {
     if (!user?.organizationId) return;
     setIsSubmitting(true);
     try {
-      const newClient = await clientService.create({
+      const newClient = await clientActions.createAction({
         name: data.name || 'Nouveau Client',
         email: data.email || '',
         phone: data.phone || '',
@@ -36,15 +35,7 @@ export default function NewClientPage() {
         organizationId: user.organizationId,
       });
       
-      await activityLogRepository.create({
-        organizationId: user.organizationId,
-        userId: user.id,
-        action: 'CREATE',
-        entityType: 'CLIENT',
-        entityId: newClient.id,
-        details: `Création du client ${data.name}`,
-        createdAt: new Date().toISOString(),
-      });
+      // activityLog disabled
 
       alert('Client créé avec succès !');
       router.push('/clients');

@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { Invoice, Client, Product, InvoiceLine } from '@/lib/data/interfaces';
 import { generateId } from '@/lib/utils/id-generator';
+import * as clientActions from '@/app/actions/client.actions';
+import * as productActions from '@/app/actions/product.actions';
 
 import { invoiceSchema, invoiceLineSchema } from '@/lib/validation/schemas';
 
@@ -18,17 +20,25 @@ export type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
 
 interface InvoiceFormProps {
   initialData?: Invoice;
-  clients: Client[];
-  products: Product[];
+  organizationId: string;
   onSubmit: (data: InvoiceFormData & { totalHT: number; taxAmount: number; totalTTC: number }) => Promise<void>;
   isSubmitting?: boolean;
 }
 
-export default function InvoiceForm({ initialData, clients, products, onSubmit, isSubmitting }: InvoiceFormProps) {
+export default function InvoiceForm({ initialData, organizationId, onSubmit, isSubmitting }: InvoiceFormProps) {
   const router = useRouter();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    if (organizationId) {
+      clientActions.findAllAction(organizationId).then(setClients);
+      productActions.findAllAction(organizationId).then(setProducts);
+    }
+  }, [organizationId]);
   
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormData>({
-    resolver: zodResolver(invoiceFormSchema),
+    resolver: zodResolver(invoiceFormSchema) as any,
     defaultValues: {
       type: initialData?.type || 'invoice',
       status: initialData?.status || 'draft',

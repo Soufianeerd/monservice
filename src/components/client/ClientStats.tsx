@@ -2,42 +2,16 @@
 
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { MessageSquareIcon, FileTextIcon, FileCheckIcon, CreditCardIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+interface StatsProps {
+  stats: {
+    activeRequests: number;
+    pendingQuotes: number;
+    unpaidInvoices: number;
+    unreadMessages: number;
+  };
+}
 
-import { dashboardService } from '@/lib/services/dashboard.service';
-import { messageService } from '@/lib/services/message.service';
-import { handleError } from '@/lib/utils/error-handler';
-
-export default function ClientStats({ clientId }: { clientId: string }) {
-  const [stats, setStats] = useState({
-    activeRequests: 0,
-    pendingQuotes: 0,
-    unpaidInvoices: 0,
-    unreadMessages: 0
-  });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!clientId) return;
-
-      try {
-        const clientStats = await dashboardService.getClientStats(clientId);
-        const unreadCount = await messageService.getUnreadCount(clientId);
-
-        setStats({
-          activeRequests: clientStats.activeRequests,
-          pendingQuotes: clientStats.pendingQuotes,
-          unpaidInvoices: clientStats.unpaidInvoices,
-          unreadMessages: unreadCount,
-        });
-      } catch (error) {
-        handleError(error, "Erreur lors du chargement des statistiques");
-      }
-    };
-    
-    fetchStats();
-  }, [clientId]);
-
+export default function ClientStats({ stats }: StatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <Card>

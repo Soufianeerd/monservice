@@ -4,10 +4,10 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Message } from '@/lib/data/interfaces';
 
-import { userService } from '@/lib/services/user.service';
+import * as userActions from '@/app/actions/user.actions';
 import { useEffect, useState } from 'react';
 import MessageList from '@/components/client/MessageList';
-import { messageService } from '@/lib/services/message.service';
+import * as messageActions from '@/app/actions/message.actions';
 
 export default function ProfessionalMessagesPage() {
   const { user } = useAuth();
@@ -17,7 +17,7 @@ export default function ProfessionalMessagesPage() {
     const fetchConversations = async () => {
       if (!user?.id) return;
 
-      const messages = await messageService.findByUser(user.id);
+      const messages = await messageActions.findByUserAction(user.id);
       
       const convosMap = new Map<string, { lastMessage: Message, unreadCount: number }>();
       
@@ -35,7 +35,7 @@ export default function ProfessionalMessagesPage() {
 
       const formattedConvos = await Promise.all(
         Array.from(convosMap.entries()).map(async ([otherId, data]) => {
-          const otherUser = await userService.getUserProfile(otherId);
+          const otherUser = await userActions.getUserProfileAction(otherId);
           return {
             otherUserId: otherId,
             otherUserName: otherUser?.name || 'Utilisateur inconnu',

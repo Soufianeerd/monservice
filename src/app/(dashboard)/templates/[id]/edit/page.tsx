@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { messageTemplateRepository } from '@/lib/data';
+import * as messageTemplateActions from '@/app/actions/message-template.actions';
 import { MessageTemplate } from '@/lib/data/interfaces';
 import TemplateForm, { TemplateFormData } from '@/components/crm/TemplateForm';
 
@@ -19,7 +19,7 @@ export default function EditTemplatePage() {
     async function loadTemplate() {
       if (!id) return;
       try {
-        const data = await messageTemplateRepository.getById(id);
+        const data = await messageTemplateActions.getByIdAction(id);
         if (data) setTemplate(data);
         else router.push('/templates');
       } catch (error) {
@@ -34,7 +34,7 @@ export default function EditTemplatePage() {
   const handleSubmit = async (data: TemplateFormData) => {
     setIsSubmitting(true);
     try {
-      await messageTemplateRepository.update(id, {
+      await messageTemplateActions.updateAction(id, {
         ...data,
         updatedAt: new Date().toISOString(),
       });

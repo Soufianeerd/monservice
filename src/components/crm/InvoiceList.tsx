@@ -20,6 +20,7 @@ interface InvoiceListProps {
 
 export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid, onConvertQuote }: InvoiceListProps) {
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const getClientName = (clientId: string) => {
@@ -38,10 +39,11 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus;
+    const matchesType = filterType === 'all' || invoice.type === filterType;
     const clientName = getClientName(invoice.clientId).toLowerCase();
     const matchesSearch = invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           clientName.includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesType && matchesSearch;
   });
 
   return (
@@ -59,15 +61,26 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
         </div>
         <div className="flex items-center space-x-2 w-full sm:w-auto">
           <Select
+            id="type"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            label="Type"
+            hideLabel
+          >
+            <option value="all">Tous types</option>
+            <option value="invoice">Factures</option>
+            <option value="quote">Devis</option>
+          </Select>
+          <Select
             id="status"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             label="Statut"
             hideLabel
           >
-            <option value="all">Tous</option>
+            <option value="all">Tous statuts</option>
             <option value="draft">Brouillon</option>
-            <option value="proposal">Devis</option>
+            <option value="proposal">Devis (statut)</option>
             <option value="sent">Envoyée</option>
             <option value="paid">Payée</option>
             <option value="overdue">En retard</option>
@@ -89,6 +102,9 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
               <CardBody>
                 <div className="font-medium text-gray-900">
                   {clients.find(c => c.id === invoice.clientId) ? getClientName(invoice.clientId) : <span className="text-gray-500 italic bg-gray-100 px-2 py-0.5 rounded text-xs">Client supprimé</span>}
+                </div>
+                <div className="mt-2 text-sm text-gray-500">
+                  <Badge variant="default">{invoice.type === 'quote' ? 'Devis' : 'Facture'}</Badge>
                 </div>
                 <div className="flex justify-between mt-2">
                   <span>{new Date(invoice.date).toLocaleDateString('fr-FR')}</span>
@@ -138,6 +154,7 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
             <TableHead>
               <TableRow>
                 <TableHeader>Numéro</TableHeader>
+                <TableHeader>Type</TableHeader>
                 <TableHeader>Client</TableHeader>
                 <TableHeader>Date</TableHeader>
                 <TableHeader>Montant TTC</TableHeader>
@@ -152,6 +169,9 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
                     <Link href={`/invoices/${invoice.id}`}>
                       {invoice.number}
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="default">{invoice.type === 'quote' ? 'Devis' : 'Facture'}</Badge>
                   </TableCell>
                   <TableCell>
                     {clients.find(c => c.id === invoice.clientId) ? (

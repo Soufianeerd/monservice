@@ -10,7 +10,7 @@ export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,14 +22,18 @@ export default function LoginForm() {
     }
 
     setIsSubmitting(true);
-    const result = await login(email, password);
-    setIsSubmitting(false);
-
-    if (result.success) {
-      toast.success('Connexion réussie !');
-      router.push('/dashboard');
-    } else {
-      toast.error(result.error || 'Identifiants incorrects.');
+    try {
+      const result = await signIn('credentials', { email, password, redirect: false });
+      if (result?.error) {
+        toast.error('Email ou mot de passe incorrect');
+      } else {
+        toast.success('Connecté !');
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

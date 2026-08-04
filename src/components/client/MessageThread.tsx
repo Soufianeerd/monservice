@@ -1,3 +1,5 @@
+'use client';
+
 import { Message } from '@/lib/data/interfaces';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';

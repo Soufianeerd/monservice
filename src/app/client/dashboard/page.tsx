@@ -1,13 +1,27 @@
-'use client';
-
-import { useAuth } from '@/components/auth/AuthContext';
+import { getSessionAction } from '@/app/actions/session';
+import { getClientStatsAction } from '@/app/actions/dashboard.actions';
+import { getUnreadCountAction } from '@/app/actions/message.actions';
 import { FileTextIcon, SearchIcon, MessageSquareIcon, FileCheckIcon } from 'lucide-react';
 import Link from 'next/link';
 import ClientStats from '@/components/client/ClientStats';
 import ClientRecentActivity from '@/components/client/ClientRecentActivity';
 
-export default function ClientDashboard() {
-  const { user } = useAuth();
+export default async function ClientDashboard() {
+  const { user } = await getSessionAction();
+  
+  if (!user) {
+    return null;
+  }
+
+  const clientStats = await getClientStatsAction(user.id);
+  const unreadMessages = await getUnreadCountAction(user.id);
+  
+  const stats = {
+    activeRequests: clientStats.activeRequests,
+    pendingQuotes: clientStats.pendingQuotes,
+    unpaidInvoices: clientStats.unpaidInvoices,
+    unreadMessages: unreadMessages,
+  };
 
   return (
     <div className="space-y-8">
@@ -16,7 +30,7 @@ export default function ClientDashboard() {
         <p className="text-gray-500 mt-1">Bienvenue sur votre espace personnel MonService.</p>
       </div>
 
-      {user && <ClientStats clientId={user.id} />}
+      <ClientStats stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">

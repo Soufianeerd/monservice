@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
-import { activityLogRepository } from '@/lib/data';
-import { clientService } from '@/lib/services/client.service';
+import * as clientActions from '@/app/actions/client.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client } from '@/lib/data/interfaces';
 
-export default function EditClientPage({ params }: { params: { id: string } }) {
+export default function EditClientPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
@@ -18,7 +18,7 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     async function load() {
       if (!user?.organizationId) return;
-      const data = await clientService.findById(params.id as string, user.organizationId);
+      const data = await clientActions.findByIdAction(params.id as string, user.organizationId);
       if (data) {
         setClient(data);
       } else {
@@ -34,20 +34,12 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
     const id = params.id as string;
     try {
-      await clientService.update(id, user.organizationId, {
+      await clientActions.updateAction(id, user.organizationId, {
         ...data,
       });
 
       if (user) {
-        await activityLogRepository.create({
-          organizationId: user.organizationId || '',
-          userId: user.id,
-          action: 'UPDATE',
-          entityType: 'CLIENT',
-          entityId: id as string,
-          details: `Mise à jour du client ${data.name}`,
-          createdAt: new Date().toISOString(),
-        });
+        // activityLog disabled
       }
 
       router.push('/clients');

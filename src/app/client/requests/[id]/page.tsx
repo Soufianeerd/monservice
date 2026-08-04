@@ -4,13 +4,13 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Request, Invoice } from '@/lib/data/interfaces';
 
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -23,10 +23,10 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     const fetchData = async () => {
-      const req = await requestService.findById(id);
+      const req = await requestActions.findByIdAction(id);
       if (req && req.clientId === user?.id) {
         setRequest(req);
-        const allInvoices = await invoiceService.findByClient(user.id);
+        const allInvoices = await invoiceActions.findByClientAction(user.id);
         setQuotes(allInvoices.filter(inv => inv.type === 'quote' && inv.requestId === id));
       }
     };
@@ -44,7 +44,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
             <button 
               onClick={async () => {
                 if(window.confirm('Voulez-vous vraiment publier cette demande ?')) {
-                  await requestService.publish(request.id, user?.id || '');
+                  await requestActions.publishAction(request.id, user?.id || '');
                   alert('Demande publiée !');
                   window.location.reload();
                 }

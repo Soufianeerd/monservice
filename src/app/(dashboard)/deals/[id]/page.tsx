@@ -1,16 +1,18 @@
 'use client';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft, Trash2 } from 'lucide-react';
-import { dealService } from '@/lib/services/deal.service';
-import { clientService } from '@/lib/services/client.service';
+import * as dealActions from '@/app/actions/deal.actions';
+import * as clientActions from '@/app/actions/client.actions';
 import { Deal, Client } from '@/lib/data/interfaces';
 import { DEAL_STATUS_LABELS } from '@/lib/constants/statuses';
 import { useAuth } from '@/components/auth/AuthContext';
 
-export default function DealDetailPage({ params }: { params: { id: string } }) {
+export default function DealDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
   const [deal, setDeal] = useState<Deal | null>(null);
@@ -21,11 +23,11 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
     async function loadData() {
       if (!user?.organizationId) return;
       try {
-        const d = await dealService.findById(params.id as string, user.organizationId);
+        const d = await dealActions.findByIdAction(params.id as string, user.organizationId);
         if (d) {
           setDeal(d);
           if (d.clientId) {
-            const cli = await clientService.findById(d.clientId, user.organizationId);
+            const cli = await clientActions.findByIdAction(d.clientId, user.organizationId);
             setClient(cli);
           }
         } else {
@@ -45,7 +47,7 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
     if (!user?.organizationId) return;
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce deal ?")) return;
     try {
-      await dealService.delete(params.id as string, user.organizationId);
+      await dealActions.deleteAction(params.id as string, user.organizationId);
       router.push('/deals');
     } catch (error) {
       console.error('Erreur', error);
@@ -74,7 +76,7 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
             onClick={async () => {
               try {
                 const { generateQuotePDF, downloadPDF } = await import('@/lib/utils/pdf-generator');
-                const org = await import('@/lib/data').then(m => m.organizationRepository.getById(deal.organizationId));
+                const org = await import('@/app/actions/organization.actions').then(m => m.getByIdAction(deal.organizationId));
                 if (!org) throw new Error('Organization not found');
                 const blob = await generateQuotePDF(deal, org, client as any);
                 downloadPDF(blob, `Devis_${deal.name}.pdf`);

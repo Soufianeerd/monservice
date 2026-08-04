@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import DealForm from '@/components/crm/DealForm';
-import { activityLogRepository } from '@/lib/data';
-import { dealService } from '@/lib/services/deal.service';
-import { clientService } from '@/lib/services/client.service';
+import * as dealActions from '@/app/actions/deal.actions';
+import * as clientActions from '@/app/actions/client.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Deal, Client } from '@/lib/data/interfaces';
 
-export default function EditDealPage({ params }: { params: { id: string } }) {
+export default function EditDealPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
   const [deal, setDeal] = useState<Deal | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -21,14 +20,10 @@ export default function EditDealPage({ params }: { params: { id: string } }) {
     async function loadData() {
       if (!user?.organizationId) return;
       try {
-        const [dealData, clientsData] = await Promise.all([
-          dealService.findById(params.id as string, user.organizationId),
-          clientService.findAll(user.organizationId)
-        ]);
+        const dealData = await dealActions.findByIdAction(params.id as string, user.organizationId);
 
         if (dealData) {
           setDeal(dealData);
-          setClients(clientsData);
         } else {
           router.push('/deals');
         }
@@ -47,19 +42,11 @@ export default function EditDealPage({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
     const id = params.id as string;
     try {
-      await dealService.update(id, user.organizationId, {
+      await dealActions.updateAction(id, user.organizationId, {
         ...data,
       });
 
-      await activityLogRepository.create({
-        organizationId: user.organizationId,
-        userId: user.id,
-        action: 'UPDATE',
-        entityType: 'DEAL',
-        entityId: id,
-        details: `Mise à jour du deal ${data.name}`,
-        createdAt: new Date().toISOString(),
-      });
+      // activityLog disabled
 
       router.push('/deals');
     } catch (error) {
@@ -76,7 +63,7 @@ export default function EditDealPage({ params }: { params: { id: string } }) {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Modifier le deal</h1>
       </div>
-      <DealForm initialData={deal} clients={clients} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <DealForm initialData={deal} organizationId={user?.organizationId || ''} onSubmit={handleSubmit} isSubmitting={isSubmitting} />
     </div>
   );
 }

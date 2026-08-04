@@ -1,4 +1,4 @@
-import { clientRepository } from '@/lib/data';
+import { clientService } from '@/lib/services/client.service';
 import { Client } from '@/lib/data/interfaces';
 
 export async function getClientWithFallback(
@@ -7,7 +7,7 @@ export async function getClientWithFallback(
 ): Promise<{ client: Client | null; exists: boolean }> {
   if (!clientId) return { client: null, exists: false };
   try {
-    const client = await clientRepository.getById(clientId);
+    const client = await clientService.findById(clientId, organizationId);
     if (client && client.organizationId === organizationId) {
       return { client, exists: true };
     }

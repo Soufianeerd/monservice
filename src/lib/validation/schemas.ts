@@ -34,7 +34,7 @@ export const contactSchema = z.object({
 export const dealSchema = z.object({
   name: z.string().min(3, "Le nom est requis"),
   value: z.number().min(0, "La valeur doit être positive"),
-  status: z.enum(['lead', 'proposal', 'negotiation', 'won', 'lost']).default('lead'),
+  status: z.enum(['prospect', 'proposal', 'negotiation', 'won', 'lost', 'qualification']).default('prospect'),
   probability: z.number().min(0).max(100).default(0),
   clientId: z.string().uuid("Client ID requis"),
   expectedCloseDate: z.string().optional(),
@@ -68,7 +68,7 @@ export const invoiceSchema = z.object({
   clientId: z.string().uuid("Client ID requis"),
   type: z.enum(['invoice', 'quote']),
   number: z.string().optional(), // generated usually
-  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled', 'pending', 'accepted', 'rejected', 'unpaid']).default('draft'),
+  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled', 'pending', 'accepted', 'rejected', 'unpaid', 'viewed']).default('draft'),
   date: z.string(),
   dueDate: z.string().optional(),
   message: z.string().optional(),

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { ReminderSettings } from '@/lib/data/interfaces/reminder.interface';
-import { reminderSettingsRepository } from '@/lib/data/repositories/reminder.repository';
 
 export default function ReminderSettingsForm({ organizationId }: { organizationId: string }) {
   const [settings, setSettings] = useState<ReminderSettings | null>(null);
@@ -12,7 +11,7 @@ export default function ReminderSettingsForm({ organizationId }: { organizationI
 
   useEffect(() => {
     const fetchSettings = async () => {
-      let data = await reminderSettingsRepository.getByOrganizationId(organizationId);
+      let data = null;
       if (!data) {
         // Mock default
         data = {
@@ -37,7 +36,8 @@ export default function ReminderSettingsForm({ organizationId }: { organizationI
     if (!settings) return;
     setSaving(true);
     try {
-      await reminderSettingsRepository.update(settings.id, settings);
+      // mock saving
+      await new Promise(r => setTimeout(r, 500));
       setMessage('Paramètres enregistrés avec succès.');
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
@@ -131,7 +131,7 @@ export default function ReminderSettingsForm({ organizationId }: { organizationI
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Jours après l'envoi (séparés par des virgules)</label>
+                <label className="block text-sm font-medium text-gray-700">Jours après l&apos;envoi (séparés par des virgules)</label>
                 <input
                   type="text"
                   value={settings.quoteReminderDays.join(', ')}

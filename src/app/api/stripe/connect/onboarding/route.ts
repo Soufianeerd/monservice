@@ -1,12 +1,12 @@
+import { organizationService } from '@/lib/services/organization.service';
 import { createConnectAccount, createAccountLink } from '@/lib/stripe/connect';
-import { organizationRepository } from '@/lib/data/repositories/organization.repository';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
     const { organizationId } = await req.json();
 
-    const organization = await organizationRepository.getById(organizationId);
+    const organization = await organizationService.getById(organizationId);
     if (!organization) {
       return NextResponse.json({ error: 'Organisation introuvable' }, { status: 404 });
     }
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     
     if (!accountId) {
       accountId = await createConnectAccount(organization.email || 'contact@example.com', organizationId);
-      await organizationRepository.update(organizationId, { stripeAccountId: accountId, stripeAccountStatus: 'pending' });
+      await organizationService.update(organizationId, { stripeAccountId: accountId, stripeAccountStatus: 'pending' });
     }
 
     const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/organization?connect=success`;

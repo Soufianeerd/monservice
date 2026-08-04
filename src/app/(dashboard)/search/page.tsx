@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthContext';
-import { globalSearch, SearchResult } from '@/utils/search';
+import { SearchResult } from '@/utils/search';
+import { searchAction } from '@/app/actions/search.actions';
 import Link from 'next/link';
 
 function SearchResultsContent() {
@@ -22,7 +23,7 @@ function SearchResultsContent() {
       }
       setLoading(true);
       try {
-        const data = await globalSearch(query, user.organizationId);
+        const data = await searchAction(query, user.organizationId);
         setResults(data);
       } catch (error) {
         console.error('Erreur recherche', error);

@@ -3,15 +3,15 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState, use } from 'react';
 import { RequestStatus } from '@/lib/data/interfaces';
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { Request } from '@/lib/data/interfaces';
-import { invoiceRepository  } from '@/lib/data/repositories';
+
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import RespondToRequestForm from '@/components/marketplace/RespondToRequestForm';
 import { Card, CardBody } from '@/components/ui/Card';
 import { generateId } from '@/lib/utils/id-generator';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function RespondToRequestPage({ params }: { params: Promise<{ requestId: string }> }) {
   const resolvedParams = use(params);
@@ -23,7 +23,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
   const [error, setError] = useState('');
 
   useEffect(() => {
-    requestService.findById(requestId).then(req => {
+    requestActions.findByIdAction(requestId).then(req => {
       setRequest(req || null);
     });
   }, [requestId]);
@@ -34,7 +34,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
     
     try {
       // Check if already responded
-      const existingInvoices = await invoiceRepository.findByProfessional(user.organizationId);
+      const existingInvoices = await invoiceActions.findByProfessionalAction(user.organizationId);
       const alreadyResponded = existingInvoices.some(inv => inv.requestId === request.id);
       
       if (alreadyResponded) {
@@ -43,7 +43,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         return;
       }
 
-      const nextNumber = await invoiceService.getNextInvoiceNumber(user.organizationId, 'quote');
+      const nextNumber = await invoiceActions.getNextInvoiceNumberAction(user.organizationId, 'quote');
 
       const lines = [{
         description: "Prestation : " + request.title,
@@ -55,7 +55,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         amountTTC: data.amount * 1.2
       }];
 
-      await invoiceService.create({
+      await invoiceActions.createAction({
         type: 'quote',
         number: nextNumber,
         date: new Date().toISOString(),

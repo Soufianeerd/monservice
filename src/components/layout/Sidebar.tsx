@@ -1,36 +1,59 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
-const professionalNavItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-  { name: 'Marketplace', href: '/marketplace', icon: '🌍' },
-  { name: 'Mes devis', href: '/quotes', icon: '📝' },
-  { name: 'Messagerie', href: '/messages', icon: '💬' },
-  { name: 'Calendrier', href: '/calendar', icon: '📅' },
-  { name: 'Rapports', href: '/reports', icon: '📈' },
-  { name: 'Activité', href: '/activity', icon: '⚡' },
-  { name: 'Clients', href: '/clients', icon: '🏢' },
-  { name: 'Contacts', href: '/contacts', icon: '👤' },
-  { name: 'Deals', href: '/deals', icon: '💼' },
-  { name: 'Produits', href: '/products', icon: '📦' },
-  { name: 'Factures', href: '/invoices', icon: '📄' },
-  { name: 'Tâches', href: '/tasks', icon: '✅' },
-  { name: 'Modèles', href: '/templates', icon: '✉️' },
-  { name: 'Profil', href: '/profile', icon: '👤' },
-  { name: 'Paramètres Org.', href: '/settings/organization', icon: '⚙️' },
+type SubItem = { name: string; href: string };
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  subItems?: SubItem[];
+};
+
+const professionalNavItems: NavItem[] = [
+  { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Clients', href: '/clients', icon: Users },
+  { name: 'Deals', href: '/deals', icon: TrendingUp },
+  { 
+    name: 'Facturation', href: '/facturation', icon: FileText, 
+    subItems: [
+      { name: 'Factures', href: '/facturation/factures' },
+      { name: 'Devis', href: '/facturation/devis' },
+      { name: 'Produits', href: '/facturation/produits' },
+    ]
+  },
+  { 
+    name: 'Agenda', href: '/agenda', icon: Calendar, 
+    subItems: [
+      { name: 'Calendrier', href: '/agenda/calendrier' },
+      { name: 'Tâches', href: '/agenda/taches' },
+    ]
+  },
+  { name: 'Marketplace', href: '/marketplace', icon: Store },
+  { name: 'Messagerie', href: '/messages', icon: MessageSquare },
+  { 
+    name: 'Paramètres', href: '/parametres', icon: Settings, 
+    subItems: [
+      { name: 'Profil', href: '/parametres/profil' },
+      { name: 'Organisation', href: '/parametres/organisation' },
+      { name: 'Facturation', href: '/parametres/facturation' },
+      { name: 'Notifications', href: '/parametres/notifications' },
+    ]
+  },
 ];
 
-const clientNavItems = [
-  { name: 'Tableau de bord', href: '/client/dashboard', icon: '📊' },
-  { name: 'Mes demandes', href: '/client/requests', icon: '📝' },
-  { name: 'Devis reçus', href: '/client/quotes', icon: '📄' },
-  { name: 'Mes factures', href: '/client/invoices', icon: '💳' },
-  { name: 'Messagerie', href: '/client/messages', icon: '💬' },
-  { name: 'Profil', href: '/client/profile', icon: '👤' },
+const clientNavItems: NavItem[] = [
+  { name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
+  { name: 'Mes demandes', href: '/client/requests', icon: FileText },
+  { name: 'Devis reçus', href: '/client/quotes', icon: FileText },
+  { name: 'Mes factures', href: '/client/invoices', icon: FileText },
+  { name: 'Messagerie', href: '/client/messages', icon: MessageSquare },
+  { name: 'Profil', href: '/client/profile', icon: Users },
 ];
 
 interface SidebarProps {
@@ -42,6 +65,11 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const role = useRole();
   const navItems = role === 'client' ? clientNavItems : professionalNavItems;
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (name: string) => {
+    setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
+  };
 
   return (
     <>
@@ -78,20 +106,59 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
           <nav className="px-2 py-4 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isExpanded = expandedItems[item.name] || isActive;
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+              const Icon = item.icon;
+
               return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsOpen?.(false)}
-                  className={`${
-                    isActive
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                >
-                  <span className="mr-3 text-lg" aria-hidden="true">{item.icon}</span>
-                  {item.name}
-                </Link>
+                <div key={item.name}>
+                  <Link
+                    href={hasSubItems ? '#' : item.href}
+                    onClick={(e) => {
+                      if (hasSubItems) {
+                        e.preventDefault();
+                        toggleExpand(item.name);
+                      } else {
+                        setIsOpen?.(false);
+                      }
+                    }}
+                    className={`${
+                      isActive
+                        ? 'bg-gray-800 text-white'
+                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                  >
+                    <div className="flex items-center">
+                      <Icon className="mr-3 flex-shrink-0 h-5 w-5" aria-hidden="true" />
+                      {item.name}
+                    </div>
+                    {hasSubItems && (
+                      isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                    )}
+                  </Link>
+
+                  {hasSubItems && isExpanded && (
+                    <div className="ml-8 mt-1 space-y-1">
+                      {item.subItems!.map((subItem) => {
+                        const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
+                        return (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            onClick={() => setIsOpen?.(false)}
+                            className={`${
+                              isSubActive
+                                ? 'text-white font-semibold'
+                                : 'text-gray-400 hover:text-gray-200'
+                            } group flex items-center px-2 py-1.5 text-sm font-medium rounded-md transition-colors`}
+                          >
+                            {subItem.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

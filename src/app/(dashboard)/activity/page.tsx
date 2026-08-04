@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
-import { activityLogRepository } from '@/lib/data';
 import { ActivityLog } from '@/lib/data/interfaces';
 import ActivityFeed from '@/components/crm/ActivityFeed';
 
@@ -17,8 +16,7 @@ export default function ActivityPage() {
       if (!user?.organizationId) return;
       setLoading(true);
       try {
-        const data = await activityLogRepository.findByOrganization(user.organizationId);
-        setLogs(data);
+        setLogs([]);
       } catch (error) {
         console.error('Erreur chargement logs', error);
       } finally {

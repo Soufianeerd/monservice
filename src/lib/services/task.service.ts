@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/server';
 import { tasks } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateId } from '../utils/id-generator';

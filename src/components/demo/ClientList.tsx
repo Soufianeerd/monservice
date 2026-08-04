@@ -1,7 +1,9 @@
 'use client';
+import * as clientActions from '@/app/actions/client.actions';
+import * as organizationActions from '@/app/actions/organization.actions';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import { useState, useEffect } from 'react';
-import { clientRepository, organizationRepository } from '@/lib/data';
 import { Client, Organization } from '@/lib/data/interfaces';
 
 type ClientWithOrganization = Client & { organizationName: string };
@@ -19,8 +21,8 @@ export default function ClientList({ organizationId }: ClientListProps = {}) {
       try {
         setLoading(true);
         const [clientsData, organizationsData] = await Promise.all([
-          clientRepository.getAll(),
-          organizationRepository.getAll()
+          clientActions.findAllAction(organizationId),
+          organizationId ? organizationActions.getByIdAction(organizationId).then(o => o ? [o] : []) : []
         ]);
 
         const orgMap = new Map<string, Organization>();

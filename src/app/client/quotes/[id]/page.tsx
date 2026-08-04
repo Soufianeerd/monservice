@@ -1,18 +1,18 @@
 'use client';
+import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Invoice, Request } from '@/lib/data/interfaces';
 
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useEffect, useState, use } from 'react';
 import { generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { DownloadIcon } from 'lucide-react';
-import { organizationRepository } from '@/lib/data';
-import { requestService } from '@/lib/services/request.service';
+import * as requestActions from '@/app/actions/request.actions';
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -26,18 +26,18 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.id) return;
-      const q = await invoiceService.getById(id);
+      const q = await invoiceActions.getByIdAction(id);
       if (q && q.clientId === user.id && q.type === 'quote') {
         setQuote(q);
         // Mark as viewed if it was just sent
         if (q.status === 'sent') {
           // This requires pro organizationId but wait, client does not know it
           // We can use the professionalId / organizationId of the quote!
-          await invoiceService.update(q.id, q.organizationId, { status: 'viewed' });
+          await invoiceActions.updateAction(q.id, q.organizationId, { status: 'viewed' });
         }
         
         if (q.requestId) {
-          const req = await requestService.findById(q.requestId);
+          const req = await requestActions.findByIdAction(q.requestId);
           setRequest(req || null);
         }
       }
@@ -55,7 +55,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const handleDecline = async () => {
     if (!quote) return;
     if (confirm('Êtes-vous sûr de vouloir refuser ce devis ?')) {
-      await invoiceService.update(quote.id, quote.organizationId, { status: 'cancelled' });
+      await invoiceActions.updateAction(quote.id, quote.organizationId, { status: 'cancelled' });
       setQuote({ ...quote, status: 'cancelled' });
     }
   };
@@ -63,7 +63,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const handleDownload = async () => {
     if (quote && user?.organizationId) {
       try {
-        const org = await organizationRepository.getById(user.organizationId) || await organizationRepository.getById(quote.organizationId);
+        const org = await getByIdAction(user.organizationId) || await getByIdAction(quote.organizationId);
         if (!org) return;
         const client = { name: user.name || 'Client', email: user.email };
         const blob = await generateQuotePDF(quote as any, org, client);

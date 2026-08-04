@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { useState, useEffect } from 'react';
-import { invoiceService } from '@/lib/services/invoice.service';
+import * as invoiceActions from '@/app/actions/invoice.actions';
 import { Invoice } from '@/lib/data/interfaces';
 import InvoiceList from '@/components/client/InvoiceList';
 
@@ -14,7 +14,7 @@ export default function ClientInvoicesPage() {
 
   useEffect(() => {
     if (user?.id) {
-      invoiceService.findByClient(user.id).then(allInvoices => {
+      invoiceActions.findByClientAction(user.id).then(allInvoices => {
         setInvoices(allInvoices.filter(i => i.type === 'invoice').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         setLoading(false);
       });
