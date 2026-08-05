@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TaskForm from '@/components/crm/TaskForm';
 import * as userActions from '@/app/actions/user.actions';
-import { generateId } from '@/lib/utils/id-generator';
 import { User, Task } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 
