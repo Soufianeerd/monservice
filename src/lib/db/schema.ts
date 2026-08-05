@@ -1,9 +1,23 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable as sqliteTableCore, text as sqliteText, integer as sqliteInteger, real as sqliteReal } from 'drizzle-orm/sqlite-core';
+import { pgTable, text as pgText, integer as pgInteger, real as pgReal, boolean as pgBoolean } from 'drizzle-orm/pg-core';
+
+const isPg = process.env.DATABASE_URL?.startsWith('postgres');
+
+const sqliteTable: typeof sqliteTableCore = isPg ? (pgTable as any) : sqliteTableCore;
+const text: typeof sqliteText = isPg ? (pgText as any) : sqliteText;
+const real: typeof sqliteReal = isPg ? (pgReal as any) : sqliteReal;
+const integer: typeof sqliteInteger = isPg ? (((name: string, options?: any) => {
+  if (options?.mode === 'boolean') {
+    return pgBoolean(name);
+  }
+  return pgInteger(name);
+}) as any) : sqliteInteger;
 
 // Users
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
+  password: text('password'),
   name: text('name'),
   profileType: text('profile_type').notNull(), // 'client' | 'professional'
   organizationId: text('organization_id'),

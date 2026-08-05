@@ -9,7 +9,7 @@ export const userService = {
     try {
       const result = await db.select().from(users).where(eq(users.id, userId));
       if (!result[0]) return null;
-      return result[0] as any as User;
+      return result[0] as unknown as User;
     } catch (err) {
       console.error('Unexpected error fetching user profile:', err);
       return null;
@@ -20,31 +20,32 @@ export const userService = {
     try {
       const result = await db.select().from(users).where(eq(users.email, email));
       if (!result[0]) return null;
-      return result[0] as any as User;
+      return result[0] as unknown as User;
     } catch (err) {
       console.error('Unexpected error fetching user by email:', err);
       return null;
     }
   },
 
-  async createUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }): Promise<User> {
+  async createUser(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
     const id = generateId();
     const now = new Date().toISOString();
     
-    // In a real app we'd save the password hash, but for mock local auth, 
-    // we can either add passwordHash to db schema, or just skip it if we just mock.
-    // For now we'll just insert the user profile.
+    let hashedPassword = undefined;
+    if (data.password) {
+      const { hashPassword } = await import('../utils/password');
+      hashedPassword = await hashPassword(data.password);
+    }
+    
     const newUser = {
       ...data,
       id,
+      password: hashedPassword,
       createdAt: now,
       updatedAt: now,
     };
-    
-    // @ts-ignore - Ignore password property for db insertion
-    delete newUser.password;
 
-    await db.insert(users).values(newUser as any);
+    await db.insert(users).values(newUser as unknown as typeof users.$inferInsert);
     return newUser as User;
   },
 
@@ -66,7 +67,7 @@ export const userService = {
   async getAllUsers(): Promise<User[]> {
     try {
       const results = await db.select().from(users);
-      return results as any[] as User[];
+      return results as unknown[] as User[];
     } catch (err) {
       console.error('Unexpected error fetching all users:', err);
       return [];

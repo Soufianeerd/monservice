@@ -23,7 +23,7 @@ export default function QuotesSentList({ quotes }: { quotes: Invoice[] }) {
       <ul className="divide-y divide-gray-200">
         {quotes.length === 0 ? (
           <li className="px-6 py-8 text-center text-gray-500">
-            Vous n'avez envoyé aucun devis pour le moment.
+            Vous n&apos;avez envoyé aucun devis pour le moment.
           </li>
         ) : (
           quotes.map((quote) => (

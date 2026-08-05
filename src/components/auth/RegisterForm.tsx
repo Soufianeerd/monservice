@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserIcon, BriefcaseIcon, Building2Icon, StethoscopeIcon, LaptopIcon, HammerIcon, MoreHorizontalIcon, ArrowLeftIcon } from 'lucide-react';
+import { UserIcon, BriefcaseIcon, StethoscopeIcon, LaptopIcon, HammerIcon, MoreHorizontalIcon, ArrowLeftIcon } from 'lucide-react';
 import { ProfileType } from '@/lib/data/interfaces';
 
 import { toast } from 'react-hot-toast';
@@ -224,7 +224,7 @@ export default function RegisterForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Secteur d'activité *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Secteur d&apos;activité *</label>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {sectors.map((s) => (
                   <button
@@ -277,7 +277,7 @@ export default function RegisterForm() {
               </div>
               <div className="ml-3 text-sm">
                 <label htmlFor="terms" className="font-medium text-gray-700">
-                  J'accepte les <Link href="/conditions" className="text-indigo-600 hover:underline">conditions générales d'utilisation</Link> et la <Link href="/confidentialite" className="text-indigo-600 hover:underline">politique de confidentialité</Link>.
+                  J&apos;accepte les <Link href="/conditions" className="text-indigo-600 hover:underline">conditions générales d&apos;utilisation</Link> et la <Link href="/confidentialite" className="text-indigo-600 hover:underline">politique de confidentialité</Link>.
                 </label>
               </div>
             </div>

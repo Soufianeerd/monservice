@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { getOnboardingSteps } from '@/lib/services/onboarding.service';
-import { OnboardingState } from '@/lib/data/interfaces';
 
 export function useOnboarding() {
   const { user, updateUser } = useAuth();
-  const [state, setState] = useState<OnboardingState | null>(null);
 
-  useEffect(() => {
+  const state = useMemo(() => {
     if (user && !user.onboardingCompleted) {
       const steps = getOnboardingSteps(user.profileType, user.sector);
       const updatedSteps = steps.map(step => ({
@@ -15,16 +13,15 @@ export function useOnboarding() {
         completed: step.id <= user.onboardingStep
       }));
       
-      setState({
+      return {
         profileType: user.profileType,
         sector: user.sector,
         currentStep: user.onboardingStep,
         steps: updatedSteps,
         completed: user.onboardingCompleted,
-      });
-    } else {
-      setState(null);
+      };
     }
+    return null;
   }, [user]);
 
   const completeStep = async (stepId: number) => {
@@ -34,8 +31,6 @@ export function useOnboarding() {
     const newCurrentStep = Math.max(state.currentStep, stepId);
     const allRequiredCompleted = updatedSteps.filter(s => s.required).every(s => s.completed);
     
-    setState(prev => prev ? { ...prev, steps: updatedSteps, currentStep: newCurrentStep, completed: allRequiredCompleted } : null);
-    
     await updateUser({
       onboardingStep: newCurrentStep,
       onboardingCompleted: allRequiredCompleted
@@ -44,7 +39,6 @@ export function useOnboarding() {
 
   const skipOnboarding = async () => {
     if (!user) return;
-    setState(null);
     await updateUser({ onboardingCompleted: true });
   };
 

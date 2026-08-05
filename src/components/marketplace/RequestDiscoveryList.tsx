@@ -9,7 +9,7 @@ export default function RequestDiscoveryList({ requests }: { requests: Request[]
       <ul className="divide-y divide-gray-200">
         {requests.length === 0 ? (
           <li className="px-6 py-8 text-center text-gray-500">
-            Aucune demande ne correspond à vos critères. Essayez d'élargir votre recherche.
+            Aucune demande ne correspond à vos critères. Essayez d&apos;élargir votre recherche.
           </li>
         ) : (
           requests.map((request) => (

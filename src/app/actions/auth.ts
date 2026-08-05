@@ -36,13 +36,10 @@ export async function registerAction(data: {
       orgId = newOrg.id;
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = data.password ? await bcrypt.hash(data.password, salt) : undefined;
-
     const newUser = await userService.createUser({
       name: data.name,
       email: data.email,
-      password: hashedPassword,
+      password: data.password,
       role: 'admin',
       profileType: data.profileType || 'client',
       sector: data.sector,

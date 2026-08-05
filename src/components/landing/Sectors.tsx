@@ -12,7 +12,7 @@ export default function Sectors() {
         <div className="text-center mb-16">
           <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Pour tous les professionnels</h2>
           <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-            MonService s'adapte à votre métier.
+            MonService s&apos;adapte à votre métier.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

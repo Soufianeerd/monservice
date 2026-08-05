@@ -16,10 +16,16 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         const user = await userService.getUserByEmail(credentials.email);
-        if (!user || !user.password) return null;
+        if (!user || !user.password) {
+          console.log('Utilisateur non trouvé ou sans mot de passe');
+          return null;
+        }
 
         const isValid = await verifyPassword(credentials.password, user.password);
-        if (!isValid) return null;
+        if (!isValid) {
+          console.log('Mot de passe incorrect');
+          return null;
+        }
 
         return {
           id: user.id,
