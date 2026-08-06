@@ -4,13 +4,40 @@ import { eq, and, or } from 'drizzle-orm';
 import { Message } from '../data/interfaces/message.interface';
 import { generateId } from '../utils/id-generator';
 import { messageSchema } from '../validation/schemas';
-import { AppError } from '../utils/error-handler';
+import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
 
 export const messageService = {
   async getMessagesByRequestId(requestId: string): Promise<Message[]> {
     const results = await db.select().from(messages).where(eq(messages.requestId, requestId));
     return results.map(r => ({
+      ...r,
+      read: r.isRead || false,
+      requestId: r.requestId || undefined,
+    }));
+  },
+
+  /**
+   * Messages d'une demande, restreints à ceux auxquels l'utilisateur participe.
+   *
+   * L'ancienne méthode `getMessagesByRequestId` renvoyait tout le fil à
+   * quiconque connaissait l'identifiant de la demande (anomalie MS-027).
+   */
+  async getMessagesByRequestIdForUser(requestId: string, userId: string): Promise<Message[]> {
+    if (!requestId || !userId) return [];
+
+    const results = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.requestId, requestId),
+          or(eq(messages.senderId, userId), eq(messages.receiverId, userId)),
+        ),
+      )
+      .orderBy(messages.createdAt);
+
+    return results.map((r) => ({
       ...r,
       read: r.isRead || false,
       requestId: r.requestId || undefined,
@@ -51,9 +78,21 @@ export const messageService = {
     return results.length;
   },
 
-  async markAsRead(messageIds: string[]): Promise<void> {
+  /**
+   * Marque des messages comme lus.
+   *
+   * Le `receiverId` est imposé : on ne peut marquer comme lus que les
+   * messages dont on est destinataire. L'ancienne version acceptait une liste
+   * d'identifiants arbitraires (anomalie MS-027).
+   */
+  async markAsRead(messageIds: string[], receiverId: string): Promise<void> {
+    if (!receiverId || !Array.isArray(messageIds) || messageIds.length === 0) return;
+
     for (const id of messageIds) {
-      await db.update(messages).set({ isRead: true }).where(eq(messages.id, id));
+      await db
+        .update(messages)
+        .set({ isRead: true, updatedAt: new Date().toISOString() })
+        .where(and(eq(messages.id, id), eq(messages.receiverId, receiverId)));
     }
   },
 

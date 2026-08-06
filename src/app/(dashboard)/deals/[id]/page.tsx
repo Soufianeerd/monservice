@@ -1,4 +1,6 @@
 'use client';
+
+import { toast } from 'react-hot-toast';
 import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import { useState, useEffect, use } from 'react';
@@ -91,11 +93,18 @@ export default function DealDetailPage(props: { params: Promise<{ id: string }> 
           </button>
 
           <button 
-            onClick={() => {
-              import('@/lib/email').then(({ sendEmail }) => {
-                sendEmail({ to: client?.email || '', subject: `Devis: ${deal.name}` });
-                alert('Devis envoyé par email avec succès ! (Simulation)');
-              });
+            onClick={async () => {
+              try {
+                const { sendDealByEmailAction } = await import('@/app/actions/email.actions');
+                const result = await sendDealByEmailAction(deal.id);
+                // Le retour reflète l'envoi réel : plus de faux succès affiché
+                // alors qu'aucun e-mail ne partait (anomalie MS-015).
+                if (result.sent) toast.success(result.message);
+                else toast.error(result.message);
+              } catch (err) {
+                console.error(err);
+                toast.error("Erreur lors de l'envoi");
+              }
             }}
             className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
           >

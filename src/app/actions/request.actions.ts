@@ -1,53 +1,66 @@
 'use server';
 
 import { requestService } from '@/lib/services/request.service';
-import { cookies } from 'next/headers';
+import { requireSession } from '@/lib/auth/session';
+import { AppError } from '@/lib/errors';
 
+/**
+ * Server actions — demandes de la marketplace.
+ */
+
+/**
+ * Ne renvoie que les demandes publiques.
+ * L'ancienne version exposait aussi les demandes privées (MS-026).
+ */
 export async function findAllAction() {
-  return await requestService.findAll();
+  await requireSession();
+  return requestService.findPublic();
 }
 
 export async function findPublicAction() {
-  return await requestService.findPublic();
+  await requireSession();
+  return requestService.findPublic();
 }
 
-export async function findByIdAction(id?: any) {
-  return await requestService.findById(id);
-}
+/** Une demande privée n'est visible que par son auteur. */
+export async function findByIdAction(id: string) {
+  const { userId } = await requireSession();
+  const request = await requestService.findById(id);
+  if (!request) return null;
 
-export async function findByClientIdAction(clientId?: any) {
-  return await requestService.findByClientId(clientId);
-}
-
-export async function createAction(data?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
+  if (!request.isPublic && request.clientId !== userId) {
+    throw new AppError('Accès refusé à cette demande', 403, 'FORBIDDEN');
   }
-  return await requestService.create(data, userId);
+
+  return request;
 }
 
-export async function updateAction(id?: any, data?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await requestService.update(id, data, userId);
+/** Demandes du client connecté uniquement. */
+export async function findByClientIdAction(_legacyClientId?: unknown) {
+  const { userId } = await requireSession();
+  return requestService.findByClientId(userId);
 }
 
-export async function publishAction(id?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await requestService.publish(id, userId);
+export async function createAction(data: Record<string, unknown>, _legacyUserId?: unknown) {
+  const { userId } = await requireSession();
+  return requestService.create({ ...data, clientId: userId } as never, userId);
 }
 
-export async function deleteAction(id?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await requestService.delete(id, userId);
+export async function updateAction(
+  id: string,
+  data: Record<string, unknown>,
+  _legacyUserId?: unknown,
+) {
+  const { userId } = await requireSession();
+  return requestService.update(id, data as never, userId);
 }
 
+export async function publishAction(id: string, _legacyUserId?: unknown) {
+  const { userId } = await requireSession();
+  return requestService.publish(id, userId);
+}
+
+export async function deleteAction(id: string, _legacyUserId?: unknown) {
+  const { userId } = await requireSession();
+  return requestService.delete(id, userId);
+}

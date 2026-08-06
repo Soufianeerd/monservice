@@ -1,12 +1,15 @@
 import { defineConfig } from 'drizzle-kit';
 import * as dotenv from 'dotenv';
+
 dotenv.config({ path: '.env.local' });
 
+// PostgreSQL dans tous les environnements : le dialecte n'est plus
+// conditionnel (voir anomalies MS-011 et MS-021).
 export default defineConfig({
-  dialect: process.env.DATABASE_URL?.startsWith('postgres') ? 'postgresql' : 'sqlite',
+  dialect: 'postgresql',
   schema: './src/lib/db/schema.ts',
-  out: process.env.DATABASE_URL?.startsWith('postgres') ? './drizzle/postgres' : './drizzle',
+  out: './drizzle/postgres',
   dbCredentials: {
-    url: process.env.DATABASE_URL || './database.sqlite',
+    url: process.env.DATABASE_URL!,
   },
 });

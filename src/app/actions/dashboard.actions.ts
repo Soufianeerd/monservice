@@ -1,17 +1,20 @@
 'use server';
 
 import { dashboardService } from '@/lib/services/dashboard.service';
-import { cookies } from 'next/headers';
+import { requireProfessional, requireSession } from '@/lib/auth/session';
 
-export async function getProfessionalStatsAction(organizationId?: any) {
-  return await dashboardService.getProfessionalStats(organizationId);
+/**
+ * Les paramètres préfixés par `_` sont conservés pour la compatibilité des
+ * appelants, mais leur valeur est ignorée : l'identité et l'organisation
+ * proviennent exclusivement de la session serveur (MS-002, MS-005, MS-006).
+ */
+
+export async function getProfessionalStatsAction(_legacyOrganizationId?: unknown) {
+  const { organizationId } = await requireProfessional();
+  return dashboardService.getProfessionalStats(organizationId);
 }
 
-export async function getClientStatsAction(userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await dashboardService.getClientStats(userId);
+export async function getClientStatsAction(_legacyUserId?: unknown) {
+  const { userId } = await requireSession();
+  return dashboardService.getClientStats(userId);
 }
-

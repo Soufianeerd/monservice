@@ -1,37 +1,43 @@
 'use server';
 
 import { productService } from '@/lib/services/product.service';
-import { cookies } from 'next/headers';
+import { requireProfessional } from '@/lib/auth/session';
+import { assertQuota } from '@/lib/billing/quota';
 
-export async function findAllAction(organizationId?: any) {
-  return await productService.findAll(organizationId);
+/**
+ * Les paramètres préfixés par `_` sont conservés pour la compatibilité des
+ * appelants, mais leur valeur est ignorée : l'identité et l'organisation
+ * proviennent exclusivement de la session serveur (MS-002, MS-005, MS-006).
+ */
+
+export async function findAllAction(_legacyOrganizationId?: unknown) {
+  const { organizationId } = await requireProfessional();
+  return productService.findAll(organizationId);
 }
 
-export async function findByIdAction(id?: any, organizationId?: any) {
-  return await productService.findById(id, organizationId);
+export async function findByIdAction(id: string, _legacyOrganizationId?: unknown) {
+  const { organizationId } = await requireProfessional();
+  return productService.findById(id, organizationId);
 }
 
-export async function createAction(data?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await productService.create(data, userId);
+export async function createAction(data: Record<string, unknown>, _legacyUserId?: unknown) {
+  const ctx = await requireProfessional();
+  const { organizationId, userId } = ctx;
+  await assertQuota(ctx, 'products');
+  return productService.create({ ...data, organizationId } as never, userId);
 }
 
-export async function updateAction(id?: any, organizationId?: any, data?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await productService.update(id, organizationId, data, userId);
+export async function updateAction(
+  id: string,
+  _legacyOrganizationId: unknown,
+  data: Record<string, unknown>,
+  _legacyUserId?: unknown,
+) {
+  const { organizationId, userId } = await requireProfessional();
+  return productService.update(id, organizationId, data as never, userId);
 }
 
-export async function deleteAction(id?: any, organizationId?: any, userId?: any) {
-  if (!userId) {
-    const cookieStore = await cookies();
-    userId = cookieStore.get('session')?.value;
-  }
-  return await productService.delete(id, organizationId, userId);
+export async function deleteAction(id: string, _legacyOrganizationId?: unknown, _legacyUserId?: unknown) {
+  const { organizationId, userId } = await requireProfessional();
+  return productService.delete(id, organizationId, userId);
 }
-

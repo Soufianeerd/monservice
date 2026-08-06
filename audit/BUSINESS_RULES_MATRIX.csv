@@ -1,0 +1,18 @@
+fonctionnalite,objectif,acteur_autorise,regle_metier_attendue,implementation_reelle,invariant_respecte,etat,anomalie
+Inscription,Creer un compte,visiteur,E-mail unique + mot de passe robuste + verification,Unicite OK / aucune robustesse / aucune verification,NON,PARTIEL,MS-017 MS-035
+Connexion,Ouvrir une session,utilisateur,Identifiants valides + limitation des tentatives,bcrypt OK / aucune limitation / redirection cassee,NON,CASSE,MS-008 MS-017
+Deconnexion,Fermer la session,utilisateur,Revocation cote serveur,JWT sans revocation possible,NON,PARTIEL,-
+Reinitialisation mot de passe,Recuperer l'acces,utilisateur,Jeton unique expirant + revocation des sessions,Ecran factice sans backend,NON,INEXISTANT,MS-016
+Creation client,Enregistrer un client,professional du meme locataire,Appartenance au locataire verifiee,Verifiee mais via un userId fourni par l'appelant,NON,CONTOURNABLE,MS-005 MS-006
+Suppression client,Supprimer un client et ses dependances,professional proprietaire,Transaction atomique + tracabilite,4 DELETE separes sans transaction ni journal,NON,DANGEREUX,MS-020
+Creation devis,Emettre un devis,professional du locataire,Numerotation unique par organisation,Numerotation par comptage (course critique possible),NON,FRAGILE,-
+Signature devis,Recueillir un accord,destinataire identifie,Jeton unique + IP + horodatage + scellement + immutabilite,Aucun controle; IP jamais capturee,NON,SANS VALEUR,MS-007 MS-032
+Emission facture,Facturer,professional du locataire,Immutabilite apres emission + conservation 10 ans,Modification et suppression libres,NON,NON CONFORME,MS-007
+Paiement facture,Encaisser,client destinataire,Statut paid pilote uniquement par Stripe,markAsPaid public sans verification,NON,FRAUDE POSSIBLE,MS-007
+Abonnement,Souscrire un plan,utilisateur authentifie,Droits accordes a l'activation et retires a la resiliation,Accord OK via webhook; retrait JAMAIS traite,NON,FUITE DE REVENU,MS-014
+Quotas de plan,Limiter l'usage,systeme,50 clients et 10 devis/mois sur le plan Free,Aucun controle,NON,INEXISTANT,MS-019
+Relances,Relancer les impayes,systeme (cron),Envoi planifie et journalise,Service vide; endpoint public,NON,INEXISTANT,MS-013 MS-018
+Notifications,Informer l'utilisateur,systeme,Generation et marquage lu,Service vide retournant 0 et [],NON,INEXISTANT,MS-018
+Messagerie,Echanger,participants a la conversation,Seuls emetteur et destinataire accedent,Aucun controle de participation,NON,IDOR,MS-027
+Marketplace,Publier une demande,client,Demandes privees invisibles aux tiers,findAll ignore visibility,NON,FUITE,MS-026
+Envoi d'e-mail,Notifier,systeme,Envoi reel avec suivi,console.log retournant toujours true,NON,SIMULE,MS-015

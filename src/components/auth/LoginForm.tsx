@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 
@@ -12,10 +12,11 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error('Veuillez remplir tous les champs.');
       return;
@@ -23,14 +24,19 @@ export default function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await signIn('credentials', { email, password, redirect: false });
-      if (result?.error) {
-        toast.error('Email ou mot de passe incorrect');
-      } else {
-        toast.success('Connecté !');
-        router.push('/dashboard');
+      const { error } = await signIn(email, password);
+
+      if (error) {
+        toast.error(error);
+        return;
       }
-    } catch (error) {
+
+      toast.success('Connecté !');
+      // Destination d'origine si l'utilisateur a été redirigé vers /login.
+      const callbackUrl = searchParams.get('callbackUrl');
+      router.push(callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/dashboard');
+      router.refresh();
+    } catch {
       toast.error('Erreur de connexion');
     } finally {
       setIsSubmitting(false);

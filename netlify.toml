@@ -8,7 +8,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# La redirection `/* -> /index.html` a été supprimée : c'est une règle de type
+# SPA, incompatible avec le rendu serveur de Next.js. Le routage est géré par
+# @netlify/plugin-nextjs (anomalie MS-023).

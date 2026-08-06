@@ -1,0 +1,19 @@
+parcours_critique,test_nominal,test_non_autorise,test_invalide,test_limite,test_concurrent,test_panne,test_reprise,couverture_actuelle,priorite_ajout
+Inscription,e2e/auth.spec.ts (non execute),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,tres faible,P0
+Verification e-mail,FONCTION INEXISTANTE,-,-,-,-,-,-,nulle,P1
+Connexion,e2e/auth.spec.ts (non execute),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,tres faible,P0
+Reinitialisation mot de passe,FONCTION FACTICE,-,-,-,-,-,-,nulle,P1
+Isolation multitenant,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,NULLE,P0
+Autorisation par role,e2e/rbac.spec.ts (non execute),partiel,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,tres faible,P0
+Creation client,e2e/client.spec.ts (non execute),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,tres faible,P0
+Cycle devis -> signature,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,NULLE,P0
+Cycle facture -> paiement,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,NULLE,P0
+Webhook Stripe (rejeu doublon desordre),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,NULLE,P0
+Quotas et plans,FONCTION INEXISTANTE,-,-,-,-,-,-,nulle,P1
+Marketplace,e2e/marketplace.spec.ts (non execute),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,tres faible,P1
+Messagerie,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,NULLE,P1
+Export / suppression RGPD,FONCTION INEXISTANTE,-,-,-,-,-,-,nulle,P1
+Restauration de sauvegarde,ABSENT,-,-,-,-,-,ABSENT,NULLE,P0
+Numerotation de facture (unicite),partiel (invoice.service.test.ts),ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,ABSENT,faible,P1
+Hachage de mot de passe,password.test.ts OK,n/a,OK,ABSENT,n/a,n/a,n/a,correcte,-
+user.service,FACTICE (expect(true)),-,-,-,-,-,-,NULLE,P1

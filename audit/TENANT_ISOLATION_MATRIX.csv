@@ -1,0 +1,13 @@
+ressource,colonne_locataire,filtre_sql_present,source_du_filtre,verification_appartenance,fk_presente,rls,verdict_isolation,anomalie
+clients,organization_id,oui,parametre client,ecriture seulement (contournable),non,non,ROMPUE,MS-005 MS-006
+contacts,organization_id,oui,parametre client,ecriture seulement,non,non,ROMPUE,MS-005
+deals,organization_id,oui,parametre client,ecriture seulement,non,non,ROMPUE,MS-005
+products,organization_id,oui,parametre client,ecriture seulement,non,non,ROMPUE,MS-005
+invoices,organization_id,partiel (getById sans filtre),parametre client,partielle,non,non,ROMPUE,MS-005 MS-007
+invoice_lines,AUCUNE,non (via invoice_id),-,aucune,non,non,ROMPUE,MS-005
+tasks,organization_id,oui,parametre client,ecriture seulement,non,non,ROMPUE,MS-005
+messages,organization_id,non (filtre par senderId/receiverId),parametre client,aucune,non,non,ROMPUE,MS-027
+message_templates,organization_id,oui,parametre client,aucune,non,non,ROMPUE,MS-005
+requests,AUCUNE (clientId),non,-,aucune,non,non,ROMPUE,MS-026
+organizations,id,n/a,parametre client,AUCUNE,n/a,non,ROMPUE,MS-012
+users,organization_id,non,-,AUCUNE,non,non,ROMPUE,MS-003 MS-004

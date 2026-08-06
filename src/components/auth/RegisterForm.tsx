@@ -71,40 +71,49 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.acceptedTerms) {
       toast.error('Vous devez accepter les conditions générales.');
       return;
     }
 
     setIsSubmitting(true);
+
+    // L'inscription est entièrement pilotée côté serveur : création du compte
+    // Supabase Auth + du profil applicatif dans une seule action, pour éviter
+    // qu'un compte d'authentification existe sans profil.
     const result = await registerAction({
       name: formData.name,
       email: formData.email,
       password: formData.password,
       orgName: formData.profileType === 'professional' ? formData.orgName : undefined,
       profileType: formData.profileType as ProfileType,
-      sector: formData.profileType === 'professional' ? formData.sector : undefined
+      sector: formData.profileType === 'professional' ? formData.sector : undefined,
     });
 
-    if (result.success) {
-      const signInResult = await signIn('credentials', { 
-        email: formData.email, 
-        password: formData.password, 
-        redirect: false 
-      });
+    if (!result.success) {
       setIsSubmitting(false);
+      toast.error(result.error || 'Erreur lors de la création du compte.');
+      return;
+    }
 
-      if (signInResult?.error) {
-        toast.error('Compte créé, mais erreur lors de la connexion automatique.');
-        router.push('/login');
-      } else {
-        toast.success('Compte créé avec succès !');
-        router.push('/dashboard');
-      }
-    } else {
+    if (result.requiresEmailConfirmation) {
       setIsSubmitting(false);
-      toast.error(result.error || 'Erreur lors de la création du compte. Vérifiez si l\'email est déjà utilisé.');
+      toast.success('Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse.');
+      router.push('/login');
+      return;
+    }
+
+    const { error } = await signIn(formData.email, formData.password);
+    setIsSubmitting(false);
+
+    if (error) {
+      toast.error('Compte créé, mais erreur lors de la connexion automatique.');
+      router.push('/login');
+    } else {
+      toast.success('Compte créé avec succès !');
+      router.push(formData.profileType === 'client' ? '/client/dashboard' : '/dashboard');
+      router.refresh();
     }
   };
 

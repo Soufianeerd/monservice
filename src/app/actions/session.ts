@@ -1,24 +1,41 @@
 'use server';
+
 import { organizationService } from '@/lib/services/organization.service';
 import { userService } from '@/lib/services/user.service';
-import { User } from '@/lib/data/interfaces/user.interface';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getSessionContext, requireSession } from '@/lib/auth/session';
+import { profileUpdateSchema } from '@/lib/validation/schemas';
 
+/** Session courante. Renvoie `{ user: null }` si aucune session valide. */
 export async function getSessionAction() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as { id?: string })?.id;
+  const ctx = await getSessionContext();
+  if (!ctx) return { user: null };
 
-  if (!userId) return { user: null };
-
-  const user = await userService.getUserProfile(userId);
+  const user = await userService.getUserProfile(ctx.userId);
   return { user };
 }
 
-export async function getOrganizationAction(id: string) {
-  return await organizationService.getById(id);
+/**
+ * Organisation de l'utilisateur connecté.
+ *
+ * Aucun identifiant n'est accepté en paramètre : il provient de la session.
+ * L'ancienne version acceptait un `id` arbitraire et renvoyait n'importe
+ * quelle organisation (MS-005).
+ */
+export async function getOrganizationAction() {
+  const ctx = await requireSession();
+  if (!ctx.organizationId) return null;
+  return organizationService.getById(ctx.organizationId);
 }
 
-export async function updateUserAction(id: string, data: Partial<User>) {
-  return await userService.updateUserProfile(id, data);
+/**
+ * Mise à jour du profil courant.
+ *
+ * L'ancienne version acceptait un identifiant arbitraire et un `Partial<User>`
+ * non filtré : n'importe qui pouvait modifier n'importe quel compte, y compris
+ * son organisation et son abonnement (MS-004).
+ */
+export async function updateUserAction(data: Record<string, unknown>) {
+  const { userId } = await requireSession();
+  const validated = profileUpdateSchema.parse(data);
+  return userService.updateUserProfile(userId, validated);
 }

@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { Client } from '../data/interfaces';
 import { generateId } from '../utils/id-generator';
 import { clientSchema } from '../validation/schemas';
-import { AppError } from '../utils/error-handler';
+import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
 
 export const clientService = {
@@ -57,20 +57,60 @@ export const clientService = {
     return this.findById(id, organizationId);
   },
 
+  /**
+   * Supprime un client et toutes ses dépendances.
+   *
+   * Deux corrections :
+   *  - l'ensemble est exécuté dans une TRANSACTION : l'ancienne version
+   *    enchaînait quatre `DELETE` indépendants, et un échec en cours de route
+   *    laissait la base incohérente (anomalie MS-020) ;
+   *  - le retour ne s'appuie plus sur `result.changes`, qui n'existe pas dans
+   *    le pilote PostgreSQL et renvoyait donc toujours `false` en production
+   *    alors que la suppression avait réussi (anomalie MS-021).
+   *
+   * Les suppressions en cascade sont restreintes à l'organisation : sans cela,
+   * un identifiant de client d'un autre locataire aurait supprimé ses données.
+   */
   async deleteWithCascade(id: string, organizationId: string, userId: string): Promise<boolean> {
     const user = await userService.getUserProfile(userId);
     if (!user || user.organizationId !== organizationId) {
-      throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+      throw new AppError('Accès non autorisé à cette organisation', 403, 'UNAUTHORIZED');
     }
 
-    // Cascading deletes
-    await db.delete(contacts).where(eq(contacts.clientId, id));
-    await db.delete(deals).where(eq(deals.clientId, id));
-    await db.delete(invoices).where(eq(invoices.clientId, id));
-    // Tasks entityId/entityType is used. Delete tasks where entityType='client' and entityId=id
-    await db.delete(tasks).where(and(eq(tasks.entityType, 'client'), eq(tasks.entityId, id)));
+    const existing = await this.findById(id, organizationId);
+    if (!existing) return false;
 
-    const result = await db.delete(clients).where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)));
-    return result.changes > 0;
-  }
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(contacts)
+        .where(and(eq(contacts.clientId, id), eq(contacts.organizationId, organizationId)));
+      await tx
+        .delete(deals)
+        .where(and(eq(deals.clientId, id), eq(deals.organizationId, organizationId)));
+      await tx
+        .delete(invoices)
+        .where(and(eq(invoices.clientId, id), eq(invoices.organizationId, organizationId)));
+      await tx
+        .delete(tasks)
+        .where(
+          and(
+            eq(tasks.entityType, 'client'),
+            eq(tasks.entityId, id),
+            eq(tasks.organizationId, organizationId),
+          ),
+        );
+      await tx
+        .delete(clients)
+        .where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)));
+    });
+
+    console.info('[audit] client.deleted', {
+      clientId: id,
+      organizationId,
+      userId,
+      at: new Date().toISOString(),
+    });
+
+    return true;
+  },
 };

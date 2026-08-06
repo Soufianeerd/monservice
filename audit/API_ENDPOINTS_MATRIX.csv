@@ -1,0 +1,10 @@
+methode,chemin,fonction_metier,authentification,autorisation,locataire,validation_entree,pagination,rate_limit,idempotence,journalisation,tests,statut,anomalies
+POST,/api/auth/[...nextauth],Connexion NextAuth,n/a,n/a,n/a,partielle,n/a,AUCUN,n/a,console.log,aucun,VERIFIE,MS-017
+POST,/api/stripe/webhook,Evenements Stripe,Signature Stripe OK,n/a,via metadata,SDK Stripe,n/a,n/a,AUCUNE,console.log,aucun,VERIFIE,MS-014
+POST,/api/stripe/checkout,Creation abonnement,AUCUNE,AUCUNE,userId du body,AUCUNE,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-002 MS-019
+POST,/api/stripe/create-payment,Paiement facture,AUCUNE,AUCUNE,AUCUN,partielle,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,IDOR invoiceId MS-010
+POST,/api/stripe/connect/onboarding,Onboarding Connect,AUCUNE,AUCUNE,orgId du body,AUCUNE,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-012
+POST,/api/deals/sign,Signature deal,Supabase (toujours 401),via orgId DB,oui,partielle,n/a,AUCUN,partielle,console.log,aucun,VERIFIE,MS-008 MS-032
+POST,/api/quotes/sign,Signature devis,Supabase (toujours 401),AUCUNE,AUCUN,partielle,n/a,AUCUN,partielle,console.log,aucun,VERIFIE,MS-008 MS-007
+GET,/api/reminders/check,Declenchement relances,AUCUNE,AUCUNE,orgId en query,minimale,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-013 MS-018
+POST,server-action:*(~80),CRUD complet,AUCUNE,AUCUNE,parametre client,AUCUNE (any),AUCUNE,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-002 MS-005 MS-033

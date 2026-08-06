@@ -1,17 +1,15 @@
 import ProtectedLayout from '@/components/auth/ProtectedLayout';
 import Header from '@/components/layout/Header';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
-import { createClient } from '@/utils/supabase/server';
+import { getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Source d'identité unique : le socle `lib/auth/session` (anomalie MS-008).
+  const ctx = await getSessionContext();
 
-  if (!user) redirect('/login');
-
-  const profileType = user.user_metadata?.profileType;
-  if (profileType !== 'client') redirect('/dashboard');
+  if (!ctx) redirect('/login');
+  if (ctx.profileType !== 'client') redirect('/dashboard');
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

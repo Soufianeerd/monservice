@@ -1,50 +1,63 @@
-import { createSubscriptionCheckout } from '@/lib/stripe/billing';
 import { NextResponse } from 'next/server';
+import { createSubscriptionCheckout } from '@/lib/stripe/billing';
 import { userService } from '@/lib/services/user.service';
+import { isStripeConfigured } from '@/lib/stripe';
+import { requireSession } from '@/lib/auth/session';
+import { toErrorResponse } from '@/lib/utils/api-response';
 
+const PRICE_BY_TIER: Record<string, string | undefined> = {
+  starter: process.env.STRIPE_PRICE_STARTER,
+  pro: process.env.STRIPE_PRICE_PRO,
+  business: process.env.STRIPE_PRICE_BUSINESS,
+};
+
+/**
+ * Ouvre une session d'abonnement Stripe pour l'utilisateur connecté.
+ *
+ * L'ancienne version prenait `userId` et `organizationId` dans le corps de la
+ * requête, sans authentification : il était possible d'ouvrir un abonnement au
+ * nom d'un tiers (MS-002).
+ */
 export async function POST(req: Request) {
-  try {
-    const { userId, organizationId, tier } = await req.json();
+  if (!isStripeConfigured()) {
+    return NextResponse.json({ error: 'Stripe non configuré' }, { status: 503 });
+  }
 
-    const user = await userService.getUserProfile(userId);
+  try {
+    const ctx = await requireSession();
+
+    const body = await req.json().catch(() => null);
+    const tier = typeof body?.tier === 'string' ? body.tier : null;
+
+    if (!tier || !(tier in PRICE_BY_TIER)) {
+      return NextResponse.json({ error: 'Plan inconnu' }, { status: 400 });
+    }
+
+    const priceId = PRICE_BY_TIER[tier];
+    if (!priceId) {
+      return NextResponse.json({ error: 'Plan non configuré côté serveur' }, { status: 503 });
+    }
+
+    const user = await userService.getUserProfile(ctx.userId);
     if (!user) {
       return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 });
     }
 
-    let priceId = '';
-    if (tier === 'starter') priceId = process.env.STRIPE_PRICE_STARTER!;
-    else if (tier === 'pro') priceId = process.env.STRIPE_PRICE_PRO!;
-    else if (tier === 'business') priceId = process.env.STRIPE_PRICE_BUSINESS!;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    if (!priceId) {
-      return NextResponse.json({ error: 'Prix introuvable' }, { status: 400 });
-    }
-
-    const successUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/billing?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings/billing`;
-
-    // Use existing customer ID if available, else create one or pass email
-    // For simplicity, we just pass the email to create a new customer during checkout, 
-    // or we could use `createCustomer` from our stripe util.
-    // The stripe checkout api can take `customer_email` if `customer` is not provided.
-    // We'll update billing.ts to support this. Let's just pass user email as customerId param,
-    // and we'll fix billing.ts to use customer_email. But wait, `createSubscriptionCheckout`
-    // takes customerId. If we don't have it, we create it.
-    
-    // For now, let's just assume we want to pass the email as customer_email. 
-    // I'll adjust the parameters in `createSubscriptionCheckout` in another step or just pass empty string.
-    
     const url = await createSubscriptionCheckout(
-      user.stripeCustomerId || '', // if empty, we should ideally use customer_email
+      user.stripeCustomerId ?? null,
+      user.email ?? null,
       priceId,
-      successUrl,
-      cancelUrl,
-      { userId, organizationId, tier }
+      `${baseUrl}/parametres/facturation?session_id={CHECKOUT_SESSION_ID}`,
+      `${baseUrl}/parametres/facturation`,
+      // Les métadonnées proviennent de la session, jamais du client :
+      // c'est sur elles que le webhook accorde les droits.
+      { userId: ctx.userId, organizationId: ctx.organizationId ?? '', tier },
     );
 
     return NextResponse.json({ url });
   } catch (error) {
-    console.error('Erreur Stripe Checkout:', error);
-    return NextResponse.json({ error: 'Erreur lors de la création de la session' }, { status: 500 });
+    return toErrorResponse(error, 'Erreur lors de la création de la session');
   }
 }

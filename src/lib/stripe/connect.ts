@@ -1,7 +1,8 @@
-import { stripe } from './index';
+import 'server-only';
+import { getStripe } from './index';
 
 export async function createConnectAccount(email: string, organizationId: string): Promise<string> {
-  const account = await stripe.accounts.create({
+  const account = await getStripe().accounts.create({
     type: 'express',
     country: 'FR',
     email,
@@ -14,8 +15,12 @@ export async function createConnectAccount(email: string, organizationId: string
   return account.id;
 }
 
-export async function createAccountLink(accountId: string, returnUrl: string, refreshUrl: string): Promise<string> {
-  const link = await stripe.accountLinks.create({
+export async function createAccountLink(
+  accountId: string,
+  returnUrl: string,
+  refreshUrl: string,
+): Promise<string> {
+  const link = await getStripe().accountLinks.create({
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,

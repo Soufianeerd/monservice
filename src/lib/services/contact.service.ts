@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { generateId } from '../utils/id-generator';
 import { Contact } from '../data/interfaces';
 import { contactSchema } from '../validation/schemas';
-import { AppError } from '../utils/error-handler';
+import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
 
 export const contactService = {

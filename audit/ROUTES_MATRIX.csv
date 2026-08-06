@@ -1,0 +1,72 @@
+route,type,groupe,acces_attendu,protection_reelle,role_requis,locataire_requis,plan_requis,source_donnees,etat_vide,etat_erreur,statut_test,anomalies
+/,statique,public,public,aucune (correct),-,non,-,statique,n/a,n/a,VERIFIE,MS-046
+/login,statique,auth,public,aucune (correct),-,non,-,NextAuth,n/a,toast,VERIFIE,MS-017
+/register,statique,auth,public,aucune (correct),-,non,-,registerAction,n/a,toast,VERIFIE,MS-034 MS-035
+/forgot-password,statique,auth,public,aucune (correct),-,non,-,AUCUNE (mock),n/a,aucun,VERIFIE,MS-016
+/reset-password,statique,auth,public,aucune (correct),-,non,-,AUCUNE (mock),n/a,aucun,VERIFIE,MS-016
+/demo,statique,demo,public,aucune,-,non,-,donnees factices,n/a,aucun,VERIFIE,-
+/pro/[slug],dynamique,public,public,aucune,-,non,-,organizationService,non gere,non gere,PROBABLE,MS-042
+/conditions,statique,legal,public,aucune,-,non,-,statique,n/a,n/a,VERIFIE,MS-048
+/confidentialite,statique,legal,public,aucune,-,non,-,statique,n/a,n/a,VERIFIE,MS-031 MS-048
+/mentions-legales,statique,legal,public,aucune,-,non,-,statique,n/a,n/a,VERIFIE,MS-048
+/forbidden,statique,-,public,aucune,-,non,-,statique,n/a,n/a,VERIFIE,-
+/dashboard,statique,dashboard,professional,CASSEE (Supabase),professional,oui,-,dashboard.actions,non gere,non gere,VERIFIE,MS-001 MS-008
+/clients,statique,dashboard,professional,CASSEE,professional,oui,free+,client.actions,partiel,non gere,VERIFIE,MS-002 MS-005 MS-042
+/clients/new,statique,dashboard,professional,CASSEE,professional,oui,free+,client.actions,n/a,toast,VERIFIE,MS-002 MS-019
+/clients/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,client.actions,non gere,non gere,VERIFIE,MS-005 IDOR
+/clients/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,client.actions,-,-,VERIFIE,MS-005
+/clients/[id]/contacts,dynamique,dashboard,professional,CASSEE,professional,oui,-,contact.actions,partiel,-,VERIFIE,MS-005
+/clients/[id]/contacts/new,dynamique,dashboard,professional,CASSEE,professional,oui,-,contact.actions,-,-,VERIFIE,MS-005
+/clients/[id]/contacts/[contactId],dynamique,dashboard,professional,CASSEE,professional,oui,-,contact.actions,-,-,VERIFIE,MS-005
+/clients/[id]/contacts/[contactId]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,contact.actions,-,-,VERIFIE,MS-005
+/deals,statique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,partiel,-,VERIFIE,MS-005
+/deals/pipeline,statique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,-,-,VERIFIE,MS-005
+/deals/rapports,statique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,-,-,VERIFIE,MS-005 MS-042
+/deals/new,statique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,-,-,VERIFIE,MS-005
+/deals/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,-,-,VERIFIE,MS-005
+/deals/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,deal.actions,-,-,VERIFIE,MS-005
+/facturation,statique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,-,-,VERIFIE,MS-005
+/facturation/factures,statique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,partiel,-,VERIFIE,MS-005 MS-042
+/facturation/factures/new,statique,dashboard,professional,CASSEE,professional,oui,free:10/mois,invoice.actions,-,-,VERIFIE,MS-019
+/facturation/factures/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,-,-,VERIFIE,MS-005 MS-007
+/facturation/factures/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,-,-,VERIFIE,MS-005
+/facturation/devis,statique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,-,-,VERIFIE,MS-005
+/facturation/devis/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,invoice.actions,-,-,VERIFIE,MS-005 MS-007
+/facturation/produits,statique,dashboard,professional,CASSEE,professional,oui,-,product.actions,-,-,VERIFIE,MS-005
+/facturation/produits/new,statique,dashboard,professional,CASSEE,professional,oui,-,product.actions,-,-,VERIFIE,MS-005
+/facturation/produits/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,product.actions,-,-,VERIFIE,MS-005
+/agenda,statique,dashboard,professional,CASSEE,professional,oui,-,task.actions,-,-,VERIFIE,MS-005
+/agenda/calendrier,statique,dashboard,professional,CASSEE,professional,oui,-,calendar.actions,-,-,VERIFIE,MS-005
+/agenda/taches,statique,dashboard,professional,CASSEE,professional,oui,-,task.actions,-,-,VERIFIE,MS-005
+/agenda/taches/new,statique,dashboard,professional,CASSEE,professional,oui,-,task.actions,-,-,VERIFIE,MS-005
+/agenda/taches/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,task.actions,-,-,VERIFIE,MS-005
+/agenda/taches/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,task.actions,-,-,VERIFIE,MS-005
+/marketplace,statique,dashboard,professional,CASSEE,professional,oui,-,request.actions,-,-,VERIFIE,MS-026
+/marketplace/[requestId],dynamique,dashboard,professional,CASSEE,professional,non,-,request.actions,-,-,VERIFIE,MS-026
+/marketplace/[requestId]/respond,dynamique,dashboard,professional,CASSEE,professional,non,-,request.actions,-,-,VERIFIE,MS-026
+/messages,statique,dashboard,professional,CASSEE,professional,oui,-,message.actions,-,-,VERIFIE,MS-027
+/messages/[id],dynamique,dashboard,professional,CASSEE,professional,oui,-,message.actions,-,-,VERIFIE,MS-027
+/activity,statique,dashboard,professional,CASSEE,professional,oui,-,dashboard.actions,-,-,VERIFIE,-
+/search,statique,dashboard,professional,CASSEE,professional,oui,-,search.actions,-,-,VERIFIE,MS-043
+/templates,statique,dashboard,professional,CASSEE,professional,oui,-,message-template.actions,-,-,VERIFIE,derive schema
+/templates/new,statique,dashboard,professional,CASSEE,professional,oui,-,message-template.actions,-,-,VERIFIE,derive schema
+/templates/[id]/edit,dynamique,dashboard,professional,CASSEE,professional,oui,-,message-template.actions,-,-,VERIFIE,derive schema
+/parametres,statique,dashboard,professional,CASSEE,professional,oui,-,session.ts,-,-,VERIFIE,-
+/parametres/profil,statique,dashboard,professional,CASSEE,professional,oui,-,session.ts,-,-,VERIFIE,MS-004
+/parametres/organisation,statique,dashboard,professional,CASSEE,professional,oui,-,organization.actions,-,-,VERIFIE,MS-012
+/parametres/facturation,statique,dashboard,professional,CASSEE,professional,oui,-,stripe/checkout,-,-,VERIFIE,MS-014 MS-019
+/parametres/notifications,statique,dashboard,professional,CASSEE,professional,oui,-,notification.actions,-,-,VERIFIE,MS-018
+/settings/reminders,statique,dashboard,professional,CASSEE,professional,oui,-,reminder.service,-,-,VERIFIE,MS-018
+/client/dashboard,statique,client,client,CASSEE (Supabase),client,non,-,client actions,-,-,VERIFIE,MS-008
+/client/requests,statique,client,client,CASSEE,client,non,-,request.actions,-,-,VERIFIE,MS-026
+/client/requests/new,statique,client,client,CASSEE,client,non,-,request.actions,-,-,VERIFIE,MS-002
+/client/requests/[id],dynamique,client,client,CASSEE,client,non,-,request.actions,-,-,VERIFIE,MS-026
+/client/requests/[id]/edit,dynamique,client,client,CASSEE,client,non,-,request.actions,-,-,VERIFIE,MS-026
+/client/quotes,statique,client,client,CASSEE,client,non,-,invoice.actions,-,-,VERIFIE,MS-005
+/client/quotes/[id],dynamique,client,client,CASSEE,client,non,-,invoice.actions,-,-,VERIFIE,MS-005 MS-007
+/client/invoices,statique,client,client,CASSEE,client,non,-,invoice.actions,-,-,VERIFIE,MS-005
+/client/invoices/[id],dynamique,client,client,CASSEE,client,non,-,invoice.actions,-,-,VERIFIE,MS-007
+/client/messages,statique,client,client,CASSEE,client,non,-,message.actions,-,-,VERIFIE,MS-027
+/client/messages/[id],dynamique,client,client,CASSEE,client,non,-,message.actions,-,-,VERIFIE,MS-027
+/client/profile,statique,client,client,CASSEE,client,non,-,session.ts,-,-,VERIFIE,MS-004
+/quotes/[id]/sign,dynamique,-,jeton de signature,AUCUNE,-,non,-,invoice.actions,-,-,VERIFIE,MS-007 MS-032

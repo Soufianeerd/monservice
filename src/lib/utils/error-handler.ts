@@ -1,15 +1,11 @@
-import toast from 'react-hot-toast';
+'use client';
 
-export class AppError extends Error {
-  constructor(
-    public message: string,
-    public statusCode: number = 500,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
+import toast from 'react-hot-toast';
+import { AppError } from '@/lib/errors';
+
+// Réexport pour compatibilité avec les imports existants.
+// Les nouveaux fichiers serveur doivent importer depuis '@/lib/errors'.
+export { AppError } from '@/lib/errors';
 
 export function handleError(error: unknown, fallbackMessage?: string) {
   if (error instanceof AppError) {

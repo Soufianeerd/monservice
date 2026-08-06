@@ -1,16 +1,17 @@
 import DashboardShell from '@/components/layout/DashboardShell';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
-import { createClient } from '@/utils/supabase/server';
+import { getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Source d'identité unique : le socle `lib/auth/session`. Ne jamais
+  // introduire de second système d'authentification en parallèle : c'est la
+  // coexistence NextAuth / Supabase qui provoquait une boucle de redirection
+  // et rendait l'application inutilisable (anomalie MS-008).
+  const ctx = await getSessionContext();
 
-  if (!user) redirect('/login');
-
-  const profileType = user.user_metadata?.profileType;
-  if (profileType !== 'professional' && profileType !== 'admin') redirect('/client/dashboard');
+  if (!ctx) redirect('/login');
+  if (ctx.profileType !== 'professional') redirect('/client/dashboard');
 
   return (
     <DashboardShell>

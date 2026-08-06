@@ -1,17 +1,28 @@
-import { sqliteTable as sqliteTableCore, text as sqliteText, integer as sqliteInteger, real as sqliteReal } from 'drizzle-orm/sqlite-core';
-import { pgTable, text as pgText, integer as pgInteger, real as pgReal, boolean as pgBoolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  integer,
+  real,
+  boolean,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 
-const isPg = process.env.DATABASE_URL?.startsWith('postgres');
+/**
+ * Schéma PostgreSQL unique.
+ *
+ * L'ancienne version basculait dynamiquement entre `sqlite-core` et `pg-core`
+ * selon `DATABASE_URL`, avec un `as any` sur chaque helper. Le typage était
+ * donc mensonger là où il aurait été le plus utile, et certaines API
+ * divergeaient à l'exécution (`result.changes` n'existe pas côté PostgreSQL —
+ * anomalies MS-011 et MS-021).
+ *
+ * PostgreSQL est désormais utilisé dans tous les environnements. Pour le
+ * développement local : `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16`.
+ */
 
-const sqliteTable: typeof sqliteTableCore = isPg ? (pgTable as any) : sqliteTableCore;
-const text: typeof sqliteText = isPg ? (pgText as any) : sqliteText;
-const real: typeof sqliteReal = isPg ? (pgReal as any) : sqliteReal;
-const integer: typeof sqliteInteger = isPg ? (((name: string, options?: any) => {
-  if (options?.mode === 'boolean') {
-    return pgBoolean(name);
-  }
-  return pgInteger(name);
-}) as any) : sqliteInteger;
+/** Helper : conserve la signature `integer(name, { mode: 'boolean' })`. */
+const sqliteTable = pgTable;
 
 // Users
 export const users = sqliteTable('users', {
@@ -21,10 +32,13 @@ export const users = sqliteTable('users', {
   name: text('name'),
   profileType: text('profile_type').notNull(), // 'client' | 'professional'
   organizationId: text('organization_id'),
-  onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' }).default(false),
+  onboardingCompleted: boolean('onboarding_completed').default(false),
   onboardingStep: integer('onboarding_step').default(0),
   subscriptionTier: text('subscription_tier').default('free'),
   subscriptionStatus: text('subscription_status').default('inactive'),
+  // Colonne écrite par le webhook Stripe : elle était référencée par le code
+  // mais absente du schéma (dérive constatée à l'audit).
+  stripeCustomerId: text('stripe_customer_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -36,7 +50,7 @@ export const organizations = sqliteTable('organizations', {
   slug: text('slug').unique(),
   sector: text('sector'),
   profileType: text('profile_type').default('professional'),
-  isPublic: integer('is_public', { mode: 'boolean' }).default(false),
+  isPublic: boolean('is_public').default(false),
   description: text('description'),
   logo: text('logo'),
   address: text('address'),
@@ -47,6 +61,13 @@ export const organizations = sqliteTable('organizations', {
   legalNotice: text('legal_notice'),
   paymentTerms: text('payment_terms'),
   bankDetails: text('bank_details'),
+  // Colonnes référencées par Stripe Connect et la facturation, jusqu'ici
+  // absentes du schéma (dérive constatée à l'audit).
+  email: text('email'),
+  currency: text('currency').default('EUR'),
+  industry: text('industry'),
+  stripeAccountId: text('stripe_account_id'),
+  stripeAccountStatus: text('stripe_account_status'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -198,7 +219,7 @@ export const messages = sqliteTable('messages', {
   senderId: text('sender_id').notNull(),
   receiverId: text('receiver_id').notNull(),
   content: text('content').notNull(),
-  isRead: integer('is_read', { mode: 'boolean' }).default(false),
+  isRead: boolean('is_read').default(false),
   requestId: text('request_id'),
   organizationId: text('organization_id').notNull(),
   createdAt: text('created_at').notNull(),
@@ -216,3 +237,42 @@ export const messageTemplates = sqliteTable('message_templates', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Registre des événements Stripe traités (idempotence du webhook — MS-014)
+// ---------------------------------------------------------------------------
+export const stripeEvents = sqliteTable('stripe_events', {
+  id: text('id').primaryKey(), // event.id fourni par Stripe
+  type: text('type').notNull(),
+  processedAt: text('processed_at').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Index
+// ---------------------------------------------------------------------------
+// Toutes les requêtes multitenant filtrent sur `organization_id` : sans index,
+// chaque lecture devient un parcours complet de table (anomalie MS-020).
+export const clientsOrgIdx = index('clients_organization_id_idx').on(clients.organizationId);
+export const contactsOrgIdx = index('contacts_organization_id_idx').on(contacts.organizationId);
+export const contactsClientIdx = index('contacts_client_id_idx').on(contacts.clientId);
+export const dealsOrgIdx = index('deals_organization_id_idx').on(deals.organizationId);
+export const dealsClientIdx = index('deals_client_id_idx').on(deals.clientId);
+export const productsOrgIdx = index('products_organization_id_idx').on(products.organizationId);
+export const invoicesOrgIdx = index('invoices_organization_id_idx').on(invoices.organizationId);
+export const invoicesClientIdx = index('invoices_client_id_idx').on(invoices.clientId);
+export const invoiceLinesInvoiceIdx = index('invoice_lines_invoice_id_idx').on(invoiceLines.invoiceId);
+export const tasksOrgIdx = index('tasks_organization_id_idx').on(tasks.organizationId);
+export const messagesSenderIdx = index('messages_sender_id_idx').on(messages.senderId);
+export const messagesReceiverIdx = index('messages_receiver_id_idx').on(messages.receiverId);
+export const messagesRequestIdx = index('messages_request_id_idx').on(messages.requestId);
+export const requestsClientIdx = index('requests_client_id_idx').on(requests.clientId);
+export const usersOrgIdx = index('users_organization_id_idx').on(users.organizationId);
+export const messageTemplatesOrgIdx = index('message_templates_organization_id_idx').on(
+  messageTemplates.organizationId,
+);
+
+// Un numéro de facture doit être unique au sein d'une organisation.
+export const invoicesNumberUnique = uniqueIndex('invoices_org_number_unique').on(
+  invoices.organizationId,
+  invoices.number,
+);

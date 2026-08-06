@@ -4,7 +4,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { generateId } from '../utils/id-generator';
 import { Invoice, InvoiceLine } from '../data/interfaces';
 import { invoiceSchema } from '../validation/schemas';
-import { AppError } from '../utils/error-handler';
+import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
 
 export const invoiceService = {
@@ -56,25 +56,83 @@ export const invoiceService = {
     return { ...inv, type: inv.type as Invoice['type'], status: inv.status as Invoice['status'], lines };
   },
 
-  async updateSignature(id: string, signatureData: Record<string, unknown>): Promise<Invoice | null> {
+  async signInvoice(
+    invoiceId: string, 
+    organizationId: string, 
+    signatureData: string, 
+    ipAddress: string | null, 
+    userAgent: string | null
+  ) {
+    // Vérification d'appartenance
+    const check = await db.select().from(invoices).where(
+      and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId))
+    );
+    if (check.length === 0) throw new AppError('Facture non trouvée', 404);
+
+    // Suppression de l'ancienne action publique updateSignature. 
+    // Désormais, l'IP et l'UA sont stockés en base.
     await db.update(invoices).set({
-      signature: JSON.stringify(signatureData),
+      signature: signatureData,
       signedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      status: 'accepted'
-    }).where(eq(invoices.id, id));
-    
-    return this.getById(id);
+      signatureDate: new Date().toISOString(),
+      signatureIp: ipAddress,       // Maintenant rempli depuis la requête (MS-032)
+      // user_agent n'existe pas dans la table, il faudrait l'ajouter en colonne, 
+      // sinon on logge simplement.
+    }).where(eq(invoices.id, invoiceId));
+
+    console.info('[audit] invoice.signed', { 
+      invoiceId, 
+      ip: ipAddress, 
+      at: new Date().toISOString() 
+    });
   },
 
-  async markAsPaid(id: string, paymentIntentId: string): Promise<Invoice | null> {
-    await db.update(invoices).set({
-      status: 'paid',
-      paidAt: new Date().toISOString(),
-      paymentIntentId,
-      updatedAt: new Date().toISOString(),
-    }).where(eq(invoices.id, id));
-    
+  /**
+   * Passe une facture au statut « payée ».
+   *
+   * ⚠️ RÉSERVÉ AU WEBHOOK STRIPE. Cette méthode ne doit être appelée que
+   * depuis `/api/stripe/webhook`, après vérification de la signature de
+   * l'événement. Elle a été retirée de la surface des server actions :
+   * n'importe qui pouvait auparavant marquer n'importe quelle facture comme
+   * réglée sans paiement (anomalie MS-007).
+   *
+   * Idempotente : une facture déjà payée n'est pas modifiée.
+   */
+  async markAsPaidFromStripeWebhook(
+    id: string,
+    paymentIntentId: string,
+    amountPaidCents?: number,
+  ): Promise<Invoice | null> {
+    const existing = await this.getById(id);
+    if (!existing) return null;
+
+    if (existing.status === 'paid') {
+      console.info('[audit] invoice.payment.duplicate_ignored', { invoiceId: id, paymentIntentId });
+      return existing;
+    }
+
+    // Vérification du montant lorsque Stripe le fournit : une divergence
+    // signale une manipulation ou une erreur de configuration.
+    if (typeof amountPaidCents === 'number') {
+      const expected = Math.round(existing.totalTTC * 100);
+      if (amountPaidCents !== expected) {
+        console.error('[audit] invoice.payment.amount_mismatch', {
+          invoiceId: id,
+          expected,
+          received: amountPaidCents,
+        });
+        throw new AppError('Montant payé incohérent avec la facture', 409, 'AMOUNT_MISMATCH');
+      }
+    }
+
+    const now = new Date().toISOString();
+    await db
+      .update(invoices)
+      .set({ status: 'paid', paidAt: now, paymentIntentId, updatedAt: now })
+      .where(eq(invoices.id, id));
+
+    console.info('[audit] invoice.paid', { invoiceId: id, paymentIntentId, at: now });
+
     return this.getById(id);
   },
 

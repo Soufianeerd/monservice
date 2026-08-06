@@ -108,3 +108,74 @@ export const messageSchema = z.object({
   requestId: z.string().optional(),
   organizationId: z.string().uuid("Organization ID requis")
 });
+
+// ---------------------------------------------------------------------------
+// Schémas de mise à jour — listes blanches strictes
+// ---------------------------------------------------------------------------
+// `.strict()` rejette tout champ inconnu. C'est la contre-mesure à
+// l'affectation de masse : sans elle, un appelant pouvait injecter
+// `organizationId`, `subscriptionTier`, `profileType` ou `password` dans un
+// simple formulaire de profil (anomalie MS-004).
+
+/** Champs qu'un utilisateur peut modifier lui-même sur son propre profil. */
+export const profileUpdateSchema = z
+  .object({
+    name: z.string().min(1, 'Le nom est requis').max(120).optional(),
+    sector: z.string().max(120).optional(),
+    onboardingCompleted: z.boolean().optional(),
+    onboardingStep: z.number().int().min(0).max(20).optional(),
+  })
+  .strict();
+
+/**
+ * Champs modifiables sur une organisation.
+ *
+ * Volontairement absents : `id`, `stripeAccountId`, `stripeAccountStatus`,
+ * `profileType`, `createdAt`. Ils relèvent de flux serveur dédiés.
+ */
+export const organizationUpdateSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    slug: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, 'Slug invalide')
+      .max(80)
+      .optional(),
+    sector: z.string().max(120).optional(),
+    industry: z.string().max(120).optional(),
+    isPublic: z.boolean().optional(),
+    description: z.string().max(2000).optional(),
+    logo: z.string().url('URL de logo invalide').optional(),
+    address: z.string().max(200).optional(),
+    city: z.string().max(120).optional(),
+    postalCode: z.string().max(20).optional(),
+    country: z.string().max(80).optional(),
+    phone: z.string().max(40).optional(),
+    legalNotice: z.string().max(2000).optional(),
+    paymentTerms: z.string().max(2000).optional(),
+    bankDetails: z.string().max(500).optional(),
+  })
+  .strict();
+
+/**
+ * Politique de mot de passe.
+ *
+ * Alignée sur NIST SP 800-63B : la longueur prime sur la complexité
+ * arbitraire. 12 caractères minimum, pas d'expiration forcée.
+ */
+export const passwordSchema = z
+  .string()
+  .min(12, 'Le mot de passe doit contenir au moins 12 caractères')
+  .max(128, 'Le mot de passe ne peut pas dépasser 128 caractères');
+
+/** Inscription. */
+export const registerSchema = z
+  .object({
+    name: z.string().min(1, 'Le nom est requis').max(120),
+    email: z.string().email('Email invalide').max(254).toLowerCase().trim(),
+    password: passwordSchema,
+    orgName: z.string().min(1).max(200).optional(),
+    profileType: z.enum(['client', 'professional']).default('client'),
+    sector: z.string().max(120).optional(),
+  })
+  .strict();

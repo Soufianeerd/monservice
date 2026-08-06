@@ -1,0 +1,13 @@
+donnee,table,categorie,finalite,base_legale,obligatoire,destinataire,sous_traitant,localisation,duree_conservation,mecanisme_suppression,mecanisme_export,chiffrement,anomalie
+Nom prenom,users/contacts/clients,identite,fourniture du service,execution du contrat,oui,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,transit TLS uniquement,MS-030 MS-031
+Adresse e-mail,users/clients/contacts,identite,authentification et communication,execution du contrat,oui,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,transit TLS,MS-030
+Mot de passe (hache),users,authentification,authentification,execution du contrat,oui,editeur,Supabase,NON DOCUMENTE,AUCUNE,n/a,n/a,bcrypt cout 10,MS-003 EXPOSE
+Telephone,clients/contacts,identite,relation commerciale,interet legitime,non,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,transit TLS,MS-030
+Adresse postale,clients/organizations,identite,facturation,obligation legale,non,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,transit TLS,MS-030
+Donnees d'entreprise,organizations/clients,professionnel,facturation,obligation legale,oui,editeur,Supabase,NON DOCUMENTE,10 ans (non applique),AUCUN,AUCUN,transit TLS,MS-030
+Signature manuscrite,invoices.signature deals.signature,BIOMETRIQUE-LIKE,preuve contractuelle,execution du contrat,non,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,AUCUN au repos,MS-007 MS-032
+Adresse IP de signature,invoices.signature_ip,technique,preuve,interet legitime,non,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,JAMAIS RENSEIGNE,MS-032
+Montants et historique de facturation,invoices/invoice_lines/deals,financier,facturation,obligation legale,oui,editeur,Supabase Stripe,NON DOCUMENTE,10 ans (non applique),suppression dure possible,AUCUN,transit TLS,MS-030
+Contenu des messages,messages,communication,messagerie,execution du contrat,non,editeur,Supabase,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,transit TLS,MS-027
+Identifiant client Stripe,users (COLONNE ABSENTE),financier,abonnement,execution du contrat,non,Stripe,Stripe,USA/UE,-,-,-,-,derive de schema
+Journaux applicatifs,console,technique,exploitation,interet legitime,non,Netlify,Netlify,NON DOCUMENTE,AUCUNE,AUCUN,AUCUN,AUCUN,MS-025

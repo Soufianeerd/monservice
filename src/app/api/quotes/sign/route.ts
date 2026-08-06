@@ -1,37 +1,52 @@
 import { NextResponse } from 'next/server';
 import { invoiceService } from '@/lib/services/invoice.service';
-import { createClient } from '@/utils/supabase/server';
+import { requireOrganization } from '@/lib/auth/session';
+import { assertFeature } from '@/lib/billing/quota';
+import { toErrorResponse } from '@/lib/utils/api-response';
+import { getRequestIp, getUserAgent } from '@/lib/utils/request-info';
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Identité issue du socle de session (Supabase Auth).
+    const ctx = await requireOrganization();
+    await assertFeature(ctx, 'electronicSignature');
 
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-    }
-
-    const { quoteId, signatureData } = await req.json();
+    const body = await req.json().catch(() => null);
+    const quoteId = typeof body?.quoteId === 'string' ? body.quoteId : null;
+    const signatureData = typeof body?.signatureData === 'string' ? body.signatureData : null;
 
     if (!quoteId || !signatureData) {
-      return NextResponse.json({ error: 'Devis ID et données de signature requis' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Identifiant du devis et données de signature requis' },
+        { status: 400 },
+      );
     }
 
-    const quote = await invoiceService.getById(quoteId);
-    
+    // L'ancienne version utilisait `getById(quoteId)` sans filtre d'organisation :
+    // n'importe quel utilisateur pouvait signer le devis d'un autre locataire.
+    const quote = await invoiceService.findById(quoteId, ctx.organizationId);
     if (!quote) {
       return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 });
     }
 
-    if (quote.signature) {
-      return NextResponse.json({ error: 'Ce devis est déjà signé' }, { status: 400 });
+    if (quote.type !== 'quote') {
+      return NextResponse.json({ error: 'Ce document n’est pas un devis' }, { status: 400 });
     }
 
-    const updatedQuote = await invoiceService.updateSignature(quoteId, signatureData);
+    // Invariant métier : une signature ne peut pas être remplacée.
+    if (quote.signature) {
+      return NextResponse.json({ error: 'Ce devis est déjà signé' }, { status: 409 });
+    }
+
+    const updatedQuote = await invoiceService.updateSignature(quoteId, ctx.organizationId, {
+      signature: signatureData,
+      signatureIp: getRequestIp(req),
+      signedByUserId: ctx.userId,
+      userAgent: getUserAgent(req),
+    });
 
     return NextResponse.json({ success: true, quote: updatedQuote });
   } catch (error) {
-    console.error('Erreur lors de la signature:', error);
-    return NextResponse.json({ error: 'Erreur lors de la sauvegarde de la signature' }, { status: 500 });
+    return toErrorResponse(error, 'Erreur lors de la sauvegarde de la signature');
   }
 }

@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { Request } from '../data/interfaces/request.interface';
 import { generateId } from '../utils/id-generator';
 import { requestSchema } from '../validation/schemas';
-import { AppError } from '../utils/error-handler';
+import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
 
 

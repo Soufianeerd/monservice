@@ -1,15 +1,33 @@
-name: Tests
+name: CI
 on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: monservice_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '22'
           cache: 'npm'
-      - run: npm install --no-cache
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:security
       - run: npm run test:unit
-      - run: npx playwright install --with-deps
+      - run: npm run build
+      - run: npx playwright install
       - run: npm run test:e2e
