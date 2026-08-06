@@ -290,5 +290,40 @@ export const invoiceService = {
 
   async getNextInvoiceNumber(organizationId: string, type: 'invoice' | 'quote'): Promise<string> {
     return this.generateNumber(type, organizationId);
+  },
+
+  /**
+   * Met à jour la signature d'une facture/devis.
+   * - Vérifie l'appartenance à l'organisation
+   * - Enregistre l'IP, l'UA et l'horodatage (MS-032)
+   */
+  async updateSignature(
+    invoiceId: string,
+    organizationId: string,
+    data: { signature: string; signatureIp?: string | null; signedByUserId?: string; userAgent?: string | null }
+  ) {
+    // Vérification d'appartenance
+    const existing = await this.findById(invoiceId, organizationId);
+    if (!existing) throw new AppError('Document non trouvé', 404);
+
+    // Mise à jour
+    await db.update(invoices)
+      .set({
+        signature: data.signature,
+        signatureIp: data.signatureIp,
+        signedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(invoices.id, invoiceId));
+
+    // Journalisation
+    console.info('[audit] invoice.signed', {
+      invoiceId,
+      signedBy: data.signedByUserId,
+      ip: data.signatureIp,
+      at: new Date().toISOString(),
+    });
+
+    return await this.findById(invoiceId, organizationId);
   }
 };
