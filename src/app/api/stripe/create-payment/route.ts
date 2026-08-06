@@ -7,6 +7,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 export async function POST(req: Request) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return new NextResponse(JSON.stringify({ error: "Stripe non configuré" }), { status: 503 });
+  }
+
   try {
     const { invoiceId } = await req.json();
 
