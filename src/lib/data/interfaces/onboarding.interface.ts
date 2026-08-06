@@ -6,6 +6,8 @@ export interface OnboardingStep {
   description: string;
   action: string;
   link?: string;
+  tooltip?: string;
+  videoUrl?: string;
   completed: boolean;
   required: boolean;
 }
