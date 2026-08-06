@@ -5,6 +5,15 @@ import { CheckCircleIcon, CircleIcon, ChevronRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import OnboardingTooltip from './OnboardingTooltip';
+import OnboardingVideo from './OnboardingVideo';
+
+const StepTitle = ({ step }: { step: OnboardingStepType }) => (
+  <h4 className={`text-sm font-medium ${step.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+    {step.title} {step.required && <span className="text-xs text-red-500 font-normal no-underline">*</span>}
+  </h4>
+);
+
 export default function OnboardingStepItem({ 
   step, 
   onComplete 
@@ -40,10 +49,21 @@ export default function OnboardingStepItem({
         </button>
         
         <div className="flex-1">
-          <h4 className={`text-sm font-medium ${step.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-            {step.title} {step.required && <span className="text-xs text-red-500 font-normal no-underline">*</span>}
-          </h4>
+          {step.tooltip ? (
+            <OnboardingTooltip text={step.tooltip}>
+              <StepTitle step={step} />
+            </OnboardingTooltip>
+          ) : (
+            <StepTitle step={step} />
+          )}
+          
           <p className="mt-1 text-sm text-gray-500">{step.description}</p>
+          
+          {step.videoUrl && (
+            <div className="mt-3">
+              <OnboardingVideo url={step.videoUrl} />
+            </div>
+          )}
           
           {!step.completed && step.link && (
             <div className="mt-3 flex items-center justify-between">
