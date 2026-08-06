@@ -41,7 +41,9 @@ export const users = sqliteTable('users', {
   stripeCustomerId: text('stripe_customer_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('users_organization_id_idx').on(t.organizationId)
+]);
 
 // Organizations
 export const organizations = sqliteTable('organizations', {
@@ -95,7 +97,9 @@ export const clients = sqliteTable('clients', {
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('clients_organization_id_idx').on(t.organizationId)
+]);
 
 // Contacts
 export const contacts = sqliteTable('contacts', {
@@ -109,7 +113,10 @@ export const contacts = sqliteTable('contacts', {
   position: text('position').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('contacts_organization_id_idx').on(t.organizationId),
+  index('contacts_client_id_idx').on(t.clientId)
+]);
 
 // Deals
 export const deals = sqliteTable('deals', {
@@ -126,7 +133,10 @@ export const deals = sqliteTable('deals', {
   signatureToken: text('signature_token'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('deals_organization_id_idx').on(t.organizationId),
+  index('deals_client_id_idx').on(t.clientId)
+]);
 
 // Products
 export const products = sqliteTable('products', {
@@ -139,7 +149,9 @@ export const products = sqliteTable('products', {
   type: text('type').default('service'), // 'product' | 'service'
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('products_organization_id_idx').on(t.organizationId)
+]);
 
 // Invoices (Quotes & Invoices)
 export const invoices = sqliteTable('invoices', {
@@ -167,7 +179,11 @@ export const invoices = sqliteTable('invoices', {
   signedAt: text('signed_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('invoices_organization_id_idx').on(t.organizationId),
+  index('invoices_client_id_idx').on(t.clientId),
+  uniqueIndex('invoices_org_number_unique').on(t.organizationId, t.number)
+]);
 
 // Invoice Lines
 export const invoiceLines = sqliteTable('invoice_lines', {
@@ -180,7 +196,9 @@ export const invoiceLines = sqliteTable('invoice_lines', {
   taxRate: real('tax_rate').notNull(),
   totalHT: real('total_ht').notNull(),
   totalTTC: real('total_ttc').notNull(),
-});
+}, (t) => [
+  index('invoice_lines_invoice_id_idx').on(t.invoiceId)
+]);
 
 // Tasks
 export const tasks = sqliteTable('tasks', {
@@ -196,7 +214,9 @@ export const tasks = sqliteTable('tasks', {
   assignedTo: text('assigned_to'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('tasks_organization_id_idx').on(t.organizationId)
+]);
 
 // Requests (Marketplace)
 export const requests = sqliteTable('requests', {
@@ -211,7 +231,9 @@ export const requests = sqliteTable('requests', {
   visibility: text('visibility').default('public'), // 'public' | 'private'
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('requests_client_id_idx').on(t.clientId)
+]);
 
 // Messages
 export const messages = sqliteTable('messages', {
@@ -224,7 +246,11 @@ export const messages = sqliteTable('messages', {
   organizationId: text('organization_id').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('messages_sender_id_idx').on(t.senderId),
+  index('messages_receiver_id_idx').on(t.receiverId),
+  index('messages_request_id_idx').on(t.requestId)
+]);
 
 // Message Templates
 export const messageTemplates = sqliteTable('message_templates', {
@@ -236,7 +262,9 @@ export const messageTemplates = sqliteTable('message_templates', {
   organizationId: text('organization_id').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  index('message_templates_organization_id_idx').on(t.organizationId)
+]);
 
 // ---------------------------------------------------------------------------
 // Registre des événements Stripe traités (idempotence du webhook — MS-014)
@@ -247,32 +275,3 @@ export const stripeEvents = sqliteTable('stripe_events', {
   processedAt: text('processed_at').notNull(),
 });
 
-// ---------------------------------------------------------------------------
-// Index
-// ---------------------------------------------------------------------------
-// Toutes les requêtes multitenant filtrent sur `organization_id` : sans index,
-// chaque lecture devient un parcours complet de table (anomalie MS-020).
-export const clientsOrgIdx = index('clients_organization_id_idx').on(clients.organizationId);
-export const contactsOrgIdx = index('contacts_organization_id_idx').on(contacts.organizationId);
-export const contactsClientIdx = index('contacts_client_id_idx').on(contacts.clientId);
-export const dealsOrgIdx = index('deals_organization_id_idx').on(deals.organizationId);
-export const dealsClientIdx = index('deals_client_id_idx').on(deals.clientId);
-export const productsOrgIdx = index('products_organization_id_idx').on(products.organizationId);
-export const invoicesOrgIdx = index('invoices_organization_id_idx').on(invoices.organizationId);
-export const invoicesClientIdx = index('invoices_client_id_idx').on(invoices.clientId);
-export const invoiceLinesInvoiceIdx = index('invoice_lines_invoice_id_idx').on(invoiceLines.invoiceId);
-export const tasksOrgIdx = index('tasks_organization_id_idx').on(tasks.organizationId);
-export const messagesSenderIdx = index('messages_sender_id_idx').on(messages.senderId);
-export const messagesReceiverIdx = index('messages_receiver_id_idx').on(messages.receiverId);
-export const messagesRequestIdx = index('messages_request_id_idx').on(messages.requestId);
-export const requestsClientIdx = index('requests_client_id_idx').on(requests.clientId);
-export const usersOrgIdx = index('users_organization_id_idx').on(users.organizationId);
-export const messageTemplatesOrgIdx = index('message_templates_organization_id_idx').on(
-  messageTemplates.organizationId,
-);
-
-// Un numéro de facture doit être unique au sein d'une organisation.
-export const invoicesNumberUnique = uniqueIndex('invoices_org_number_unique').on(
-  invoices.organizationId,
-  invoices.number,
-);
