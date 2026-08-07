@@ -24,7 +24,7 @@ export default function DealPipeline({ deals, clients, onStatusChange }: DealPip
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
   };
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return '-';
     return new Intl.DateTimeFormat('fr-FR').format(new Date(dateString));
   };

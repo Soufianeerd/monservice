@@ -7,7 +7,9 @@ export interface Deal {
   status: DealStatus;
   clientId: string;
   organizationId: string;
-  expectedCloseDate: string;
+  expectedCloseDate?: string | null;
+  probability?: number | null;
+  notes?: string | null;
   description?: string | null;
   signature?: string | null;
   signedAt?: string | null;

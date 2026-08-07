@@ -14,6 +14,7 @@ export interface Invoice {
   stripePaymentIntentId?: string | null;
   paymentIntentId?: string | null;
   clientId: string;
+  recipientUserId?: string | null;
   requestId?: string | null;
   professionalId?: string | null;
   message?: string | null;
