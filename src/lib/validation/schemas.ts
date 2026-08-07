@@ -161,12 +161,16 @@ export const organizationUpdateSchema = z
  * Politique de mot de passe.
  *
  * Alignée sur NIST SP 800-63B : la longueur prime sur la complexité
- * arbitraire. 12 caractères minimum, pas d'expiration forcée.
+ * arbitraire. 8 caractères minimum, pas d'expiration forcée.
  */
 export const passwordSchema = z
   .string()
-  .min(12, 'Le mot de passe doit contenir au moins 12 caractères')
-  .max(128, 'Le mot de passe ne peut pas dépasser 128 caractères');
+  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une lettre minuscule')
+  .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une lettre majuscule')
+  .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre')
+  .regex(/[^a-zA-Z0-9]/, 'Le mot de passe doit contenir au moins un caractère spécial')
+  .max(128, 'Le mot de passe est trop long');
 
 /** Inscription. */
 export const registerSchema = z

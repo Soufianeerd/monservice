@@ -55,7 +55,7 @@ export async function getByIdAction(id: string) {
   if (!invoice) return null;
 
   const isOwner = ctx.organizationId && invoice.organizationId === ctx.organizationId;
-  const isRecipient = invoice.clientId === ctx.userId || invoice.professionalId === ctx.userId;
+  const isRecipient = invoice.clientId === ctx.userId || invoice.recipientUserId === ctx.userId || invoice.professionalId === ctx.userId;
 
   if (!isOwner && !isRecipient) {
     throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
@@ -96,6 +96,80 @@ export async function createAction(
   return invoiceService.create({ ...data, organizationId } as never, lines as never, userId);
 }
 
+/**
+ * Création d'un devis depuis une demande Marketplace.
+ * Cela génère automatiquement le Client CRM et le Deal si nécessaire.
+ */
+export async function createQuoteFromRequestAction(
+  data: Record<string, unknown>,
+  lines: unknown[]
+) {
+  const ctx = await requireProfessional();
+  const { organizationId, userId } = ctx;
+
+  await assertQuota(ctx, 'quotesPerMonth');
+
+  // data.clientId here is the User ID of the marketplace client
+  const requestUserId = data.clientId as string;
+  if (!requestUserId) throw new AppError('Client ID is required', 400);
+
+  const { clientService } = await import('@/lib/services/client.service');
+  const { dealService } = await import('@/lib/services/deal.service');
+  const { userService } = await import('@/lib/services/user.service');
+  const { db } = await import('@/lib/db/server');
+  const { clients } = await import('@/lib/db/schema');
+  const { and, eq } = await import('drizzle-orm');
+
+  // Check if CRM client exists for this user in this organization
+  const existingClients = await db.select().from(clients).where(
+    and(eq(clients.userId, requestUserId), eq(clients.organizationId, organizationId))
+  );
+
+  let crmClientId: string;
+
+  if (existingClients.length > 0) {
+    crmClientId = existingClients[0].id;
+  } else {
+    // Create new CRM client based on User profile
+    const clientUser = await userService.getUserProfile(requestUserId);
+    if (!clientUser) throw new AppError('User not found', 404);
+
+    const newClientData = {
+      organizationId,
+      userId: requestUserId,
+      type: 'individual' as const,
+      name: clientUser.name || 'Client',
+      email: clientUser.email,
+      status: 'lead' as const,
+    };
+    const newClient = await clientService.create(newClientData, userId);
+    crmClientId = newClient.id;
+  }
+
+  // Create a Deal associated with this quote/request
+  const requestTitle = (data as any).requestTitle || 'Demande Marketplace';
+  const dealValue = (data as any).totalHT || 0;
+  
+  await dealService.create({
+    organizationId,
+    clientId: crmClientId,
+    name: requestTitle,
+    value: dealValue,
+    status: 'proposal',
+    probability: 50,
+  }, userId);
+
+  // Now create the invoice linked to the CRM client, but also save recipientUserId
+  const invoiceData = {
+    ...data,
+    organizationId,
+    clientId: crmClientId,
+    recipientUserId: requestUserId, // Save for marketplace access
+  };
+
+  return invoiceService.create(invoiceData as never, lines as never, userId);
+}
+
 export async function updateAction(
   id: string,
   _legacyOrganizationId: unknown,
@@ -109,4 +183,9 @@ export async function updateAction(
 export async function deleteAction(id: string, _legacyOrganizationId?: unknown, _legacyUserId?: unknown) {
   const { organizationId, userId } = await requireProfessional();
   return invoiceService.delete(id, organizationId, userId);
+}
+
+export async function clientUpdateStatusAction(id: string, status: string) {
+  const { userId } = await requireSession();
+  await invoiceService.updateStatusAsClient(id, userId, status);
 }

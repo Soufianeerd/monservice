@@ -22,7 +22,7 @@ export default function NewRequestPage() {
       budget: data.budget,
       location: data.location!,
       preferredDate: data.preferredDate,
-      status: 'draft',
+      status: data.status || 'draft',
       clientId: user.id
     }, user.id);
     

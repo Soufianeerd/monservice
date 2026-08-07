@@ -20,8 +20,10 @@ export const invoiceService = {
     return result;
   },
 
-  async findByClient(clientId: string): Promise<Invoice[]> {
-    const invs = await db.select().from(invoices).where(eq(invoices.clientId, clientId));
+  async findByClient(userId: string): Promise<Invoice[]> {
+    const invs = await db.select().from(invoices).where(
+      sql`${invoices.clientId} = ${userId} OR ${invoices.recipientUserId} = ${userId}`
+    );
     if (invs.length === 0) return [];
     
     const result: Invoice[] = [];
@@ -54,6 +56,14 @@ export const invoiceService = {
     
     const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id));
     return { ...inv, type: inv.type as Invoice['type'], status: inv.status as Invoice['status'], lines };
+  },
+
+  async updateStatusAsClient(id: string, clientId: string, status: string): Promise<void> {
+    const inv = await this.getById(id);
+    if (!inv || inv.clientId !== clientId) {
+      throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
+    }
+    await db.update(invoices).set({ status, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
   },
 
   async signInvoice(
@@ -207,6 +217,9 @@ export const invoiceService = {
       ...validated,
       number,
       signature: data.signature ? JSON.stringify(data.signature) : null,
+      totalHT: 0,
+      taxAmount: 0,
+      totalTTC: 0,
       createdAt: now,
       updatedAt: now,
     };

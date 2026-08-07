@@ -67,27 +67,42 @@ export async function registerAction(data: {
     const authUserId = signUpData.user.id;
 
     let organizationId: string | undefined;
-    if (input.profileType === 'professional' && input.orgName) {
-      const newOrg = await organizationService.create({
-        name: input.orgName,
-        industry: input.sector || 'Non spécifié',
-        sector: input.sector,
-        profileType: 'professional',
-        isPublic: true,
-        country: 'France',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      organizationId = newOrg.id;
-    }
 
     try {
-      await userService.createProfile({
-        id: authUserId,
-        name: input.name,
-        email: input.email,
-        profileType: input.profileType,
-        organizationId,
+      const { db } = await import('@/lib/db/server');
+      const { organizations, users } = await import('@/lib/db/schema');
+      const { generateId } = await import('@/lib/utils/id-generator');
+
+      await db.transaction(async (tx) => {
+        if (input.profileType === 'professional' && input.orgName) {
+          organizationId = generateId();
+          await tx.insert(organizations).values({
+            id: organizationId,
+            name: input.orgName,
+            industry: input.sector || 'Non spécifié',
+            sector: input.sector,
+            profileType: 'professional',
+            isPublic: true,
+            country: 'France',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as any);
+        }
+
+        const now = new Date().toISOString();
+        await tx.insert(users).values({
+          id: authUserId,
+          name: input.name,
+          email: input.email.trim().toLowerCase(),
+          profileType: input.profileType,
+          organizationId: organizationId ?? null,
+          onboardingCompleted: false,
+          onboardingStep: 0,
+          subscriptionTier: 'free',
+          subscriptionStatus: 'inactive',
+          createdAt: now,
+          updatedAt: now,
+        } as any);
       });
     } catch (profileError) {
       // Le compte d'authentification existe désormais sans profil applicatif.

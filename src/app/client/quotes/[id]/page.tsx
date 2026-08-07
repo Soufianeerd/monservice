@@ -33,7 +33,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         if (q.status === 'sent') {
           // This requires pro organizationId but wait, client does not know it
           // We can use the professionalId / organizationId of the quote!
-          await invoiceActions.updateAction(q.id, q.organizationId, { status: 'viewed' });
+          await invoiceActions.clientUpdateStatusAction(q.id, 'viewed');
         }
         
         if (q.requestId) {
@@ -49,13 +49,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleAccept = async () => {
     if (!quote) return;
-    router.push(`/quotes/${quote.id}/sign`);
+    router.push(`/devis/${quote.id}/sign`);
   };
 
   const handleDecline = async () => {
     if (!quote) return;
     if (confirm('Êtes-vous sûr de vouloir refuser ce devis ?')) {
-      await invoiceActions.updateAction(quote.id, quote.organizationId, { status: 'cancelled' });
+      await invoiceActions.clientUpdateStatusAction(quote.id, 'cancelled');
       setQuote({ ...quote, status: 'cancelled' });
     }
   };

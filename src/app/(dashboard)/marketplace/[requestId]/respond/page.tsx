@@ -55,7 +55,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         amountTTC: data.amount * 1.2
       }];
 
-      await invoiceActions.createAction({
+      await invoiceActions.createQuoteFromRequestAction({
         type: 'quote',
         number: nextNumber,
         date: new Date().toISOString(),
@@ -67,6 +67,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         totalTTC: data.amount * 1.2,
         message: data.message,
         requestId: request.id,
+        requestTitle: request.title, // pass this so deal can use it
       }, lines as any);
       
       // In a real app, notify client here

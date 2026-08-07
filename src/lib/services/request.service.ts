@@ -67,7 +67,7 @@ export const requestService = {
     const validated = requestSchema.parse({
       ...data,
       deadline: data.preferredDate,
-      visibility: data.isPublic ? 'public' : 'private',
+      visibility: data.status === 'published' ? 'public' : 'private',
     });
 
     const id = generateId();
@@ -102,8 +102,11 @@ export const requestService = {
     if (data.category !== undefined) updates.category = data.category;
     if (data.budget !== undefined) updates.budget = data.budget ? data.budget.toString() : null;
     if (data.preferredDate !== undefined) updates.deadline = data.preferredDate;
-    if (data.status !== undefined) updates.status = data.status;
-    if (data.isPublic !== undefined) updates.visibility = data.isPublic ? 'public' : 'private';
+    if (data.status !== undefined) {
+      updates.status = data.status;
+      updates.visibility = data.status === 'published' ? 'public' : 'private';
+    }
+    if (data.isPublic !== undefined && data.status === undefined) updates.visibility = data.isPublic ? 'public' : 'private';
 
     await db.update(requests).set(updates).where(eq(requests.id, id));
     

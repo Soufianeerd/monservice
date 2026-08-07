@@ -11,7 +11,7 @@ export default function RequestList({ requests, onDelete }: { requests: Request[
     switch (status) {
       case 'draft': return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Brouillon</span>;
       case 'published': return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Publiée</span>;
-      case 'in_progress': return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">En cours</span>;
+      case 'in_progress': return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pris en charge</span>;
       case 'completed': return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Terminée</span>;
       case 'cancelled': return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Annulée</span>;
       default: return null;

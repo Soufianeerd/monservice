@@ -1,5 +1,6 @@
 import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
+import TrustBar from '@/components/marketing/TrustBar';
 import HowItWorks from '@/components/landing/HowItWorks';
 import Features from '@/components/landing/Features';
 import Sectors from '@/components/landing/Sectors';
@@ -14,8 +15,9 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
-        <HowItWorks />
+        <TrustBar />
         <Features />
+        <HowItWorks />
         <Sectors />
         <Pricing />
         <FAQ />

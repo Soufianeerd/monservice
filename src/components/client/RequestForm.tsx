@@ -21,13 +21,18 @@ export default function RequestForm({
     preferredDate: initialData?.preferredDate || '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDraft = () => {
+    onSubmit({ ...formData, status: 'draft' });
+  };
+
+  const handlePublish = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    const finalStatus = (!initialData?.status || initialData.status === 'draft') ? 'published' : initialData.status;
+    onSubmit({ ...formData, status: finalStatus });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handlePublish} className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-700">Titre de la demande *</label>
         <input 
@@ -102,7 +107,7 @@ export default function RequestForm({
         </div>
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+      <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-6">
         <button 
           type="button" 
           onClick={onCancel}
@@ -110,12 +115,23 @@ export default function RequestForm({
         >
           Annuler
         </button>
-        <button 
-          type="submit" 
-          className="bg-indigo-600 border border-transparent rounded-md shadow-sm py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none"
-        >
-          Enregistrer
-        </button>
+        <div className="flex space-x-3">
+          {(!initialData?.status || initialData.status === 'draft') && (
+            <button 
+              type="button" 
+              onClick={handleDraft}
+              className="bg-white py-2 px-4 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus:outline-none"
+            >
+              Enregistrer le brouillon
+            </button>
+          )}
+          <button 
+            type="submit" 
+            className="bg-indigo-600 border border-transparent rounded-md shadow-sm py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none"
+          >
+            {(!initialData?.status || initialData.status === 'draft') ? 'Publier la demande' : 'Enregistrer les modifications'}
+          </button>
+        </div>
       </div>
     </form>
   );

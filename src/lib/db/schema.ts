@@ -78,6 +78,7 @@ export const organizations = sqliteTable('organizations', {
 export const clients = sqliteTable('clients', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
+  userId: text('user_id'), // Lien avec l'utilisateur marketplace (facultatif)
   name: text('name').notNull(),
   email: text('email'),
   phone: text('phone'),
@@ -98,7 +99,8 @@ export const clients = sqliteTable('clients', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
-  index('clients_organization_id_idx').on(t.organizationId)
+  index('clients_organization_id_idx').on(t.organizationId),
+  index('clients_user_id_idx').on(t.userId)
 ]);
 
 // Contacts
@@ -157,7 +159,8 @@ export const products = sqliteTable('products', {
 export const invoices = sqliteTable('invoices', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
-  clientId: text('client_id').notNull(),
+  clientId: text('client_id').notNull(), // Pointers to CRM clients.id
+  recipientUserId: text('recipient_user_id'), // Pointers to users.id for marketplace access
   type: text('type').notNull(), // 'invoice' | 'quote'
   number: text('number').notNull(),
   date: text('date').notNull(),
@@ -182,6 +185,7 @@ export const invoices = sqliteTable('invoices', {
 }, (t) => [
   index('invoices_organization_id_idx').on(t.organizationId),
   index('invoices_client_id_idx').on(t.clientId),
+  index('invoices_recipient_user_id_idx').on(t.recipientUserId),
   uniqueIndex('invoices_org_number_unique').on(t.organizationId, t.number)
 ]);
 
