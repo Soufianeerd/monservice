@@ -1,7 +1,6 @@
 export interface Client {
   id: string;
   name: string;
-  userId?: string | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -11,8 +10,6 @@ export interface Client {
   city?: string | null;
   zipCode?: string | null;
   website?: string | null;
-  company?: string | null;
-  notes?: string | null;
   
   // Contact principal
   contactFirstName?: string | null;
