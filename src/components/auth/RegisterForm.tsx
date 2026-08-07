@@ -148,26 +148,30 @@ export default function RegisterForm() {
         {step === 1 && (
           <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Votre nom complet *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
-                placeholder="Jean Dupont"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">Votre nom complet *</label>
+              <div className="relative group">
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="block w-full appearance-none rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 sm:text-sm"
+                  placeholder="Jean Dupont"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse email *</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
-                placeholder="jean@exemple.com"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">Adresse email *</label>
+              <div className="relative group">
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="block w-full appearance-none rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 sm:text-sm"
+                  placeholder="jean@exemple.com"
+                />
+              </div>
             </div>
             <div>
               <PasswordField

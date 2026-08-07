@@ -30,15 +30,15 @@ export default function Features() {
               </ul>
             </div>
             
-            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8">
+            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8 transform hover:-translate-y-2 transition-transform duration-300">
               {/* Mockup UI Clients */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm transition-shadow hover:shadow-md">
                 <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                   <div className="font-semibold text-gray-900">Annuaire clients</div>
                   <div className="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">Rechercher...</div>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">J</div>
                       <div>
@@ -48,7 +48,7 @@ export default function Features() {
                     </div>
                     <div className="text-xs text-gray-500">Client depuis 2024</div>
                   </div>
-                  <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">S</div>
                       <div>
@@ -89,25 +89,29 @@ export default function Features() {
               </ul>
             </div>
             
-            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8 lg:order-1">
+            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8 lg:order-1 transform hover:-translate-y-2 transition-transform duration-300">
               {/* Mockup UI Devis */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
                 <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                   <div className="font-semibold text-gray-900">Devis récents</div>
-                  <div className="px-2 py-1 bg-primary-600 text-white text-xs rounded shadow-sm">+ Nouveau</div>
+                  <div className="px-2 py-1 bg-primary-600 text-white text-xs rounded shadow-sm hover:bg-primary-700 transition-colors cursor-pointer">+ Nouveau</div>
                 </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="text-sm font-medium">Devis #D-2026-042</div>
-                    <div className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">En attente</div>
+                <div className="p-4 space-y-4">
+                  <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-sm font-medium text-gray-900">Devis #D-2026-042</div>
+                      <div className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">En attente</div>
+                    </div>
+                    <div className="text-xs text-gray-500">Client: SARL Exemple • 1 450,00 €</div>
                   </div>
-                  <div className="text-xs text-gray-500 mb-4">Client: SARL Exemple • 1 450,00 €</div>
                   
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm font-medium">Facture #F-2026-089</div>
-                    <div className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">Payée</div>
+                  <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-sm font-medium text-gray-900">Facture #F-2026-089</div>
+                      <div className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">Payée</div>
+                    </div>
+                    <div className="text-xs text-gray-500">Client: Jean Dupont • 450,00 €</div>
                   </div>
-                  <div className="text-xs text-gray-500">Client: Jean Dupont • 450,00 €</div>
                 </div>
               </div>
             </div>
@@ -139,9 +143,9 @@ export default function Features() {
               </ul>
             </div>
             
-            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8">
+            <div className="relative rounded-2xl bg-gray-50 border border-gray-100 shadow-xl p-4 sm:p-6 lg:p-8 transform hover:-translate-y-2 transition-transform duration-300">
               {/* Mockup UI Agenda */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
                 <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                   <div className="font-semibold text-gray-900">Aujourd'hui</div>
                   <div className="text-xs text-gray-500">Jeu. 14 Mai</div>
@@ -149,21 +153,21 @@ export default function Features() {
                 <div className="divide-y divide-gray-100 relative">
                   {/* Ligne rouge "actuelle" */}
                   <div className="absolute top-1/2 left-0 w-full border-t border-red-300 z-0">
-                    <div className="w-2 h-2 rounded-full bg-red-500 absolute -top-1 left-2" />
+                    <div className="w-2 h-2 rounded-full bg-red-500 absolute -top-1 left-2 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
                   </div>
                   
-                  <div className="flex p-3 relative z-10">
-                    <div className="w-16 text-xs text-gray-500 pt-1">09:00</div>
-                    <div className="flex-1 bg-blue-50 border border-blue-100 rounded p-2 border-l-4 border-l-blue-500">
+                  <div className="flex p-3 relative z-10 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="w-16 text-xs text-gray-500 pt-1 font-medium group-hover:text-blue-600 transition-colors">09:00</div>
+                    <div className="flex-1 bg-blue-50 border border-blue-100 rounded p-2 border-l-4 border-l-blue-500 shadow-sm group-hover:shadow transition-shadow">
                       <div className="text-xs font-semibold text-blue-900">Rendez-vous chantier</div>
-                      <div className="text-[10px] text-blue-700">SARL Exemple</div>
+                      <div className="text-[10px] text-blue-700 font-medium mt-0.5">SARL Exemple</div>
                     </div>
                   </div>
-                  <div className="flex p-3 relative z-10">
-                    <div className="w-16 text-xs text-gray-500 pt-1">11:30</div>
-                    <div className="flex-1 bg-amber-50 border border-amber-100 rounded p-2 border-l-4 border-l-amber-500">
+                  <div className="flex p-3 relative z-10 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    <div className="w-16 text-xs text-gray-500 pt-1 font-medium group-hover:text-amber-600 transition-colors">11:30</div>
+                    <div className="flex-1 bg-amber-50 border border-amber-100 rounded p-2 border-l-4 border-l-amber-500 shadow-sm group-hover:shadow transition-shadow">
                       <div className="text-xs font-semibold text-amber-900">Relance devis</div>
-                      <div className="text-[10px] text-amber-700">Jean Dupont</div>
+                      <div className="text-[10px] text-amber-700 font-medium mt-0.5">Jean Dupont</div>
                     </div>
                   </div>
                 </div>

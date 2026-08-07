@@ -37,13 +37,14 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
       </div>
 
       {/* Right pane: Argumentaire SaaS */}
-      <div className="hidden lg:flex lg:flex-1 bg-primary-900 relative overflow-hidden flex-col justify-center px-12 xl:px-24">
+      <div className="hidden lg:flex lg:flex-1 bg-primary-950 relative overflow-hidden flex-col justify-center px-12 xl:px-24">
+        {/* Background glow effects */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary-700/50 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-96 h-96 bg-primary-600/40 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-primary-600/40 rounded-full blur-3xl animate-pulse-slow"></div>
+          <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-96 h-96 bg-primary-500/30 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
         </div>
 
-        <div className="relative z-10 max-w-lg">
+        <div className="relative z-10 max-w-lg animate-fade-in-up">
           <h2 className="text-4xl font-extrabold text-white mb-6 leading-tight">
             Gérez votre activité plus sereinement.
           </h2>
@@ -62,16 +63,16 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
             </li>
           </ul>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+          <div className="glass-dark rounded-2xl p-6 shadow-2xl transform hover:scale-[1.02] transition-transform duration-300">
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 text-white font-bold">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white font-bold border border-white/20">
                 MS
               </div>
               <div>
                 <p className="text-white font-medium mb-1">
                   "MonService m'a fait gagner un temps précieux sur l'administratif. Je peux me concentrer sur mon cœur de métier."
                 </p>
-                <p className="text-primary-200 text-sm">Marie D., Consultante indépendante</p>
+                <p className="text-primary-300 text-sm">Marie D., Consultante indépendante</p>
               </div>
             </div>
           </div>

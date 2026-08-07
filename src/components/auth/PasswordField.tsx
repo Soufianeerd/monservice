@@ -13,14 +13,14 @@ export default function PasswordField({ label = 'Mot de passe', error, className
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">
         {label}
       </label>
-      <div className="relative">
+      <div className="relative group">
         <input
           id={id}
           type={showPassword ? 'text' : 'password'}
-          className={`block w-full appearance-none rounded-xl border ${error ? 'border-red-300' : 'border-gray-200'} px-4 py-3 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm pr-10`}
+          className={`block w-full appearance-none rounded-xl border ${error ? 'border-red-300' : 'border-gray-200'} bg-gray-50/50 px-4 py-3 placeholder-gray-400 shadow-sm transition-all focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 sm:text-sm pr-10`}
           {...props}
         />
         <button

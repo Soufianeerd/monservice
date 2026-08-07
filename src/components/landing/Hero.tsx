@@ -12,14 +12,14 @@ export default function Hero() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-24 pb-32 lg:pt-32 lg:pb-40 flex flex-col lg:flex-row items-center gap-12">
         <div className="w-full lg:w-1/2 text-center lg:text-left">
-          <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl leading-tight">
+          <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl leading-tight animate-fade-in-up">
             <span className="block mb-2">Gérez vos clients, devis,</span>{' '}
             <span className="block text-primary-600">factures et rendez-vous</span>
           </h1>
-          <p className="mt-4 max-w-md mx-auto lg:mx-0 text-base text-gray-600 sm:text-lg md:mt-6 md:text-xl md:max-w-3xl">
+          <p className="mt-4 max-w-md mx-auto lg:mx-0 text-base text-gray-600 sm:text-lg md:mt-6 md:text-xl md:max-w-3xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             MonService centralise votre activité dans un CRM simple, conçu pour les indépendants et petites entreprises.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4">
+          <div className="mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <div className="rounded-xl shadow-lg shadow-primary-200/50">
               <Link href="/register" className="w-full flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-medium rounded-xl text-white bg-primary-600 hover:bg-primary-700 md:text-lg transition-all hover:scale-105">
                 Créer mon espace gratuitement
@@ -32,12 +32,12 @@ export default function Hero() {
               </Link>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-center lg:justify-start text-xs text-gray-500 gap-2 font-medium">
-            <span>Gratuit pour démarrer</span>
+          <div className="mt-6 flex items-center justify-center lg:justify-start text-xs text-gray-500 gap-3 font-medium animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400"></span>Gratuit pour démarrer</span>
             <span>&middot;</span>
-            <span>Sans carte bancaire</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400"></span>Sans carte bancaire</span>
             <span>&middot;</span>
-            <span>Configuration rapide</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span>Configuration rapide</span>
           </div>
         </div>
         
