@@ -5,11 +5,10 @@ export interface Deal {
   name: string;
   value: number;
   status: DealStatus;
+  probability?: number | null;
   clientId: string;
   organizationId: string;
-  expectedCloseDate?: string | null;
-  probability?: number | null;
-  notes?: string | null;
+  expectedCloseDate: string;
   description?: string | null;
   signature?: string | null;
   signedAt?: string | null;

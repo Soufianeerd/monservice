@@ -147,16 +147,14 @@ export async function createQuoteFromRequestAction(
   }
 
   // Create a Deal associated with this quote/request
-  const requestTitle = (data as any).requestTitle || 'Demande Marketplace';
-  const dealValue = (data as any).totalHT || 0;
-  
   await dealService.create({
     organizationId,
     clientId: crmClientId,
-    name: requestTitle,
-    value: dealValue,
+    name: (data as any).requestTitle || 'Demande Marketplace',
+    value: (data as any).totalHT || 0,
     status: 'proposal',
     probability: 50,
+    expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   }, userId);
 
   // Now create the invoice linked to the CRM client, but also save recipientUserId
