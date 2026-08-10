@@ -31,7 +31,7 @@ export default function NewDealPage() {
       // activityLog disabled
 
       alert('Opportunité créée !');
-      router.push('/deals');
+      router.push(`/deals/${newDeal.id}`);
     } catch (error) {
       handleError(error, "Erreur lors de la création de l'opportunité");
       setIsSubmitting(false);

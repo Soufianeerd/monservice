@@ -17,6 +17,7 @@ export default function RegisterForm() {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     profileType: '' as ProfileType | '',
     sector: '',
     orgName: '',
@@ -28,8 +29,13 @@ export default function RegisterForm() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (!formData.name || !formData.email || !formData.password) {
+      if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
         toast.error('Veuillez remplir tous les champs obligatoires.');
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Les mots de passe ne correspondent pas.');
         return;
       }
 
@@ -123,7 +129,7 @@ export default function RegisterForm() {
   return (
     <div className="w-full">
       {/* Stepper textuel horizontal */}
-      <div className="mb-8">
+      <div className="mb-10 mt-2">
         <div className="flex items-center justify-between text-xs sm:text-sm font-medium">
           {stepsLabels.map((label, index) => {
             const stepNumber = index + 1;
@@ -146,12 +152,13 @@ export default function RegisterForm() {
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {/* STEP 1: Basic Info */}
         {step === 1 && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">Votre nom complet *</label>
               <div className="relative group">
                 <input
                   type="text"
+                  name="name"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -165,6 +172,7 @@ export default function RegisterForm() {
               <div className="relative group">
                 <input
                   type="email"
+                  name="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -183,7 +191,18 @@ export default function RegisterForm() {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Votre mot de passe"
               />
-              <div className="mt-2 text-xs text-gray-500 space-y-1">
+            </div>
+            <div>
+              <PasswordField
+                id="confirmPassword"
+                name="confirmPassword"
+                label="Confirmez le mot de passe *"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="Répétez votre mot de passe"
+              />
+              <div className="mt-3 text-xs text-gray-500 space-y-1">
                 <p className="font-medium text-gray-700 mb-1">Règles du mot de passe :</p>
                 <ul className="list-disc pl-4 space-y-0.5">
                   <li>Minimum 8 caractères</li>
@@ -238,6 +257,7 @@ export default function RegisterForm() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom de votre entreprise *</label>
               <input
                 type="text"
+                name="orgName"
                 required
                 value={formData.orgName}
                 onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}

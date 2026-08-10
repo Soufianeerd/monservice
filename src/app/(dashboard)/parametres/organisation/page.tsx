@@ -4,12 +4,14 @@ import { getByIdAction, updateAction } from '@/app/actions/organization.actions'
 import React, { useEffect, useState } from 'react';
 import OrganizationForm from '@/components/crm/OrganizationForm';
 import { useAuth } from '@/components/auth/AuthContext';
+import { useOnboardingContext } from '@/components/onboarding/OnboardingProvider';
 import { Organization } from '@/lib/data/interfaces';
 import Skeleton from '@/components/crm/Skeleton';
 import StripeConnectButton from '@/components/settings/StripeConnectButton';
 
 export default function OrganizationSettingsPage() {
   const { user, organization } = useAuth();
+  const { onboardingState, completeStep, activeTour, endTour } = useOnboardingContext();
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,6 +41,15 @@ export default function OrganizationSettingsPage() {
       };
       await updateAction(currentOrg.id, updatedOrg);
       setCurrentOrg(updatedOrg);
+      
+      const companyStep = onboardingState?.steps.find(s => s.action === 'complete_company_profile');
+      if (companyStep && !companyStep.completed) {
+        await completeStep(companyStep.id);
+        if (activeTour?.id === 'complete_company_profile') {
+          endTour();
+        }
+      }
+
       setMessage({ type: 'success', text: 'Profil mis à jour avec succès.' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -90,11 +101,13 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
 
-      <OrganizationForm
-        initialData={currentOrg}
-        onSubmit={handleSubmit}
-        isSubmitting={saving}
-      />
+      <div data-tour="company-form">
+        <OrganizationForm
+          initialData={currentOrg}
+          onSubmit={handleSubmit}
+          isSubmitting={saving}
+        />
+      </div>
 
       <div className="mt-12 pt-8 border-t border-gray-200">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Paiements & Facturation</h2>

@@ -2,6 +2,7 @@ export interface Organization {
   id: string;
   name: string;
   industry: string;
+  secondarySkills?: string;
   sector?: string;
   profileType?: 'professional';
   isPublic: boolean;

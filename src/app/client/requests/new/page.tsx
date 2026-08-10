@@ -15,18 +15,23 @@ export default function NewRequestPage() {
   const handleSubmit = async (data: Partial<Request>) => {
     if (!user?.id) return;
     
-    await requestActions.createAction({
-      title: data.title!,
-      description: data.description!,
-      category: data.category!,
-      budget: data.budget,
-      location: data.location!,
-      preferredDate: data.preferredDate,
-      status: data.status || 'draft',
-      clientId: user.id
-    }, user.id);
-    
-    router.push('/client/requests');
+    try {
+      await requestActions.createAction({
+        title: data.title!,
+        description: data.description!,
+        category: data.category!,
+        budget: data.budget,
+        location: data.location!,
+        preferredDate: data.preferredDate,
+        status: data.status || 'draft',
+        clientId: user.id
+      }, user.id);
+      
+      router.push('/client/requests');
+    } catch (error) {
+      console.error('Failed to create request', error);
+      alert('Une erreur est survenue lors de la création de la demande. Veuillez vérifier les informations.');
+    }
   };
 
   return (

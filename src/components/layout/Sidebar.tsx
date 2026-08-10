@@ -13,11 +13,12 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   subItems?: SubItem[];
+  dataTour?: string;
 };
 
 const professionalNavItems: NavItem[] = [
   { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Clients', href: '/clients', icon: Users },
+  { name: 'Clients', href: '/clients', icon: Users, dataTour: 'clients-nav' },
   { name: 'Deals', href: '/deals', icon: TrendingUp },
   { 
     name: 'Facturation', href: '/facturation', icon: FileText, 
@@ -37,7 +38,7 @@ const professionalNavItems: NavItem[] = [
   { name: 'Marketplace', href: '/marketplace', icon: Store },
   { name: 'Messagerie', href: '/messages', icon: MessageSquare },
   { 
-    name: 'Paramètres', href: '/parametres', icon: Settings, 
+    name: 'Paramètres', href: '/parametres', icon: Settings, dataTour: 'settings-nav',
     subItems: [
       { name: 'Profil', href: '/parametres/profil' },
       { name: 'Organisation', href: '/parametres/organisation' },
@@ -122,6 +123,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
                         setIsOpen?.(false);
                       }
                     }}
+                    data-tour={item.dataTour}
                     className={`${
                       isActive
                         ? 'bg-gray-800 text-white'

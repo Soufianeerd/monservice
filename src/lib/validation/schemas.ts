@@ -176,7 +176,7 @@ export const passwordSchema = z
 export const registerSchema = z
   .object({
     name: z.string().min(1, 'Le nom est requis').max(120),
-    email: z.string().email('Email invalide').max(254).toLowerCase().trim(),
+    email: z.string().trim().toLowerCase().email('Email invalide').max(254),
     password: passwordSchema,
     orgName: z.string().min(1).max(200).optional(),
     profileType: z.enum(['client', 'professional']).default('client'),

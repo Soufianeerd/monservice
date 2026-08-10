@@ -14,3 +14,4 @@ export * from './message-template.interface';
 export * from './notification.interface';
 export * from './activity-log.interface';
 export * from './onboarding.interface';
+export * from './tour.interface';

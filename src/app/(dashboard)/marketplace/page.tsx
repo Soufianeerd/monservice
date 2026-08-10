@@ -17,7 +17,15 @@ export default function MarketplacePage() {
     if (user?.organizationId) {
       requestActions.findPublicAction().then(setRequests);
     }
-  }, [user, filters]);
+  }, [user]);
+
+  const filteredRequests = requests.filter(req => {
+    if (filters.category && req.category !== filters.category) return false;
+    if (filters.location && !req.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
+    if (filters.minBudget && req.budget && req.budget < filters.minBudget) return false;
+    if (filters.maxBudget && req.budget && req.budget > filters.maxBudget) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-6">
@@ -27,7 +35,7 @@ export default function MarketplacePage() {
       </div>
 
       <RequestDiscoveryFilters onFilterChange={setFilters} />
-      <RequestDiscoveryList requests={requests} />
+      <RequestDiscoveryList requests={filteredRequests} />
     </div>
   );
 }

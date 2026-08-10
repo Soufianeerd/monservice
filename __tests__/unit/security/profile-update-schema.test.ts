@@ -54,7 +54,7 @@ describe('registerSchema — politique de mot de passe (MS-017)', () => {
   });
 
   it('accepte un mot de passe de 12 caractères ou plus', () => {
-    expect(registerSchema.safeParse({ ...base, password: 'motdepasse-suffisamment-long' }).success).toBe(
+    expect(registerSchema.safeParse({ ...base, password: 'Motdepasse-suffisamment-long1' }).success).toBe(
       true,
     );
   });
@@ -63,7 +63,7 @@ describe('registerSchema — politique de mot de passe (MS-017)', () => {
     const parsed = registerSchema.parse({
       ...base,
       email: '  Test@Example.COM ',
-      password: 'motdepasse-long-ok',
+      password: 'Motdepasse-long-ok1',
     });
     expect(parsed.email).toBe('test@example.com');
   });

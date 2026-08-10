@@ -93,7 +93,7 @@ export default function ClientsPage() {
             Gérez vos clients. Seuls les clients de votre organisation sont affichés.
           </p>
         </div>
-        <Link href="/clients/new" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+        <Link href="/clients/new" data-tour="create-client-btn" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
           <Plus className="h-4 w-4 mr-2" />
           Ajouter un client
         </Link>
@@ -113,8 +113,27 @@ export default function ClientsPage() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500 animate-pulse">Chargement...</div>
+      ) : filteredClients.length === 0 && search === '' ? (
+        <div className="text-center py-16 px-4 sm:px-6 lg:px-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
+            <Plus className="h-6 w-6 text-indigo-600" aria-hidden="true" />
+          </div>
+          <h3 className="mt-4 text-sm font-semibold text-gray-900">Aucun client</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Commencez par ajouter votre premier client pour pouvoir créer des devis et factures.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/clients/new"
+              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+              Nouveau client
+            </Link>
+          </div>
+        </div>
       ) : filteredClients.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">Aucun client trouvé.</div>
+        <div className="text-center py-12 text-gray-500">Aucun client trouvé pour "{search}".</div>
       ) : (
         <div className="space-y-4">
           {/* Vue mobile: Cartes */}

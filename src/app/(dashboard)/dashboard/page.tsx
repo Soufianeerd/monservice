@@ -46,16 +46,18 @@ export default async function DashboardPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
       
-      <DashboardStats 
-        clientsCount={stats.clients}
-        activeDealsCount={stats.activeDeals}
-        ongoingTasksCount={stats.ongoingTasks}
-        totalRevenue={stats.revenue}
-        totalInvoiced={stats.totalInvoiced}
-        totalUnpaid={stats.totalUnpaid}
-      />
+      <div data-tour="dashboard-overview">
+        <DashboardStats 
+          clientsCount={stats.clients}
+          activeDealsCount={stats.activeDeals}
+          ongoingTasksCount={stats.ongoingTasks}
+          totalRevenue={stats.revenue}
+          totalInvoiced={stats.totalInvoiced}
+          totalUnpaid={stats.totalUnpaid}
+        />
+      </div>
 
-      <div className="mt-8">
+      <div className="mt-8" data-tour="dashboard-activities">
         <DashboardChart data={months} />
       </div>
     </div>

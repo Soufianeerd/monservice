@@ -1,5 +1,5 @@
 import { db } from '../db/server';
-import { requests } from '../db/schema';
+import { requests, organizations } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Request } from '../data/interfaces/request.interface';
 import { generateId } from '../utils/id-generator';
@@ -21,9 +21,9 @@ export const requestService = {
     }));
   },
 
-  async findPublic(): Promise<Request[]> {
+  async findPublic(userId?: string): Promise<Request[]> {
     const results = await db.select().from(requests).where(eq(requests.visibility, 'public'));
-    return results.map(r => ({
+    const mapped = results.map(r => ({
       ...r,
       budget: r.budget ? parseFloat(r.budget) : undefined,
       preferredDate: r.deadline || undefined,
@@ -31,6 +31,53 @@ export const requestService = {
       isPublic: true,
       status: r.status as any,
     }));
+
+    if (!userId) return mapped;
+
+    // Fetch user and organization to rank requests
+    const user = await userService.getUserProfile(userId);
+    if (!user || !user.organizationId) return mapped;
+
+    const orgs = await db.select().from(organizations).where(eq(organizations.id, user.organizationId));
+    const org = orgs[0];
+    if (!org) return mapped;
+
+    const primaryActivity = org.industry ? org.industry.toLowerCase() : '';
+    let secondarySkills: string[] = [];
+    if (org.secondarySkills) {
+      try {
+        const parsed = JSON.parse(org.secondarySkills);
+        if (Array.isArray(parsed)) {
+          secondarySkills = parsed.map((s: string) => s.toLowerCase());
+        }
+      } catch (e) {
+        // Not JSON array, maybe comma separated
+        secondarySkills = org.secondarySkills.split(',').map((s: string) => s.trim().toLowerCase());
+      }
+    }
+
+    // Sort requests
+    return mapped.sort((a, b) => {
+      const aCat = a.category.toLowerCase();
+      const bCat = b.category.toLowerCase();
+
+      let scoreA = 0;
+      let scoreB = 0;
+
+      if (aCat === primaryActivity) scoreA += 100;
+      else if (secondarySkills.includes(aCat)) scoreA += 50;
+
+      if (bCat === primaryActivity) scoreB += 100;
+      else if (secondarySkills.includes(bCat)) scoreB += 50;
+
+      // Primary sort by score (descending)
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      
+      // Secondary sort by date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   },
 
   async findById(id: string): Promise<Request | null> {

@@ -43,7 +43,11 @@ export default function NewInvoicePage() {
       // activityLog disabled
       
       alert(data.type === 'invoice' ? 'Facture créée avec succès !' : 'Devis créé avec succès !');
-      router.push('/invoices');
+      if (data.type === 'invoice') {
+        router.push(`/facturation/factures/${newInvoice.id}`);
+      } else {
+        router.push(`/facturation/devis/${newInvoice.id}`);
+      }
       router.refresh();
     } catch (error) {
       handleError(error, "Erreur lors de la création du document");

@@ -11,7 +11,7 @@ interface FAQItem {
 const faqData: FAQItem[] = [
   {
     question: 'Puis-je utiliser MonService gratuitement ?',
-    answer: 'Oui, notre plan Starter est 100% gratuit et vous permet de gérer jusqu\'à 50 clients et créer 10 devis par mois. Idéal pour tester notre solution ou si vous démarrez votre activité.',
+    answer: 'Oui, notre plan Gratuit est 100% gratuit et vous permet de gérer jusqu\'à 50 clients et créer 10 devis par mois. Idéal pour tester notre solution ou si vous démarrez votre activité.',
   },
   {
     question: 'Dois-je installer un logiciel sur mon ordinateur ?',

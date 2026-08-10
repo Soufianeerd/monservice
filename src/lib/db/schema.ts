@@ -68,6 +68,7 @@ export const organizations = sqliteTable('organizations', {
   email: text('email'),
   currency: text('currency').default('EUR'),
   industry: text('industry'),
+  secondarySkills: text('secondary_skills'),
   stripeAccountId: text('stripe_account_id'),
   stripeAccountStatus: text('stripe_account_status'),
   createdAt: text('created_at').notNull(),

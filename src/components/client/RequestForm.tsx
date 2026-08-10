@@ -49,6 +49,7 @@ export default function RequestForm({
         <label className="block text-sm font-medium text-gray-700">Description détaillée *</label>
         <textarea 
           required 
+          minLength={10}
           rows={5}
           value={formData.description} 
           onChange={e => setFormData({...formData, description: e.target.value})}

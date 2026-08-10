@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
 import * as clientActions from '@/app/actions/client.actions';
 import { useAuth } from '@/components/auth/AuthContext';
+import { useOnboardingContext } from '@/components/onboarding/OnboardingProvider';
 import { Client } from '@/lib/data/interfaces';
 
 export default function NewClientPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { onboardingState, completeStep, activeTour, endTour } = useOnboardingContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (data: Partial<Client>) => {
@@ -38,7 +40,16 @@ export default function NewClientPage() {
       // activityLog disabled
 
       alert('Client créé avec succès !');
-      router.push('/clients');
+      
+      const addClientStep = onboardingState?.steps.find(s => s.action === 'add_client');
+      if (addClientStep && !addClientStep.completed) {
+        await completeStep(addClientStep.id);
+        if (activeTour?.id === 'add_client') {
+          endTour();
+        }
+      }
+
+      router.push(`/clients/${newClient.id}`);
     } catch (error) {
       console.error('Erreur lors de la création du client', error);
       setIsSubmitting(false);

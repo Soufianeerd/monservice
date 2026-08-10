@@ -13,13 +13,13 @@ import { AppError } from '@/lib/errors';
  * L'ancienne version exposait aussi les demandes privées (MS-026).
  */
 export async function findAllAction() {
-  await requireSession();
-  return requestService.findPublic();
+  const { userId } = await requireSession();
+  return requestService.findPublic(userId);
 }
 
 export async function findPublicAction() {
-  await requireSession();
-  return requestService.findPublic();
+  const { userId } = await requireSession();
+  return requestService.findPublic(userId);
 }
 
 /** Une demande privée n'est visible que par son auteur. */

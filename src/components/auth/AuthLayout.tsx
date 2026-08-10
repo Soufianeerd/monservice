@@ -6,8 +6,8 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
   return (
     <div className="min-h-screen flex bg-white">
       {/* Left pane: Form */}
-      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 w-full lg:w-1/2">
-        <div className="mx-auto w-full max-w-sm lg:max-w-md">
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 w-full lg:w-1/2 overflow-y-auto">
+        <div className="mx-auto w-full max-w-sm lg:max-w-md my-auto">
           {/* Logo */}
           <div className="mb-10">
             <Link href="/" className="flex items-center gap-2 group w-fit">

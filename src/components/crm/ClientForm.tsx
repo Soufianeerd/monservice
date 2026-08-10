@@ -56,6 +56,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
             <input
               type="text"
               id="name"
+              data-tour="client-form-name"
               {...register('name')}
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
@@ -242,6 +243,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
         </button>
         <button
           type="submit"
+          data-tour="client-form-submit"
           disabled={isSubmitting}
           className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
