@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { Invoice, Organization } from '@/lib/data/interfaces';
+import { legalService } from '@/lib/services/legal.service';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica' },
@@ -22,10 +23,16 @@ const styles = StyleSheet.create({
 interface InvoicePDFProps {
   invoice: Invoice;
   organization: Organization;
-  client: { name: string; email?: string; address?: string };
+  client: { name: string; email?: string; address?: string; country?: string };
 }
 
-export function InvoicePDF({ invoice, organization, client }: InvoicePDFProps) {
+export async function InvoicePDF({ invoice, organization, client }: InvoicePDFProps) {
+  const mentions = await legalService.getInvoiceMentions(
+    organization.country || 'FR',
+    client.country || 'FR',
+    'fr'
+  );
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -85,10 +92,12 @@ export function InvoicePDF({ invoice, organization, client }: InvoicePDFProps) {
         </View>
 
         <View style={styles.footer}>
-          <Text>{organization.legalNotice || 'Mentions légales non définies'}</Text>
-          <Text>{organization.paymentTerms || 'Paiement à 30 jours'}</Text>
-          <Text>{organization.bankDetails || 'Coordonnées bancaires non définies'}</Text>
-          <Text style={{ marginTop: 5 }}>Merci de votre confiance.</Text>
+          <Text>{mentions.legalNotice}</Text>
+          <Text>{mentions.paymentTerms}</Text>
+          <Text>{mentions.latePaymentPenalty}</Text>
+          <Text>{mentions.indemnity}</Text>
+          <Text>Facture n° {invoice.number} du {new Date(invoice.date).toLocaleDateString('fr-FR')}</Text>
+          <Text>{organization.name} - TVA/TaxID : {organization.taxId || ''}</Text>
         </View>
       </Page>
     </Document>

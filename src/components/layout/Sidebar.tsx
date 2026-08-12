@@ -43,6 +43,7 @@ const professionalNavItems: NavItem[] = [
       { name: 'Profil', href: '/parametres/profil' },
       { name: 'Organisation', href: '/parametres/organisation' },
       { name: 'Facturation', href: '/parametres/facturation' },
+      { name: 'Conformité RGPD', href: '/parametres/privacy' },
       { name: 'Notifications', href: '/parametres/notifications' },
     ]
   },

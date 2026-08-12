@@ -72,7 +72,16 @@ export const invoiceSchema = z.object({
   date: z.string(),
   dueDate: z.string().optional(),
   message: z.string().optional(),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().uuid("Organization ID requis"),
+  // Fiscal inputs
+  legalEntityId: z.string().nullable().optional(),
+  supplierCountry: z.string().nullable().optional(),
+  supplierVatId: z.string().nullable().optional(),
+  customerCountry: z.string().nullable().optional(),
+  customerVatId: z.string().nullable().optional(),
+  customerType: z.enum(['B2B', 'B2C']).nullable().optional(),
+  productType: z.enum(['goods', 'digital_service', 'physical_service']).nullable().optional(),
+  productCategory: z.string().nullable().optional(),
 });
 
 // Task Schema

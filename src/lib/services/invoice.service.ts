@@ -6,6 +6,8 @@ import { Invoice, InvoiceLine } from '../data/interfaces';
 import { invoiceSchema } from '../validation/schemas';
 import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
+import { TaxService } from './tax.service';
+import { InvoiceTaxData } from './tax.types';
 
 export const invoiceService = {
   async findAll(organizationId: string): Promise<Invoice[]> {
@@ -209,6 +211,22 @@ export const invoiceService = {
     const validated = invoiceSchema.parse(data);
     const now = new Date().toISOString();
     
+    // Compute Tax
+    const taxData: InvoiceTaxData = {
+      supplierCountry: validated.supplierCountry || 'FR',
+      supplierVatId: validated.supplierVatId || undefined,
+      supplierLegalEntityId: validated.legalEntityId || undefined,
+      customerCountry: validated.customerCountry || 'FR',
+      customerVatId: validated.customerVatId || undefined,
+      customerType: validated.customerType || 'B2B',
+      productType: validated.productType || undefined,
+      productCategory: validated.productCategory || undefined,
+      transactionDate: new Date(),
+    };
+
+    const taxService = new TaxService();
+    const vatResult = await taxService.determineVatTreatment(taxData);
+
     // Automatically generate number if not provided
     const number = validated.number || await this.generateNumber(validated.type as 'invoice' | 'quote', validated.organizationId);
 
@@ -217,6 +235,11 @@ export const invoiceService = {
       ...validated,
       number,
       signature: data.signature ? JSON.stringify(data.signature) : null,
+      vatTreatment: vatResult.treatment,
+      vatRate: vatResult.rate,
+      vatExemptionCode: vatResult.vatCode,
+      reverseCharge: vatResult.treatment === 'reverse_charge',
+      legalRuleVersion: vatResult.legalRuleVersion,
       totalHT: 0,
       taxAmount: 0,
       totalTTC: 0,
@@ -244,6 +267,14 @@ export const invoiceService = {
 
     await this.calculateTotals(newInvoice.id, newInvoice.organizationId);
     
+    // Lazy load to prevent circular dependency
+    if (newInvoice.type === 'invoice') {
+      const { einvoiceService } = await import('./einvoice.service');
+      await einvoiceService.generate(newInvoice.id).catch(err => {
+        console.error('Failed to generate e-invoice:', err);
+      });
+    }
+
     return this.findById(newInvoice.id, newInvoice.organizationId) as Promise<Invoice>;
   },
 
@@ -251,6 +282,14 @@ export const invoiceService = {
     const user = await userService.getUserProfile(userId);
     if (!user || user.organizationId !== organizationId) {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
+    }
+
+    const existing = await this.findById(id, organizationId);
+    if (!existing) {
+      throw new AppError('Document not found', 404);
+    }
+    if (existing.lockedAt) {
+      throw new AppError('Cannot modify a locked document', 403);
     }
 
     const { lines, signature, ...invoiceData } = data;
@@ -287,6 +326,11 @@ export const invoiceService = {
       await this.calculateTotals(id, organizationId);
     }
 
+    if (validated.status === 'sent' || validated.status === 'paid') {
+      const { retentionService } = await import('./retention.service');
+      await retentionService.lockDocument(id, existing.type as 'invoice' | 'quote');
+    }
+
     return await this.findById(id, organizationId);
   },
 
@@ -297,6 +341,9 @@ export const invoiceService = {
     }
     const inv = await this.findById(id, organizationId);
     if (!inv) return;
+    if (inv.lockedAt) {
+      throw new AppError('Cannot delete a locked document', 403);
+    }
     await db.delete(invoiceLines).where(eq(invoiceLines.invoiceId, id));
     await db.delete(invoices).where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
   },

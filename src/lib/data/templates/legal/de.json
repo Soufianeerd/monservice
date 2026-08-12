@@ -1,0 +1,30 @@
+{
+  "invoice": {
+    "paymentTerms": "Zahlungsziel: 14 Tage netto",
+    "latePaymentPenalty": "Bei Zahlungsverzug fallen Verzugszinsen in Höhe von 9 Prozentpunkten über dem Basiszinssatz an.",
+    "indemnity": "Pauschale Entschädigung für Beitreibungskosten i.H.v. 40 € gemäß § 288 Abs. 5 BGB.",
+    "legalNotice": "Es gelten die gesetzlichen Bestimmungen der UStG."
+  },
+  "quote": {
+    "validity": "Dieses Angebot ist 30 Tage gültig.",
+    "acceptance": "Mit der elektronischen Signatur wird dieses Angebot verbindlich angenommen."
+  },
+  "site": {
+    "publisher": "MonService GmbH",
+    "publisherAddress": "Friedrichstraße 123, 10117 Berlin, Deutschland",
+    "publisherEmail": "kontakt@monservice.de",
+    "publisherPhone": "+49 30 1234567",
+    "registrationNumber": "HRB 123456 B, Amtsgericht Charlottenburg",
+    "vatId": "DE123456789",
+    "hosting": "Netlify, Inc.",
+    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+  },
+  "terms": {
+    "intro": "Diese Allgemeinen Geschäftsbedingungen regeln die Nutzung der Plattform MonService in Deutschland.",
+    "subscription": "Das Abonnement ist monatlich und verlängert sich automatisch.",
+    "cancellation": "Der Benutzer kann das Abonnement jederzeit in seinem persönlichen Bereich kündigen.",
+    "liability": "Die Haftung von MonService ist auf direkte Schäden beschränkt.",
+    "data": "Ihre persönlichen Daten werden gemäß der DSGVO verarbeitet."
+  },
+  "privacy": "Wir erheben Ihre Daten gemäß der geltenden DSGVO in Deutschland. Sie haben das Recht auf Auskunft, Berichtigung und Löschung."
+}

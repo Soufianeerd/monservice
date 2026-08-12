@@ -1,0 +1,30 @@
+{
+  "invoice": {
+    "paymentTerms": "Paiement à 30 jours nets (LU)",
+    "latePaymentPenalty": "Pénalités de retard calculées selon le taux d'intérêt légal de la BCL.",
+    "indemnity": "Indemnité forfaitaire de 40 € pour frais de recouvrement.",
+    "legalNotice": "TVA selon les règles luxembourgeoises"
+  },
+  "quote": {
+    "validity": "Devis valable 30 jours.",
+    "acceptance": "La signature électronique vaut acceptation ferme."
+  },
+  "site": {
+    "publisher": "MonService S.à r.l.",
+    "publisherAddress": "10 avenue de la Liberté, L-1930 Luxembourg",
+    "publisherEmail": "contact@monservice.lu",
+    "publisherPhone": "+352 123 456",
+    "registrationNumber": "RCS Luxembourg B 123456",
+    "vatId": "LU12345678",
+    "hosting": "Netlify, Inc.",
+    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+  },
+  "terms": {
+    "intro": "Les présentes conditions générales régissent l'utilisation de la plateforme au Grand-Duché de Luxembourg.",
+    "subscription": "L'abonnement est mensuel.",
+    "cancellation": "L'utilisateur peut résilier à tout moment.",
+    "liability": "La responsabilité est limitée aux dommages directs.",
+    "data": "Traitement des données selon les directives de la CNPD."
+  },
+  "privacy": "Nous respectons vos données selon la Commission Nationale pour la Protection des Données (CNPD) du Luxembourg."
+}

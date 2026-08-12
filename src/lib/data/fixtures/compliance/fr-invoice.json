@@ -1,0 +1,17 @@
+{
+  "id": "inv_fr",
+  "number": "F-2026-0001",
+  "supplierCountry": "FR",
+  "customer": { "country": "FR" },
+  "customerType": "B2B",
+  "date": "2026-01-01",
+  "totalHT": 1000,
+  "lines": [
+    {
+      "description": "Consulting France",
+      "quantity": 1,
+      "unitPrice": 1000,
+      "taxRate": 20
+    }
+  ]
+}

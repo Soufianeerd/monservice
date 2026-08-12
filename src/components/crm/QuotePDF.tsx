@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { Deal, Organization } from '@/lib/data/interfaces';
+import { legalService } from '@/lib/services/legal.service';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica' },
@@ -17,10 +18,15 @@ const styles = StyleSheet.create({
 interface QuotePDFProps {
   deal: Deal;
   organization: Organization;
-  client: { name: string; email?: string; address?: string };
+  client: { name: string; email?: string; address?: string; country?: string };
 }
 
-export function QuotePDF({ deal, organization, client }: QuotePDFProps) {
+export async function QuotePDF({ deal, organization, client }: QuotePDFProps) {
+  const mentions = await legalService.getQuoteMentions(
+    organization.country || 'FR',
+    'fr'
+  );
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -70,10 +76,9 @@ export function QuotePDF({ deal, organization, client }: QuotePDFProps) {
         )}
 
         <View style={styles.footer}>
-          <Text>{organization.legalNotice || 'Mentions légales non définies'}</Text>
-          <Text>{organization.paymentTerms || 'Conditions de paiement : Acompte 30% à la commande'}</Text>
-          <Text>{organization.bankDetails || 'Coordonnées bancaires non définies'}</Text>
-          <Text style={{ marginTop: 5 }}>Ce devis est soumis aux conditions générales de vente.</Text>
+          <Text>{mentions.validity}</Text>
+          <Text>{mentions.acceptance}</Text>
+          <Text style={{ marginTop: 5 }}>{organization.name} - TVA/TaxID : {organization.taxId || ''}</Text>
         </View>
       </Page>
     </Document>

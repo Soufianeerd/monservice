@@ -1,0 +1,9 @@
+{
+  "invoice_number": "Rechnungsnummer",
+  "due_date": "Fälligkeitsdatum",
+  "amount_due": "Fälliger Betrag",
+  "subtotal": "Zwischensumme (netto)",
+  "tax": "MwSt.",
+  "total": "Gesamt (brutto)",
+  "pay_now": "Jetzt bezahlen"
+}

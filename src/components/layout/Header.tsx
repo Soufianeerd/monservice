@@ -10,6 +10,7 @@ import {
   generateNotificationsAction 
 } from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -106,6 +107,10 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
         
         <div className="flex items-center justify-end w-1/3 space-x-4">
           
+          <div className="hidden sm:block">
+            <LanguageSwitcher />
+          </div>
+
           <div className="relative" ref={notifRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}

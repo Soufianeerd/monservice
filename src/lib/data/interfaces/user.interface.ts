@@ -22,6 +22,8 @@ export interface User {
   subscriptionTier?: 'free' | 'starter' | 'pro' | 'business';
   subscriptionStatus?: 'active' | 'inactive' | 'past_due' | 'canceled';
   stripeCustomerId?: string;
+  
+  legalEntityId?: string | null;
 
   createdAt: string;
   updatedAt: string;

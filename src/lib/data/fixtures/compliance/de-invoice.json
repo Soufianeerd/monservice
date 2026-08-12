@@ -1,0 +1,17 @@
+{
+  "id": "inv_de",
+  "number": "F-2026-0002",
+  "supplierCountry": "DE",
+  "customer": { "country": "DE" },
+  "customerType": "B2B",
+  "date": "2026-01-01",
+  "totalHT": 1000,
+  "lines": [
+    {
+      "description": "Consulting Germany",
+      "quantity": 1,
+      "unitPrice": 1000,
+      "taxRate": 19
+    }
+  ]
+}

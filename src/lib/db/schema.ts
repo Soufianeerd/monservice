@@ -6,6 +6,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  timestamp,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -39,6 +40,9 @@ export const users = sqliteTable('users', {
   // Colonne écrite par le webhook Stripe : elle était référencée par le code
   // mais absente du schéma (dérive constatée à l'audit).
   stripeCustomerId: text('stripe_customer_id'),
+  legalEntityId: text('legal_entity_id'),
+  mfaEnabled: boolean('mfa_enabled').default(false),
+  mfaSecret: text('mfa_secret'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
@@ -97,6 +101,7 @@ export const clients = sqliteTable('clients', {
   contactPosition: text('contact_position'),
   company: text('company'),
   notes: text('notes'),
+  legalEntityId: text('legal_entity_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
@@ -181,6 +186,35 @@ export const invoices = sqliteTable('invoices', {
   signatureDate: text('signature_date'),
   signatureIp: text('signature_ip'),
   signedAt: text('signed_at'),
+  legalEntityId: text('legal_entity_id'),
+  supplierCountry: text('supplier_country'),
+  supplierVatId: text('supplier_vat_id'),
+  customerCountry: text('customer_country'),
+  customerVatId: text('customer_vat_id'),
+  customerType: text('customer_type'),
+  vatTreatment: text('vat_treatment'),
+  vatRate: real('vat_rate'),
+  vatExemptionCode: text('vat_exemption_code'),
+  reverseCharge: boolean('reverse_charge').default(false),
+  einvoiceRequired: boolean('einvoice_required').default(false),
+  einvoiceFormat: text('einvoice_format'),
+  einvoiceProfile: text('einvoice_profile'),
+  einvoiceNetwork: text('einvoice_network'),
+  structuredInvoiceHash: text('structured_invoice_hash'),
+  structuredInvoicePath: text('structured_invoice_path'),
+  pdfHash: text('pdf_hash'),
+  pdfPath: text('pdf_path'),
+  lockedAt: text('locked_at'),
+  lockedBy: text('locked_by'),
+  retentionUntil: text('retention_until'),
+  deliveryStatus: text('delivery_status'),
+  deliveryChannel: text('delivery_channel'),
+  deliveryTrackingId: text('delivery_tracking_id'),
+  deliveryResponse: text('delivery_response'),
+  deliveryAttempts: integer('delivery_attempts').default(0),
+  deliverySentAt: timestamp('delivery_sent_at'),
+  deliveryLastAttemptAt: timestamp('delivery_last_attempt_at'),
+  legalRuleVersion: text('legal_rule_version'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
@@ -278,5 +312,184 @@ export const stripeEvents = sqliteTable('stripe_events', {
   id: text('id').primaryKey(), // event.id fourni par Stripe
   type: text('type').notNull(),
   processedAt: text('processed_at').notNull(),
+});
+
+// Legal Entities
+export const legalEntities = sqliteTable('legal_entities', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  name: text('name').notNull(),
+  legalForm: text('legal_form'),
+  country: text('country').notNull(),
+  establishmentCountry: text('establishment_country'),
+  registrationNumber: text('registration_number'),
+  vatNumber: text('vat_number'),
+  vatScheme: text('vat_scheme'),
+  address: text('address'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  phone: text('phone'),
+  email: text('email'),
+  website: text('website'),
+  representative: text('representative'),
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Country Compliance Profiles
+export const countryComplianceProfiles = sqliteTable('country_compliance_profiles', {
+  id: text('id').primaryKey(),
+  country: text('country').notNull(),
+  version: text('version').notNull(),
+  effectiveFrom: timestamp('effective_from').notNull(),
+  vatStandard: real('vat_standard').notNull(),
+  vatReduced: real('vat_reduced'),
+  vatReduced2: real('vat_reduced_2'),
+  vatReduced3: real('vat_reduced_3'),
+  retentionYears: integer('retention_years').notNull(),
+  einvoiceMandatory: boolean('einvoice_mandatory').default(false),
+  einvoiceFormat: text('einvoice_format'),
+  einvoiceNetwork: text('einvoice_network'),
+  legalMentions: text('legal_mentions'),
+  marketingRule: text('marketing_rule'),
+  privacyAuthority: text('privacy_authority'),
+  dpoThreshold: integer('dpo_threshold'),
+  archivingRequirements: text('archiving_requirements'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Consent Events
+export const consentEvents = sqliteTable('consent_events', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id),
+  organizationId: text('organization_id').references(() => organizations.id),
+  consentType: text('consent_type').notNull(),
+  consentValue: text('consent_value').notNull(),
+  legalBasis: text('legal_basis'),
+  source: text('source'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  policyVersion: text('policy_version'),
+  timestamp: timestamp('timestamp').defaultNow(),
+});
+
+// Data Subject Requests
+export const dataSubjectRequests = sqliteTable('data_subject_requests', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id),
+  organizationId: text('organization_id').references(() => organizations.id),
+  requestType: text('request_type').notNull(), // ACCESS, RECTIFICATION, ERASURE, PORTABILITY, OBJECTION
+  status: text('status').notNull(), // RECEIVED, PROCESSING, COMPLETED, REJECTED
+  requestDetails: text('request_details'),
+  response: text('response'),
+  deadline: timestamp('deadline'),
+  receivedAt: timestamp('received_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  processedBy: text('processed_by').references(() => users.id),
+});
+
+// Audit Logs
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id),
+  organizationId: text('organization_id').references(() => organizations.id),
+  action: text('action').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  oldValues: text('old_values'), // Should ideally be JSON but using text for SQLite compat
+  newValues: text('new_values'),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Processing Activities (GDPR Register)
+export const processingActivities = sqliteTable('processing_activities', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  name: text('name').notNull(),
+  purpose: text('purpose').notNull(),
+  dataCategories: text('data_categories'), // JSON array
+  legalBasis: text('legal_basis'),
+  retentionPeriod: text('retention_period'),
+  dataSubjects: text('data_subjects'), // ex: 'clients', 'prospects', 'employees'
+  transfers: text('transfers'), // pays tiers
+  securityMeasures: text('security_measures'),
+  responsible: text('responsible'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Breach Notifications (GDPR)
+export const breachNotifications = sqliteTable('breach_notifications', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  discoveryDate: timestamp('discovery_date').notNull(),
+  startDate: timestamp('start_date'),
+  dataCategories: text('data_categories'),
+  affectedIndividuals: integer('affected_individuals'),
+  riskLevel: text('risk_level'), // 'low', 'medium', 'high'
+  correctiveActions: text('corrective_actions'),
+  notifiedAuthority: boolean('notified_authority').default(false),
+  notificationDate: timestamp('notification_date'),
+  notifiedIndividuals: boolean('notified_individuals').default(false),
+  status: text('status').default('open'), // 'open', 'investigating', 'resolved'
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Retention Policies
+export const retentionPolicies = sqliteTable('retention_policies', {
+  id: text('id').primaryKey(),
+  country: text('country').notNull(),
+  years: integer('years').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Archived Documents
+export const archivedDocuments = sqliteTable('archived_documents', {
+  id: text('id').primaryKey(),
+  documentId: text('document_id').notNull(),
+  documentType: text('document_type'), // 'invoice' | 'quote'
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  retentionDate: timestamp('retention_date').notNull(),
+  archivedAt: timestamp('archived_at').defaultNow(),
+  anonymized: boolean('anonymized').default(false),
+  expirationStatus: text('expiration_status'), // 'pending', 'expired', 'anonymized'
+  notes: text('notes'),
+});
+
+// RBAC Roles
+export const roles = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(), // 'admin', 'manager', 'user', 'viewer'
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const permissions = sqliteTable('permissions', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(), // 'clients:read', 'clients:write', etc.
+  description: text('description'),
+  resource: text('resource').notNull(), // 'clients', 'invoices', 'deals', etc.
+  action: text('action').notNull(), // 'read', 'write', 'delete', 'manage'
+});
+
+export const rolePermissions = sqliteTable('role_permissions', {
+  id: text('id').primaryKey(),
+  roleId: text('role_id').notNull().references(() => roles.id),
+  permissionId: text('permission_id').notNull().references(() => permissions.id),
+});
+
+export const userRoles = sqliteTable('user_roles', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  roleId: text('role_id').notNull().references(() => roles.id),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
 });
 

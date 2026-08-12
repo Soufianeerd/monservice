@@ -1,0 +1,4 @@
+{
+  "invoice_subject": "Uw factuur {{number}}",
+  "invoice_body": "<p>Hallo,</p><p>In de bijlage vindt u uw factuur {{number}} voor het bedrag van {{total}}.</p><p>Met vriendelijke groet,</p>"
+}

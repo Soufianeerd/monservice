@@ -56,6 +56,27 @@ export async function proxy(request: NextRequest) {
   // routes publiques, sinon la session expire pendant la navigation.
   const { response, user } = await updateSupabaseSession(request);
 
+  // i18n logic
+  const hasLocaleCookie = request.cookies.has('NEXT_LOCALE');
+  if (!hasLocaleCookie) {
+    const locales = ['fr', 'de', 'nl', 'en'];
+    const defaultLocale = 'fr';
+    const acceptLanguage = request.headers.get('accept-language');
+    let locale = defaultLocale;
+    
+    if (acceptLanguage) {
+      const preferred = acceptLanguage.split(',')[0].split('-')[0];
+      if (locales.includes(preferred)) {
+        locale = preferred;
+      }
+    }
+    
+    response.cookies.set('NEXT_LOCALE', locale, {
+      path: '/',
+      maxAge: 365 * 24 * 60 * 60
+    });
+  }
+
   // Un utilisateur authentifié n'a rien à faire sur les écrans d'authentification.
   if (user && ['/login', '/register'].includes(pathname)) {
     // La destination exacte dépend du `profileType`, inconnu ici : les layouts

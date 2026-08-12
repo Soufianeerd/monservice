@@ -1,0 +1,17 @@
+{
+  "id": "inv_be",
+  "number": "F-2026-0003",
+  "supplierCountry": "BE",
+  "customer": { "country": "BE" },
+  "customerType": "B2B",
+  "date": "2026-01-01",
+  "totalHT": 1000,
+  "lines": [
+    {
+      "description": "Consulting Belgium",
+      "quantity": 1,
+      "unitPrice": 1000,
+      "taxRate": 21
+    }
+  ]
+}

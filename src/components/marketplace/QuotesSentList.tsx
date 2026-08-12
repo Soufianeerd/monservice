@@ -21,6 +21,7 @@ export default function QuotesSentList({ quotes }: { quotes: Invoice[] }) {
   return (
     <div className="bg-white shadow overflow-hidden sm:rounded-md border border-gray-200">
       <ul className="divide-y divide-gray-200">
+        {quotes.length === 0 ? (
           <li className="px-6 py-12 text-center flex flex-col items-center justify-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 mb-4">
               <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">

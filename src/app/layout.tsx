@@ -20,23 +20,37 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "react-hot-toast";
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getLocale } from 'next-intl/server';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const messages = await getMessages();
+  const locale = await getLocale();
+
   return (
     <html
-      lang="fr"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="alternate" hrefLang="fr" href="/fr" />
+        <link rel="alternate" hrefLang="de" href="/de" />
+        <link rel="alternate" hrefLang="nl" href="/nl" />
+        <link rel="alternate" hrefLang="en" href="/en" />
+        <link rel="alternate" hrefLang="x-default" href="/" />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <AuthProvider>
-          {children}
-          <Toaster position="top-right" />
-        </AuthProvider>
+        <NextIntlClientProvider messages={messages} locale={locale}>
+          <AuthProvider>
+            {children}
+            <Toaster position="top-right" />
+          </AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

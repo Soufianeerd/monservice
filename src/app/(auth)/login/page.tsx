@@ -1,5 +1,6 @@
 import AuthLayout from '@/components/auth/AuthLayout';
 import LoginForm from '@/components/auth/LoginForm';
+import { Suspense } from 'react';
 
 export default function LoginPage() {
   return (
@@ -7,7 +8,9 @@ export default function LoginPage() {
       title="Bon retour !"
       subtitle="Connectez-vous pour accéder à votre espace."
     >
-      <LoginForm />
+      <Suspense fallback={<div>Chargement...</div>}>
+        <LoginForm />
+      </Suspense>
     </AuthLayout>
   );
 }

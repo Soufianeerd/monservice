@@ -1,0 +1,30 @@
+{
+  "invoice": {
+    "paymentTerms": "Paiement à 30 jours nets (BE)",
+    "latePaymentPenalty": "Pénalités de retard selon la loi du 2 août 2002 concernant la lutte contre le retard de paiement dans les transactions commerciales.",
+    "indemnity": "Indemnité forfaitaire de 40 € pour frais de recouvrement.",
+    "legalNotice": "TVA selon la législation belge"
+  },
+  "quote": {
+    "validity": "Devis valable 30 jours à compter de la date d'émission.",
+    "acceptance": "La signature électronique vaut acceptation du devis et bon de commande."
+  },
+  "site": {
+    "publisher": "MonService SRL",
+    "publisherAddress": "Avenue Louise 123, 1050 Bruxelles, Belgique",
+    "publisherEmail": "contact@monservice.be",
+    "publisherPhone": "+32 2 123 45 67",
+    "registrationNumber": "BCE 0123.456.789",
+    "vatId": "BE0123456789",
+    "hosting": "Netlify, Inc.",
+    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+  },
+  "terms": {
+    "intro": "Les présentes conditions générales régissent l'utilisation de MonService en Belgique.",
+    "subscription": "L'abonnement est mensuel et reconductible tacitement.",
+    "cancellation": "L'utilisateur peut résilier son abonnement à tout moment.",
+    "liability": "La responsabilité de MonService est limitée aux dommages directs.",
+    "data": "Les données personnelles sont traitées conformément au RGPD belge (APD)."
+  },
+  "privacy": "Politique de confidentialité conformément à la législation de l'Autorité de Protection des Données (APD) en Belgique."
+}

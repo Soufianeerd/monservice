@@ -58,7 +58,9 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
+import { legalService } from '@/lib/services/legal.service';
+
+export async function sendEmail(input: SendEmailInput & { country?: string; locale?: string }): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const recipients = Array.isArray(input.to) ? input.to : [input.to];
 
@@ -73,6 +75,21 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
 
   try {
+    // Add legal footers
+    const mentions = await legalService.getSiteMentions(input.country || 'FR', input.locale || 'fr');
+    const legalFooterHtml = `
+      <hr style="margin-top: 40px; border: 1px solid #eee;" />
+      <p style="font-size: 10px; color: #6b7280; text-align: center;">
+        Cet email est envoyé par <strong>${mentions.publisher}</strong><br/>
+        ${mentions.publisherAddress}<br/>
+        Immatriculation : ${mentions.registrationNumber} - TVA : ${mentions.vatId}
+      </p>
+    `;
+    const legalFooterText = `\n\n---\nCet email est envoyé par ${mentions.publisher}\n${mentions.publisherAddress}\nImmatriculation : ${mentions.registrationNumber} - TVA : ${mentions.vatId}`;
+
+    const finalHtml = input.html + legalFooterHtml;
+    const finalText = (input.text ?? htmlToText(input.html)) + legalFooterText;
+
     const response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -83,8 +100,8 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         from: getFromAddress(),
         to: recipients,
         subject: input.subject,
-        html: input.html,
-        text: input.text ?? htmlToText(input.html),
+        html: finalHtml,
+        text: finalText,
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         ...(input.attachments?.length
           ? {

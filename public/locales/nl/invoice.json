@@ -1,0 +1,9 @@
+{
+  "invoice_number": "Factuurnummer",
+  "due_date": "Vervaldatum",
+  "amount_due": "Verschuldigd bedrag",
+  "subtotal": "Subtotaal (excl. btw)",
+  "tax": "Btw",
+  "total": "Totaal (incl. btw)",
+  "pay_now": "Nu betalen"
+}

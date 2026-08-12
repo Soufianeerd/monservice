@@ -18,6 +18,7 @@ export interface Client {
   contactPhone?: string | null;
   contactPosition?: string | null;
   organizationId: string;
+  legalEntityId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

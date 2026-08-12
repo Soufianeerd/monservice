@@ -1,0 +1,30 @@
+{
+  "invoice": {
+    "paymentTerms": "Paiement à 30 jours nets",
+    "latePaymentPenalty": "Pénalités de retard : 3 fois le taux d'intérêt légal en vigueur",
+    "indemnity": "Indemnité forfaitaire de 40 € pour frais de recouvrement (art. L. 441-6 du code de commerce)",
+    "legalNotice": "TVA selon les règles en vigueur"
+  },
+  "quote": {
+    "validity": "Devis valable 30 jours à compter de la date d'émission.",
+    "acceptance": "La signature électronique vaut acceptation ferme et définitive du présent devis, et fait office de bon de commande."
+  },
+  "site": {
+    "publisher": "MonService SAS",
+    "publisherAddress": "10 rue de la Paix, 75000 Paris, France",
+    "publisherEmail": "contact@monservice.com",
+    "publisherPhone": "+33 1 23 45 67 89",
+    "registrationNumber": "RCS Paris 123 456 789",
+    "vatId": "FR12345678901",
+    "hosting": "Netlify, Inc.",
+    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+  },
+  "terms": {
+    "intro": "Les présentes conditions générales régissent l'utilisation de la plateforme MonService en France.",
+    "subscription": "L'abonnement est mensuel et reconductible tacitement.",
+    "cancellation": "L'utilisateur peut résilier son abonnement à tout moment depuis son espace personnel. La résiliation sera effective à la fin du mois en cours.",
+    "liability": "La responsabilité de MonService est limitée aux seuls dommages directs liés à l'utilisation de la plateforme.",
+    "data": "Vos données personnelles sont traitées conformément au RGPD et à notre politique de confidentialité française."
+  },
+  "privacy": "Nous collectons vos données dans le respect du RGPD applicable en France (CNIL). Vous disposez de droits d'accès, de rectification et de suppression."
+}

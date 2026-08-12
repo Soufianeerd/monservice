@@ -30,6 +30,37 @@ export interface Invoice {
   signatureIp?: string | null;
   signedAt?: string | null;
 
+  // Fiscal & Compliance
+  legalEntityId?: string | null;
+  supplierCountry?: string | null;
+  supplierVatId?: string | null;
+  customerCountry?: string | null;
+  customerVatId?: string | null;
+  customerType?: string | null;
+  vatTreatment?: string | null;
+  vatRate?: number | null;
+  vatExemptionCode?: string | null;
+  reverseCharge?: boolean | null;
+  einvoiceRequired?: boolean | null;
+  einvoiceFormat?: string | null;
+  einvoiceProfile?: string | null;
+  einvoiceNetwork?: string | null;
+  structuredInvoiceHash?: string | null;
+  structuredInvoicePath?: string | null;
+  deliveryStatus?: 'pending' | 'sent' | 'delivered' | 'failed' | 'rejected' | string | null;
+  deliveryChannel?: 'peppol' | 'pdp' | 'email' | string | null;
+  deliveryTrackingId?: string | null;
+  deliveryResponse?: string | null;
+  deliveryAttempts?: number | null;
+  deliverySentAt?: Date | string | null;
+  deliveryLastAttemptAt?: Date | string | null;
+  pdfHash?: string | null;
+  pdfPath?: string | null;
+  lockedAt?: string | null;
+  lockedBy?: string | null;
+  retentionUntil?: string | null;
+  legalRuleVersion?: string | null;
+
   createdAt: string;
   updatedAt: string;
 }

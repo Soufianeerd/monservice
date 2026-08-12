@@ -1,0 +1,9 @@
+{
+  "invoice_number": "Invoice Number",
+  "due_date": "Due Date",
+  "amount_due": "Amount Due",
+  "subtotal": "Subtotal (Excl. Tax)",
+  "tax": "Tax",
+  "total": "Total (Incl. Tax)",
+  "pay_now": "Pay Now"
+}

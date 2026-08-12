@@ -7,18 +7,18 @@ import { Invoice, Deal, Organization } from '@/lib/data/interfaces';
 export async function generateInvoicePDF(
   invoice: Invoice,
   organization: Organization,
-  client: { name: string; email?: string; address?: string }
+  client: { name: string; email?: string; address?: string; country?: string }
 ): Promise<Blob> {
-  const doc = InvoicePDF({ invoice, organization, client });
+  const doc = await InvoicePDF({ invoice, organization, client });
   return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 
 export async function generateQuotePDF(
   deal: Deal,
   organization: Organization,
-  client: { name: string; email?: string; address?: string }
+  client: { name: string; email?: string; address?: string; country?: string }
 ): Promise<Blob> {
-  const doc = QuotePDF({ deal, organization, client });
+  const doc = await QuotePDF({ deal, organization, client });
   return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 

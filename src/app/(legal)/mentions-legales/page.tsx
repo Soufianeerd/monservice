@@ -1,69 +1,72 @@
-import Link from 'next/link';
-import type { Metadata } from 'next';
+import { Metadata } from 'next';
+import { legalService } from '@/lib/services/legal.service';
+// import { getLocale, getCountry } from '@/lib/utils/geo'; // Mock implementation for now
 
 export const metadata: Metadata = {
-  title: 'Mentions légales — MonService',
-  description: 'Informations légales relatives à l’éditeur du site MonService.',
+  title: 'Mentions Légales | MonService',
+  description: 'Mentions légales de la plateforme MonService.',
 };
 
-/**
- * ⚠️ OBLIGATION LÉGALE (art. 6-III de la LCEN). Les champs entre crochets
- * doivent impérativement être complétés avant toute mise en ligne publique.
- */
-export default function LegalNoticePage() {
+export default async function MentionsLegalesPage() {
+  // En production, ces valeurs seraient détectées via la géolocalisation ou la session
+  const locale = 'fr';
+  const country = 'FR'; 
+  
+  const mentions = await legalService.getSiteMentions(country, locale);
+
   return (
-    <div className="min-h-screen bg-white py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto prose prose-indigo text-gray-700">
-        <h1>Mentions légales</h1>
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Mentions légales</h1>
+      
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Informations de l'éditeur</h3>
+        </div>
+        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl className="sm:divide-y sm:divide-gray-200">
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Éditeur</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.publisher}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Adresse</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.publisherAddress}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Email</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.publisherEmail}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Téléphone</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.publisherPhone}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Immatriculation</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.registrationNumber}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Numéro de TVA</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.vatId}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
 
-        <h2>Éditeur</h2>
-        <p>
-          <strong>[RAISON SOCIALE]</strong>
-          <br />
-          [Forme juridique] au capital de [montant] €
-          <br />
-          Siège social : [adresse complète]
-          <br />
-          RCS [ville] — SIREN [numéro]
-          <br />
-          TVA intracommunautaire : [numéro]
-          <br />
-          Directeur de la publication : [nom]
-          <br />
-          Contact : [email] — [téléphone]
-        </p>
-
-        <h2>Hébergement</h2>
-        <p>
-          <strong>Netlify, Inc.</strong>
-          <br />
-          512 2nd Street, Suite 200, San Francisco, CA 94107, États-Unis
-          <br />
-          <a href="https://www.netlify.com" target="_blank" rel="noopener noreferrer">
-            www.netlify.com
-          </a>
-        </p>
-        <p>
-          Base de données : <strong>Supabase</strong> — région [À PRÉCISER].
-        </p>
-
-        <h2>Propriété intellectuelle</h2>
-        <p>
-          L&apos;ensemble des éléments composant le site (structure, textes, logos, graphismes) est
-          protégé par le droit de la propriété intellectuelle. Toute reproduction non autorisée est
-          interdite.
-        </p>
-
-        <h2>Données personnelles</h2>
-        <p>
-          Le traitement des données personnelles est décrit dans notre{' '}
-          <Link href="/confidentialite">politique de confidentialité</Link>.
-        </p>
-
-        <div className="mt-8">
-          <Link href="/" className="text-indigo-600 hover:underline">
-            &larr; Retour à l&apos;accueil
-          </Link>
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg mt-8">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Hébergement</h3>
+        </div>
+        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
+          <dl className="sm:divide-y sm:divide-gray-200">
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Hébergeur</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.hosting}</dd>
+            </div>
+            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Adresse</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{mentions.hostingAddress}</dd>
+            </div>
+          </dl>
         </div>
       </div>
     </div>

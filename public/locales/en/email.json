@@ -1,0 +1,4 @@
+{
+  "invoice_subject": "Your invoice {{number}}",
+  "invoice_body": "<p>Hello,</p><p>Please find attached your invoice {{number}} for the amount of {{total}}.</p><p>Best regards,</p>"
+}

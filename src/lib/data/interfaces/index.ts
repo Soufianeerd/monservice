@@ -15,3 +15,8 @@ export * from './notification.interface';
 export * from './activity-log.interface';
 export * from './onboarding.interface';
 export * from './tour.interface';
+export * from './legal-entity.interface';
+export * from './country-compliance-profile.interface';
+export * from './consent-event.interface';
+export * from './data-subject-request.interface';
+export * from './audit-log.interface';

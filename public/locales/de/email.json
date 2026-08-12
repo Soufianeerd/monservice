@@ -1,0 +1,4 @@
+{
+  "invoice_subject": "Ihre Rechnung {{number}}",
+  "invoice_body": "<p>Guten Tag,</p><p>Anbei erhalten Sie Ihre Rechnung {{number}} über den Betrag von {{total}}.</p><p>Mit freundlichen Grüßen,</p>"
+}

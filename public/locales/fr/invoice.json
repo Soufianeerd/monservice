@@ -1,0 +1,9 @@
+{
+  "invoice_number": "Numéro de facture",
+  "due_date": "Date d'échéance",
+  "amount_due": "Montant dû",
+  "subtotal": "Sous-total HT",
+  "tax": "TVA",
+  "total": "Total TTC",
+  "pay_now": "Payer maintenant"
+}

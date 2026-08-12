@@ -1,0 +1,17 @@
+{
+  "id": "inv_lu",
+  "number": "F-2026-0004",
+  "supplierCountry": "LU",
+  "customer": { "country": "LU" },
+  "customerType": "B2B",
+  "date": "2026-01-01",
+  "totalHT": 1000,
+  "lines": [
+    {
+      "description": "Consulting Luxembourg",
+      "quantity": 1,
+      "unitPrice": 1000,
+      "taxRate": 17
+    }
+  ]
+}
