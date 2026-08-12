@@ -52,7 +52,7 @@ test.describe('Professional Journey E2E', () => {
     await page.goto('/parametres/organisation');
     await page.fill('input[name="name"]', 'Entreprise Pro Test');
     await page.locator('select[name="industry"]').selectOption('artisan');
-    await page.fill('input[name="secondarySkills"]', '[\"plomberie\", \"chauffage\"]');
+    await page.fill('input[name="secondarySkills"]', '["plomberie", "chauffage"]');
     await page.click('button:has-text("Enregistrer")');
 
     // 4. Marketplace Filtering

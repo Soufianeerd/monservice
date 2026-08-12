@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react';
 export default function CookieConsent() {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    if (!localStorage.getItem('cookie-consent')) setShow(true);
+    const timer = setTimeout(() => {
+      if (!localStorage.getItem('cookie-consent')) setShow(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const accept = () => {

@@ -1,0 +1,132 @@
+
+> monservice@0.1.0 build
+> next build
+
+▲ Next.js 16.2.11 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 22.8s
+  Running TypeScript ...
+  Finished TypeScript in 16.7s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/78) ...
+  Generating static pages using 7 workers (19/78) 
+  Generating static pages using 7 workers (38/78) 
+  Generating static pages using 7 workers (58/78) 
+✓ Generating static pages using 7 workers (78/78) in 661ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /activity
+├ ƒ /admin/audit-logs
+├ ƒ /agenda
+├ ƒ /agenda/calendrier
+├ ƒ /agenda/taches
+├ ƒ /agenda/taches/[id]
+├ ƒ /agenda/taches/[id]/edit
+├ ƒ /agenda/taches/new
+├ ƒ /api/admin/audit
+├ ƒ /api/admin/audit/export
+├ ƒ /api/auth/mfa
+├ ƒ /api/auth/mfa/verify
+├ ƒ /api/deals/sign
+├ ƒ /api/invoices/[id]/delivery-status
+├ ƒ /api/invoices/[id]/download
+├ ƒ /api/invoices/[id]/send
+├ ƒ /api/privacy/breach
+├ ƒ /api/privacy/consent
+├ ƒ /api/privacy/dsar
+├ ƒ /api/quotes/sign
+├ ƒ /api/reminders/check
+├ ƒ /api/retention/check
+├ ƒ /api/retention/export
+├ ƒ /api/stripe/checkout
+├ ƒ /api/stripe/connect/onboarding
+├ ƒ /api/stripe/create-payment
+├ ƒ /api/stripe/webhook
+├ ƒ /auth/callback
+├ ƒ /client/dashboard
+├ ƒ /client/invoices
+├ ƒ /client/invoices/[id]
+├ ƒ /client/messages
+├ ƒ /client/messages/[id]
+├ ƒ /client/profile
+├ ƒ /client/quotes
+├ ƒ /client/quotes/[id]
+├ ƒ /client/requests
+├ ƒ /client/requests/[id]
+├ ƒ /client/requests/[id]/edit
+├ ƒ /client/requests/new
+├ ƒ /clients
+├ ƒ /clients/[id]
+├ ƒ /clients/[id]/contacts
+├ ƒ /clients/[id]/contacts/[contactId]
+├ ƒ /clients/[id]/contacts/[contactId]/edit
+├ ƒ /clients/[id]/contacts/new
+├ ƒ /clients/[id]/edit
+├ ƒ /clients/new
+├ ƒ /conditions
+├ ƒ /confidentialite
+├ ƒ /cookies
+├ ƒ /dashboard
+├ ƒ /deals
+├ ƒ /deals/[id]
+├ ƒ /deals/[id]/edit
+├ ƒ /deals/new
+├ ƒ /deals/pipeline
+├ ƒ /deals/rapports
+├ ƒ /demo
+├ ƒ /devis/[id]/sign
+├ ƒ /facturation
+├ ƒ /facturation/devis
+├ ƒ /facturation/devis/[id]
+├ ƒ /facturation/factures
+├ ƒ /facturation/factures/[id]
+├ ƒ /facturation/factures/[id]/edit
+├ ƒ /facturation/factures/new
+├ ƒ /facturation/produits
+├ ƒ /facturation/produits/[id]/edit
+├ ƒ /facturation/produits/new
+├ ƒ /forbidden
+├ ƒ /forgot-password
+├ ƒ /login
+├ ƒ /marketplace
+├ ƒ /marketplace/[requestId]
+├ ƒ /marketplace/[requestId]/respond
+├ ƒ /mentions-legales
+├ ƒ /messages
+├ ƒ /messages/[id]
+├ ƒ /parametres
+├ ƒ /parametres/donnees
+├ ƒ /parametres/facturation
+├ ƒ /parametres/notifications
+├ ƒ /parametres/organisation
+├ ƒ /parametres/privacy
+├ ƒ /parametres/privacy/breach
+├ ƒ /parametres/privacy/consents
+├ ƒ /parametres/privacy/dsar
+├ ƒ /parametres/privacy/register
+├ ƒ /parametres/profil
+├ ƒ /parametres/retention
+├ ƒ /parametres/securite
+├ ƒ /pro/[slug]
+├ ƒ /register
+├ ƒ /reset-password
+├ ○ /robots.txt
+├ ƒ /search
+├ ƒ /settings/reminders
+├ ○ /sitemap.xml
+├ ƒ /templates
+├ ƒ /templates/[id]/edit
+└ ƒ /templates/new
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+npm run build exit code: 0

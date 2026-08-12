@@ -23,6 +23,7 @@ export default function ProductTour() {
   // Track the target element
   useEffect(() => {
     if (!currentTourStep) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetRect(null);
       return;
     }
@@ -94,6 +95,7 @@ export default function ProductTour() {
   if (!activeTour || !currentTourStep) return null;
 
   // Don't render coachmark if target isn't found yet
+  // eslint-disable-next-line react-hooks/refs
   if (!refs.reference.current) return null;
 
   const totalSteps = activeTour.steps.length;
@@ -103,6 +105,7 @@ export default function ProductTour() {
       <TourSpotlight targetRect={targetRect} />
       
       <div 
+        // eslint-disable-next-line react-hooks/refs
         ref={refs.setFloating}
         style={floatingStyles}
         className="z-[100] w-72 bg-white rounded-xl shadow-2xl border border-gray-100 p-4"

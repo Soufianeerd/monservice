@@ -40,8 +40,6 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
         }
       } catch (error) {
         console.error('Erreur', error);
-      } finally {
-        
       }
     };
     load();
@@ -64,8 +62,6 @@ export default function MessageDetailPage({ params }: { params: Promise<{ id: st
       setNewMessage('');
     } catch (error) {
       console.error('Erreur', error);
-    } finally {
-      
     }
   };
 

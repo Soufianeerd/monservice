@@ -30,7 +30,10 @@ export default function ClientContactsPage(props: { params: Promise<{ id: string
   };
 
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.organizationId, params.id]);
 

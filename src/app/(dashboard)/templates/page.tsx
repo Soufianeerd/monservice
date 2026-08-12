@@ -27,7 +27,11 @@ export default function TemplatesPage() {
   };
 
   useEffect(() => {
-    loadTemplates();
+    const timer = setTimeout(() => {
+      loadTemplates();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleDelete = async (id: string) => {

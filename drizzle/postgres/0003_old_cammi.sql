@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "secondary_skills" text;

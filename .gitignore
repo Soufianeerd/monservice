@@ -43,6 +43,6 @@ next-env.d.ts
 # SQLite Database
 database.sqlite
 database.sqlite-journal
-/drizzle
+# /drizzle - Migrations are tracked
 playwright-report/
 test-results/

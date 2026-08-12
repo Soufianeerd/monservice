@@ -39,8 +39,6 @@ export default function ProfessionalMessageDetailPage({ params }: { params: Prom
         }
       } catch (error) {
         console.error('Erreur', error);
-      } finally {
-        
       }
     };
     load();
@@ -61,8 +59,8 @@ export default function ProfessionalMessageDetailPage({ params }: { params: Prom
 
       setMessages([...messages, msg]);
       setNewMessage('');
-    } finally {
-      
+    } catch (error) {
+      console.error('Erreur', error);
     }
   };
 

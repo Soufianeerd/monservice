@@ -57,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void loadProfile();
+    const timer = setTimeout(() => {
+      void loadProfile();
+    }, 0);
 
     // Recharge le profil à chaque changement d'état d'authentification
     // (connexion, déconnexion, rafraîchissement de jeton).
@@ -75,7 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, [supabase, loadProfile]);
 
   const signIn = useCallback(

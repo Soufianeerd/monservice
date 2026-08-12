@@ -3,16 +3,25 @@ vi.mock('server-only', () => ({}));
 import { DSARService } from '@/lib/services/dsar.service';
 import { db } from '@/lib/db/server';
 
-vi.mock('@/lib/db/server', () => ({
-  db: {
-    insert: vi.fn().mockReturnThis(),
+const { mockQueryBuilder } = vi.hoisted(() => {
+  const qb = {
     values: vi.fn().mockResolvedValue([{ id: 'test-id' }]),
-    update: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     where: vi.fn().mockResolvedValue([{ id: 'test-id' }]),
-    select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockResolvedValue([]),
+  };
+  // Needed because set() returns itself which we assert against
+  qb.set.mockReturnValue(qb);
+  qb.from.mockReturnValue(qb);
+  return { mockQueryBuilder: qb };
+});
+
+vi.mock('@/lib/db/server', () => ({
+  db: {
+    insert: vi.fn().mockReturnValue(mockQueryBuilder),
+    update: vi.fn().mockReturnValue(mockQueryBuilder),
+    select: vi.fn().mockReturnValue(mockQueryBuilder),
   }
 }));
 
@@ -41,7 +50,7 @@ describe('DSARService', () => {
   it('should process a DSAR request', async () => {
     await dsarService.processRequest('req1', 'Here is your data', 'COMPLETED', 'admin1');
     expect(db.update).toHaveBeenCalled();
-    expect((db as any).set).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockQueryBuilder.set).toHaveBeenCalledWith(expect.objectContaining({
       status: 'COMPLETED',
       response: 'Here is your data',
       processedBy: 'admin1',

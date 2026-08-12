@@ -34,6 +34,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const stored = localStorage.getItem('monservice_onboarding_minimized');
     if (stored !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMinimized(stored === 'true');
     } else {
       // By default open if not completed
