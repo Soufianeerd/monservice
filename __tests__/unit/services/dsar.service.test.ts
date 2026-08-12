@@ -41,7 +41,7 @@ describe('DSARService', () => {
   it('should process a DSAR request', async () => {
     await dsarService.processRequest('req1', 'Here is your data', 'COMPLETED', 'admin1');
     expect(db.update).toHaveBeenCalled();
-    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({
+    expect((db as any).set).toHaveBeenCalledWith(expect.objectContaining({
       status: 'COMPLETED',
       response: 'Here is your data',
       processedBy: 'admin1',

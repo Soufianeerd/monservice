@@ -34,7 +34,7 @@ describe('PrivacyService', () => {
 
   it('should export CSV format correctly', async () => {
     // Mock the db return
-    (db.where as any).mockResolvedValueOnce([
+    ((db as any).where as any).mockResolvedValueOnce([
       { name: 'Support', purpose: 'Help users', legalBasis: 'Contract', retentionPeriod: '1 yr', responsible: 'Admin' }
     ]);
 

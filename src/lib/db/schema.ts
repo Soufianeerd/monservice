@@ -3,6 +3,7 @@ import {
   text,
   integer,
   real,
+  numeric,
   boolean,
   index,
   uniqueIndex,
@@ -21,6 +22,20 @@ import {
  * PostgreSQL est désormais utilisé dans tous les environnements. Pour le
  * développement local : `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16`.
  */
+
+import { customType } from 'drizzle-orm/pg-core';
+
+export const moneyNumeric = customType<{ data: number; driverData: string }>({
+  dataType() {
+    return 'numeric(14,2)';
+  },
+  fromDriver(value: string): number {
+    return Number(value);
+  },
+  toDriver(value: number): string {
+    return value.toString();
+  },
+});
 
 /** Helper : conserve la signature `integer(name, { mode: 'boolean' })`. */
 const sqliteTable = pgTable;
@@ -132,7 +147,7 @@ export const deals = sqliteTable('deals', {
   organizationId: text('organization_id').notNull(),
   clientId: text('client_id').notNull(),
   name: text('name').notNull(),
-  value: real('value').notNull(),
+  value: moneyNumeric('value').notNull(),
   status: text('status').notNull(), // 'prospect' | 'qualification' | 'negotiation' | 'proposal' | 'won' | 'lost'
   expectedCloseDate: text('expected_close_date').notNull(),
   description: text('description'),
@@ -152,8 +167,8 @@ export const products = sqliteTable('products', {
   organizationId: text('organization_id').notNull(),
   name: text('name').notNull(),
   description: text('description'),
-  unitPrice: real('unit_price').notNull(),
-  taxRate: real('tax_rate').default(20),
+  unitPrice: moneyNumeric('unit_price').notNull(),
+  taxRate: moneyNumeric('tax_rate').default(20),
   type: text('type').default('service'), // 'product' | 'service'
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -179,9 +194,9 @@ export const invoices = sqliteTable('invoices', {
   professionalId: text('professional_id'),
   message: text('message'),
   status: text('status').notNull(), // 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled'
-  totalHT: real('total_ht').notNull(),
-  taxAmount: real('tax_amount').notNull(),
-  totalTTC: real('total_ttc').notNull(),
+  totalHT: moneyNumeric('total_ht').notNull(),
+  taxAmount: moneyNumeric('tax_amount').notNull(),
+  totalTTC: moneyNumeric('total_ttc').notNull(),
   signature: text('signature'), // serialized
   signatureDate: text('signature_date'),
   signatureIp: text('signature_ip'),
@@ -193,7 +208,7 @@ export const invoices = sqliteTable('invoices', {
   customerVatId: text('customer_vat_id'),
   customerType: text('customer_type'),
   vatTreatment: text('vat_treatment'),
-  vatRate: real('vat_rate'),
+  vatRate: moneyNumeric('vat_rate'),
   vatExemptionCode: text('vat_exemption_code'),
   reverseCharge: boolean('reverse_charge').default(false),
   einvoiceRequired: boolean('einvoice_required').default(false),
@@ -230,11 +245,11 @@ export const invoiceLines = sqliteTable('invoice_lines', {
   invoiceId: text('invoice_id').notNull(),
   productId: text('product_id'),
   description: text('description').notNull(),
-  quantity: real('quantity').notNull(),
-  unitPrice: real('unit_price').notNull(),
-  taxRate: real('tax_rate').notNull(),
-  totalHT: real('total_ht').notNull(),
-  totalTTC: real('total_ttc').notNull(),
+  quantity: moneyNumeric('quantity').notNull(),
+  unitPrice: moneyNumeric('unit_price').notNull(),
+  taxRate: moneyNumeric('tax_rate').notNull(),
+  totalHT: moneyNumeric('total_ht').notNull(),
+  totalTTC: moneyNumeric('total_ttc').notNull(),
 }, (t) => [
   index('invoice_lines_invoice_id_idx').on(t.invoiceId)
 ]);
@@ -343,10 +358,10 @@ export const countryComplianceProfiles = sqliteTable('country_compliance_profile
   country: text('country').notNull(),
   version: text('version').notNull(),
   effectiveFrom: timestamp('effective_from').notNull(),
-  vatStandard: real('vat_standard').notNull(),
-  vatReduced: real('vat_reduced'),
-  vatReduced2: real('vat_reduced_2'),
-  vatReduced3: real('vat_reduced_3'),
+  vatStandard: moneyNumeric('vat_standard').notNull(),
+  vatReduced: moneyNumeric('vat_reduced'),
+  vatReduced2: moneyNumeric('vat_reduced_2'),
+  vatReduced3: moneyNumeric('vat_reduced_3'),
   retentionYears: integer('retention_years').notNull(),
   einvoiceMandatory: boolean('einvoice_mandatory').default(false),
   einvoiceFormat: text('einvoice_format'),

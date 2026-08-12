@@ -9,22 +9,22 @@ describe('E-invoice – Compliance Tests', () => {
   const einvoiceService = new EinvoiceService();
 
   it('BE B2B should generate Peppol BIS', async () => {
-    const format = await einvoiceService.determineFormat(beInvoice as any);
+    const format = await (einvoiceService as any).determineFormat(beInvoice as any);
     expect(format).toBe('PeppolBIS');
   });
 
   it('FR should generate Factur-X', async () => {
-    const format = await einvoiceService.determineFormat(frInvoice as any);
+    const format = await (einvoiceService as any).determineFormat(frInvoice as any);
     expect(format).toBe('Factur-X');
   });
 
   it('DE should generate XRechnung', async () => {
-    const format = await einvoiceService.determineFormat(deInvoice as any);
+    const format = await (einvoiceService as any).determineFormat(deInvoice as any);
     expect(format).toBe('XRechnung');
   });
 
   it('LU should generate Peppol BIS for B2B', async () => {
-    const format = await einvoiceService.determineFormat(luInvoice as any);
+    const format = await (einvoiceService as any).determineFormat(luInvoice as any);
     expect(format).toBe('XRechnung');
   });
 });
