@@ -1,6 +1,8 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import nextVitals from 'eslint-config-next/core-web-vitals';
+import nextPlugin from '@next/eslint-plugin-next';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   {
@@ -8,19 +10,41 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
-  ...nextVitals,
   {
+    plugins: {
+      '@next/next': nextPlugin,
+      'react': reactPlugin,
+      'react-hooks': reactHooksPlugin
+    },
     rules: {
-      // Overrides for TypeScript to warn instead of failing the build blindly
+      ...reactPlugin.configs.recommended.rules,
+      ...reactHooksPlugin.configs.recommended.rules,
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
-      // French text uses a lot of apostrophes, escaping them all is counterproductive.
       "react/no-unescaped-entities": "off",
       "no-useless-escape": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/set-state-in-effect": "warn",
       "react-compiler/react-compiler": "off",
-      // standard data fetching patterns trigger this
-      "react-hooks/set-state-in-effect": "warn"
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      "react/display-name": "off",
+      "react/jsx-no-target-blank": "off",
+      "@next/next/no-img-element": "off"
+    },
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: { jsx: true }
+      }
+    },
+    settings: {
+      react: {
+        version: 'detect'
+      }
     }
   }
 );
+

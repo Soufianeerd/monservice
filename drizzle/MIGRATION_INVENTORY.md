@@ -1,13 +1,21 @@
 # Inventaire des migrations Drizzle (PostgreSQL)
 
-Ce fichier garde la trace des migrations SQL générées via Drizzle et de leur rôle.
-Historiquement, les migrations étaient ignorées dans `.gitignore`, ce qui créait des désynchronisations de schéma dans l'intégration continue et sur Supabase (voir failles MS-011 et MS-021). 
-Désormais, **toutes les migrations doivent être traquées** via Git pour garantir la reproductibilité du déploiement.
+Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec leur statut vis-à-vis du journal officiel Drizzle et de la production (Supabase).
 
-## Migrations
+| file | source | journaled (YES/NO) | generated/manual | purpose | dependencies | production state | classification | action |
+|---|---|---|---|---|---|---|---|---|
+| `drizzle/0000_small_obadiah_stane.sql` | Racine `drizzle/` | NO | Generated (Stray) | Reliquat initial orphelin | N/A | UNKNOWN_PRODUCTION_STATE | OBSOLETE | À vérifier puis supprimer |
+| `drizzle/postgres/0000_large_prima.sql` | Drizzle Kit | YES | Generated | Schéma initial de base | N/A | PROBABLY_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0001_audit_p0_fixes.sql` | Manuel | NO | Manual | Fixes P0, tables VAT & Subscriptions | `0000_large_prima.sql` | UNKNOWN_PRODUCTION_STATE | MANUAL_REVIEW_REQUIRED | Isoler (hors journal canonique) |
+| `drizzle/postgres/0001_flawless_namorita.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0000_large_prima` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0002_high_iron_man.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0001_flawless_namorita` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0002_supabase_auth_migration.sql`| Manuel | NO | Manual | Triggers auth Supabase | N/A | UNKNOWN_PRODUCTION_STATE | MANUAL_REVIEW_REQUIRED | Isoler (hors journal canonique) |
+| `drizzle/postgres/0003_fk_and_transactions.sql` | Manuel | NO | Manual | Contraintes FK supplémentaires | N/A | UNKNOWN_PRODUCTION_STATE | MANUAL_REVIEW_REQUIRED | Isoler (hors journal canonique) |
+| `drizzle/postgres/0003_old_cammi.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0002_high_iron_man` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0004_tidy_butterfly.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0003_old_cammi` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0005_lame_corsair.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0004_tidy_butterfly` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0006_slow_wild_child.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0005_lame_corsair` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0007_familiar_supernaut.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0006_slow_wild_child` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0008_worthless_sentinels.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0007_familiar_supernaut`| UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
 
-| Migration | Date | Description |
-|---|---|---|
-| `0000_initial` | (existante) | Schéma de base généré initialement |
-| `0001_audit_p0_fixes` | Août 2026 | Correction des types (Numeric, suppression `as any`), tables manquantes (VAT, Subscriptions) après l'audit P0 |
-| *(à venir)* | | |
+**Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).

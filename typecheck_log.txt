@@ -1,5 +1,0 @@
-
-> monservice@0.1.0 typecheck
-> tsc --noEmit
-
-npm run typecheck exit code: 0

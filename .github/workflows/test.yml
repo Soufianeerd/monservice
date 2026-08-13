@@ -26,6 +26,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - name: Verify PostgreSQL is ready
+        run: |
+          pg_isready -d "$DATABASE_URL" -t 5
+          psql "$DATABASE_URL" -c "SELECT 1;"
+      - name: Run Drizzle Migrations
+        run: npm run db:migrate
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:security
