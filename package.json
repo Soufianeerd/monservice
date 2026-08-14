@@ -17,7 +17,8 @@
     "test:security": "vitest run __tests__/unit/security",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:check-drift": "npx tsx scripts/check-schema-drift.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

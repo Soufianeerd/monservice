@@ -32,21 +32,11 @@ describe('MFAService', () => {
     mfaService = new MFAService();
   });
 
-  it('should generate a secret and QR code URL', async () => {
-    const result = await mfaService.generateSecret('user1');
-    expect(result.secret).toBeDefined();
-    expect(result.otpauthUrl).toContain('otpauth://totp/');
-    
-    const qrCode = await mfaService.generateQRCode(result.otpauthUrl);
-    expect(qrCode).toBe('data:image/png;base64,mockedqr');
+  it('should throw an error for generating secret since MFA is managed by Supabase', async () => {
+    await expect(mfaService.generateSecret('user1')).rejects.toThrow('MFA is now managed by Supabase Auth');
   });
 
-  it('should verify a valid TOTP code (mocked via speakeasy behavior)', async () => {
-    // Note: since the secret is hardcoded above ('JBSWY3DPEHPK3PXP' is base32 for 'Hello!'),
-    // we could generate a valid token using speakeasy.totp, or we just rely on the implementation.
-    // We will just verify it calls the DB and returns a boolean.
-    // By passing an invalid code, we expect false.
-    const isValid = await mfaService.verifyCode('user1', '000000');
-    expect(isValid).toBe(false);
+  it('should throw an error for verifyCode since MFA is managed by Supabase', async () => {
+    await expect(mfaService.verifyCode('user1', '000000')).rejects.toThrow('MFA is now managed by Supabase Auth');
   });
 });

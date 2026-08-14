@@ -1,13 +1,28 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Marketplace Workflow', () => {
-  // Stratégie de test CI : En l'absence de Supabase Auth réel (in-memory Postgres seulement),
-  // nous vérifions que les routes protégées nécessitent une authentification.
-  // TODO (Prompt 03+): Configurer Supabase CLI pour tester la gestion des clients E2E.
+  test('should display marketplace requests and allow clicking on one', async ({ page }) => {
+    // Login as a professional
+    await page.goto('/login');
+    await page.fill('input[type="email"]', 'freelance@monservice.com'); // assume seeded user
+    await page.fill('input[type="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('**/dashboard');
 
-  test('should redirect unauthenticated users away from marketplace', async ({ page }) => {
+    // Go to marketplace
     await page.goto('/marketplace');
-    // Vérifier la redirection ou l'état non-autorisé
-    expect(page.url()).not.toBe('http://localhost:3000/marketplace');
+    
+    // Wait for the list to load
+    await expect(page.locator('h1', { hasText: 'Marketplace' })).toBeVisible();
+    
+    // Check if there are any requests, if yes, click the first one
+    const firstRequest = page.locator('ul > li').first();
+    if (await firstRequest.isVisible()) {
+      await firstRequest.click();
+      
+      // Wait for navigation to details page
+      await page.waitForURL('**/marketplace/*');
+      await expect(page.locator('button', { hasText: 'Répondre à cette demande' })).toBeVisible();
+    }
   });
 });

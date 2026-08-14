@@ -56,8 +56,6 @@ export const users = sqliteTable('users', {
   // mais absente du schéma (dérive constatée à l'audit).
   stripeCustomerId: text('stripe_customer_id'),
   legalEntityId: text('legal_entity_id'),
-  mfaEnabled: boolean('mfa_enabled').default(false),
-  mfaSecret: text('mfa_secret'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [

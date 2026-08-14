@@ -13,8 +13,7 @@ export const metadata: Metadata = {
 export default async function SecurityPage() {
   const session = await requireSession();
   
-  const userRecord = await db.select({ mfaEnabled: users.mfaEnabled }).from(users).where(eq(users.id, session.userId as string));
-  const isEnabled = userRecord[0]?.mfaEnabled || false;
+  const isEnabled = false; // MFA state is now managed by Supabase Auth
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
