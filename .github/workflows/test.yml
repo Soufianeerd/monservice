@@ -5,9 +5,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/monservice_test
-      # Dummy Supabase variables solely for SDK initialization during CI tests. No external connection is established.
-      NEXT_PUBLIC_SUPABASE_URL: "https://dummy-ci-project.supabase.co"
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy-ci-key.signature"
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy
     services:
       postgres:
         image: postgres:16
