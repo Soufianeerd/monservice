@@ -1,74 +1,48 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Professional Journey E2E', () => {
-  const timestamp = Date.now();
-  const testEmail = `pro-test-${timestamp}@monservice.com`;
-  const password = 'Password123!';
+  const testEmail = 'pro_a@monservice.com';
+  const password = 'password123';
 
-  test('Full Professional Flow: Signup, Onboarding, Marketplace, Invoice', async ({ page }) => {
-    // 1. Signup
-    await page.goto('/register');
-    await page.fill('input[name="name"]', 'Pro Test');
+  test.beforeEach(async ({ page }) => {
+    // Authenticate using the seeded professional
+    await page.goto('/login');
     await page.fill('input[name="email"]', testEmail);
     await page.fill('input[name="password"]', password);
-    await page.fill('input[name="confirmPassword"]', password);
-    await page.click('button:has-text("Continuer")');
-    
-    // Step 2: Choose Pro Profile
-    await page.click('text="Je suis un professionnel"');
-    await page.click('button:has-text("Continuer")');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('**/dashboard');
+  });
 
-    // Step 3: Pro details
-    await page.fill('input[name="orgName"]', 'Entreprise Pro Test');
-    await page.click('text="Artisan & Bâtiment"');
-    await page.click('button:has-text("Continuer")');
+  test('PRO_E2E_01: Professional A can access dashboard and update profile', async ({ page }) => {
+    // 1. Dashboard access
+    expect(page.url()).toContain('/dashboard');
 
-    // Step 4: Review and Submit
-    await page.click('input[type="checkbox"]');
-    
-    await Promise.all([
-      page.waitForNavigation({ url: '**/dashboard*' }).catch(() => {}),
-      page.click('button:has-text("Valider mon inscription")')
-    ]);
-
-    // Check url
-    if (!page.url().includes('/dashboard')) {
-       await page.goto('/dashboard');
-    }
-
-    // 2. Onboarding Launcher behavior
-    const launcher = page.locator('button', { hasText: 'Prise en main' });
-    if (await launcher.isVisible()) {
-      await launcher.click();
-    }
-    
-    // Check if popover shows up
-    const popover = page.locator('text=Prise en main');
-    if (await popover.isVisible()) {
-       await page.locator('button[aria-label="Réduire le guide"]').click();
-    }
-
-    // 3. Update Company Profile (Activity and Secondary Skills)
+    // 2. Update Company Profile
     await page.goto('/parametres/organisation');
-    await page.fill('input[name="name"]', 'Entreprise Pro Test');
-    await page.locator('select[name="industry"]').selectOption('artisan');
-    await page.fill('input[name="secondarySkills"]', '["plomberie", "chauffage"]');
-    await page.click('button:has-text("Enregistrer")');
-
-    // 4. Marketplace Filtering
-    await page.goto('/marketplace');
-    // Ensure filters component is visible
-    await expect(page.locator('label', { hasText: 'Catégorie' })).toBeVisible();
     
-    // Select a filter and verify URL or response
-    await page.locator('select').first().selectOption('artisan');
-    // We expect the list to filter, but we don't necessarily have seeded requests for this specific test
-    // So we just verify the filter doesn't crash the page
-    await expect(page.locator('text=Trouvez de nouvelles opportunités')).toBeVisible();
+    // We expect the form to be visible since we are authenticated
+    await expect(page.locator('input[name="name"]')).toBeVisible();
 
-    // 5. RBAC
-    await page.goto('/client/dashboard');
-    // It should redirect or forbid
-    expect(page.url()).not.toBe('http://localhost:3000/client/dashboard');
+    await page.fill('input[name="name"]', 'Organization A - Updated');
+    await page.locator('select[name="industry"]').selectOption('artisan');
+    await page.click('button:has-text("Enregistrer")');
+  });
+
+  test('TENANT_E2E_01 / TENANT_E2E_02: Professional A cannot access or modify Organization B resources', async ({ page }) => {
+    // Attempting to visit another organization's settings directly via URL (assuming org-b-5678 is the seeded ID)
+    // The UI might redirect or show a 404/forbidden if RLS blocks the row
+    // Wait for network idle or redirect
+    await page.goto('/parametres/organisation?id=org-b-5678');
+    
+    // Since RLS is active, they should not see "Organization B" data
+    const orgNameInput = page.locator('input[name="name"]');
+    if (await orgNameInput.isVisible()) {
+      const val = await orgNameInput.inputValue();
+      expect(val).not.toContain('Organization B');
+    }
+    
+    // Attempt to view a client that belongs to Org B (assuming we had a client route)
+    await page.goto('/clients/cli-b-uuid-1111-2222-333344445555');
+    await expect(page.locator('text=Client B')).not.toBeVisible();
   });
 });

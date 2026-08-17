@@ -2,33 +2,42 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const tempConfigPath = 'drizzle.drift.config.ts';
-const tempOutDir = 'drizzle/temp-drift-check';
-
 try {
   console.log('Checking for schema drift...');
   
-  // Create a temporary config file that points to the temp out directory
-  fs.writeFileSync(tempConfigPath, `
-import { defineConfig } from 'drizzle-kit';
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
-export default defineConfig({
-  dialect: 'postgresql',
-  schema: './src/lib/db/schema.ts',
-  out: './${tempOutDir}',
-  dbCredentials: { url: process.env.DATABASE_URL! },
-});
-  `);
+  const migrationsDir = path.join(__dirname, '../drizzle/postgres');
+  const getFiles = () => fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
+  
+  const filesBefore = getFiles();
 
-  // Generate migrations into a temporary directory using the temporary config
-  execSync(`npx drizzle-kit generate --config=${tempConfigPath}`, { stdio: 'pipe' });
+  // Generate migrations into the actual migrations directory
+  // If there's drift, drizzle-kit will create a new migration file.
+  execSync(`npx drizzle-kit generate`, { stdio: 'inherit' });
   
-  const files = fs.existsSync(tempOutDir) ? fs.readdirSync(tempOutDir).filter(f => f.endsWith('.sql')) : [];
+  const filesAfter = getFiles();
   
-  if (files.length > 0) {
+  // Find newly generated files
+  const newFiles = filesAfter.filter(f => !filesBefore.includes(f));
+  
+  if (newFiles.length > 0) {
     console.error('❌ ERROR: Schema drift detected! `src/lib/db/schema.ts` does not match the latest migrations.');
-    console.error('Please run `npm run db:generate` to create a migration for your schema changes.');
+    console.error(`Drizzle generated the following new files to catch up: ${newFiles.join(', ')}`);
+    console.error('Please run `npm run db:generate` locally and commit the resulting migration files.');
+    
+    // Clean up the generated drift files so they don't pollute CI workspace
+    for (const f of newFiles) {
+      fs.rmSync(path.join(migrationsDir, f), { force: true });
+    }
+    // Also cleanup snapshot json if generated
+    if (fs.existsSync(path.join(migrationsDir, 'meta'))) {
+      const journalPath = path.join(migrationsDir, 'meta', '_journal.json');
+      if (fs.existsSync(journalPath)) {
+        // Simple way to clean up the journal: we could use git checkout, but let's just restore git status
+        execSync('git checkout -- ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' }).catch(() => {});
+      }
+      execSync('git clean -fd ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' }).catch(() => {});
+    }
+    
     process.exitCode = 1;
   } else {
     console.log('✅ No schema drift detected.');
@@ -37,12 +46,4 @@ export default defineConfig({
   console.error('❌ ERROR: Failed to run drift check.');
   console.error(error);
   process.exitCode = 1;
-} finally {
-  // Clean up
-  if (fs.existsSync(tempConfigPath)) {
-    fs.rmSync(tempConfigPath, { force: true });
-  }
-  if (fs.existsSync(tempOutDir)) {
-    fs.rmSync(tempOutDir, { recursive: true, force: true });
-  }
 }
