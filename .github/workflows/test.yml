@@ -5,32 +5,59 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
-      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
+          
+      - run: npm ci
+      
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: supabase start
-      - run: npm ci
+          
+      - name: Start Supabase Local (Without app seed)
+        run: supabase start
+        
+      - name: Export Real Local Supabase Keys to Env
+        run: |
+          supabase status -o env >> $GITHUB_ENV
+          # supabase status -o env exports API_URL and ANON_KEY (or similar)
+          # We need to map them to NEXT_PUBLIC_* variables
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status -o env | grep API_URL | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(supabase status -o env | grep ANON_KEY | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o env | grep SERVICE_ROLE_KEY | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
+          
       - name: Verify PostgreSQL is ready
         run: |
           pg_isready -d "$DATABASE_URL" -t 5
           psql "$DATABASE_URL" -c "SELECT 1;"
+          
       - name: Run Drizzle Migrations
         run: npm run db:migrate
-      - run: npm run db:check-drift
+        
+      - name: Check Schema Drift & Contract
+        run: |
+          npm run db:check-drift
+          npm run db:check-contract
+          npm run db:check-custom-objects
+          
+      - name: Local E2E Seed & Setup
+        run: npm run seed:local
+        
+      - name: Run RLS Integration Tests
+        run: npm run test:rls
+        
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:security
       - run: npm run test:unit
       - run: npm run test:compliance
       - run: npm run build
+      
       - run: npx playwright install --with-deps
       - run: npm run test:e2e:compliance
       - run: npm run test:e2e

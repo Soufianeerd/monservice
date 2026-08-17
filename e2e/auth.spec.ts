@@ -25,7 +25,7 @@ test.describe('Authentication - E2E Auth', () => {
     await page.click('button[type="submit"]');
 
     // Should show error message (assuming the UI displays this error)
-    await expect(page.locator('text=Identifiants invalides')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(page.locator('text=Identifiants invalides')).toBeVisible({ timeout: 5000 });
   });
 });
 

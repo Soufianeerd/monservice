@@ -15,14 +15,13 @@ test.describe('Marketplace Workflow', () => {
     // Wait for the list to load
     await expect(page.locator('h1', { hasText: 'Marketplace' })).toBeVisible();
     
-    // Check if there are any requests, if yes, click the first one
+    // Wait for at least one request to be visible and click it
     const firstRequest = page.locator('ul > li').first();
-    if (await firstRequest.isVisible()) {
-      await firstRequest.click();
-      
-      // Wait for navigation to details page
-      await page.waitForURL('**/marketplace/*');
-      await expect(page.locator('button', { hasText: 'Répondre à cette demande' })).toBeVisible();
-    }
+    await expect(firstRequest).toBeVisible();
+    await firstRequest.click();
+    
+    // Wait for navigation to details page
+    await page.waitForURL('**/marketplace/*');
+    await expect(page.locator('button', { hasText: 'Répondre à cette demande' })).toBeVisible();
   });
 });

@@ -18,7 +18,11 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "db:check-drift": "npx tsx scripts/check-schema-drift.ts"
+    "db:check-drift": "npx tsx scripts/check-schema-drift.ts",
+    "db:check-contract": "npx tsx scripts/check-schema-contract.ts",
+    "db:check-custom-objects": "npx tsx scripts/check-custom-objects.ts",
+    "seed:local": "npx tsx scripts/e2e/seed-local.ts",
+    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

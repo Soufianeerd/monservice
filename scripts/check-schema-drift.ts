@@ -10,8 +10,13 @@ try {
   
   const filesBefore = getFiles();
 
-  // Generate migrations into the actual migrations directory
+  // 1. Check migration history consistency
+  console.log('Checking migration history consistency...');
+  execSync(`npx drizzle-kit check`, { stdio: 'inherit' });
+
+  // 2. Generate migrations into the actual migrations directory
   // If there's drift, drizzle-kit will create a new migration file.
+  console.log('Checking for schema drift (schema.ts vs snapshot)...');
   execSync(`npx drizzle-kit generate`, { stdio: 'inherit' });
   
   const filesAfter = getFiles();
