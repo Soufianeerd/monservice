@@ -33,9 +33,17 @@ try {
       const journalPath = path.join(migrationsDir, 'meta', '_journal.json');
       if (fs.existsSync(journalPath)) {
         // Simple way to clean up the journal: we could use git checkout, but let's just restore git status
-        execSync('git checkout -- ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' }).catch(() => {});
+        try {
+          execSync('git checkout -- ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' });
+        } catch (e) {
+          // Ignore error
+        }
       }
-      execSync('git clean -fd ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' }).catch(() => {});
+      try {
+        execSync('git clean -fd ' + path.join(migrationsDir, 'meta'), { stdio: 'ignore' });
+      } catch (e) {
+        // Ignore error
+      }
     }
     
     process.exitCode = 1;
