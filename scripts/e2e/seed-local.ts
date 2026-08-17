@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { db } from '../../src/lib/db/server';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { organizations, users, clients, invoices, requests } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -17,6 +18,9 @@ async function seed() {
     console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
     process.exit(1);
   }
+
+  const sql = postgres(dbUrl);
+  const db = drizzle(sql, { schema: { organizations, users, clients, invoices, requests } });
 
   // Load SERVICE_ROLE_KEY
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
@@ -100,6 +104,7 @@ async function seed() {
   ]).onConflictDoNothing();
 
   console.log('Seed completed successfully!');
+  await sql.end();
   process.exit(0);
 }
 
