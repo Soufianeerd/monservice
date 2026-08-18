@@ -45,7 +45,9 @@ async function verifyContract() {
       if (config.name) {
         schemaTables.push(config.name);
       }
-    } catch (e) {}
+    } catch (e) {
+      // Not a valid table config, ignore
+    }
   }
 
   console.log(`\n📋 Contract Verification Overview:`);
@@ -63,7 +65,9 @@ async function verifyContract() {
       try {
         const c = getTableConfig(val as any);
         if (c.name === tableName) config = c;
-      } catch (e) {}
+      } catch (e) {
+        // Not a valid table config, ignore
+      }
     }
 
     if (!dbTables.has(tableName)) {
