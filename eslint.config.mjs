@@ -6,7 +6,7 @@ import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   {
-    ignores: [".next/", "node_modules/", "dist/", "coverage/", "out/", "*.js"]
+    ignores: [".next/", "node_modules/", "dist/", "coverage/", "out/", "*.js", "supabase/"]
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
