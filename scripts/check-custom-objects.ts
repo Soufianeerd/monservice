@@ -102,16 +102,6 @@ async function verifyCustomObjects() {
   }
 
   // 3. Verify trigger
-  const triggers = await sql`
-    SELECT tgname FROM pg_trigger 
-    WHERE tgname = 'on_auth_user_created'
-  `;
-  if (triggers.length === 0) {
-    console.error('❌ ERROR: Trigger on_auth_user_created not found.');
-    errorCount++;
-  }
-
-  // 4. Verify RLS enabled and policies present
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
     WHERE relrowsecurity = true AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
@@ -123,7 +113,22 @@ async function verifyCustomObjects() {
     FROM pg_policies WHERE schemaname = 'public'
   `;
 
-  for (const table of Object.keys(expectedPrivileges)) {
+  const triggers = await sql`
+    SELECT tgname FROM pg_trigger 
+    WHERE tgname = 'on_auth_user_created'
+  `;
+  if (triggers.length === 0) {
+    console.error('❌ ERROR: Trigger on_auth_user_created not found.');
+    errorCount++;
+  }
+
+  // 4. Verify RLS enabled and policies present for core tenant tables
+  const expectedRlsTables = [
+    'users', 'organizations', 'clients', 'contacts', 'deals', 'products', 
+    'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests'
+  ];
+
+  for (const table of expectedRlsTables) {
     if (!rlsTableNames.has(table)) {
       console.error(`❌ ERROR: RLS is NOT enabled on table '${table}'.`);
       errorCount++;
@@ -134,6 +139,12 @@ async function verifyCustomObjects() {
       console.error(`❌ ERROR: No RLS policies found for table '${table}'.`);
       errorCount++;
     }
+  }
+
+  // Stripe events must have RLS enabled, but no policies (deny all)
+  if (!rlsTableNames.has('stripe_events')) {
+    console.error(`❌ ERROR: RLS is NOT enabled on table 'stripe_events'.`);
+    errorCount++;
   }
 
   await sql.end();
