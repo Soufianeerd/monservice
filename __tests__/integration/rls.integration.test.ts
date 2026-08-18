@@ -4,12 +4,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 
-// We assume seed-local.ts has already run and created these users and data
 const PRO_A_EMAIL = 'pro_a@monservice.com';
 const PRO_B_EMAIL = 'pro_b@monservice.com';
 const PASSWORD = 'password123';
 const ORG_A_ID = 'org-a-1234';
 const ORG_B_ID = 'org-b-5678';
+const CLIENT_A_RECORD_ID = 'cli-rec-a-1234';
 const CLIENT_B_RECORD_ID = 'cli-rec-b-5678';
 
 describe('Row Level Security (RLS) Integration Tests', () => {
@@ -18,12 +18,10 @@ describe('Row Level Security (RLS) Integration Tests', () => {
   let proBClient: SupabaseClient;
 
   beforeAll(async () => {
-    // 1. Create ANON client
     anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false },
     });
 
-    // 2. Create Pro A client and authenticate
     proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false },
     });
@@ -33,7 +31,6 @@ describe('Row Level Security (RLS) Integration Tests', () => {
     });
     if (errA) throw new Error(`Failed to login Pro A: ${errA.message}`);
 
-    // 3. Create Pro B client and authenticate
     proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false },
     });
@@ -44,20 +41,32 @@ describe('Row Level Security (RLS) Integration Tests', () => {
     if (errB) throw new Error(`Failed to login Pro B: ${errB.message}`);
   });
 
-  it('ANON cannot read clients', async () => {
-    const { data, error } = await anonClient.from('clients').select('*');
-    // PostgREST will either return empty array or error for anon if completely blocked
-    expect(data).toHaveLength(0);
+  describe('ANON Table Privilege Denial (Not RLS)', () => {
+    it('ANON cannot read clients -> 42501 Table Permission Denied', async () => {
+      const { data, error } = await anonClient.from('clients').select('*');
+      expect(error).not.toBeNull();
+      expect(error?.code).toBe('42501'); // PostgreSQL Permission denied
+      expect(data).toBeNull();
+    });
   });
 
-  describe('Isolation between Organization A and Organization B', () => {
-    
-    it('Professional A SELECTs ClientRecord B -> 0 rows returned', async () => {
-      const { data, error } = await proAClient
-        .from('clients')
-        .select('*')
-        .eq('id', CLIENT_B_RECORD_ID);
-        
+  describe('Authenticated POSITIVE Access (Own Tenant)', () => {
+    it('Professional A SELECTs ClientRecord A -> exactly 1 row', async () => {
+      const { data, error } = await proAClient.from('clients').select('*').eq('id', CLIENT_A_RECORD_ID);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+    });
+
+    it('Professional A SELECTs Invoice A -> exactly 1 row', async () => {
+      const { data, error } = await proAClient.from('invoices').select('*').eq('organization_id', ORG_A_ID);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+    });
+  });
+
+  describe('Authenticated NEGATIVE Access (Cross Tenant Isolation)', () => {
+    it('Professional A SELECTs ClientRecord B -> 0 rows (Filtered by RLS, no table privilege error)', async () => {
+      const { data, error } = await proAClient.from('clients').select('*').eq('id', CLIENT_B_RECORD_ID);
       expect(error).toBeNull();
       expect(data).toHaveLength(0);
     });
@@ -70,7 +79,7 @@ describe('Row Level Security (RLS) Integration Tests', () => {
         .select();
         
       expect(error).toBeNull();
-      expect(data).toHaveLength(0); // Nothing was updated
+      expect(data).toHaveLength(0);
     });
 
     it('Professional A DELETEs ClientRecord B -> 0 rows deleted', async () => {
@@ -81,7 +90,7 @@ describe('Row Level Security (RLS) Integration Tests', () => {
         .select();
         
       expect(error).toBeNull();
-      expect(data).toHaveLength(0); // Nothing was deleted
+      expect(data).toHaveLength(0);
     });
 
     it('Professional A INSERTs client with organization_id = Org B -> RLS violation', async () => {
@@ -89,17 +98,13 @@ describe('Row Level Security (RLS) Integration Tests', () => {
         .from('clients')
         .insert({
           id: 'hacked-client-id',
-          organization_id: ORG_B_ID, // Pro A tries to inject into Org B
-          name: 'Hacked Client',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          organization_id: ORG_B_ID,
+          name: 'Hacked Client'
         })
         .select();
 
-      // PostgREST throws an error if INSERT violates RLS WITH CHECK policy
       expect(error).not.toBeNull();
-      // Code 42501 = insufficient_privilege / new row violates row-level security policy
-      expect(error?.code).toBe('42501'); 
+      expect(error?.code).toBe('42501'); // RLS WITH CHECK policy violation
     });
 
     it('Professional B verifies ClientRecord B is still intact', async () => {
@@ -110,7 +115,27 @@ describe('Row Level Security (RLS) Integration Tests', () => {
         .single();
         
       expect(error).toBeNull();
-      expect(data?.name).toBe('Client B Record'); // Name was not hacked
+      expect(data?.name).toBe('Client B Record');
+    });
+  });
+
+  describe('Requests Semantic Access (Public vs Private)', () => {
+    it('Professional B CAN read public request from Client A', async () => {
+      const { data, error } = await proBClient.from('requests').select('*').eq('client_id', CLIENT_A_RECORD_ID);
+      // Since it's visibility: 'public', it should be visible to Pro B
+      expect(error).toBeNull();
+      expect(data?.length).toBeGreaterThan(0);
+    });
+
+    it('Professional B CANNOT modify request from Client A', async () => {
+      const { data, error } = await proBClient
+        .from('requests')
+        .update({ title: 'Hacked Request' })
+        .eq('client_id', CLIENT_A_RECORD_ID)
+        .select();
+        
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
     });
   });
 });

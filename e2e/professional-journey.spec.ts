@@ -30,15 +30,26 @@ test.describe('Professional Journey E2E', () => {
 
   test('TENANT_E2E_01 / TENANT_E2E_02: Professional A cannot access or modify Organization B resources', async ({ page }) => {
     // Attempting to visit another organization's settings directly via URL
-    await page.goto('/parametres/organisation?id=org-b-5678');
+    // (Assuming the routing uses ?id= or it relies on server-side context)
+    const responseOrg = await page.goto('/parametres/organisation?id=org-b-5678');
     
-    // Verify that the organization name input does NOT contain 'Organization B'
-    // If the input is not visible due to a 404, that also means they can't access it, but 
-    // to be deterministic we check the page content.
-    await expect(page.locator('body')).not.toContainText('Organization B');
-    
-    // Attempt to view a client that belongs to Org B (assuming we had a client route)
-    await page.goto('/clients/cli-rec-b-5678');
-    await expect(page.locator('body')).not.toContainText('Client B Record');
+    // Determine deterministic failure (either 404, 403, or the inputs don't show Org B)
+    // If the page still loads but forces the context to their OWN organization:
+    const nameInput = page.locator('input[name="name"]');
+    if (await nameInput.isVisible()) {
+      await expect(nameInput).not.toHaveValue(/Organization B/i);
+    } else {
+      // Otherwise we expect a 404 or redirect
+      expect(responseOrg?.status() === 404 || responseOrg?.status() === 403 || page.url().includes('/dashboard')).toBeTruthy();
+    }
+
+    // Attempt to view a client that belongs to Org B
+    const responseClient = await page.goto('/clients/cli-rec-b-5678');
+    // If it's isolated properly by RLS, the database returns 0 rows, triggering a 404
+    if (responseClient?.status() === 200) {
+      await expect(page.locator('body')).toContainText(/404|Introuvable|Non trouvé|Not Found/i);
+    } else {
+      expect(responseClient?.status()).toBe(404);
+    }
   });
 });

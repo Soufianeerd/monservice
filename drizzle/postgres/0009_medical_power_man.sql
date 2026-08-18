@@ -94,7 +94,7 @@ ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS organizations_read ON public.organizations;
 --> statement-breakpoint
 CREATE POLICY organizations_read ON public.organizations
-  FOR SELECT TO authenticated, anon
+  FOR SELECT TO authenticated
   USING (is_public = true OR id = public.current_organization_id());
 --> statement-breakpoint
 ALTER TABLE public.invoice_lines ENABLE ROW LEVEL SECURITY;
@@ -137,3 +137,47 @@ CREATE POLICY requests_owner_write ON public.requests
   WITH CHECK (client_id = auth.uid()::text);
 --> statement-breakpoint
 ALTER TABLE public.stripe_events ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+REVOKE ALL PRIVILEGES ON TABLE public.users, public.organizations, public.clients, public.contacts, public.deals, public.products, public.invoices, public.invoice_lines, public.tasks, public.message_templates, public.messages, public.requests, public.stripe_events, public.audit_logs, public.data_subject_requests, public.country_compliance_profiles, public.consent_events, public.retention_policies, public.processing_activities FROM anon, authenticated;
+--> statement-breakpoint
+GRANT SELECT, UPDATE ON TABLE public.users TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, UPDATE ON TABLE public.organizations TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.clients TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.contacts TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.deals TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.products TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.invoices TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.invoice_lines TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.tasks TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.message_templates TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.messages TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.requests TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.processing_activities TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT ON TABLE public.audit_logs TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT ON TABLE public.data_subject_requests TO authenticated;
+--> statement-breakpoint
+GRANT SELECT, INSERT ON TABLE public.consent_events TO authenticated;
+--> statement-breakpoint
+GRANT SELECT ON TABLE public.country_compliance_profiles TO authenticated;
+--> statement-breakpoint
+GRANT SELECT ON TABLE public.retention_policies TO authenticated;
+--> statement-breakpoint
+REVOKE EXECUTE ON FUNCTION public.handle_new_auth_user() FROM PUBLIC, anon, authenticated;
+--> statement-breakpoint
+REVOKE EXECUTE ON FUNCTION public.current_organization_id() FROM PUBLIC, anon;
+--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION public.current_organization_id() TO authenticated;

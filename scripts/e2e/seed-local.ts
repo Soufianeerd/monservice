@@ -9,12 +9,22 @@ async function seed() {
   const dbUrl = process.env.DATABASE_URL;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (!dbUrl || (!dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1'))) {
+  if (!dbUrl) {
+    console.error('ERROR: DATABASE_URL missing.');
+    process.exit(1);
+  }
+  const dbHostname = new URL(dbUrl).hostname;
+  if (dbHostname !== 'localhost' && dbHostname !== '127.0.0.1') {
     console.error('ERROR: DATABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
     process.exit(1);
   }
 
-  if (!supabaseUrl || (!supabaseUrl.includes('localhost') && !supabaseUrl.includes('127.0.0.1'))) {
+  if (!supabaseUrl) {
+    console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL missing.');
+    process.exit(1);
+  }
+  const sbHostname = new URL(supabaseUrl).hostname;
+  if (sbHostname !== 'localhost' && sbHostname !== '127.0.0.1') {
     console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
     process.exit(1);
   }

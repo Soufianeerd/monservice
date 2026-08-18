@@ -4,7 +4,7 @@ test.describe('Marketplace Workflow', () => {
   test('should display marketplace requests and allow clicking on one', async ({ page }) => {
     // Login as a professional
     await page.goto('/login');
-    await page.fill('input[type="email"]', 'freelance@monservice.com'); // assume seeded user
+    await page.fill('input[type="email"]', 'pro_a@monservice.com'); // seeded user
     await page.fill('input[type="password"]', 'password123');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');

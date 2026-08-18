@@ -7,27 +7,101 @@ async function verifyCustomObjects() {
     process.exit(1);
   }
 
-  console.log('Verifying custom Supabase objects...');
+  console.log('Verifying custom Supabase objects, RLS and strict GRANTS...');
   const sql = postgres(dbUrl);
   let errorCount = 0;
 
-  // 1. Verify functions
-  const functions = await sql`
-    SELECT proname FROM pg_proc 
-    WHERE proname IN ('handle_new_auth_user', 'current_organization_id')
+  // 1. Strict GRANT allowlist for tables
+  const expectedPrivileges: Record<string, { anon: string[], authenticated: string[] }> = {
+    users: { anon: [], authenticated: ['SELECT', 'UPDATE'] },
+    organizations: { anon: [], authenticated: ['SELECT', 'UPDATE'] },
+    clients: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    contacts: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    deals: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    products: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    invoices: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    invoice_lines: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    tasks: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    message_templates: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    messages: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    requests: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    stripe_events: { anon: [], authenticated: [] },
+    processing_activities: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    audit_logs: { anon: [], authenticated: ['SELECT', 'INSERT'] },
+    data_subject_requests: { anon: [], authenticated: ['SELECT', 'INSERT'] },
+    consent_events: { anon: [], authenticated: ['SELECT', 'INSERT'] },
+    country_compliance_profiles: { anon: [], authenticated: ['SELECT'] },
+    retention_policies: { anon: [], authenticated: ['SELECT'] }
+  };
+
+  const dbGrants = await sql`
+    SELECT table_name, grantee, privilege_type
+    FROM information_schema.role_table_grants
+    WHERE table_schema = 'public' 
+    AND grantee IN ('anon', 'authenticated')
   `;
-  const funcNames = new Set(functions.map(f => f.proname));
-  
-  if (!funcNames.has('handle_new_auth_user')) {
-    console.error('❌ ERROR: Function handle_new_auth_user not found.');
-    errorCount++;
-  }
-  if (!funcNames.has('current_organization_id')) {
-    console.error('❌ ERROR: Function current_organization_id not found.');
-    errorCount++;
+
+  for (const [table, roles] of Object.entries(expectedPrivileges)) {
+    for (const role of ['anon', 'authenticated'] as const) {
+      const expected = roles[role];
+      const actualRows = dbGrants.filter(g => g.table_name === table && g.grantee === role);
+      const actual = actualRows.map(g => g.privilege_type);
+      
+      const missing = expected.filter(p => !actual.includes(p));
+      const extra = actual.filter(p => !expected.includes(p));
+
+      if (missing.length > 0) {
+        console.error(`❌ ERROR: Table '${table}' missing ${role} privileges: ${missing.join(', ')}`);
+        errorCount++;
+      }
+      if (extra.length > 0) {
+        console.error(`❌ ERROR: Table '${table}' has EXTRA ${role} privileges: ${extra.join(', ')}`);
+        errorCount++;
+      }
+    }
   }
 
-  // 2. Verify trigger
+  // 2. Verify functions strictly
+  const funcs = await sql`
+    SELECT p.proname, p.prosecdef as security_definer,
+           (SELECT has_function_privilege('public', p.oid, 'execute')) as public_exec,
+           (SELECT has_function_privilege('anon', p.oid, 'execute')) as anon_exec,
+           (SELECT has_function_privilege('authenticated', p.oid, 'execute')) as auth_exec
+    FROM pg_proc p
+    WHERE p.proname IN ('handle_new_auth_user', 'current_organization_id');
+  `;
+
+  const expectedFuncs: Record<string, any> = {
+    handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true }
+  };
+
+  for (const [fname, expected] of Object.entries(expectedFuncs)) {
+    const f = funcs.find(x => x.proname === fname);
+    if (!f) {
+      console.error(`❌ ERROR: Function ${fname} not found.`);
+      errorCount++;
+      continue;
+    }
+    if (f.security_definer !== expected.security_definer) {
+      console.error(`❌ ERROR: Function ${fname} security_definer is ${f.security_definer}, expected ${expected.security_definer}`);
+      errorCount++;
+    }
+    if (f.public_exec !== expected.public_exec) {
+      console.error(`❌ ERROR: Function ${fname} public_exec is ${f.public_exec}, expected ${expected.public_exec}`);
+      errorCount++;
+    }
+    if (f.anon_exec !== expected.anon_exec) {
+      console.error(`❌ ERROR: Function ${fname} anon_exec is ${f.anon_exec}, expected ${expected.anon_exec}`);
+      errorCount++;
+    }
+    if (f.auth_exec !== expected.auth_exec) {
+      console.error(`❌ ERROR: Function ${fname} auth_exec is ${f.auth_exec}, expected ${expected.auth_exec}`);
+      errorCount++;
+    }
+  }
+
+  // 3. Verify trigger
   const triggers = await sql`
     SELECT tgname FROM pg_trigger 
     WHERE tgname = 'on_auth_user_created'
@@ -37,29 +111,24 @@ async function verifyCustomObjects() {
     errorCount++;
   }
 
-  // 3. Verify RLS enabled on core tables
+  // 4. Verify RLS enabled and policies present
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
     WHERE relrowsecurity = true AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
   `;
   const rlsTableNames = new Set(rlsTables.map(t => t.relname));
-  const expectedRlsTables = ['users', 'organizations', 'clients', 'invoices', 'deals', 'products', 'contacts'];
+  
+  const policies = await sql`
+    SELECT policyname, tablename, roles, cmd, qual, with_check 
+    FROM pg_policies WHERE schemaname = 'public'
+  `;
 
-  for (const table of expectedRlsTables) {
+  for (const table of Object.keys(expectedPrivileges)) {
     if (!rlsTableNames.has(table)) {
-      console.error(`❌ ERROR: Row Level Security is NOT enabled on table '${table}'.`);
+      console.error(`❌ ERROR: RLS is NOT enabled on table '${table}'.`);
       errorCount++;
     }
-  }
-
-  // 4. Verify some key policies exist
-  const policies = await sql`
-    SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public'
-  `;
-  const policyMap = new Set(policies.map(p => `${p.tablename}:${p.policyname}`));
-  
-  // We don't check every single policy strictly, but we check if tables have at least some policies
-  for (const table of expectedRlsTables) {
+    
     const tablePolicies = policies.filter(p => p.tablename === table);
     if (tablePolicies.length === 0) {
       console.error(`❌ ERROR: No RLS policies found for table '${table}'.`);
@@ -73,7 +142,7 @@ async function verifyCustomObjects() {
     console.error(`\n❌ Custom objects check failed with ${errorCount} errors.`);
     process.exit(1);
   } else {
-    console.log('✅ Custom Supabase objects and RLS verified successfully!');
+    console.log('✅ Custom Supabase objects, strict GRANTS, and RLS verified successfully!');
   }
 }
 
