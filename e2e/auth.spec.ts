@@ -6,6 +6,9 @@ test.describe('Authentication - E2E Auth', () => {
   const password = 'password123';
 
   test('AUTH_E2E_01: should login successfully with Professional A', async ({ page }) => {
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+    
     await page.goto('/login');
     
     await page.fill('input[type="email"]', proEmail);
@@ -25,7 +28,7 @@ test.describe('Authentication - E2E Auth', () => {
     await page.click('button[type="submit"]');
 
     // Should show error message (assuming the UI displays this error)
-    await expect(page.locator('text=Identifiants invalides')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Email ou mot de passe incorrect')).toBeVisible({ timeout: 5000 });
   });
 });
 
