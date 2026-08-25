@@ -22,7 +22,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.stripe.com https://*.supabase.co",
+      "connect-src 'self' https://api.stripe.com https://*.supabase.co http://127.0.0.1:54321 http://localhost:54321",
       'frame-src https://js.stripe.com https://hooks.stripe.com',
       "object-src 'none'",
       "base-uri 'self'",
