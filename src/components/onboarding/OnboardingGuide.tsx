@@ -28,11 +28,8 @@ export default function OnboardingGuide() {
 
   return (
     <>
-      {isMinimized ? (
-        <OnboardingLauncher />
-      ) : (
-        <SetupGuidePopover />
-      )}
+      <OnboardingLauncher />
+      <SetupGuidePopover />
       <ProductTour />
     </>
   );
