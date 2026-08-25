@@ -7,7 +7,7 @@ test.describe('Client Management', () => {
     // Navigate to login
     await page.goto('/login');
     // Using a seeded test account for e2e tests
-    await page.fill('input[type="email"]', 'freelance@monservice.com');
+    await page.fill('input[type="email"]', 'pro_a@monservice.com');
     await page.fill('input[type="password"]', 'password123');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');

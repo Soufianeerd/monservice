@@ -1,5 +1,6 @@
 import DashboardShell from '@/components/layout/DashboardShell';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
+import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider';
 import { getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 
@@ -14,9 +15,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (ctx.profileType !== 'professional') redirect('/client/dashboard');
 
   return (
-    <DashboardShell>
-      {children}
-      <OnboardingGuide />
-    </DashboardShell>
+    <OnboardingProvider>
+      <DashboardShell>
+        {children}
+        <OnboardingGuide />
+      </DashboardShell>
+    </OnboardingProvider>
   );
 }

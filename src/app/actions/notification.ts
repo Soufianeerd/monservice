@@ -7,27 +7,27 @@
  * neutres, mais exigent désormais une session valide.
  */
 
-import { requireProfessional } from '@/lib/auth/session';
+import { requireSession } from '@/lib/auth/session';
 
 export async function getUnreadCountAction(_legacyOrganizationId?: unknown, _legacyUserId?: unknown) {
-  await requireProfessional();
+  await requireSession();
   return 0;
 }
 
 export async function generateNotificationsAction(_legacyOrganizationId?: unknown) {
-  await requireProfessional();
+  await requireSession();
   return [];
 }
 
 export async function markAsReadAction(_notificationId: string) {
-  await requireProfessional();
+  await requireSession();
 }
 
 export async function markAllAsReadAction(_legacyOrganizationId?: unknown, _legacyUserId?: unknown) {
-  await requireProfessional();
+  await requireSession();
 }
 
 export async function findAllAction(_legacyOrganizationId?: unknown) {
-  await requireProfessional();
+  await requireSession();
   return [];
 }
