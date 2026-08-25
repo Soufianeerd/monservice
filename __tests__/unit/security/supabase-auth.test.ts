@@ -30,17 +30,13 @@ describe('Bascule Supabase Auth', () => {
     expect(session).not.toMatch(/auth\.getSession\(\)/);
   });
 
-  it('le middleware ne traite jamais la racine comme un préfixe public (MS-001)', () => {
-    const proxy = read('src/proxy.ts');
-    const prefixBlock = proxy.slice(
-      proxy.indexOf('PUBLIC_PREFIXES'),
-      proxy.indexOf('function isPublic'),
-    );
-    expect(prefixBlock).not.toMatch(/'\/'/);
+  it('le middleware ne gère plus les redirections (délégué aux layouts)', () => {
+    const middleware = read('src/middleware.ts');
+    expect(middleware).not.toContain('NextResponse.redirect');
   });
 
   it('le middleware rafraîchit la session Supabase', () => {
-    expect(read('src/proxy.ts')).toContain('updateSupabaseSession');
+    expect(read('src/middleware.ts')).toContain('updateSupabaseSession');
   });
 
   it('les helpers utilisent la clé publishable, pas l’ancienne clé anon (MS-009)', () => {
