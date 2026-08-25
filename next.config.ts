@@ -28,7 +28,6 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      'upgrade-insecure-requests',
     ].join('; '),
   },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
