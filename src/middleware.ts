@@ -49,12 +49,10 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
+export async function middleware(request: NextRequest) {
   // Le rafraîchissement doit avoir lieu à chaque requête, y compris sur les
   // routes publiques, sinon la session expire pendant la navigation.
-  const { response, user } = await updateSupabaseSession(request);
+  const { response } = await updateSupabaseSession(request);
 
   // i18n logic
   const hasLocaleCookie = request.cookies.has('NEXT_LOCALE');
@@ -77,21 +75,9 @@ export async function proxy(request: NextRequest) {
     });
   }
 
-  // Un utilisateur authentifié n'a rien à faire sur les écrans d'authentification.
-  if (user && ['/login', '/register'].includes(pathname)) {
-    // La destination exacte dépend du `profileType`, inconnu ici : les layouts
-    // serveur redirigent ensuite vers le bon espace.
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  if (isPublic(pathname)) return response;
-
-  if (!user) {
-    const loginUrl = new URL('/login', request.url);
-    // Conserve la destination pour y revenir après connexion.
-    loginUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  // NOTE: Les redirections d'authentification sont gérées par les layouts
+  // serveur (ex: ClientLayout, DashboardLayout) et requireSession().
+  // Ne pas faire de redirection ici pour éviter les boucles (MS-008).
 
   return response;
 }
