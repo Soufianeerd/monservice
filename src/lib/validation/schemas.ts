@@ -15,19 +15,19 @@ export const clientSchema = z.object({
   vatNumber: z.string().optional(),
   notes: z.string().optional(),
   status: z.enum(['lead', 'active', 'inactive']).default('lead'),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().min(1, "Organization ID requis")
 });
 
 // Contact Schema
 export const contactSchema = z.object({
-  clientId: z.string().uuid("Client ID requis"),
+  clientId: z.string().min(1, "Client ID requis"),
   firstName: z.string().min(2, "Le prénom est requis"),
   lastName: z.string().min(2, "Le nom est requis"),
   email: z.string().email("Email invalide"),
   phone: z.string().optional(),
   role: z.string().optional(),
   isPrimary: z.boolean().default(false),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().min(1, "Organization ID requis")
 });
 
 // Deal Schema
@@ -36,10 +36,10 @@ export const dealSchema = z.object({
   value: z.number().min(0, "La valeur doit être positive"),
   status: z.enum(['prospect', 'proposal', 'negotiation', 'won', 'lost', 'qualification']).default('prospect'),
   probability: z.number().min(0).max(100).default(0),
-  clientId: z.string().uuid("Client ID requis"),
+  clientId: z.string().min(1, "Client ID requis"),
   expectedCloseDate: z.string().optional(),
   notes: z.string().optional(),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().min(1, "Organization ID requis")
 });
 
 // Product Schema
@@ -49,7 +49,7 @@ export const productSchema = z.object({
   unitPrice: z.number().min(0, "Le prix doit être positif"),
   taxRate: z.number().min(0).max(100).default(20),
   type: z.enum(['service', 'product']).default('service'),
-  organizationId: z.string().uuid("Organization ID requis"),
+  organizationId: z.string().min(1, "Organization ID requis"),
   isActive: z.boolean().default(true)
 });
 
@@ -65,14 +65,14 @@ export const invoiceLineSchema = z.object({
 
 // Invoice Schema
 export const invoiceSchema = z.object({
-  clientId: z.string().uuid("Client ID requis"),
+  clientId: z.string().min(1, "Client ID requis"),
   type: z.enum(['invoice', 'quote']),
   number: z.string().optional(), // generated usually
   status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled', 'pending', 'accepted', 'rejected', 'unpaid', 'viewed']).default('draft'),
   date: z.string(),
   dueDate: z.string().optional(),
   message: z.string().optional(),
-  organizationId: z.string().uuid("Organization ID requis"),
+  organizationId: z.string().min(1, "Organization ID requis"),
   // Fiscal inputs
   legalEntityId: z.string().nullable().optional(),
   supplierCountry: z.string().nullable().optional(),
@@ -94,7 +94,7 @@ export const taskSchema = z.object({
   assignedTo: z.string().optional(),
   entityType: z.string().optional(),
   entityId: z.string().optional(),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().min(1, "Organization ID requis")
 });
 
 // Request Schema
@@ -106,16 +106,16 @@ export const requestSchema = z.object({
   deadline: z.string().optional(),
   status: z.enum(['open', 'in_progress', 'completed', 'cancelled', 'draft', 'published']).default('draft'),
   visibility: z.enum(['public', 'private']).default('public'),
-  clientId: z.string().uuid("Client ID requis")
+  clientId: z.string().min(1, "Client ID requis")
 });
 
 // Message Schema
 export const messageSchema = z.object({
-  senderId: z.string().uuid("Sender ID requis"),
-  receiverId: z.string().uuid("Receiver ID requis"),
+  senderId: z.string().min(1, "Sender ID requis"),
+  receiverId: z.string().min(1, "Receiver ID requis"),
   content: z.string().min(1, "Le message ne peut pas être vide"),
   requestId: z.string().optional(),
-  organizationId: z.string().uuid("Organization ID requis")
+  organizationId: z.string().min(1, "Organization ID requis")
 });
 
 // ---------------------------------------------------------------------------

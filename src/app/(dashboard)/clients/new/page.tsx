@@ -19,6 +19,7 @@ export default function NewClientPage() {
     setIsSubmitting(true);
     try {
       const newClient = await clientActions.createAction({
+        type: 'company',
         name: data.name || 'Nouveau Client',
         email: data.email || '',
         phone: data.phone || '',
