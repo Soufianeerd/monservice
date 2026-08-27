@@ -89,6 +89,11 @@ async function verifyContract() {
       }
 
       const dbCol = tableCols.find(c => c.column_name === expectedCol.name);
+      if (!dbCol) {
+        console.error(`❌ ERROR: Column '${tableName}.${expectedCol.name}' was expected but could not be resolved.`);
+        errorCount++;
+        continue;
+      }
       
       // Check nullability
       const expectedNullable = !expectedCol.notNull;
@@ -154,6 +159,7 @@ async function verifyContract() {
       'profession',
       'isnull',
       'sector',
+      'isnotnull',
       'health',
       'physiotherapist',
       'osteopath',

@@ -53,12 +53,13 @@ Le middleware ne redirige plus vers `/forbidden` depuis le correctif MS-008 afin
 - `docs/sessions/paramedical/SESSION_01C_CI_E2E_BASELINE.md` : (01C BIS) Refonte de la documentation pour inclure l'audit 01C BIS.
 
 ## Validation locale
-(À compléter après exécution).
+Les tests unitaires, de sécurité et E2E compliance ont été exécutés avec succès.
 
 ## Validation CI
-Run ID GitHub Actions : (À reporter).
-Status : (À reporter).
-Conclusion : (À reporter).
+- Run ID GitHub Actions : `33072249026`
+- Status : `completed`
+- Conclusion : `success`
+- HEAD : `bfff9069cf9f7d8f49a52dec8245e79e8177c2f8`
 
 ## DB / Supabase
 Migration paramédicale : aucune
@@ -85,4 +86,4 @@ La suite Playwright générale teste des parcours navigateur complets. Bien qu'e
 Régression E2E complète non bloquante à corriger ultérieurement.
 
 ## Readiness Session 02
-Prêt pour la Session 02 sous réserve du vert définitif du nouveau CI principal.
+Condition satisfaite / Session 02 autorisée.

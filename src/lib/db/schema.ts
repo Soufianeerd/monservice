@@ -94,7 +94,7 @@ export const organizations = sqliteTable('organizations', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
-  check('organizations_profession_health_check', sql`${t.profession} IS NULL OR (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))`)
+  check('organizations_profession_health_check', sql`${t.profession} IS NULL OR (${t.sector} IS NOT NULL AND ${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))`)
 ]);
 
 // Clients

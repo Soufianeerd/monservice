@@ -84,7 +84,7 @@ Interface `Organization` adaptée pour supporter formellement le typage `Paramed
 Aucun frontend n'a été retouché pour capturer la profession. L'authentification et l'inscription restent agnostiques à ces changements dans l'attente de la Session 03.
 
 ## 20. Tests ajoutés
-Intégration d'une série de tests d'intégrité DB `db-constraints.integration.test.ts` qui forcent les insertions SQL via transactions pour valider l'acceptation et le rejet de diverses combinaisons sector/profession (`health + physiotherapist` VS `artisan + physiotherapist`).
+Intégration d'une série de tests d'intégrité DB `db-constraints.integration.test.ts` qui testent les insertions SQL directes (via une séquence INSERT, puis DELETE en cas de succès, sans transaction) pour valider l'acceptation et le rejet de diverses combinaisons sector/profession (`health + physiotherapist` VS `artisan + physiotherapist`).
 
 ## 21. Tests exécutés
 - Typecheck
@@ -98,7 +98,7 @@ Intégration d'une série de tests d'intégrité DB `db-constraints.integration.
 Tous validés en `SUCCESS`.
 
 ## 23. DB locale
-(Tests DB locales exclus par suite d'absence de daemon Docker sur l'instance IDE locale, exécution 100% couverte sur l'intégration continue).
+(Tests DB locales exclus par suite d'absence de daemon Docker sur l'instance IDE locale). Les tests DB sont par contre formellement exécutés par la CI globale.
 
 ## 24. Supabase production
 **NON modifiée**. Les migrations seront poussées vers le backend de staging / prod via les procédures sécurisées standards du projet ultérieurement.
@@ -116,7 +116,9 @@ Aucune constatée sur la base de tests unitaires et intégration (106 tests séc
 Propre. Changements staggés explicitement.
 
 ## 29. CI GitHub
-(À documenter au push).
+- Run ID : `33075666442`
+- Status : `completed`
+- Conclusion : `success`
 
 ## 30. Handoff autonome pour Session 03
 Le socle Workspace DB est désormais parfaitement outillé et sécurisé. La Session 03 pourra implémenter l'Onboarding UI et alimenter sereinement cette nouvelle colonne `profession` !

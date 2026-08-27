@@ -45,6 +45,9 @@ jobs:
           npm run db:check-contract
           npm run db:check-custom-objects
           
+      - name: Run DB Integrity Constraint Tests
+        run: npm run test:db-constraints
+          
       - name: Local E2E Seed & Setup
         run: npm run seed:local
         

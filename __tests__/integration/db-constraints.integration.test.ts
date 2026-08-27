@@ -56,8 +56,18 @@ describe('Database Integrity Constraints: organizations.profession', () => {
     expect(result).toBe(true);
   });
 
+  it('ACCEPT: NULL sector + NULL profession', async () => {
+    const result = await insertOrg(null, null);
+    expect(result).toBe(true);
+  });
+
   it('REJECT: artisan + physiotherapist', async () => {
     const result = await insertOrg('artisan', 'physiotherapist');
+    expect(result).toBe(false);
+  });
+
+  it('REJECT: NULL sector + physiotherapist', async () => {
+    const result = await insertOrg(null, 'physiotherapist');
     expect(result).toBe(false);
   });
 

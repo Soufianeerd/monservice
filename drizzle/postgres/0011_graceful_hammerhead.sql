@@ -1,0 +1,2 @@
+ALTER TABLE "organizations" DROP CONSTRAINT "organizations_profession_health_check";--> statement-breakpoint
+ALTER TABLE "organizations" ADD CONSTRAINT "organizations_profession_health_check" CHECK ("organizations"."profession" IS NULL OR ("organizations"."sector" IS NOT NULL AND "organizations"."sector" = 'health' AND "organizations"."profession" IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian')));

@@ -22,6 +22,7 @@
     "db:check-contract": "npx tsx scripts/check-schema-contract.ts",
     "db:check-custom-objects": "npx tsx scripts/check-custom-objects.ts",
     "seed:local": "npx tsx scripts/e2e/seed-local.ts",
+    "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts",
     "test:rls": "vitest run __tests__/integration/rls.integration.test.ts"
   },
   "dependencies": {
