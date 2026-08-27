@@ -113,7 +113,6 @@ export default function RegisterForm() {
     } else {
       toast.success('Compte créé avec succès !');
       router.push(formData.profileType === 'client' ? '/client/dashboard' : '/dashboard');
-      router.refresh();
     }
   };
 

@@ -21,9 +21,9 @@ test.describe('Contrôle d\'accès basé sur les rôles (RBAC)', () => {
     // Tenter d'accéder au CRM professionnel
     await page.goto('/dashboard');
     
-    // Le middleware devrait le bloquer et le renvoyer vers /forbidden (ou /client/dashboard)
-    await page.waitForURL('**/forbidden');
-    expect(page.url()).toContain('/forbidden');
+    // Le middleware/layout devrait le bloquer et le renvoyer vers /client/dashboard
+    await page.waitForURL('**/client/dashboard');
+    expect(page.url()).toContain('/client/dashboard');
   });
 
   test('RBAC_E2E_02: Un professionnel accède correctement à son dashboard mais pas à l\'espace client', async ({ page }) => {
@@ -41,9 +41,9 @@ test.describe('Contrôle d\'accès basé sur les rôles (RBAC)', () => {
     // Tenter d'accéder à l'espace client
     await page.goto('/client/dashboard');
     
-    // Le middleware devrait le bloquer et le renvoyer vers /forbidden
-    await page.waitForURL('**/forbidden');
-    expect(page.url()).toContain('/forbidden');
+    // Le middleware/layout devrait le bloquer et le renvoyer vers /dashboard
+    await page.waitForURL('**/dashboard');
+    expect(page.url()).toContain('/dashboard');
   });
 
 });

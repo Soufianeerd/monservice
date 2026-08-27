@@ -37,7 +37,6 @@ export default function LoginForm() {
       // Destination d'origine si l'utilisateur a été redirigé vers /login.
       const callbackUrl = searchParams.get('callbackUrl');
       router.push(callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/dashboard');
-      router.refresh();
     } catch {
       toast.error('Erreur de connexion');
     } finally {
