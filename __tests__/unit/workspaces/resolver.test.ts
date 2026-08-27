@@ -65,8 +65,8 @@ describe('Workspace Contracts', () => {
   });
 
   it('registry keys should exactly match the profession code', () => {
-    for (const [key, profession] of Object.entries(PARAMEDICAL_PROFESSIONS)) {
-      expect((profession as any).code).toBe(key);
+    for (const code of PARAMEDICAL_PROFESSION_CODES) {
+      expect(PARAMEDICAL_PROFESSIONS[code].code).toBe(code);
     }
   });
 

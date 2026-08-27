@@ -5,7 +5,7 @@ Cette session corrective très ciblée a finalisé le durcissement du module Wor
 
 ## 2. Écarts hérités de 01B
 L'audit du commit de la Session 01B a révélé :
-- Un Type Guard (`isParamedicalProfessionCode`) reposant encore sur un cast `as ParamedicalProfessionCode`.
+- Un Type Guard (`isParamedicalProfessionCode`) reposant encore sur une validation proche de `(PARAMEDICAL_PROFESSION_CODES as readonly string[]).includes(value)`.
 - L'absence de tests confirmant l'unicité des capacités paramédicales activées et le comportement avec un objet de contexte vide.
 - L'absence d'un test garantissant que les clés du dictionnaire de professions correspondent bien à la propriété `code` de leur valeur.
 - Une recommandation pour la roadmap (Session 02) imprécise.
