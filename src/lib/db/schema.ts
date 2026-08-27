@@ -8,7 +8,9 @@ import {
   index,
   uniqueIndex,
   timestamp,
+  check,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Schéma PostgreSQL unique.
@@ -88,9 +90,12 @@ export const organizations = sqliteTable('organizations', {
   secondarySkills: text('secondary_skills'),
   stripeAccountId: text('stripe_account_id'),
   stripeAccountStatus: text('stripe_account_status'),
+  profession: text('profession'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
-});
+}, (t) => [
+  check('organizations_profession_health_check', sql`${t.profession} IS NULL OR (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))`)
+]);
 
 // Clients
 export const clients = sqliteTable('clients', {

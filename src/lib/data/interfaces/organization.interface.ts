@@ -1,9 +1,12 @@
+import type { ParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
+
 export interface Organization {
   id: string;
   name: string;
   industry: string;
   secondarySkills?: string;
   sector?: string;
+  profession?: ParamedicalProfessionCode | null;
   profileType?: 'professional';
   isPublic: boolean;
   customIndustry?: string;

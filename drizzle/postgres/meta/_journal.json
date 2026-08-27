@@ -71,6 +71,13 @@
       "when": 1786968573919,
       "tag": "0009_medical_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787836217916,
+      "tag": "0010_opposite_union_jack",
+      "breakpoints": true
     }
   ]
 }

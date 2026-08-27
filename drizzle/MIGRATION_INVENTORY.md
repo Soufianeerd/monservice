@@ -17,5 +17,7 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0006_slow_wild_child.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0005_lame_corsair` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
 | `drizzle/postgres/0007_familiar_supernaut.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0006_slow_wild_child` | UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
 | `drizzle/postgres/0008_worthless_sentinels.sql` | Drizzle Kit | YES | Generated | Modifications de schéma successives | `0007_familiar_supernaut`| UNKNOWN_PRODUCTION_STATE | CANONICAL | Conserver |
+| `drizzle/postgres/0009_medical_power_man.sql` | Manuel | YES | Manual | Supabase auth webhook trigger setup | `0008_worthless_sentinels` | PROBABLY_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0010_opposite_union_jack.sql` | Drizzle Kit | YES | Generated | Ajout profession dans organizations et constraint CHECK | `0009_medical_power_man` | NOT_APPLIED | CANONICAL | Conserver |
 
 **Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).

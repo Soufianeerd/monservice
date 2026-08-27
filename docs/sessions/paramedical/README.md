@@ -10,3 +10,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **01B** | Workspace Contract Hardening | 27 Août 2026 | Terminée | [Session 01B](SESSION_01B_WORKSPACE_CONTRACT_HARDENING.md) |
 | **01B BIS** | Workspace Hardening Finalization | 27 Août 2026 | Terminée | [Session 01B BIS](SESSION_01B_FINALIZATION.md) |
 | **01C** | CI / E2E Baseline Stabilization | 27 Août 2026 | Terminée | [Session 01C](SESSION_01C_CI_E2E_BASELINE.md) |
+| **02** | Profession Persistence / Organization DB Contract | 28 Août 2026 | Terminée | [Session 02](SESSION_02_PROFESSION_PERSISTENCE.md) |

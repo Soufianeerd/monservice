@@ -20,9 +20,9 @@ async function verifyContract() {
     WHERE table_schema = 'public'
   `;
 
-  // Fetch primary keys, unique constraints and foreign keys from pg_constraint
+  // Fetch primary keys, unique constraints, foreign keys and check constraints from pg_constraint
   const constraints = await sql`
-    SELECT conname, contype, conrelid::regclass::text AS table_name
+    SELECT conname, contype, conrelid::regclass::text AS table_name, pg_get_constraintdef(pg_constraint.oid) AS condef
     FROM pg_constraint
     JOIN pg_namespace ON pg_namespace.oid = pg_constraint.connamespace
     WHERE nspname = 'public'
@@ -134,6 +134,38 @@ async function verifyContract() {
       const dbTableIndexes = indexes.filter(i => i.tablename === tableName);
       if (dbTableIndexes.length < config.indexes.length) {
          console.error(`❌ ERROR: Table '${tableName}' defines ${config.indexes.length} indexes in schema but found only ${dbTableIndexes.length} in database.`);
+         errorCount++;
+      }
+    }
+  }
+
+  // --- Specific Contract: organizations_profession_health_check ---
+  const orgCheck = constraints.find(c => c.table_name === 'organizations' && c.conname === 'organizations_profession_health_check');
+  if (!orgCheck) {
+    console.error(`❌ ERROR: Constraint 'organizations_profession_health_check' not found in database.`);
+    errorCount++;
+  } else if (orgCheck.contype !== 'c') {
+    console.error(`❌ ERROR: 'organizations_profession_health_check' is not a CHECK constraint.`);
+    errorCount++;
+  } else {
+    // Semantic verification robust to formatting (lowercase, remove spaces)
+    const def = orgCheck.condef.toLowerCase().replace(/\s+/g, '');
+    const expectedElements = [
+      'profession',
+      'isnull',
+      'sector',
+      'health',
+      'physiotherapist',
+      'osteopath',
+      'speech_therapist',
+      'podiatrist',
+      'occupational_therapist',
+      'psychomotor_therapist',
+      'dietitian'
+    ];
+    for (const el of expectedElements) {
+      if (!def.includes(el.replace(/\s+/g, ''))) {
+         console.error(`❌ ERROR: 'organizations_profession_health_check' is missing semantic element: '${el}'`);
          errorCount++;
       }
     }
