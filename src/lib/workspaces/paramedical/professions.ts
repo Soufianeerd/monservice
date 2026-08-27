@@ -1,11 +1,14 @@
-export type ParamedicalProfessionCode =
-  | 'physiotherapist'
-  | 'osteopath'
-  | 'speech_therapist'
-  | 'podiatrist'
-  | 'occupational_therapist'
-  | 'psychomotor_therapist'
-  | 'dietitian';
+export const PARAMEDICAL_PROFESSION_CODES = [
+  'physiotherapist',
+  'osteopath',
+  'speech_therapist',
+  'podiatrist',
+  'occupational_therapist',
+  'psychomotor_therapist',
+  'dietitian',
+] as const;
+
+export type ParamedicalProfessionCode = typeof PARAMEDICAL_PROFESSION_CODES[number];
 
 export interface ParamedicalProfession {
   code: ParamedicalProfessionCode;
@@ -13,7 +16,7 @@ export interface ParamedicalProfession {
   shortLabel?: string;
 }
 
-export const PARAMEDICAL_PROFESSIONS: Record<ParamedicalProfessionCode, ParamedicalProfession> = {
+export const PARAMEDICAL_PROFESSIONS = {
   physiotherapist: {
     code: 'physiotherapist',
     label: 'Masseur-Kinésithérapeute',
@@ -44,9 +47,16 @@ export const PARAMEDICAL_PROFESSIONS: Record<ParamedicalProfessionCode, Paramedi
     code: 'dietitian',
     label: 'Diététicien',
   },
-};
+} as const satisfies Record<ParamedicalProfessionCode, ParamedicalProfession>;
+
+export function isParamedicalProfessionCode(value: string | null | undefined): value is ParamedicalProfessionCode {
+  if (!value) return false;
+  return PARAMEDICAL_PROFESSION_CODES.includes(value as ParamedicalProfessionCode);
+}
 
 export function getParamedicalProfession(code: string | undefined | null): ParamedicalProfession | undefined {
-  if (!code) return undefined;
-  return PARAMEDICAL_PROFESSIONS[code as ParamedicalProfessionCode];
+  if (isParamedicalProfessionCode(code)) {
+    return PARAMEDICAL_PROFESSIONS[code];
+  }
+  return undefined;
 }

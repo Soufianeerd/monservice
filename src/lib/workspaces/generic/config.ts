@@ -1,6 +1,6 @@
-import { WorkspaceConfig } from '../types';
+import { GenericWorkspaceConfig } from '../types';
 
-export const GENERIC_WORKSPACE_CONFIG: WorkspaceConfig = {
+export const GENERIC_WORKSPACE_CONFIG: GenericWorkspaceConfig = {
   type: 'generic',
   label: 'Espace Professionnel',
   capabilities: [], // Defined as needed later
@@ -12,4 +12,4 @@ export const GENERIC_WORKSPACE_CONFIG: WorkspaceConfig = {
     serviceSingular: 'Service',
     servicePlural: 'Services',
   },
-};
+} as const;

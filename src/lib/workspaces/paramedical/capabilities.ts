@@ -1,6 +1,6 @@
 import { WorkspaceCapability } from '../types';
 
-export const PARAMEDICAL_CAPABILITIES: WorkspaceCapability[] = [
+export const PARAMEDICAL_CAPABILITIES = [
   'patients',
   'clinicalRecords',
   'careEpisodes',
@@ -13,4 +13,4 @@ export const PARAMEDICAL_CAPABILITIES: WorkspaceCapability[] = [
   'orthotics',
   'billing',
   'patientPortal'
-];
+] as const satisfies readonly WorkspaceCapability[];

@@ -7,3 +7,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | Session | Sujet | Date | Statut | Document |
 | :--- | :--- | :--- | :--- | :--- |
 | **01** | Workspace Foundation | 27 Août 2026 | Terminée | [Session 01](SESSION_01_WORKSPACE_FOUNDATION.md) |
+| **01B** | Workspace Contract Hardening | 27 Août 2026 | Terminée | [Session 01B](SESSION_01B_WORKSPACE_CONTRACT_HARDENING.md) |

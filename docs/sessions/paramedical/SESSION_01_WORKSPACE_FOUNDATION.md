@@ -28,7 +28,7 @@ L'architecture de `src/lib/workspaces/` a été mise en place avec :
 - `paramedical/config.ts`, `paramedical/professions.ts`, `paramedical/capabilities.ts`, `paramedical/terminology.ts` : Définissent la terminologie et les caractéristiques des professions paramédicales.
 
 ## 7. Décisions prises
-- **Choix du fallback** : Toute donnée inconnue ou manquante bascule par sécurité sur la configuration `generic`.
+- **Choix du fallback** : Toute donnée de secteur inconnue ou manquante bascule par sécurité sur la configuration `generic`. Un secteur `health` sans profession bascule sur `paramedical base`.
 - **Mécanisme typé de professions** : Les professions paramédicales (`physiotherapist`, `osteopath`, etc.) sont typées littéralement dans `ParamedicalProfessionCode` pour éviter l'éparpillement de strings magiques.
 - **Séparation de la terminologie** : Isoler la terminologie dans un objet distinct pour préparer la traduction de l'UI (Sidebar, etc.) sans modifier React aujourd'hui.
 
@@ -72,7 +72,7 @@ Le `resolveWorkspace` est une fonction purement utilitaire pour paramétrer l'UX
 - Résolution avec `sector: 'health'` retourne config `paramedical`.
 - Résolution avec `sector: 'health'` et profession `physiotherapist` retourne label spécifique.
 - Résolution avec `sector: 'health'` et profession `osteopath` retourne label spécifique.
-- Résolution avec profession inconnue `unknown_profession` fallback sans crash.
+- Résolution avec profession inconnue `unknown_profession` fallback sur paramedical de base sans crash.
 
 ## 16. Tests exécutés
 Commande : `npm run typecheck`
@@ -123,10 +123,14 @@ La Session 02 devra probablement traiter la persistance du workspace et de la pr
 
 ## 26. État Git
 - Branche actuelle : `main`
-- Message de commit prévu : `feat(workspace): add paramedical workspace foundation`
-- Push : Sera effectué
+- Hash du commit : `fcec2f38157d5d19ec343808893bd2b4ddd6cffa`
+- Message de commit : `feat(workspace): add paramedical workspace foundation`
+- Push : Réalisé.
 
 ## 27. Synthèse autonome pour le prochain agent IA
 Cette session a mis en place la structure `src/lib/workspaces/` (types, configs, professions paramédicales, capacités et terminologie). Le point d'entrée est la fonction `resolveWorkspace(context)` dans `resolver.ts` qui prend un `OrganizationContext` (sector, profession) et retourne un objet typé `WorkspaceConfig`. 
 Actuellement, tout est prêt côté pure TypeScript (avec 100% de passage des tests vitest et strict TS), mais ce module n'est pas encore branché dans l'UI ou dans la base de données. 
 Votre tâche probable sera d'ajouter la colonne `profession` dans la table `organizations` (dans `schema.ts`) et de l'injecter au chargement du contexte utilisateur pour brancher le resolver à l'UI/Sidebar sans casser les autres professions (generic fallback).
+
+## Addendum — Session 01B
+Cette session a été corrigée lors d'une session 01B pour durcir les contrats TypeScript, préciser le comportement du fallback (secteur santé sans profession reconnue renvoie paramedical base) et ajuster l'historique du push (le push a bien été effectué).
