@@ -49,9 +49,10 @@ export const PARAMEDICAL_PROFESSIONS = {
   },
 } as const satisfies Record<ParamedicalProfessionCode, ParamedicalProfession>;
 
+const PARAMEDICAL_PROFESSION_CODE_SET: ReadonlySet<string> = new Set<string>(PARAMEDICAL_PROFESSION_CODES);
+
 export function isParamedicalProfessionCode(value: string | null | undefined): value is ParamedicalProfessionCode {
-  if (!value) return false;
-  return PARAMEDICAL_PROFESSION_CODES.includes(value as ParamedicalProfessionCode);
+  return typeof value === 'string' && PARAMEDICAL_PROFESSION_CODE_SET.has(value);
 }
 
 export function getParamedicalProfession(code: string | undefined | null): ParamedicalProfession | undefined {

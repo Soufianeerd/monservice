@@ -3,7 +3,7 @@ import { resolveWorkspace } from '../../../src/lib/workspaces/resolver';
 import { GENERIC_WORKSPACE_CONFIG } from '../../../src/lib/workspaces/generic/config';
 import { PARAMEDICAL_CAPABILITIES } from '../../../src/lib/workspaces/paramedical/capabilities';
 import { PARAMEDICAL_TERMINOLOGY } from '../../../src/lib/workspaces/paramedical/terminology';
-import { PARAMEDICAL_PROFESSION_CODES, isParamedicalProfessionCode } from '../../../src/lib/workspaces/paramedical/professions';
+import { PARAMEDICAL_PROFESSION_CODES, isParamedicalProfessionCode, PARAMEDICAL_PROFESSIONS } from '../../../src/lib/workspaces/paramedical/professions';
 import { WORKSPACE_CAPABILITY_CODES } from '../../../src/lib/workspaces/types';
 
 describe('Workspace Resolver', () => {
@@ -14,6 +14,11 @@ describe('Workspace Resolver', () => {
 
   it('should resolve to generic config when context is null', () => {
     const config = resolveWorkspace(null);
+    expect(config).toEqual(GENERIC_WORKSPACE_CONFIG);
+  });
+
+  it('should resolve to generic config when context is an empty object', () => {
+    const config = resolveWorkspace({});
     expect(config).toEqual(GENERIC_WORKSPACE_CONFIG);
   });
 
@@ -59,6 +64,12 @@ describe('Workspace Contracts', () => {
     expect(uniqueCodes.size).toBe(PARAMEDICAL_PROFESSION_CODES.length);
   });
 
+  it('registry keys should exactly match the profession code', () => {
+    for (const [key, profession] of Object.entries(PARAMEDICAL_PROFESSIONS)) {
+      expect((profession as any).code).toBe(key);
+    }
+  });
+
   it('type guard should correctly identify official codes', () => {
     PARAMEDICAL_PROFESSION_CODES.forEach((code) => {
       expect(isParamedicalProfessionCode(code)).toBe(true);
@@ -72,9 +83,14 @@ describe('Workspace Contracts', () => {
     expect(isParamedicalProfessionCode(undefined)).toBe(false);
   });
 
-  it('should not contain duplicate capabilities', () => {
+  it('should not contain duplicate capabilities in the official catalogue', () => {
     const uniqueCapabilities = new Set(WORKSPACE_CAPABILITY_CODES);
     expect(uniqueCapabilities.size).toBe(WORKSPACE_CAPABILITY_CODES.length);
+  });
+
+  it('paramedical config should not contain duplicate capabilities', () => {
+    const uniqueParamedicalCaps = new Set(PARAMEDICAL_CAPABILITIES);
+    expect(uniqueParamedicalCaps.size).toBe(PARAMEDICAL_CAPABILITIES.length);
   });
 
   it('paramedical capabilities should only contain official workspace capabilities', () => {

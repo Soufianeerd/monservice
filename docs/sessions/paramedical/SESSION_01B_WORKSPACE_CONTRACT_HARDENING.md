@@ -25,7 +25,7 @@ Le commit de la Session 01 `fcec2f38157d5d19ec343808893bd2b4ddd6cffa` est prése
 
 ## 6. Décisions d'architecture
 - **Source de vérité stricte** : Création de tableaux constants (`as const`) tels que `WORKSPACE_CAPABILITY_CODES` et `PARAMEDICAL_PROFESSION_CODES`. Les types littéraux en découlent.
-- **Type Guard** : Introduction de `isParamedicalProfessionCode(value)` pour valider un input brut (issu de la DB ou de l'UI) en `ParamedicalProfessionCode`.
+- **Type Guard sans cast** : Introduction de `isParamedicalProfessionCode(value)` qui utilise un `ReadonlySet` dérivé des codes officiels pour valider de manière sécurisée et sans aucun cast la valeur reçue.
 - **Union Discriminée** : `WorkspaceConfig` est maintenant l'union de `GenericWorkspaceConfig` et `ParamedicalWorkspaceConfig`, permettant au compilateur d'inférer précisément les propriétés associées à chaque type (ex: `profession` uniquement dans paramedical).
 - **Immutabilité** : Utilisation de `readonly`, `Readonly<T>`, `as const`, et `satisfies` pour s'assurer que les configurations statiques exportées ne puissent être modifiées accidentellement au runtime.
 
@@ -60,18 +60,17 @@ TypeScript refusera désormais :
 
 ## 12. Resolver final
 Le `resolveWorkspace` conserve ses comportements :
-- Pas de contexte (ou null) -> Generic.
+- Pas de contexte (ou null ou object vide) -> Generic.
 - Sector non-health -> Generic.
 - Sector health, profession valide -> Paramedical + profession set.
 - Sector health, profession inconnue -> Paramedical (profession = undefined). Le Typeguard protège le système des entrées invalides sans casser l'expérience santé.
 
 ## 13. Tests ajoutés / modifiés
-- `should not contain duplicate paramedical profession codes`
-- `type guard should correctly identify official codes`
-- `type guard should reject unknown codes`
-- `should not contain duplicate capabilities`
-- `paramedical capabilities should only contain official workspace capabilities`
-Et l'adaptation des tests initiaux du resolver pour se calquer sur le typage strict.
+- Résolution avec un objet vide (`{}`) retourne le fallback générique.
+- Le registre des professions vérifie explicitement la cohérence entre sa clé et le code métier configuré (`registry key === profession.code`).
+- Aucune duplication des capacités métiers dans le catalogue officiel (`WORKSPACE_CAPABILITY_CODES`).
+- Aucune duplication au sein des capacités paramédicales activées (`PARAMEDICAL_CAPABILITIES`).
+- Tests unitaires initiaux calqués sur le typage strict et les TypeGuards sécurisés.
 
 ## 14. Tests exécutés
 - Commande : `npm run typecheck`
@@ -79,7 +78,7 @@ Et l'adaptation des tests initiaux du resolver pour se calquer sur le typage str
 - Commande : `npm run lint`
 - Résultat : Succès (sur les ajouts de workspaces, les warnings concernent du code legacy)
 - Commande : `npx vitest run __tests__/unit/workspaces/resolver.test.ts`
-- Résultat : Succès (17/17 tests réussis)
+- Résultat : Succès (20/20 tests réussis)
 
 ## 15. État CI GitHub
 - Commit de la Session 01 : `fcec2f38157d5d19ec343808893bd2b4ddd6cffa` (Run ID 33054214527).
@@ -88,6 +87,9 @@ Et l'adaptation des tests initiaux du resolver pour se calquer sur le typage str
 - Comparaison avec parent : Le commit parent `f873b45cef5ad08577aaa812afbb17d3b583245b` était déjà en échec de CI pour des raisons d'E2E.
 - Conclusion : L'échec des tests End-to-End (`e2e/rbac.spec.ts`, `client-journey.spec.ts`) est antérieur et lié aux timeout d'accès au dashboard et espaces protégés, indépendants du code `src/lib/workspaces` qui n'est même pas encore appelé dans l'UI.
 CI globale encore rouge pour cause préexistante/hors périmètre.
+
+### Anomalie Git détectée après Session 01B
+Le fichier `doc2026/PROJECT_AUDIT_HANDOFF_2026_08_25.md` a été accidentellement embarqué dans le commit 01B (suite à un `git add .` glob). Ce fichier ne fait pas partie du périmètre Workspace. Pour ne détruire aucun travail utilisateur, ce fichier n'est pas modifié ni supprimé en 01B BIS. Les sessions futures s'en tiendront à un staging explicite par chemins de fichiers.
 
 ## 16. Bugs rencontrés
 Aucun au sein de l'architecture Workspace.
@@ -120,8 +122,11 @@ Identique. Le code du projet reste inchangé.
 ## 23. Préconditions désormais réunies pour Session 02
 Le contrat TypeScript est robuste. On peut maintenant injecter en toute confiance la valeur de `profession` depuis la DB vers le `resolveWorkspace` sachant que le système va la valider et garantir les capacités renvoyées sans faille.
 
-## 24. Recommandation précise pour Session 02
-Procéder à l'ajout du champ `profession` dans la table `organizations` de PostgreSQL, ajouter sa gestion dans le formulaire d'inscription / Onboarding (`RegisterForm.tsx`), et dans le contexte d'authentification (`AuthContext` / session server).
+## 24. Recommandation précise pour la Roadmap
+La roadmap à venir s'établit ainsi :
+- **Session 02** : Persistance du métier dans `organizations` + création de la migration correspondante + mise à jour des contrats DB + sécurisation via RLS et adaptation du mapping serveur nécessaire.
+- **Session 03** : Registration Health et UI pour la sélection de profession.
+- **Session 04** : Onboarding paramédical conditionnel.
 
 ## 25. Fichiers prioritaires pour le prochain agent
 - `src/lib/workspaces/types.ts`
