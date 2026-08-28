@@ -5,11 +5,10 @@ import { PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/profession
 
 describe('Workspace Navigation', () => {
   it('construit la navigation générique correcte', () => {
-    const config: WorkspaceConfig = {
+    const config = {
       type: 'generic',
-      sector: 'other',
       label: 'CRM',
-    };
+    } as WorkspaceConfig;
 
     const nav = buildProfessionalNavigation(config);
     const navNames = nav.map(n => n.name);
@@ -32,19 +31,16 @@ describe('Workspace Navigation', () => {
   });
 
   it('construit la navigation paramédicale avec les modules adéquats', () => {
-    const config: WorkspaceConfig = {
+    const config = {
       type: 'paramedical',
-      sector: 'health',
       profession: 'physiotherapist',
       label: 'Masseur-Kinésithérapeute',
       terminology: {
-        customer: 'Patient',
         customerPlural: 'Patients',
-        service: 'Séance',
         servicePlural: 'Séances',
       },
       capabilities: ['patients'],
-    };
+    } as unknown as WorkspaceConfig;
 
     const nav = buildProfessionalNavigation(config);
     const navNames = nav.map(n => n.name);
@@ -73,13 +69,12 @@ describe('Workspace Navigation', () => {
   });
 
   it('gère le paramédical de base (health sans profession connue)', () => {
-    const config: WorkspaceConfig = {
+    const config = {
       type: 'paramedical',
-      sector: 'health',
       label: 'Espace Paramédical',
       // terminology undefined intentionally
       capabilities: [],
-    };
+    } as unknown as WorkspaceConfig;
 
     const nav = buildProfessionalNavigation(config);
     
@@ -89,19 +84,16 @@ describe('Workspace Navigation', () => {
   });
   
   it('ne crée aucune route future automatique à partir des capabilities', () => {
-    const config: WorkspaceConfig = {
+    const config = {
       type: 'paramedical',
-      sector: 'health',
       profession: 'osteopath',
       label: 'Ostéopathe',
       terminology: {
-        customer: 'Patient',
         customerPlural: 'Patients',
-        service: 'Consultation',
         servicePlural: 'Consultations',
       },
-      capabilities: ['patients', 'clinical_notes', 'encounters', 'care_episodes'], // futures capacités
-    };
+      capabilities: ['patients', 'clinicalRecords', 'careEpisodes', 'appointments'], // futures capacités
+    } as unknown as WorkspaceConfig;
 
     const nav = buildProfessionalNavigation(config);
     
@@ -118,12 +110,11 @@ describe('Workspace Navigation', () => {
     const codes = Object.keys(PARAMEDICAL_PROFESSIONS) as Array<keyof typeof PARAMEDICAL_PROFESSIONS>;
     
     codes.forEach(code => {
-      const config: WorkspaceConfig = {
+      const config = {
         type: 'paramedical',
-        sector: 'health',
         profession: code,
         label: PARAMEDICAL_PROFESSIONS[code].label,
-      };
+      } as unknown as WorkspaceConfig;
       
       const nav = buildProfessionalNavigation(config);
       const ids = nav.map(n => n.id);
