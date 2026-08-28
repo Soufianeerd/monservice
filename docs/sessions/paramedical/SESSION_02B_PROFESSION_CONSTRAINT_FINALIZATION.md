@@ -12,7 +12,7 @@ Dans PostgreSQL, l'expression conditionnelle incluant `NULL` (comme `sector = 'h
 - Le test a été explicitement ajouté au fichier `__tests__/integration/db-constraints.integration.test.ts`.
 
 ## 4. Migration 0011
-La migration `drizzle/postgres/0011_graceful_hammerhead.sql` a été générée via Drizzle-Kit. Elle applique de façon idempotente la suppression (`DROP CONSTRAINT`) de l'ancienne contrainte et sa recréation (`ADD CONSTRAINT`) avec la condition `organizations.sector IS NOT NULL` insérée. L'ancienne migration `0010` n'a pas été modifiée.
+La migration `drizzle/postgres/0011_graceful_hammerhead.sql` a été générée via Drizzle-Kit. La migration est versionnée et exécutée une seule fois par le journal Drizzle. Elle applique la suppression (`DROP CONSTRAINT`) de l'ancienne contrainte et sa recréation (`ADD CONSTRAINT`) avec la condition `organizations.sector IS NOT NULL` insérée. L'ancienne migration `0010` n'a pas été modifiée.
 
 ## 5. Intégration CI
 La commande `npm run test:db-constraints` a été inscrite de façon permanente dans `package.json` et a été intégrée formellement dans `.github/workflows/test.yml`, immédiatement après la vérification de schéma (schema drift & contract). Ce test DB tourne contre l'instance Supabase Locale provisionnée pour les workflows CI.
@@ -25,8 +25,19 @@ La documentation historique (Session 01C et Session 02) comportait des assertion
 - Suppression des placeholders "À documenter" de la 01C (la baseline étant formellement validée avec le run 33072249026).
 - Rectification des informations décrivant une exécution locale prétendue totale des tests DB (l'environnement IDE local manquant du daemon Docker, la délégation à la CI Github est assumée).
 
-## 8. CI finale
-L'ensemble de ces modifications a été poussé sur `main` afin de valider la baseline complète, y compris la nouvelle étape DB Constraints dans les logs CI.
+## 8. Historique CI final
+- **Commit métier 02B** : `8052203efe96f673ea98157cf8b5b81708e3fb16`
+- **Premier run CI** : `33082505155`
+- **Conclusion** : `failure`
+- **Cause exacte** : les 10 tests DB tentaient localhost:5432 et échouaient avec ECONNREFUSED alors que Supabase local exposait PostgreSQL sur 54322.
+- **Correctif** : `src/test/setup.ts` mis à jour pour ne pas écraser une URL déjà existante (`process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://test:test@localhost:5432/test';`).
+- **Commit correctif** : `45415ca662f570af884a85a05c9ca99a5531cddf`
+- **Run CI final** : `33084594144`
+- **HEAD** : `45415ca662f570af884a85a05c9ca99a5531cddf`
+- **Status** : `completed`
+- **Conclusion** : `success`
+- **DB Integrity Constraint Tests** : `success`
+- **Readiness Session 03** = OUI
 
 ## 9. Supabase production
 **NON modifiée**. Les migrations continuent d'être versionnées pour un déploiement distant ultérieur.

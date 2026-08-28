@@ -10,6 +10,7 @@ import { passwordSchema } from '@/lib/validation/schemas';
 import { toast } from 'react-hot-toast';
 import { registerAction } from '@/app/actions/auth';
 import PasswordField from './PasswordField';
+import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/professions';
 
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
@@ -20,6 +21,7 @@ export default function RegisterForm() {
     confirmPassword: '',
     profileType: '' as ProfileType | '',
     sector: '',
+    profession: '',
     orgName: '',
     acceptedTerms: false,
   });
@@ -60,6 +62,10 @@ export default function RegisterForm() {
         toast.error('Veuillez renseigner votre secteur et le nom de votre entreprise.');
         return;
       }
+      if (formData.sector === 'health' && !formData.profession) {
+        toast.error('Veuillez sélectionner votre profession.');
+        return;
+      }
       setStep(4);
     }
   };
@@ -89,6 +95,7 @@ export default function RegisterForm() {
       orgName: formData.profileType === 'professional' ? formData.orgName : undefined,
       profileType: formData.profileType as ProfileType,
       sector: formData.profileType === 'professional' ? formData.sector : undefined,
+      profession: formData.profileType === 'professional' && formData.sector === 'health' ? formData.profession : undefined,
     });
 
     if (!result.success) {
@@ -272,7 +279,7 @@ export default function RegisterForm() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setFormData({ ...formData, sector: s.id })}
+                    onClick={() => setFormData({ ...formData, sector: s.id, profession: s.id === 'health' ? formData.profession : '' })}
                     className={`flex items-center p-4 border-2 rounded-xl focus:outline-none transition-all ${
                       formData.sector === s.id ? 'border-primary-600 bg-primary-50' : 'border-gray-200 hover:border-primary-200 bg-white'
                     }`}
@@ -287,6 +294,31 @@ export default function RegisterForm() {
                 ))}
               </div>
             </div>
+
+            {formData.sector === 'health' && (
+              <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Votre profession paramédicale *</label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {PARAMEDICAL_PROFESSION_CODES.map((code) => {
+                    const prof = PARAMEDICAL_PROFESSIONS[code];
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, profession: code })}
+                        className={`flex items-center p-3 border-2 rounded-xl focus:outline-none transition-all text-left ${
+                          formData.profession === code ? 'border-primary-600 bg-primary-50' : 'border-gray-200 hover:border-primary-200 bg-white'
+                        }`}
+                      >
+                        <span className={`text-sm font-semibold ${formData.profession === code ? 'text-primary-900' : 'text-gray-700'}`}>
+                          {prof.shortLabel || prof.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -314,10 +346,18 @@ export default function RegisterForm() {
                       <span className="text-gray-500">Entreprise</span>
                       <span className="font-medium text-gray-900">{formData.orgName}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between border-b border-gray-200 pb-2">
                       <span className="text-gray-500">Secteur</span>
                       <span className="font-medium text-gray-900">{sectors.find(s => s.id === formData.sector)?.name}</span>
                     </div>
+                    {formData.sector === 'health' && formData.profession && (
+                      <div className="flex justify-between border-b border-gray-200 pb-2">
+                        <span className="text-gray-500">Profession</span>
+                        <span className="font-medium text-gray-900">
+                          {PARAMEDICAL_PROFESSIONS[formData.profession as keyof typeof PARAMEDICAL_PROFESSIONS]?.label || formData.profession}
+                        </span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

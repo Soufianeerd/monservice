@@ -27,6 +27,7 @@ export async function registerAction(data: {
   orgName?: string;
   profileType?: 'client' | 'professional';
   sector?: string;
+  profession?: string;
 }): Promise<{
   success: boolean;
   error?: string;
@@ -81,6 +82,7 @@ export async function registerAction(data: {
             name: input.orgName,
             industry: input.sector || 'Non spécifié',
             sector: input.sector,
+            profession: input.profession ?? null,
             profileType: 'professional',
             isPublic: true,
             country: 'France',

@@ -181,6 +181,8 @@ export const passwordSchema = z
   .regex(/[^a-zA-Z0-9]/, 'Le mot de passe doit contenir au moins un caractère spécial')
   .max(128, 'Le mot de passe est trop long');
 
+import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
+
 /** Inscription. */
 export const registerSchema = z
   .object({
@@ -190,5 +192,54 @@ export const registerSchema = z
     orgName: z.string().min(1).max(200).optional(),
     profileType: z.enum(['client', 'professional']).default('client'),
     sector: z.string().max(120).optional(),
+    profession: z.string().max(120).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.profileType === 'client') {
+      if (data.profession) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Les particuliers ne peuvent pas avoir de profession',
+          path: ['profession'],
+        });
+      }
+    } else if (data.profileType === 'professional') {
+      if (!data.orgName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Le nom de l'entreprise est requis",
+          path: ['orgName'],
+        });
+      }
+      if (!data.sector) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Le secteur d'activité est requis",
+          path: ['sector'],
+        });
+      }
+
+      if (data.sector === 'health') {
+        if (!data.profession) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Veuillez sélectionner une profession',
+            path: ['profession'],
+          });
+        } else if (!PARAMEDICAL_PROFESSION_CODES.includes(data.profession as any)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Profession paramédicale non reconnue',
+            path: ['profession'],
+          });
+        }
+      } else if (data.profession) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "La profession n'est gérée que pour les professionnels de santé",
+          path: ['profession'],
+        });
+      }
+    }
+  });
