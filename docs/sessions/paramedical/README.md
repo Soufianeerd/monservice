@@ -17,3 +17,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **03C** | Registration Final Cleanup | 28 Août 2026 | Terminée | [Session 03C](SESSION_03C_REGISTRATION_FINAL_CLEANUP.md) |
 | **04** | Conditional Workspace Onboarding | 28 Août 2026 | Terminée | [Session 04](SESSION_04_CONDITIONAL_ONBOARDING.md) |
 | **04B** | Onboarding Runtime Finalization | 28 Août 2026 | Terminée | [Session 04B](SESSION_04B_ONBOARDING_RUNTIME_FINALIZATION.md) |
+| **05** | Dynamic Workspace Shell / Navigation / Terminology | 28 Août 2026 | Terminée | [Session 05](SESSION_05_DYNAMIC_WORKSPACE_SHELL_NAVIGATION.md) |

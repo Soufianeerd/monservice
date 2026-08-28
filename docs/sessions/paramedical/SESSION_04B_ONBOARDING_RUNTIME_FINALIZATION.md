@@ -40,10 +40,11 @@ La Session 04B corrige les écarts d'implémentation Runtime de l'Onboarding. Le
 - tests onboarding : 19/19 passent.
 - register tests : 24/24 passent.
 - Workspace tests : 20/20 passent.
-- DB constraints : Vert (virtuel car pas de DB modifiée).
-- RLS : Vert (virtuel car pas de DB modifiée).
-- custom objects : Vert (virtuel car pas de DB modifiée).
-- lint / typecheck / security / unit / compliance / build : Verts.
+- Drizzle migrations : Exécutées avec succès.
+- Schema Drift & Contract : Exécutés avec succès.
+- DB Integrity Constraint Tests : Exécutés avec succès.
+- RLS Integration Tests : Exécutés avec succès.
+- lint / typecheck / security / unit / Run Onboarding Unit Tests / compliance / build : Verts.
 - E2E compliance : Vert.
 
 ## 6. HANDOFF

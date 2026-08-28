@@ -11,6 +11,7 @@ import {
 } from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -18,6 +19,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps = {}) {
   const { user, organization, signOut } = useAuth();
+  const workspace = useWorkspace();
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -69,6 +71,15 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const showGlobalSearch = user?.profileType === 'professional' && (!workspace || workspace.type === 'generic');
+  
+  const getWorkspaceLabel = () => {
+    if (workspace && workspace.type === 'paramedical') {
+      return workspace.label || 'Espace Paramédical';
+    }
+    return organization?.industry || 'CRM';
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4">
@@ -89,7 +100,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
               </span>
               <span className="mx-3 text-gray-300 hidden md:block">|</span>
               <span className="text-sm text-gray-500 capitalize bg-gray-100 px-2 py-1 rounded hidden md:block">
-                {organization?.industry || 'CRM'}
+                {getWorkspaceLabel()}
               </span>
             </>
           ) : (
@@ -102,7 +113,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
         </div>
 
         <div className="flex-1 flex justify-center w-1/3 px-4">
-          <GlobalSearchBar />
+          {showGlobalSearch && <GlobalSearchBar />}
         </div>
         
         <div className="flex items-center justify-end w-1/3 space-x-4">
@@ -136,7 +147,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
 
           {mounted ? (
             <>
-              <Link href={user?.profileType === 'client' ? '/client/profile' : '/profile'} className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Profil utilisateur">
+              <Link href={user?.profileType === 'client' ? '/client/profile' : '/parametres/profil'} className="flex items-center hover:bg-gray-50 p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="Profil utilisateur">
                 <div className="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold mr-2">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>

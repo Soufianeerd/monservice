@@ -5,57 +5,38 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { buildProfessionalNavigation, NavigationIconKey } from '@/lib/navigation/workspace-navigation';
+
+const iconMap: Record<NavigationIconKey, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  users: Users,
+  deals: TrendingUp,
+  billing: FileText,
+  agenda: Calendar,
+  marketplace: Store,
+  messages: MessageSquare,
+  settings: Settings,
+};
 
 type SubItem = { name: string; href: string };
 
 type NavItem = {
+  id?: string;
   name: string;
   href: string;
   icon: React.ElementType;
-  subItems?: SubItem[];
+  subItems?: readonly SubItem[];
   dataTour?: string;
 };
 
-const professionalNavItems: NavItem[] = [
-  { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Clients', href: '/clients', icon: Users, dataTour: 'clients-nav' },
-  { name: 'Deals', href: '/deals', icon: TrendingUp },
-  { 
-    name: 'Facturation', href: '/facturation', icon: FileText, 
-    subItems: [
-      { name: 'Factures', href: '/facturation/factures' },
-      { name: 'Devis', href: '/facturation/devis' },
-      { name: 'Produits', href: '/facturation/produits' },
-    ]
-  },
-  { 
-    name: 'Agenda', href: '/agenda', icon: Calendar, 
-    subItems: [
-      { name: 'Calendrier', href: '/agenda/calendrier' },
-      { name: 'Tâches', href: '/agenda/taches' },
-    ]
-  },
-  { name: 'Marketplace', href: '/marketplace', icon: Store },
-  { name: 'Messagerie', href: '/messages', icon: MessageSquare },
-  { 
-    name: 'Paramètres', href: '/parametres', icon: Settings, dataTour: 'settings-nav',
-    subItems: [
-      { name: 'Profil', href: '/parametres/profil' },
-      { name: 'Organisation', href: '/parametres/organisation' },
-      { name: 'Facturation', href: '/parametres/facturation' },
-      { name: 'Conformité RGPD', href: '/parametres/privacy' },
-      { name: 'Notifications', href: '/parametres/notifications' },
-    ]
-  },
-];
-
 const clientNavItems: NavItem[] = [
-  { name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
-  { name: 'Mes demandes', href: '/client/requests', icon: FileText },
-  { name: 'Devis reçus', href: '/client/quotes', icon: FileText },
-  { name: 'Mes factures', href: '/client/invoices', icon: FileText },
-  { name: 'Messagerie', href: '/client/messages', icon: MessageSquare },
-  { name: 'Profil', href: '/client/profile', icon: Users },
+  { id: 'dashboard', name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
+  { id: 'requests', name: 'Mes demandes', href: '/client/requests', icon: FileText },
+  { id: 'quotes', name: 'Devis reçus', href: '/client/quotes', icon: FileText },
+  { id: 'invoices', name: 'Mes factures', href: '/client/invoices', icon: FileText },
+  { id: 'messages', name: 'Messagerie', href: '/client/messages', icon: MessageSquare },
+  { id: 'profile', name: 'Profil', href: '/client/profile', icon: Users },
 ];
 
 interface SidebarProps {
@@ -66,11 +47,19 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const role = useRole();
-  const navItems = role === 'client' ? clientNavItems : professionalNavItems;
+  const workspace = useWorkspace();
+  
+  const navItems: NavItem[] = role === 'client' 
+    ? clientNavItems 
+    : (workspace ? buildProfessionalNavigation(workspace).map(item => ({
+        ...item,
+        icon: iconMap[item.icon]
+      })) : []);
+      
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const toggleExpand = (name: string) => {
-    setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -107,19 +96,20 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
         <div className="flex-1 overflow-y-auto">
           <nav className="px-2 py-4 space-y-1">
             {navItems.map((item) => {
+              const itemKey = item.id || item.name;
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const isExpanded = expandedItems[item.name] || isActive;
+              const isExpanded = expandedItems[itemKey] || isActive;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const Icon = item.icon;
 
               return (
-                <div key={item.name}>
+                <div key={itemKey}>
                   <Link
                     href={hasSubItems ? '#' : item.href}
                     onClick={(e) => {
                       if (hasSubItems) {
                         e.preventDefault();
-                        toggleExpand(item.name);
+                        toggleExpand(itemKey);
                       } else {
                         setIsOpen?.(false);
                       }
