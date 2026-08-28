@@ -3,11 +3,19 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { getOnboardingSteps } from '@/lib/services/onboarding.service';
 
 export function useOnboarding() {
-  const { user, updateUser } = useAuth();
+  const { user, organization, updateUser } = useAuth();
 
   const state = useMemo(() => {
     if (user && !user.onboardingCompleted) {
-      const steps = getOnboardingSteps(user.profileType, user.sector);
+      const context: import('@/lib/onboarding/types').OnboardingContext = user.profileType === 'client' 
+        ? { profileType: 'client' } 
+        : { 
+            profileType: 'professional', 
+            sector: organization?.sector, 
+            profession: organization?.profession 
+          };
+
+      const steps = getOnboardingSteps(context);
       const updatedSteps = steps.map(step => ({
         ...step,
         completed: step.id <= user.onboardingStep
@@ -15,14 +23,14 @@ export function useOnboarding() {
       
       return {
         profileType: user.profileType,
-        sector: user.sector,
+        sector: organization?.sector,
         currentStep: user.onboardingStep,
         steps: updatedSteps,
         completed: user.onboardingCompleted,
       };
     }
     return null;
-  }, [user]);
+  }, [user, organization?.sector, organization?.profession]);
 
   const completeStep = async (stepId: number) => {
     if (!state || !user) return;

@@ -13,7 +13,6 @@ export interface User {
    */
   role?: 'admin' | 'member';
   profileType: ProfileType;
-  sector?: string;
   organizationId?: string;
   onboardingCompleted: boolean;
   onboardingStep: number;

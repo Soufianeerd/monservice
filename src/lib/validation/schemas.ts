@@ -130,7 +130,6 @@ export const messageSchema = z.object({
 export const profileUpdateSchema = z
   .object({
     name: z.string().min(1, 'Le nom est requis').max(120).optional(),
-    sector: z.string().max(120).optional(),
     onboardingCompleted: z.boolean().optional(),
     onboardingStep: z.number().int().min(0).max(20).optional(),
   })
