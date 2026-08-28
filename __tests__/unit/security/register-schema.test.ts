@@ -198,4 +198,115 @@ describe('Security: registerSchema validation', () => {
       expect(result.error.issues[0].code).toBe('unrecognized_keys');
     }
   });
+
+  it('16. client + orgName rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'client',
+      orgName: 'My Client Corp',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('17. client + sector health rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'client',
+      sector: 'health',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('18. client + sector artisan rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'client',
+      sector: 'artisan',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('19. client + orgName + sector rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'client',
+      orgName: 'My Client Corp',
+      sector: 'health',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('20. professional + sector hacker rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Corp',
+      sector: 'hacker',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('21. professional + sector healthcare rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Corp',
+      sector: 'healthcare',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('22. professional + sector chaîne vide rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Corp',
+      sector: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('23. tous les REGISTRATION_SECTOR_CODES sont cohérents avec le contrat', () => {
+    import('../../../src/lib/registration/options').then(({ REGISTRATION_SECTOR_CODES }) => {
+      REGISTRATION_SECTOR_CODES.forEach((sector) => {
+        const result = registerSchema.safeParse({
+          name: 'John Doe',
+          email: 'john@example.com',
+          password: 'Password123!',
+          profileType: 'professional',
+          orgName: 'Corp',
+          sector,
+          ...(sector === 'health' ? { profession: 'physiotherapist' } : {}),
+        });
+        expect(result.success).toBe(true);
+      });
+    });
+  });
+
+  it('24. profession non officielle reste rejetée', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Corp',
+      sector: 'health',
+      profession: 'medecin_generaliste',
+    });
+    expect(result.success).toBe(false);
+  });
 });

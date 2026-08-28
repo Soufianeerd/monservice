@@ -182,6 +182,7 @@ export const passwordSchema = z
   .max(128, 'Le mot de passe est trop long');
 
 import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
+import { REGISTRATION_SECTOR_CODES } from '@/lib/registration/options';
 
 /** Inscription. */
 export const registerSchema = z
@@ -191,12 +192,26 @@ export const registerSchema = z
     password: passwordSchema,
     orgName: z.string().min(1).max(200).optional(),
     profileType: z.enum(['client', 'professional']).default('client'),
-    sector: z.string().max(120).optional(),
-    profession: z.string().max(120).optional(),
+    sector: z.enum(REGISTRATION_SECTOR_CODES).optional(),
+    profession: z.enum(PARAMEDICAL_PROFESSION_CODES).optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
     if (data.profileType === 'client') {
+      if (data.orgName) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Les particuliers ne peuvent pas avoir de nom d\'entreprise',
+          path: ['orgName'],
+        });
+      }
+      if (data.sector) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Les particuliers ne peuvent pas avoir de secteur',
+          path: ['sector'],
+        });
+      }
       if (data.profession) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -225,12 +240,6 @@ export const registerSchema = z
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'Veuillez sélectionner une profession',
-            path: ['profession'],
-          });
-        } else if (!PARAMEDICAL_PROFESSION_CODES.includes(data.profession as any)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Profession paramédicale non reconnue',
             path: ['profession'],
           });
         }

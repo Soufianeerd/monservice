@@ -31,8 +31,8 @@ Ajout du contrôle en étape 3 empêchant de passer à l'étape 4 si la professi
 ## 10. Validation Zod serveur (registerSchema)
 Utilisation d'un `superRefine` pour appliquer les règles strictes. `.strict()` reste actif.
 
-## 11. Contrat client/professional
-- Client : ne peut pas avoir de `orgName`, `sector` ni de `profession`.
+## 11. Contrat client/professional (Partiel)
+- Lors de cette session, le contrat client interdisait `profession` mais laissait involontairement passer `orgName` et `sector`. Ceci est corrigé dans la Session 03B.
 - Professional `health` : `orgName`, `sector` requis. `profession` requise parmi les 7 codes.
 - Professional autre : `orgName`, `sector` requis. `profession` interdite.
 
@@ -49,7 +49,7 @@ Les anciennes organisations ne sont pas affectées. Le serveur rejette seulement
 Aucune migration supplémentaire. La DB était déjà prête.
 
 ## 16. RLS/GRANTS
-Inchagés, ils couvrent déjà le périmètre.
+Inchangés, ils couvrent déjà le périmètre.
 
 ## 17. Supabase Auth metadata
 La profession n'est pas injectée dans `raw_user_meta_data`, seul le modèle applicatif gère la source de vérité de l'entreprise.
@@ -68,23 +68,19 @@ La profession n'est pas injectée dans `raw_user_meta_data`, seul le modèle app
 ## 20. Tests ajoutés
 15 nouveaux tests ont été ajoutés pour `registerSchema`.
 
-## 21. Résultats
-La validation est stricte de bout en bout et les composants UI reflètent les options paramédicales.
+## 21. Historique CI Session 03
 
-## 22. Security tests
-Validés avec succès (15/15 tests sur le schéma `registerSchema`).
+- **HEAD initial** : `45415ca662f570af884a85a05c9ca99a5531cddf`
+- **Commit feature** : `638f0258f78d79d9fe8229d526cc552e4176ea42`
+- **Run** : `33152245856`
+- **Status** : `completed`
+- **Conclusion** : `failure`
+- **Étape échouée** : `npm run typecheck`
+- **Cause** : Accès TypeScript à `shortLabel` sur l'union littérale issue de `PARAMEDICAL_PROFESSIONS` qui ne garantissait pas son existence.
+- **Correctif suivant** : `1df70371e251854c2ba552e8781303eda509ac33`
+- **Run** : `33152584710`
+- **Status** : `completed`
+- **Conclusion** : `success`
 
-## 23. DB constraint tests
-Déjà configuré et validé sur 10 cas de contrainte en CI.
-
-## 24. Workspace tests
-Toujours 20/20.
-
-## 25. Supabase production
-Inchangée.
-
-## 26. Dette restante
-- Tests complets UI (react-testing-library) si besoin ultérieur, focalisation sur la validation Zod.
-
-## 27. Handoff Session 04
-La Session 04 (Onboarding conditionnel) peut démarrer, s'appuyant sur cette base pour personnaliser le flux du nouvel inscrit en fonction de sa profession.
+## 22. Handoff Session 03B
+La Session 03B finalise les contrats serveur découverts lors de l'audit post-session (sector string trop ouvert, client orgName, typage du state, etc.).

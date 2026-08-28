@@ -10,7 +10,8 @@ import { passwordSchema } from '@/lib/validation/schemas';
 import { toast } from 'react-hot-toast';
 import { registerAction } from '@/app/actions/auth';
 import PasswordField from './PasswordField';
-import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/professions';
+import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS, ParamedicalProfessionCode, ParamedicalProfession } from '@/lib/workspaces/paramedical/professions';
+import { REGISTRATION_SECTORS, RegistrationSectorCode } from '@/lib/registration/options';
 
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
@@ -20,8 +21,8 @@ export default function RegisterForm() {
     password: '',
     confirmPassword: '',
     profileType: '' as ProfileType | '',
-    sector: '',
-    profession: '',
+    sector: '' as RegistrationSectorCode | '',
+    profession: '' as ParamedicalProfessionCode | '',
     orgName: '',
     acceptedTerms: false,
   });
@@ -53,6 +54,7 @@ export default function RegisterForm() {
         return;
       }
       if (formData.profileType === 'client') {
+        setFormData(prev => ({ ...prev, orgName: '', sector: '', profession: '' }));
         setStep(4); // Skip sector step for clients
       } else {
         setStep(3);
@@ -124,10 +126,10 @@ export default function RegisterForm() {
   };
 
   const sectors = [
-    { id: 'health', name: 'Santé & Bien-être', icon: <StethoscopeIcon className="w-5 h-5" /> },
-    { id: 'freelance', name: 'Consultant & Freelance', icon: <LaptopIcon className="w-5 h-5" /> },
-    { id: 'artisan', name: 'Artisan & Bâtiment', icon: <HammerIcon className="w-5 h-5" /> },
-    { id: 'other', name: 'Autre', icon: <MoreHorizontalIcon className="w-5 h-5" /> },
+    { id: 'health' as RegistrationSectorCode, name: REGISTRATION_SECTORS.health.label, icon: <StethoscopeIcon className="w-5 h-5" /> },
+    { id: 'freelance' as RegistrationSectorCode, name: REGISTRATION_SECTORS.freelance.label, icon: <LaptopIcon className="w-5 h-5" /> },
+    { id: 'artisan' as RegistrationSectorCode, name: REGISTRATION_SECTORS.artisan.label, icon: <HammerIcon className="w-5 h-5" /> },
+    { id: 'other' as RegistrationSectorCode, name: REGISTRATION_SECTORS.other.label, icon: <MoreHorizontalIcon className="w-5 h-5" /> },
   ];
 
   const stepsLabels = ["Compte", "Profil", "Activité", "Terminé"];
@@ -300,7 +302,7 @@ export default function RegisterForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-3">Votre profession paramédicale *</label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {PARAMEDICAL_PROFESSION_CODES.map((code) => {
-                    const prof = PARAMEDICAL_PROFESSIONS[code] as import('@/lib/workspaces/paramedical/professions').ParamedicalProfession;
+                    const prof: ParamedicalProfession = PARAMEDICAL_PROFESSIONS[code];
                     return (
                       <button
                         key={code}
@@ -350,11 +352,11 @@ export default function RegisterForm() {
                       <span className="text-gray-500">Secteur</span>
                       <span className="font-medium text-gray-900">{sectors.find(s => s.id === formData.sector)?.name}</span>
                     </div>
-                    {formData.sector === 'health' && formData.profession && (
+                    {formData.sector === 'health' && formData.profession !== '' && (
                       <div className="flex justify-between border-b border-gray-200 pb-2">
                         <span className="text-gray-500">Profession</span>
                         <span className="font-medium text-gray-900">
-                          {PARAMEDICAL_PROFESSIONS[formData.profession as keyof typeof PARAMEDICAL_PROFESSIONS]?.label || formData.profession}
+                          {PARAMEDICAL_PROFESSIONS[formData.profession].label}
                         </span>
                       </div>
                     )}
