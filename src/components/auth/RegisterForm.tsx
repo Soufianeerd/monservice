@@ -300,7 +300,7 @@ export default function RegisterForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-3">Votre profession paramédicale *</label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {PARAMEDICAL_PROFESSION_CODES.map((code) => {
-                    const prof = PARAMEDICAL_PROFESSIONS[code];
+                    const prof = PARAMEDICAL_PROFESSIONS[code] as import('@/lib/workspaces/paramedical/professions').ParamedicalProfession;
                     return (
                       <button
                         key={code}
