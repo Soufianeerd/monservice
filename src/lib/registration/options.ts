@@ -14,6 +14,8 @@ export const REGISTRATION_SECTORS: Record<RegistrationSectorCode, { label: strin
   other: { label: 'Autre' },
 } as const;
 
+const REGISTRATION_SECTOR_CODE_SET: ReadonlySet<string> = new Set(REGISTRATION_SECTOR_CODES);
+
 export function isRegistrationSectorCode(value: string | null | undefined): value is RegistrationSectorCode {
-  return typeof value === 'string' && REGISTRATION_SECTOR_CODES.includes(value as RegistrationSectorCode);
+  return typeof value === 'string' && REGISTRATION_SECTOR_CODE_SET.has(value);
 }

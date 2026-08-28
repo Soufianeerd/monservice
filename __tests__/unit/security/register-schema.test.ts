@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { registerSchema } from '../../../src/lib/validation/schemas';
 import { PARAMEDICAL_PROFESSION_CODES } from '../../../src/lib/workspaces/paramedical/professions';
+import { REGISTRATION_SECTOR_CODES } from '../../../src/lib/registration/options';
 
 describe('Security: registerSchema validation', () => {
   it('1. client standard accepté', () => {
@@ -281,20 +282,18 @@ describe('Security: registerSchema validation', () => {
   });
 
   it('23. tous les REGISTRATION_SECTOR_CODES sont cohérents avec le contrat', () => {
-    import('../../../src/lib/registration/options').then(({ REGISTRATION_SECTOR_CODES }) => {
-      REGISTRATION_SECTOR_CODES.forEach((sector) => {
-        const result = registerSchema.safeParse({
-          name: 'John Doe',
-          email: 'john@example.com',
-          password: 'Password123!',
-          profileType: 'professional',
-          orgName: 'Corp',
-          sector,
-          ...(sector === 'health' ? { profession: 'physiotherapist' } : {}),
-        });
-        expect(result.success).toBe(true);
+    for (const sector of REGISTRATION_SECTOR_CODES) {
+      const result = registerSchema.safeParse({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'Password123!',
+        profileType: 'professional',
+        orgName: 'Corp',
+        sector,
+        ...(sector === 'health' ? { profession: 'physiotherapist' } : {}),
       });
-    });
+      expect(result.success).toBe(true);
+    }
   });
 
   it('24. profession non officielle reste rejetée', () => {

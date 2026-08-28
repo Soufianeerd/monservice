@@ -14,3 +14,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **02B** | Profession Constraint Finalization | 27 Août 2026 | Terminée | [Session 02B](SESSION_02B_PROFESSION_CONSTRAINT_FINALIZATION.md) |
 | **03** | Health Registration / Profession Selection | 28 Août 2026 | Terminée | [Session 03](SESSION_03_HEALTH_REGISTRATION_PROFESSION.md) |
 | **03B** | Registration Contract Finalization | 28 Août 2026 | Terminée | [Session 03B](SESSION_03B_REGISTRATION_CONTRACT_FINALIZATION.md) |
+| **03C** | Registration Final Cleanup | 28 Août 2026 | Terminée | [Session 03C](SESSION_03C_REGISTRATION_FINAL_CLEANUP.md) |

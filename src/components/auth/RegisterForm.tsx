@@ -11,7 +11,7 @@ import { toast } from 'react-hot-toast';
 import { registerAction } from '@/app/actions/auth';
 import PasswordField from './PasswordField';
 import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS, ParamedicalProfessionCode, ParamedicalProfession } from '@/lib/workspaces/paramedical/professions';
-import { REGISTRATION_SECTORS, RegistrationSectorCode } from '@/lib/registration/options';
+import { REGISTRATION_SECTOR_CODES, REGISTRATION_SECTORS, RegistrationSectorCode } from '@/lib/registration/options';
 
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
@@ -54,7 +54,6 @@ export default function RegisterForm() {
         return;
       }
       if (formData.profileType === 'client') {
-        setFormData(prev => ({ ...prev, orgName: '', sector: '', profession: '' }));
         setStep(4); // Skip sector step for clients
       } else {
         setStep(3);
@@ -125,12 +124,18 @@ export default function RegisterForm() {
     }
   };
 
-  const sectors = [
-    { id: 'health' as RegistrationSectorCode, name: REGISTRATION_SECTORS.health.label, icon: <StethoscopeIcon className="w-5 h-5" /> },
-    { id: 'freelance' as RegistrationSectorCode, name: REGISTRATION_SECTORS.freelance.label, icon: <LaptopIcon className="w-5 h-5" /> },
-    { id: 'artisan' as RegistrationSectorCode, name: REGISTRATION_SECTORS.artisan.label, icon: <HammerIcon className="w-5 h-5" /> },
-    { id: 'other' as RegistrationSectorCode, name: REGISTRATION_SECTORS.other.label, icon: <MoreHorizontalIcon className="w-5 h-5" /> },
-  ];
+  const sectorIcons: Record<RegistrationSectorCode, React.ReactNode> = {
+    health: <StethoscopeIcon className="w-5 h-5" />,
+    freelance: <LaptopIcon className="w-5 h-5" />,
+    artisan: <HammerIcon className="w-5 h-5" />,
+    other: <MoreHorizontalIcon className="w-5 h-5" />,
+  };
+
+  const sectors = REGISTRATION_SECTOR_CODES.map(code => ({
+    id: code,
+    name: REGISTRATION_SECTORS[code].label,
+    icon: sectorIcons[code],
+  }));
 
   const stepsLabels = ["Compte", "Profil", "Activité", "Terminé"];
 
@@ -229,7 +234,7 @@ export default function RegisterForm() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, profileType: 'client' })}
+                onClick={() => setFormData((prev) => ({ ...prev, profileType: 'client', orgName: '', sector: '', profession: '' }))}
                 className={`relative flex flex-col items-center p-6 border-2 rounded-xl focus:outline-none transition-all ${
                   formData.profileType === 'client' ? 'border-primary-600 bg-primary-50 shadow-sm shadow-primary-100' : 'border-gray-200 hover:border-primary-300 bg-white'
                 }`}
@@ -243,7 +248,7 @@ export default function RegisterForm() {
 
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, profileType: 'professional' })}
+                onClick={() => setFormData((prev) => ({ ...prev, profileType: 'professional' }))}
                 className={`relative flex flex-col items-center p-6 border-2 rounded-xl focus:outline-none transition-all ${
                   formData.profileType === 'professional' ? 'border-primary-600 bg-primary-50 shadow-sm shadow-primary-100' : 'border-gray-200 hover:border-primary-300 bg-white'
                 }`}

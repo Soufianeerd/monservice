@@ -32,8 +32,20 @@ Neuf tests ont été rajoutés pour couvrir la stricte exclusion pour le profil 
 ## 9. Absence migration
 Le backend (PostgreSQL, Supabase) est resté totalement intact. Aucune migration n'est nécessaire.
 
-## 10. CI Finale
-Tous les tests ont validé localement l'intégrité de la logique et du typecheck. Le code est poussé dans cette session sur `main` pour la validation CI GitHub finale.
+## 10. Historique CI Finale
+Tous les tests ont validé localement l'intégrité de la logique et du typecheck. Le code a été poussé dans cette session sur `main` :
+- **Commit** : `9fec2ce65f37cd4241f464e71e1468a3d45f7ce8`
+- **Run CI** : `33155022312`
+- **Status** : `completed`
+- **Conclusion** : `success`
 
-## 11. Readiness Session 04
-**OUI**. La base de données et les règles métier d'inscription sont sécurisées, fiables et partagent le même contrat. La Session 04 (Onboarding conditionnel métier) peut démarrer en s'appuyant sur cette certitude.
+## 11. Audit Post-Session
+Cependant, l'audit post-session a révélé trois écarts résiduels :
+- Le test 23 (itération sur les secteurs) utilisait un import dynamique `.then()` non `awaited`, permettant au test de passer virtuellement avant même d'exécuter les assertions.
+- Le nettoyage des champs professionnels lors de la sélection du profil `client` n'était déclenché qu'au clic sur "Continuer" (`handleNext`), retardant la mise à jour cohérente du state.
+- Les identifiants (`health`, `freelance`, etc.) étaient toujours dupliqués manuellement dans l'interface `RegisterForm`.
+
+La Session 03C ferme définitivement ces écarts et finalise les invariants Frontend.
+
+## 12. Readiness Session 04
+**OUI**. La base de données et les règles métier d'inscription sont sécurisées, fiables et partagent le même contrat. La Session 04 (Onboarding conditionnel métier) pourra démarrer sereinement après la Session 03C.
