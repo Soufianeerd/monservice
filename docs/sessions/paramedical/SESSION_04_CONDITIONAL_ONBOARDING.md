@@ -56,7 +56,7 @@ La Session 04 a refactorisé l'infrastructure d'onboarding de MonSERVICE pour ba
 - **Supabase production** : Inchangée.
 - **Dette restante** : La suite E2E complète reste non bloquante.
 - **Git** : Clean.
-- **CI** : *(Sera mis à jour avec le run ID)*
+- **CI** : Run ID `33163600781` (completed / success)
 
 ## 9. HANDOFF
 La **Session 05** (Dynamic Navigation / Shell / Terminology) est prête à démarrer.

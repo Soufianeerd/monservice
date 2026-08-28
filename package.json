@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:unit": "vitest run __tests__/unit/services",
+    "test:onboarding": "vitest run __tests__/unit/onboarding",
     "test:compliance": "vitest run __tests__/compliance",
     "test:e2e:compliance": "playwright test e2e/compliance.spec.ts",
     "test:all": "npm run test:unit && npm run test:compliance && npm run test:e2e",

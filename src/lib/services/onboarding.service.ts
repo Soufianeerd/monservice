@@ -1,7 +1,7 @@
 import { OnboardingStep } from '@/lib/data/interfaces';
 import { OnboardingContext } from '@/lib/onboarding/types';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
-import { PARAMEDICAL_PROFESSIONS, ParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
+import { PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/professions';
 
 export function getOnboardingSteps(context: OnboardingContext): OnboardingStep[] {
   if (context.profileType === 'client') {
@@ -18,9 +18,9 @@ export function getOnboardingSteps(context: OnboardingContext): OnboardingStep[]
     
     if (workspace.type === 'paramedical') {
        // Paramedical plan
-       const isKnownProfession = context.profession && PARAMEDICAL_PROFESSIONS[context.profession as ParamedicalProfessionCode];
-       const label = isKnownProfession 
-         ? `Configurez votre activité de ${PARAMEDICAL_PROFESSIONS[context.profession as ParamedicalProfessionCode].label}.` 
+       const profession = workspace.profession;
+       const label = profession 
+         ? `Configurez votre activité de ${PARAMEDICAL_PROFESSIONS[profession].label}.` 
          : "Ajoutez vos coordonnées, votre adresse professionnelle et les informations utiles de votre structure.";
 
        return [

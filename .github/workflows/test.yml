@@ -58,6 +58,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:security
       - run: npm run test:unit
+      - name: Run Onboarding Unit Tests
+        run: npm run test:onboarding
       - run: npm run test:compliance
       - run: npm run build
       

@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { XIcon, CheckCircleIcon, CircleIcon, PlayCircleIcon } from 'lucide-react';
 import { useOnboardingContext } from './OnboardingProvider';
 import OnboardingProgress from './OnboardingProgress';
+import { TOUR_SCENARIOS } from './definitions/tour-scenarios';
 
 export default function SetupGuidePopover() {
   const { onboardingState, isMinimized, setMinimized, startTour, skipOnboarding } = useOnboardingContext();
@@ -52,23 +54,32 @@ export default function SetupGuidePopover() {
                 </h4>
                 {!step.completed && (
                   <div className="mt-2 flex items-center gap-4">
-                    <button
-                      onClick={() => {
-                        setMinimized(true);
-                        startTour(step.action); // L'action correspond à l'ID du scénario
-                      }}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none"
-                    >
-                      Continuer &rarr;
-                    </button>
-                    <a 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); alert('Vidéo tutoriel à venir !'); }}
-                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      <PlayCircleIcon className="w-3.5 h-3.5" />
-                      Tutoriel vidéo
-                    </a>
+                    {TOUR_SCENARIOS[step.action as keyof typeof TOUR_SCENARIOS] ? (
+                      <button
+                        onClick={() => {
+                          setMinimized(true);
+                          startTour(step.action);
+                        }}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                      >
+                        Continuer &rarr;
+                      </button>
+                    ) : step.link ? (
+                      <Link
+                        href={step.link}
+                        onClick={() => setMinimized(true)}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                      >
+                        Accéder &rarr;
+                      </Link>
+                    ) : null}
+                    
+                    {step.videoUrl && (
+                      <span className="flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Bientôt disponible">
+                        <PlayCircleIcon className="w-3.5 h-3.5" />
+                        Tutoriel vidéo (à venir)
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

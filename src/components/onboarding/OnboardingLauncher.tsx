@@ -5,12 +5,14 @@ import { Compass } from 'lucide-react';
 import { useOnboardingContext } from './OnboardingProvider';
 
 export default function OnboardingLauncher() {
-  const { onboardingState, isMinimized, setMinimized } = useOnboardingContext();
+  const { onboardingState, isMinimized, setMinimized, activeTour } = useOnboardingContext();
 
   // Hide entirely if completed or no state
   if (!onboardingState || onboardingState.completed) return null;
   // Hide if it's already open
   if (!isMinimized) return null;
+  // Hide if a tour is actively playing
+  if (activeTour) return null;
 
   const completedCount = onboardingState.steps.filter(s => s.completed).length;
   const total = onboardingState.steps.length;
