@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { buildProfessionalNavigation } from '@/lib/navigation/workspace-navigation';
-import { WorkspaceConfig } from '@/lib/workspaces/types';
-import { PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/professions';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
+import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
 
 describe('Workspace Navigation', () => {
   it('construit la navigation générique correcte', () => {
-    const config = {
-      type: 'generic',
-      label: 'CRM',
-    } as WorkspaceConfig;
+    const config = resolveWorkspace({
+      sector: 'artisan',
+    });
 
     const nav = buildProfessionalNavigation(config);
     const navNames = nav.map(n => n.name);
@@ -31,16 +30,10 @@ describe('Workspace Navigation', () => {
   });
 
   it('construit la navigation paramédicale avec les modules adéquats', () => {
-    const config = {
-      type: 'paramedical',
+    const config = resolveWorkspace({
+      sector: 'health',
       profession: 'physiotherapist',
-      label: 'Masseur-Kinésithérapeute',
-      terminology: {
-        customerPlural: 'Patients',
-        servicePlural: 'Séances',
-      },
-      capabilities: ['patients'],
-    } as unknown as WorkspaceConfig;
+    });
 
     const nav = buildProfessionalNavigation(config);
     const navNames = nav.map(n => n.name);
@@ -65,35 +58,27 @@ describe('Workspace Navigation', () => {
 
     // Produit le label à partir de servicePlural
     const facturation = nav.find(n => n.id === 'billing');
-    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Séances');
+    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
   });
 
   it('gère le paramédical de base (health sans profession connue)', () => {
-    const config = {
-      type: 'paramedical',
-      label: 'Espace Paramédical',
-      // terminology undefined intentionally
-      capabilities: [],
-    } as unknown as WorkspaceConfig;
+    const config = resolveWorkspace({
+      sector: 'health',
+      profession: null,
+    });
 
     const nav = buildProfessionalNavigation(config);
     
-    // Le label par défaut est 'Prestations' si la terminologie n'existe pas
+    // Le label par défaut est issu de PARAMEDICAL_TERMINOLOGY de base
     const facturation = nav.find(n => n.id === 'billing');
-    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Prestations');
+    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
   });
   
   it('ne crée aucune route future automatique à partir des capabilities', () => {
-    const config = {
-      type: 'paramedical',
+    const config = resolveWorkspace({
+      sector: 'health',
       profession: 'osteopath',
-      label: 'Ostéopathe',
-      terminology: {
-        customerPlural: 'Patients',
-        servicePlural: 'Consultations',
-      },
-      capabilities: ['patients', 'clinicalRecords', 'careEpisodes', 'appointments'], // futures capacités
-    } as unknown as WorkspaceConfig;
+    });
 
     const nav = buildProfessionalNavigation(config);
     
@@ -107,14 +92,11 @@ describe('Workspace Navigation', () => {
   });
   
   it('valide l\'absence de collision d\'IDs sur toutes les professions', () => {
-    const codes = Object.keys(PARAMEDICAL_PROFESSIONS) as Array<keyof typeof PARAMEDICAL_PROFESSIONS>;
-    
-    codes.forEach(code => {
-      const config = {
-        type: 'paramedical',
+    PARAMEDICAL_PROFESSION_CODES.forEach(code => {
+      const config = resolveWorkspace({
+        sector: 'health',
         profession: code,
-        label: PARAMEDICAL_PROFESSIONS[code].label,
-      } as unknown as WorkspaceConfig;
+      });
       
       const nav = buildProfessionalNavigation(config);
       const ids = nav.map(n => n.id);

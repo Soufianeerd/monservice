@@ -5,6 +5,9 @@ import { render, screen } from '@testing-library/react';
 import Header from '@/components/layout/Header';
 import { useAuth } from '@/components/auth/AuthContext';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
+
+import { Organization, User } from '@/lib/data/interfaces';
 
 vi.mock('@/components/auth/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -35,15 +38,20 @@ describe('Header Workspace Dynamic', () => {
     vi.clearAllMocks();
   });
 
+  const createMockAuth = (userType: 'professional' | 'client', org: Partial<Organization> | null = null): ReturnType<typeof useAuth> => ({
+    user: { profileType: userType, id: 'u1', name: 'Jean' } as unknown as User,
+    organization: org as unknown as Organization,
+    isLoading: false,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    refresh: vi.fn(),
+    updateUser: vi.fn(),
+  });
+
   it('affiche la recherche globale et l\'industrie pour un professionnel générique', () => {
-    (useAuth as any).mockReturnValue({
-      user: { profileType: 'professional', id: 'u1', name: 'Jean' },
-      organization: { id: 'o1', name: 'Mon Entreprise', industry: 'BTP' },
-      signOut: vi.fn(),
-    });
-    (useWorkspace as any).mockReturnValue({
-      type: 'generic',
-    });
+    const org = { id: 'o1', name: 'Mon Entreprise', sector: 'artisan', industry: 'BTP' };
+    vi.mocked(useAuth).mockReturnValue(createMockAuth('professional', org));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'artisan' }));
 
     render(<Header />);
     
@@ -57,15 +65,9 @@ describe('Header Workspace Dynamic', () => {
   });
 
   it('masque la recherche et affiche le label pour un professionnel paramédical', () => {
-    (useAuth as any).mockReturnValue({
-      user: { profileType: 'professional', id: 'u1', name: 'Jean' },
-      organization: { id: 'o1', name: 'Mon Cabinet', industry: 'Santé' },
-      signOut: vi.fn(),
-    });
-    (useWorkspace as any).mockReturnValue({
-      type: 'paramedical',
-      label: 'Masseur-Kinésithérapeute',
-    });
+    const org = { id: 'o1', name: 'Mon Cabinet', sector: 'health', profession: 'physiotherapist' as const, industry: 'Santé' };
+    vi.mocked(useAuth).mockReturnValue(createMockAuth('professional', org));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: 'physiotherapist' }));
 
     render(<Header />);
     
@@ -78,15 +80,9 @@ describe('Header Workspace Dynamic', () => {
   });
 
   it('affiche Espace Paramédical si aucun métier paramédical n\'est défini', () => {
-    (useAuth as any).mockReturnValue({
-      user: { profileType: 'professional', id: 'u1', name: 'Jean' },
-      organization: { id: 'o1', name: 'Mon Cabinet', industry: 'Santé' },
-      signOut: vi.fn(),
-    });
-    (useWorkspace as any).mockReturnValue({
-      type: 'paramedical',
-      // pas de label, devrait fallback sur 'Espace Paramédical'
-    });
+    const org = { id: 'o1', name: 'Mon Cabinet', sector: 'health', industry: 'Santé' };
+    vi.mocked(useAuth).mockReturnValue(createMockAuth('professional', org));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: null }));
 
     render(<Header />);
     
@@ -94,12 +90,8 @@ describe('Header Workspace Dynamic', () => {
   });
 
   it('masque la recherche globale pour un profil client', () => {
-    (useAuth as any).mockReturnValue({
-      user: { profileType: 'client', id: 'u1', name: 'Paul' },
-      organization: null,
-      signOut: vi.fn(),
-    });
-    (useWorkspace as any).mockReturnValue(null);
+    vi.mocked(useAuth).mockReturnValue(createMockAuth('client', null));
+    vi.mocked(useWorkspace).mockReturnValue(null);
 
     render(<Header />);
     

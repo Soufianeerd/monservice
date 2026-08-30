@@ -89,7 +89,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Factures', href: '/facturation/factures' },
           { name: 'Devis', href: '/facturation/devis' },
-          { name: workspace.terminology?.servicePlural || 'Prestations', href: '/facturation/produits' },
+          { name: workspace.terminology.servicePlural ?? 'Prestations', href: '/facturation/produits' },
         ],
       },
       {

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import { useRole } from '@/hooks/useRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
 vi.mock('@/hooks/useRole', () => ({
   useRole: vi.fn(),
@@ -22,12 +23,8 @@ vi.mock('next/navigation', () => ({
 
 describe('Sidebar Workspace Dynamic Navigation', () => {
   it('affiche la navigation générique complète pour un professionnel classique', () => {
-    (useRole as any).mockReturnValue('professional');
-    (useWorkspace as any).mockReturnValue({
-      type: 'generic',
-      sector: 'other',
-      label: 'CRM',
-    });
+    vi.mocked(useRole).mockReturnValue('professional');
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'artisan' }));
 
     render(<Sidebar />);
     
@@ -38,14 +35,8 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
   });
 
   it('masque les modules CRM inutiles pour le paramédical', () => {
-    (useRole as any).mockReturnValue('professional');
-    (useWorkspace as any).mockReturnValue({
-      type: 'paramedical',
-      sector: 'health',
-      profession: 'osteopath',
-      label: 'Ostéopathe',
-      terminology: { servicePlural: 'Consultations' }
-    });
+    vi.mocked(useRole).mockReturnValue('professional');
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: 'osteopath' }));
 
     render(<Sidebar />);
     
@@ -65,26 +56,21 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
   });
 
   it('affiche la terminologie adéquate dans Facturation pour le paramédical', () => {
-    (useRole as any).mockReturnValue('professional');
-    (useWorkspace as any).mockReturnValue({
-      type: 'paramedical',
-      sector: 'health',
-      profession: 'psychologist',
-      label: 'Psychologue',
-      terminology: { servicePlural: 'Séances' }
-    });
+    vi.mocked(useRole).mockReturnValue('professional');
+    // On utilise psychomotor_therapist (qui a la terminologie 'Séances')
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: 'psychomotor_therapist' }));
 
     vi.mocked(usePathname).mockReturnValueOnce('/facturation');
 
     render(<Sidebar />);
     
-    // Au lieu de "Produits", on doit voir "Séances" dans le menu déroulant
-    expect(screen.getByText('Séances')).toBeInTheDocument();
+    // Au lieu de "Produits", on doit voir "Consultations" dans le menu déroulant
+    expect(screen.getByText('Consultations')).toBeInTheDocument();
   });
 
   it('affiche la navigation client sans utiliser le workspace', () => {
-    (useRole as any).mockReturnValue('client');
-    (useWorkspace as any).mockReturnValue(null);
+    vi.mocked(useRole).mockReturnValue('client');
+    vi.mocked(useWorkspace).mockReturnValue(null);
 
     render(<Sidebar />);
     

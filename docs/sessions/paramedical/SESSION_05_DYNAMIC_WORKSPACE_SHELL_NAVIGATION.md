@@ -84,7 +84,9 @@ Aucune modification n'a été portée à la base de données, à ses contraintes
 - **Tests Header** : `header.test.tsx` (logique d'affichage Search / label).
 
 ## CI workspace
-Le script `"test:workspace"` a été ajouté à `package.json` et inséré à `.github/workflows/test.yml`.
+Le script `"test:workspace"` a été ajouté à `package.json`.
+
+*(Note d'audit post-session : Ce script n'avait pas été correctement inséré dans `.github/workflows/test.yml` au HEAD `d9c790d14e5a0da5b714a928105e62630ec2d7bd`. Le run CI `33191253825` était "completed / success" mais n'avait PAS exécuté la sous-suite Workspace. Cet oubli, ainsi que des contrats falsifiés dans les tests, ont motivé la Session 05B corrective).*
 
 ## Résultats
 - tests onboarding : 19/19
