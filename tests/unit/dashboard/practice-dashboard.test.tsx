@@ -96,7 +96,7 @@ describe('ParamedicalPracticeDashboard', () => {
   });
 
   it('does not display unwanted strings', () => {
-    const { container } = render(
+    render(
       <ParamedicalPracticeDashboard 
         workspace={getParamedicalWorkspaceConfig('physiotherapist')} 
         organization={mockOrganization} 

@@ -21,3 +21,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **05B** | Workspace Test Contract Finalization | 30 Août 2026 | Terminée | [Session 05B](SESSION_05B_WORKSPACE_TEST_CONTRACT_FINALIZATION.md) |
 | **06** | Practice / Today Dashboard | 1 Septembre 2026 | Terminée | [Session 06](SESSION_06_PRACTICE_TODAY_DASHBOARD.md) |
 | **06B** | Practice Dashboard Contract Finalization | 1 Septembre 2026 | Terminée | [Session 06B](SESSION_06B_PRACTICE_DASHBOARD_CONTRACT_FINALIZATION.md) |
+| **06C** | Dashboard Final Test Cleanup | 1 Septembre 2026 | Terminée | [Session 06C](SESSION_06C_DASHBOARD_FINAL_TEST_CLEANUP.md) |

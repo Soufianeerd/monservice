@@ -89,7 +89,7 @@ describe('DashboardPage', () => {
     pendingTasks: 0,
     totalRevenue: 0,
     paidInvoices: 0
-  };
+  } satisfies Awaited<ReturnType<typeof getProfessionalStatsAction>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,7 +98,7 @@ describe('DashboardPage', () => {
   it('renders generic dashboard and calls correct actions for generic workspace', async () => {
     vi.mocked(getSessionAction).mockResolvedValue({ user: mockUser });
     vi.mocked(getOrganizationAction).mockResolvedValue(genericOrg);
-    vi.mocked(getProfessionalStatsAction).mockResolvedValue(genericStats as any);
+    vi.mocked(getProfessionalStatsAction).mockResolvedValue(genericStats);
     vi.mocked(getDealsAction).mockResolvedValue([]);
 
     const Page = await DashboardPage();
