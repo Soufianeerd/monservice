@@ -18,21 +18,23 @@ export default async function DashboardPage() {
     return <div className="p-8 text-center text-gray-500">Chargement du dashboard...</div>;
   }
 
+  if (!organization) {
+    return <div className="p-8 text-center text-gray-500">Organisation indisponible.</div>;
+  }
+
   const workspace = resolveWorkspace({
-    sector: organization?.sector,
-    profession: organization?.profession,
-    country: organization?.country,
+    sector: organization.sector,
+    profession: organization.profession,
+    country: organization.country,
   });
 
   if (workspace.type === 'paramedical') {
     const data = await getPracticeDashboardAction();
-    // Fallback if organization is temporarily unavailable
-    const org = organization || { id: user.organizationId, name: 'Mon Espace' } as any;
     
     return (
       <ParamedicalPracticeDashboard 
         workspace={workspace}
-        organization={org}
+        organization={organization}
         data={data}
       />
     );

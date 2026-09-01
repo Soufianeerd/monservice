@@ -1,0 +1,33 @@
+# Session 06B : Practice Dashboard Contract Finalization
+
+## Résumé exécutif
+La session 06B est une session purement corrective destinée à durcir les contrats TypeScript, la RLS implicite et la scalabilité SQL du tableau de bord "Aujourd'hui" implémenté en 06. Les "as any" introduits en production et dans les tests ont été totalement supprimés pour respecter les invariants métier.
+
+## HEAD initial
+`2ab2c64e91d7170eaa74b7978c84e596996f7360`
+
+## Audit Post-06 (Corrigé)
+L'audit a permis de résoudre les points suivants :
+- **`as any` en production :** L'objet `organization` factice a été supprimé. Le cas `organization = null` est géré par un retour explicite (early return) *avant* la résolution du workspace.
+- **Organization Pick :** Les `props` du composant de tableau de bord utilisent désormais `PracticeDashboardOrganization` avec uniquement les champs strictement utiles.
+- **Label Workspace :** On utilise `workspace.label` de `ParamedicalWorkspaceConfig` directement sans fallback artificiel.
+- **Faux Workspace Test :** Le composant `ParamedicalPracticeDashboard` reçoit désormais le workspace paramédical via la vraie route `resolveWorkspace({ sector: 'health', profession: null })` dans les tests au lieu de caster de fausses données.
+- **Mocks typés :** `tests/unit/dashboard/dashboard-page.test.tsx` a été réécrit pour utiliser `satisfies User` et `satisfies Organization` sans aucun `as any`.
+- **Appel Server Component :** L'appel dans les tests utilise `await DashboardPage()` plutôt que des casts `as any`.
+- **Assertions React / Data-Tour :** Les méthodes vacues `.toBeDefined()` ont été remplacées par `.toBeInTheDocument()` afin que les erreurs de sélection de cibles de tours (overview, activities) fassent réellement échouer les tests.
+- **Scalabilité Service :** Le service ne charge plus la totalité des tâches en mémoire. Il exécute de véritables requêtes SQL (`count` et `LIMIT 5` avec `ORDER BY` case) garantissant le tenant scope en base de données.
+
+## Sécurité et RLS
+- Aucun faux `Organization` ni fallback non vérifié ne peut atteindre le serveur.
+- Aucune donnée générique (clients, deals, statistiques commerciales) n'est appelée par erreur.
+- La RLS reste gérée globalement.
+
+## Tests et CI
+- Le script `test:dashboard` valide le fonctionnement.
+- Tous les scripts de CI (`lint`, `typecheck`, `unit`, `compliance`, `build`) passent avec succès sans dégradation.
+- L'intégrité de la DB (drift, contract) est maintenue.
+
+## Readiness Session 07
+Les corrections apportées garantissent que le code est maintenable, vérifiable et qu'il scale proprement sur Postgres. La fondation "Pratique / Aujourd'hui" est solide.
+
+La Session 07 (Locations / practitioners / rooms / resources) est **autorisée à démarrer**.

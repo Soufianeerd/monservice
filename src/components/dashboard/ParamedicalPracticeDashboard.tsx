@@ -1,12 +1,16 @@
 import Link from 'next/link';
 import { Calendar, CheckSquare, FileText, Settings, MapPin, Briefcase, AlertCircle, Clock } from 'lucide-react';
-import { WorkspaceConfig } from '@/lib/workspaces/types';
+import { ParamedicalWorkspaceConfig } from '@/lib/workspaces/types';
 import { PracticeDashboardData } from '@/lib/services/practice-dashboard.service';
 import { Organization } from '@/lib/data/interfaces';
 
+export type PracticeDashboardOrganization = Readonly<
+  Pick<Organization, 'name' | 'address' | 'city' | 'postalCode' | 'phone'>
+>;
+
 interface ParamedicalPracticeDashboardProps {
-  workspace: WorkspaceConfig;
-  organization: Organization;
+  workspace: ParamedicalWorkspaceConfig;
+  organization: PracticeDashboardOrganization;
   data: PracticeDashboardData;
 }
 
@@ -15,7 +19,7 @@ export default function ParamedicalPracticeDashboard({
   organization,
   data,
 }: ParamedicalPracticeDashboardProps) {
-  const professionLabel = workspace.label || 'Espace Paramédical';
+  const professionLabel = workspace.label;
   
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Aucune échéance';

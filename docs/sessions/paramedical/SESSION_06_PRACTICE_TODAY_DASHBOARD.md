@@ -43,5 +43,19 @@ Conformément aux instructions, aucune entité clinique n'a été créée. Le da
 - Aucune migration de base de données n'a été ajoutée. La structure et la RLS restent inchangées.
 - Validation des suites `workspace`, `onboarding` et de tous les tests globaux (security, unit, compliance, lint, typecheck, build).
 
+## État Final de la Session 06
+- **Commit Session 06 :** `2ab2c64e91d7170eaa74b7978c84e596996f7360`
+- **Run CI :** `33528475307`
+- **Status :** `completed`
+- **Conclusion :** `success`
+
+## Audit Post-Session (Motivant 06B)
+Bien que l'architecture métier et le flux soient corrects, un audit post-session a révélé plusieurs écarts de contrat (traités dans la **Session 06B**) :
+- Un cast `as any` a été réintroduit en production pour fabriquer une fausse organisation de secours.
+- Les tests ont utilisé des mocks `as any` et réintroduit un faux Workspace paramédical, violant les règles durcies en 05B.
+- Les assertions de data-tours (`toBeDefined`) étaient vacues (le résultat `null` du `querySelector` les passait).
+- Les mocks pour les appels au Server Component manquaient de typage strict.
+- La récupération des tâches chargeait toutes les lignes en mémoire (non scalable) plutôt que d'utiliser `count` et `LIMIT 5` en DB.
+
 ## Readiness Session 07
-Les bases du tableau de bord étant posées sans inventer de données, la structure est prête pour intégrer les fondations d'identité et de structure du cabinet. La session 07 (Locations / practitioners / rooms / resources) est autorisée à démarrer.
+Les bases du tableau de bord étant posées sans inventer de données, la structure est prête. **Cependant, la Session 07 est bloquée jusqu'à la finalisation stricte des contrats et des tests lors de la Session 06B.**

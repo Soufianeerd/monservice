@@ -1,17 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ParamedicalPracticeDashboard from '@/components/dashboard/ParamedicalPracticeDashboard';
-import { GENERIC_WORKSPACE_CONFIG } from '@/lib/workspaces/generic/config';
 import { getParamedicalWorkspaceConfig } from '@/lib/workspaces/paramedical/config';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
+import { PracticeDashboardOrganization } from '@/components/dashboard/ParamedicalPracticeDashboard';
 
 describe('ParamedicalPracticeDashboard', () => {
   const mockOrganization = {
-    id: 'org-123',
     name: 'Mon Cabinet Test',
     address: '12 rue de la Paix',
     city: 'Paris',
     postalCode: '75000',
-  } as any;
+    phone: '0102030405'
+  } satisfies PracticeDashboardOrganization;
 
   const emptyData = {
     openTaskCount: 0,
@@ -36,34 +37,36 @@ describe('ParamedicalPracticeDashboard', () => {
     );
     
     // Titre "Aujourd'hui"
-    expect(screen.getByText("Aujourd'hui")).toBeDefined();
+    expect(screen.getByText("Aujourd'hui")).toBeInTheDocument();
     
     // Label humain
-    expect(screen.getByText('Masseur-Kinésithérapeute')).toBeDefined();
+    expect(screen.getByText('Masseur-Kinésithérapeute')).toBeInTheDocument();
     
     // Links
-    expect(screen.getByText('Agenda')).toBeDefined();
-    expect(screen.getByText('Tâches')).toBeDefined();
-    expect(screen.getByText('Facturation')).toBeDefined();
-    expect(screen.getByText('Organisation')).toBeDefined();
+    expect(screen.getByText('Agenda')).toBeInTheDocument();
+    expect(screen.getByText('Tâches')).toBeInTheDocument();
+    expect(screen.getByText('Facturation')).toBeInTheDocument();
+    expect(screen.getByText('Organisation')).toBeInTheDocument();
     
     // Tours
     const overview = document.querySelector('[data-tour="dashboard-overview"]');
-    expect(overview).toBeDefined();
+    expect(overview).toBeInTheDocument();
     const activities = document.querySelector('[data-tour="dashboard-activities"]');
-    expect(activities).toBeDefined();
+    expect(activities).toBeInTheDocument();
   });
 
   it('renders health base correctly without profession', () => {
-    const healthConfig = { ...GENERIC_WORKSPACE_CONFIG, type: 'paramedical', label: undefined } as any;
+    const workspace = resolveWorkspace({ sector: 'health', profession: null });
+    if (workspace.type !== 'paramedical') throw new Error('Expected paramedical workspace');
+    
     render(
       <ParamedicalPracticeDashboard 
-        workspace={healthConfig} 
+        workspace={workspace} 
         organization={mockOrganization} 
         data={emptyData} 
       />
     );
-    expect(screen.getByText('Espace Paramédical')).toBeDefined();
+    expect(screen.getByText('Espace Paramédical')).toBeInTheDocument();
   });
 
   it('displays tasks when present', () => {
@@ -74,10 +77,10 @@ describe('ParamedicalPracticeDashboard', () => {
         data={tasksData} 
       />
     );
-    expect(screen.getByText('Faire bilan')).toBeDefined();
-    expect(screen.getByText('Rappeler M. Dupont')).toBeDefined();
+    expect(screen.getByText('Faire bilan')).toBeInTheDocument();
+    expect(screen.getByText('Rappeler M. Dupont')).toBeInTheDocument();
     // 2 tasks
-    expect(screen.getByText('2 tâches ouvertes')).toBeDefined();
+    expect(screen.getByText('2 tâches ouvertes')).toBeInTheDocument();
   });
 
   it('displays empty state correctly', () => {
@@ -88,8 +91,8 @@ describe('ParamedicalPracticeDashboard', () => {
         data={emptyData} 
       />
     );
-    expect(screen.getByText('Aucune tâche ouverte.')).toBeDefined();
-    expect(screen.getByText('Voir les tâches')).toBeDefined();
+    expect(screen.getByText('Aucune tâche ouverte.')).toBeInTheDocument();
+    expect(screen.getByText('Voir les tâches')).toBeInTheDocument();
   });
 
   it('does not display unwanted strings', () => {
@@ -101,11 +104,10 @@ describe('ParamedicalPracticeDashboard', () => {
       />
     );
     
-    const html = container.innerHTML;
-    expect(html).not.toContain('Clients');
-    expect(html).not.toContain('Deals');
-    expect(html).not.toContain('Patients');
-    expect(html).not.toContain('Rendez-vous');
-    expect(html).not.toContain('Séances aujourd’hui');
+    expect(screen.queryByText('Clients')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deals')).not.toBeInTheDocument();
+    expect(screen.queryByText('Patients')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rendez-vous')).not.toBeInTheDocument();
+    expect(screen.queryByText('Séances aujourd’hui')).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { db } from '../db/server';
 import { tasks } from '../db/schema';
-import { and, eq, notInArray } from 'drizzle-orm';
+import { and, eq, notInArray, sql, asc } from 'drizzle-orm';
 import { AppError } from '../errors';
 
 export interface PracticeDashboardTask {
@@ -22,7 +22,17 @@ export const practiceDashboardService = {
       throw new AppError('Organization ID is required', 400, 'BAD_REQUEST');
     }
 
-    const openTasksQuery = await db
+    const baseWhere = and(
+      eq(tasks.organizationId, organizationId),
+      notInArray(tasks.status, ['completed', 'cancelled'])
+    );
+
+    const countQuery = db
+      .select({ count: sql`count(*)`.mapWith(Number) })
+      .from(tasks)
+      .where(baseWhere);
+
+    const topTasksQuery = db
       .select({
         id: tasks.id,
         title: tasks.title,
@@ -31,44 +41,26 @@ export const practiceDashboardService = {
         priority: tasks.priority,
       })
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.organizationId, organizationId),
-          notInArray(tasks.status, ['completed', 'cancelled'])
-        )
-      );
+      .where(baseWhere)
+      .orderBy(
+        sql`${tasks.dueDate} ASC NULLS LAST`,
+        sql`CASE 
+          WHEN ${tasks.priority} = 'high' THEN 1 
+          WHEN ${tasks.priority} = 'medium' THEN 2 
+          WHEN ${tasks.priority} = 'low' THEN 3 
+          ELSE 4 
+        END ASC`,
+        asc(tasks.id)
+      )
+      .limit(5);
 
-    const openTaskCount = openTasksQuery.length;
-
-    // Sort tasks in memory to ensure consistent behavior across environments
-    // and handle custom priority weighting cleanly.
-    const sortedTasks = [...openTasksQuery].sort((a, b) => {
-      // 1. Due date presence (dates first)
-      if (a.dueDate && !b.dueDate) return -1;
-      if (!a.dueDate && b.dueDate) return 1;
-
-      // 2. Due date ascending
-      if (a.dueDate && b.dueDate) {
-        if (a.dueDate < b.dueDate) return -1;
-        if (a.dueDate > b.dueDate) return 1;
-      }
-
-      // 3. Priority (high > medium > low)
-      const priorityWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
-      const aWeight = priorityWeight[a.priority || 'medium'] || 0;
-      const bWeight = priorityWeight[b.priority || 'medium'] || 0;
-      
-      if (aWeight > bWeight) return -1;
-      if (aWeight < bWeight) return 1;
-
-      // 4. Stable fallback
-      return a.id.localeCompare(b.id);
-    });
-
-    const nextTasks = sortedTasks.slice(0, 5);
+    const [[{ count }], nextTasks] = await Promise.all([
+      countQuery,
+      topTasksQuery
+    ]);
 
     return {
-      openTaskCount,
+      openTaskCount: count,
       nextTasks,
     };
   }
