@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { organizations, users, clients, invoices, requests } from '../../src/lib/db/schema';
+import { organizations, users, clients, invoices, requests, practiceLocations, practicePractitioners, practitionerLocations, practiceRooms, practiceResources } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -30,7 +30,7 @@ async function seed() {
   }
 
   const sql = postgres(dbUrl);
-  const db = drizzle(sql, { schema: { organizations, users, clients, invoices, requests } });
+  const db = drizzle(sql, { schema: { organizations, users, clients, invoices, requests, practiceLocations, practicePractitioners, practitionerLocations, practiceRooms, practiceResources } });
 
   // Load SERVICE_ROLE_KEY
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
@@ -114,6 +114,32 @@ async function seed() {
   ]).onConflictDoNothing();
 
   console.log('Seed completed successfully!');
+
+  // 6. Practice Structure
+  const locationIdA = randomUUID();
+  await db.insert(practiceLocations).values([
+    { id: locationIdA, organizationId: 'org-a-1234', name: 'Cabinet Principal', city: 'Paris', timezone: 'Europe/Paris', isPrimary: true, isActive: true }
+  ]).onConflictDoNothing();
+
+  const pracIdA = randomUUID();
+  await db.insert(practicePractitioners).values([
+    { id: pracIdA, organizationId: 'org-a-1234', userId: proAId, displayName: 'Dr. Jane Doe', profession: 'physiotherapist', isActive: true }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerLocations).values([
+    { id: randomUUID(), organizationId: 'org-a-1234', practitionerId: pracIdA, locationId: locationIdA, isPrimary: true, isActive: true }
+  ]).onConflictDoNothing();
+
+  const roomId = randomUUID();
+  await db.insert(practiceRooms).values([
+    { id: roomId, organizationId: 'org-a-1234', locationId: locationIdA, name: 'Salle 1', isActive: true }
+  ]).onConflictDoNothing();
+
+  await db.insert(practiceResources).values([
+    { id: randomUUID(), organizationId: 'org-a-1234', locationId: locationIdA, roomId, name: 'Table de massage', isActive: true }
+  ]).onConflictDoNothing();
+
+  console.log('Practice structure seeded successfully!');
   await sql.end();
   process.exit(0);
 }

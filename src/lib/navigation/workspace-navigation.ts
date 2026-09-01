@@ -111,6 +111,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
+          { name: 'Cabinet', href: '/parametres/cabinet' },
           { name: 'Facturation', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },

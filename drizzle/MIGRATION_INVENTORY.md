@@ -20,5 +20,6 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0009_medical_power_man.sql` | Manuel | YES | Manual | Supabase auth webhook trigger setup | `0008_worthless_sentinels` | PROBABLY_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0010_opposite_union_jack.sql` | Drizzle Kit | YES | Generated | Ajout profession dans organizations et constraint CHECK | `0009_medical_power_man` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0011_graceful_hammerhead.sql` | Drizzle Kit | YES | Generated | Correction bug SQL NULL sur la contrainte CHECK profession | `0010_opposite_union_jack` | NOT_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0012_late_black_queen.sql` | Drizzle Kit + Manuel | YES | Mixed | Practice Structure (Locations, Practitioners, Rooms, Resources) + RLS | `0011_graceful_hammerhead` | NOT_APPLIED | CANONICAL | Conserver |
 
 **Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).

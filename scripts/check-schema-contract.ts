@@ -177,6 +177,34 @@ async function verifyContract() {
     }
   }
 
+  // --- Specific Contract: practice_practitioners_profession_check ---
+  const pracCheck = constraints.find(c => c.table_name === 'practice_practitioners' && c.conname === 'practice_practitioners_profession_check');
+  if (!pracCheck) {
+    console.error(`❌ ERROR: Constraint 'practice_practitioners_profession_check' not found in database.`);
+    errorCount++;
+  } else if (pracCheck.contype !== 'c') {
+    console.error(`❌ ERROR: 'practice_practitioners_profession_check' is not a CHECK constraint.`);
+    errorCount++;
+  } else {
+    const def = pracCheck.condef.toLowerCase().replace(/\s+/g, '');
+    const expectedElements = [
+      'profession',
+      'physiotherapist',
+      'osteopath',
+      'speech_therapist',
+      'podiatrist',
+      'occupational_therapist',
+      'psychomotor_therapist',
+      'dietitian'
+    ];
+    for (const el of expectedElements) {
+      if (!def.includes(el.replace(/\s+/g, ''))) {
+         console.error(`❌ ERROR: 'practice_practitioners_profession_check' is missing semantic element: '${el}'`);
+         errorCount++;
+      }
+    }
+  }
+
   await sql.end();
 
   if (errorCount > 0) {

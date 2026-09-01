@@ -1,12 +1,24 @@
 import { Tabs } from '@/components/ui/Tabs';
+import { requireProfessional } from '@/lib/auth/session';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
-export default function ParametresLayout({ children }: { children: React.ReactNode }) {
+export default async function ParametresLayout({ children }: { children: React.ReactNode }) {
+  const context = await requireProfessional();
+  const workspace = resolveWorkspace(context);
+
   const tabs = [
     { name: 'Profil', href: '/parametres/profil' },
     { name: 'Organisation', href: '/parametres/organisation' },
-    { name: 'Facturation', href: '/parametres/facturation' },
-    { name: 'Notifications', href: '/parametres/notifications' },
   ];
+
+  if (workspace.type === 'paramedical') {
+    tabs.push({ name: 'Cabinet', href: '/parametres/cabinet' });
+  }
+
+  tabs.push(
+    { name: 'Facturation', href: '/parametres/facturation' },
+    { name: 'Notifications', href: '/parametres/notifications' }
+  );
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">

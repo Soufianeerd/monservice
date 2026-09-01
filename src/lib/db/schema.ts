@@ -11,6 +11,7 @@ import {
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { foreignKey } from 'drizzle-orm/pg-core';
 
 /**
  * Schéma PostgreSQL unique.
@@ -482,7 +483,139 @@ export const archivedDocuments = sqliteTable('archived_documents', {
   notes: text('notes'),
 });
 
+// ---------------------------------------------------------------------------
+// PRACTICE STRUCTURE (Paramedical / Clinical)
+// ---------------------------------------------------------------------------
+
+// Practice Locations
+export const practiceLocations = sqliteTable('practice_locations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  name: text('name').notNull(),
+  address: text('address'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  country: text('country'),
+  timezone: text('timezone').notNull(),
+  phone: text('phone'),
+  isPrimary: boolean('is_primary').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('practice_locations_organization_id_idx').on(t.organizationId),
+  uniqueIndex('practice_locations_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('practice_locations_primary_active_idx')
+    .on(t.organizationId)
+    .where(sql`${t.isPrimary} = true AND ${t.isActive} = true`)
+]);
+
+// Practice Practitioners
+export const practicePractitioners = sqliteTable('practice_practitioners', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  userId: text('user_id'),
+  displayName: text('display_name').notNull(),
+  profession: text('profession').notNull(),
+  email: text('email'),
+  phone: text('phone'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('practice_practitioners_organization_id_idx').on(t.organizationId),
+  uniqueIndex('practice_practitioners_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('practice_practitioners_org_user_unique').on(t.organizationId, t.userId),
+  check('practice_practitioners_profession_check', sql`${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian')`),
+  foreignKey({
+    columns: [t.userId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'practice_practitioners_user_fk'
+  })
+]);
+
+// Practitioner Locations (many-to-many)
+export const practitionerLocations = sqliteTable('practitioner_locations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  practitionerId: text('practitioner_id').notNull(),
+  locationId: text('location_id').notNull(),
+  isPrimary: boolean('is_primary').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('practitioner_locations_org_practitioner_idx').on(t.organizationId, t.practitionerId),
+  index('practitioner_locations_org_location_idx').on(t.organizationId, t.locationId),
+  uniqueIndex('practitioner_locations_assignment_unique').on(t.organizationId, t.practitionerId, t.locationId),
+  uniqueIndex('practitioner_locations_primary_active_idx')
+    .on(t.organizationId, t.practitionerId)
+    .where(sql`${t.isPrimary} = true AND ${t.isActive} = true`),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'practitioner_locations_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.locationId, t.organizationId],
+    foreignColumns: [practiceLocations.id, practiceLocations.organizationId],
+    name: 'practitioner_locations_location_fk'
+  })
+]);
+
+// Practice Rooms
+export const practiceRooms = sqliteTable('practice_rooms', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  locationId: text('location_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('practice_rooms_organization_id_idx').on(t.organizationId),
+  index('practice_rooms_location_id_idx').on(t.locationId),
+  uniqueIndex('practice_rooms_location_name_unique').on(t.locationId, t.name),
+  uniqueIndex('practice_rooms_org_location_id_unique').on(t.id, t.locationId, t.organizationId),
+  foreignKey({
+    columns: [t.locationId, t.organizationId],
+    foreignColumns: [practiceLocations.id, practiceLocations.organizationId],
+    name: 'practice_rooms_location_fk'
+  })
+]);
+
+// Practice Resources
+export const practiceResources = sqliteTable('practice_resources', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  locationId: text('location_id').notNull(),
+  roomId: text('room_id'),
+  name: text('name').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('practice_resources_organization_id_idx').on(t.organizationId),
+  index('practice_resources_location_id_idx').on(t.locationId),
+  index('practice_resources_room_id_idx').on(t.roomId),
+  foreignKey({
+    columns: [t.locationId, t.organizationId],
+    foreignColumns: [practiceLocations.id, practiceLocations.organizationId],
+    name: 'practice_resources_location_fk'
+  }),
+  foreignKey({
+    columns: [t.roomId, t.locationId, t.organizationId],
+    foreignColumns: [practiceRooms.id, practiceRooms.locationId, practiceRooms.organizationId],
+    name: 'practice_resources_room_fk'
+  })
+]);
+
+// ---------------------------------------------------------------------------
 // RBAC Roles
+// ---------------------------------------------------------------------------
+
 export const roles = sqliteTable('roles', {
   id: text('id').primaryKey(),
   name: text('name').notNull().unique(), // 'admin', 'manager', 'user', 'viewer'

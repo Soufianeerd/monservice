@@ -31,7 +31,12 @@ async function verifyCustomObjects() {
     data_subject_requests: { anon: [], authenticated: ['SELECT', 'INSERT'] },
     consent_events: { anon: [], authenticated: ['SELECT', 'INSERT'] },
     country_compliance_profiles: { anon: [], authenticated: ['SELECT'] },
-    retention_policies: { anon: [], authenticated: ['SELECT'] }
+    retention_policies: { anon: [], authenticated: ['SELECT'] },
+    practice_locations: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_practitioners: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_locations: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_rooms: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_resources: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
   };
 
   const dbGrants = await sql`
@@ -125,7 +130,8 @@ async function verifyCustomObjects() {
   // 4. Verify RLS enabled and policies present for core tenant tables
   const expectedRlsTables = [
     'users', 'organizations', 'clients', 'contacts', 'deals', 'products', 
-    'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests'
+    'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests',
+    'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources'
   ];
 
   for (const table of expectedRlsTables) {
