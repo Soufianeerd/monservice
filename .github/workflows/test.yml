@@ -62,6 +62,8 @@ jobs:
         run: npm run test:onboarding
       - name: Run Workspace Unit Tests
         run: npm run test:workspace
+      - name: Run Dashboard Unit Tests
+        run: npm run test:dashboard
       - run: npm run test:compliance
       - run: npm run build
       

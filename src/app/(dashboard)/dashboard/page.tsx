@@ -1,15 +1,41 @@
-import { getSessionAction } from '@/app/actions/session';
+import { getSessionAction, getOrganizationAction } from '@/app/actions/session';
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
 import { getProfessionalStatsAction } from '@/app/actions/dashboard.actions';
 import { findAllAction as getDealsAction } from '@/app/actions/deal.actions';
 import { Deal } from '@/lib/data/interfaces';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
+import { getPracticeDashboardAction } from '@/app/actions/practice-dashboard.actions';
+import ParamedicalPracticeDashboard from '@/components/dashboard/ParamedicalPracticeDashboard';
 
 export default async function DashboardPage() {
-  const { user } = await getSessionAction();
+  const [{ user }, organization] = await Promise.all([
+    getSessionAction(),
+    getOrganizationAction(),
+  ]);
   
   if (!user?.organizationId) {
     return <div className="p-8 text-center text-gray-500">Chargement du dashboard...</div>;
+  }
+
+  const workspace = resolveWorkspace({
+    sector: organization?.sector,
+    profession: organization?.profession,
+    country: organization?.country,
+  });
+
+  if (workspace.type === 'paramedical') {
+    const data = await getPracticeDashboardAction();
+    // Fallback if organization is temporarily unavailable
+    const org = organization || { id: user.organizationId, name: 'Mon Espace' } as any;
+    
+    return (
+      <ParamedicalPracticeDashboard 
+        workspace={workspace}
+        organization={org}
+        data={data}
+      />
+    );
   }
 
   const dashboardStats = await getProfessionalStatsAction(user.organizationId);
