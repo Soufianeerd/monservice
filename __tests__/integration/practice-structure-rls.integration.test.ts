@@ -222,7 +222,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
     it('Pro A UPDATEs practice_practitioners B -> 0 rows affected', async () => {
       const { data, error } = await proAClient
         .from('practice_practitioners')
-        .update({ displayName: 'Hacked Dr. B' })
+        .update({ display_name: 'Hacked Dr. B' })
         .eq('id', SEED_PRACTICE_IDS.practitionerB)
         .select();
       expect(error).toBeNull();
@@ -231,10 +231,10 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
       // Verify B is intact
       const { data: dataB } = await proBClient
         .from('practice_practitioners')
-        .select('displayName')
+        .select('display_name')
         .eq('id', SEED_PRACTICE_IDS.practitionerB)
         .single();
-      expect(dataB?.displayName).toBe('Dr. John Smith');
+      expect(dataB?.display_name).toBe('Dr. John Smith');
     });
 
     it('Pro A INSERTs practice_locations with organization_id = Org B -> RLS 42501 error', async () => {
@@ -258,7 +258,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
           id: '10000000-0000-4000-8000-999999999998',
           organization_id: SEED_PRACTICE_IDS.orgA,
           user_id: proBId,
-          displayName: 'Dr. Cross Link',
+          display_name: 'Dr. Cross Link',
           profession: 'physiotherapist',
         })
         .select();
@@ -274,7 +274,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
           id: '10000000-0000-4000-8000-999999999997',
           organization_id: SEED_PRACTICE_IDS.orgA,
           user_id: cliAId,
-          displayName: 'Dr. Fake Client Practitioner',
+          display_name: 'Dr. Fake Client Practitioner',
           profession: 'physiotherapist',
         })
         .select();

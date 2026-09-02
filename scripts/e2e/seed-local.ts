@@ -268,11 +268,16 @@ async function seed() {
 
   console.log('Practice structure Org A & Org B seeded successfully!');
   await sql.end();
-  process.exit(0);
 }
 
-seed().catch(err => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+// Only execute seed if run directly as a script, not when imported in tests
+if (process.argv[1] && (process.argv[1].includes('seed-local') || process.argv[1].endsWith('seed-local.ts'))) {
+  seed()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error('Seed failed:', err);
+      process.exit(1);
+    });
+}
+
 
