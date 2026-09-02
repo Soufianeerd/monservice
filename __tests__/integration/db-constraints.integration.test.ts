@@ -13,8 +13,8 @@ describe('Database Integrity Constraints', () => {
 
   beforeAll(async () => {
     sql = postgres(DATABASE_URL);
-    await sql`INSERT INTO organizations (id, name, slug) VALUES (${orgA}, 'DB Test Org A', 'db-test-a') ON CONFLICT DO NOTHING`;
-    await sql`INSERT INTO organizations (id, name, slug) VALUES (${orgB}, 'DB Test Org B', 'db-test-b') ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (${orgA}, 'DB Test Org A', 'db-test-a', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (${orgB}, 'DB Test Org B', 'db-test-b', now(), now()) ON CONFLICT DO NOTHING`;
   });
 
   afterAll(async () => {
