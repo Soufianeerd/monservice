@@ -1,5 +1,5 @@
 {
-  "id": "8ccb3678-df94-4063-90e1-2d4385c761d7",
+  "id": "e82435f1-2b04-4f3e-80d6-90566c5c9c1b",
   "prevId": "794a024f-498f-49a5-b557-cb5e0909b703",
   "version": "7",
   "dialect": "postgresql",
@@ -3759,6 +3759,27 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_id_org_unique": {
+          "name": "users_id_org_unique",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}

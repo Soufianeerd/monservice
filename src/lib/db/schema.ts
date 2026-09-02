@@ -62,7 +62,8 @@ export const users = sqliteTable('users', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
-  index('users_organization_id_idx').on(t.organizationId)
+  index('users_organization_id_idx').on(t.organizationId),
+  uniqueIndex('users_id_org_unique').on(t.id, t.organizationId)
 ]);
 
 // Organizations
