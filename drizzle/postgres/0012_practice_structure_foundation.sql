@@ -90,7 +90,9 @@ CREATE INDEX "practitioner_locations_org_practitioner_idx" ON "practitioner_loca
 CREATE INDEX "practitioner_locations_org_location_idx" ON "practitioner_locations" USING btree ("organization_id","location_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "practitioner_locations_assignment_unique" ON "practitioner_locations" USING btree ("organization_id","practitioner_id","location_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "practitioner_locations_primary_active_idx" ON "practitioner_locations" USING btree ("organization_id","practitioner_id") WHERE "practitioner_locations"."is_primary" = true AND "practitioner_locations"."is_active" = true;--> statement-breakpoint
-CREATE UNIQUE INDEX "users_id_org_unique" ON "users" USING btree ("id","organization_id");ALTER TABLE "practice_locations" ENABLE ROW LEVEL SECURITY;
+CREATE UNIQUE INDEX "users_id_org_unique" ON "users" USING btree ("id","organization_id");
+--> statement-breakpoint
+ALTER TABLE "practice_locations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "practice_practitioners" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "practitioner_locations" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "practice_rooms" ENABLE ROW LEVEL SECURITY;
