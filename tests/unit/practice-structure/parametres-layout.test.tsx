@@ -1,9 +1,10 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import * as sessionModule from '@/lib/auth/session';
 import * as organizationModule from '@/lib/services/organization.service';
-import { practiceStructureService } from '@/lib/services/practice-structure.service';
 import type { Organization } from '@/lib/data/interfaces/organization.interface';
-import CabinetPage from '@/app/(dashboard)/parametres/cabinet/page';
+import ParametresLayout from '@/app/(dashboard)/parametres/layout';
 import { notFound } from 'next/navigation';
 
 vi.mock('next/navigation', () => ({
@@ -22,18 +23,20 @@ vi.mock('@/lib/services/organization.service', () => ({
   },
 }));
 
-vi.mock('@/lib/services/practice-structure.service', () => ({
-  practiceStructureService: {
-    getOverview: vi.fn(),
-  },
+vi.mock('@/components/ui/Tabs', () => ({
+  Tabs: ({ tabs }: { tabs: Array<{ name: string; href: string }> }) => (
+    <nav data-testid="settings-tabs">
+      {tabs.map((tab) => (
+        <a key={tab.href} href={tab.href}>
+          {tab.name}
+        </a>
+      ))}
+    </nav>
+  ),
 }));
 
-vi.mock('@/components/practice/PracticeStructureManager', () => ({
-  PracticeStructureManager: () => <div data-testid="practice-structure-manager" />,
-}));
-
-describe('Cabinet Page Server Component Resolution', () => {
-  const mockOrgId = 'org-paramed-123';
+describe('ParametresLayout Server Component', () => {
+  const mockOrgId = 'org-settings-123';
   const mockContext = {
     userId: 'user-1',
     organizationId: mockOrgId,
@@ -46,15 +49,7 @@ describe('Cabinet Page Server Component Resolution', () => {
     vi.mocked(sessionModule.requireProfessional).mockResolvedValue(mockContext);
   });
 
-  it('CabinetPage calls notFound() if organization is missing (null)', async () => {
-    vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(null);
-
-    await expect(CabinetPage()).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(notFound).toHaveBeenCalled();
-    expect(practiceStructureService.getOverview).not.toHaveBeenCalled();
-  });
-
-  it('CabinetPage calls notFound() if organization is not paramedical workspace', async () => {
+  it('Generic organization: tabs do NOT contain Cabinet', async () => {
     const genericOrg: Organization = {
       id: mockOrgId,
       name: 'Generic Org',
@@ -68,12 +63,15 @@ describe('Cabinet Page Server Component Resolution', () => {
     };
     vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(genericOrg);
 
-    await expect(CabinetPage()).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(notFound).toHaveBeenCalled();
-    expect(practiceStructureService.getOverview).not.toHaveBeenCalled();
+    const jsx = await ParametresLayout({ children: <div data-testid="child-content" /> });
+    render(jsx);
+
+    expect(screen.queryByText('Cabinet')).toBeNull();
+    expect(screen.getByText('Profil')).toBeDefined();
+    expect(screen.getByText('Organisation')).toBeDefined();
   });
 
-  it('CabinetPage loads overview and renders if organization is paramedical', async () => {
+  it('Paramedical organization (health + physiotherapist): tabs contain Cabinet', async () => {
     const paramedOrg: Organization = {
       id: mockOrgId,
       name: 'Cabinet Médical',
@@ -87,17 +85,20 @@ describe('Cabinet Page Server Component Resolution', () => {
     };
     vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(paramedOrg);
 
-    vi.mocked(practiceStructureService.getOverview).mockResolvedValue({
-      locations: [],
-      practitioners: [],
-      assignments: [],
-      rooms: [],
-      resources: [],
-      eligibleUsers: [],
-    });
+    const jsx = await ParametresLayout({ children: <div data-testid="child-content" /> });
+    render(jsx);
 
-    const result = await CabinetPage();
-    expect(practiceStructureService.getOverview).toHaveBeenCalledWith(mockOrgId);
-    expect(result).toBeDefined();
+    expect(screen.getByText('Cabinet')).toBeDefined();
+    expect(screen.getByText('Profil')).toBeDefined();
+    expect(screen.getByText('Organisation')).toBeDefined();
+  });
+
+  it('Missing organization: calls notFound()', async () => {
+    vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(null);
+
+    await expect(
+      ParametresLayout({ children: <div data-testid="child-content" /> })
+    ).rejects.toThrow('NEXT_NOT_FOUND');
+    expect(notFound).toHaveBeenCalled();
   });
 });

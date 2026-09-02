@@ -10,7 +10,7 @@ import {
   practiceResourceCreateSchema,
   practiceResourceUpdateSchema,
 } from '@/lib/practice-structure/validation';
-import { PARAMEDICAL_PROFESSION_CODES, type ParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
+import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
 
 describe('Practice Structure Validation Schemas', () => {
   const dummyLoc1 = '10000000-0000-4000-8000-000000000001';
@@ -33,12 +33,23 @@ describe('Practice Structure Validation Schemas', () => {
       expect(parsed.timezone).toBe('Europe/Paris');
     });
 
-    it('rejects an invalid IANA timezone', () => {
-      const data = {
-        name: 'Cabinet',
-        timezone: 'Mars/Phobos',
-      };
-      expect(() => practiceLocationCreateSchema.parse(data)).toThrow(/Fuseau horaire invalide/);
+    it('accepts valid IANA timezones (Europe/Paris, Europe/Luxembourg)', () => {
+      const dataParis = { name: 'Cab Paris', timezone: 'Europe/Paris' };
+      const parsedParis = practiceLocationCreateSchema.parse(dataParis);
+      expect(parsedParis.timezone).toBe('Europe/Paris');
+
+      const dataLux = { name: 'Cab Luxembourg', timezone: 'Europe/Luxembourg' };
+      const parsedLux = practiceLocationCreateSchema.parse(dataLux);
+      expect(parsedLux.timezone).toBe('Europe/Luxembourg');
+    });
+
+    it('rejects invalid timezones (Europe/Nancy, Paris, Mars/Phobos)', () => {
+      expect(() => practiceLocationCreateSchema.parse({ name: 'Cab', timezone: 'Europe/Nancy' }))
+        .toThrow(/Fuseau horaire invalide/);
+      expect(() => practiceLocationCreateSchema.parse({ name: 'Cab', timezone: 'Paris' }))
+        .toThrow(/Fuseau horaire invalide/);
+      expect(() => practiceLocationCreateSchema.parse({ name: 'Cab', timezone: 'Mars/Phobos' }))
+        .toThrow(/Fuseau horaire invalide/);
     });
 
     it('defaults timezone to Europe/Paris when not specified', () => {
@@ -72,7 +83,7 @@ describe('Practice Structure Validation Schemas', () => {
     it('rejects an invalid profession code', () => {
       const data = {
         displayName: 'Dr. Invalid',
-        profession: 'dentist' as unknown as ParamedicalProfessionCode,
+        profession: 'dentist',
       };
       expect(() => practicePractitionerCreateSchema.parse(data)).toThrow();
     });

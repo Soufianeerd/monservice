@@ -19,11 +19,17 @@ import {
 
 async function requireParamedicalContext() {
   const context = await requireProfessional();
+  if (!context.organizationId) {
+    throw new Error('Organization introuvable');
+  }
   const organization = await organizationService.getById(context.organizationId);
+  if (!organization) {
+    throw new Error('Organization introuvable');
+  }
   const workspace = resolveWorkspace({
-    sector: organization?.sector,
-    profession: organization?.profession,
-    country: organization?.country,
+    sector: organization.sector,
+    profession: organization.profession,
+    country: organization.country,
   });
   if (workspace.type !== 'paramedical') {
     throw new Error('Cette action est réservée au workspace paramédical');

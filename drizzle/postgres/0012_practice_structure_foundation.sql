@@ -133,43 +133,121 @@ ALTER TABLE "practice_resources" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "practice_locations_tenant_isolation" ON "practice_locations"
 AS PERMISSIVE FOR ALL
 TO authenticated
-USING (organization_id = public.current_organization_id())
-WITH CHECK (organization_id = public.current_organization_id());
+USING (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+)
+WITH CHECK (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+);
 --> statement-breakpoint
 CREATE POLICY "practice_practitioners_tenant_isolation" ON "practice_practitioners"
 AS PERMISSIVE FOR ALL
 TO authenticated
-USING (organization_id = public.current_organization_id())
+USING (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+)
 WITH CHECK (
-  organization_id = public.current_organization_id() AND
-  (
-    user_id IS NULL OR
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = practice_practitioners.user_id 
-      AND organization_id = public.current_organization_id() 
-      AND profile_type = 'professional'
-    )
-  )
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+	AND (
+		user_id IS NULL OR
+		EXISTS (
+			SELECT 1 FROM public.users target_user
+			WHERE target_user.id = practice_practitioners.user_id 
+			AND target_user.organization_id = public.current_organization_id() 
+			AND target_user.profile_type = 'professional'
+		)
+	)
 );
 --> statement-breakpoint
 CREATE POLICY "practitioner_locations_tenant_isolation" ON "practitioner_locations"
 AS PERMISSIVE FOR ALL
 TO authenticated
-USING (organization_id = public.current_organization_id())
-WITH CHECK (organization_id = public.current_organization_id());
+USING (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+)
+WITH CHECK (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+);
 --> statement-breakpoint
 CREATE POLICY "practice_rooms_tenant_isolation" ON "practice_rooms"
 AS PERMISSIVE FOR ALL
 TO authenticated
-USING (organization_id = public.current_organization_id())
-WITH CHECK (organization_id = public.current_organization_id());
+USING (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+)
+WITH CHECK (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+);
 --> statement-breakpoint
 CREATE POLICY "practice_resources_tenant_isolation" ON "practice_resources"
 AS PERMISSIVE FOR ALL
 TO authenticated
-USING (organization_id = public.current_organization_id())
-WITH CHECK (organization_id = public.current_organization_id());
+USING (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+)
+WITH CHECK (
+	organization_id = public.current_organization_id()
+	AND EXISTS (
+		SELECT 1 FROM public.users caller
+		WHERE caller.id = auth.uid()::text
+			AND caller.organization_id = public.current_organization_id()
+			AND caller.profile_type = 'professional'
+	)
+);
 --> statement-breakpoint
 REVOKE ALL PRIVILEGES ON TABLE "practice_locations" FROM PUBLIC, anon, authenticated;
 --> statement-breakpoint

@@ -3,14 +3,24 @@ import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
+import { notFound } from 'next/navigation';
+
 export default async function ParametresLayout({ children }: { children: React.ReactNode }) {
   const context = await requireProfessional();
-  const organization = context.organizationId ? await organizationService.getById(context.organizationId) : null;
-  const workspace = resolveWorkspace(organization ? {
+  if (!context.organizationId) {
+    notFound();
+  }
+
+  const organization = await organizationService.getById(context.organizationId);
+  if (!organization) {
+    notFound();
+  }
+
+  const workspace = resolveWorkspace({
     sector: organization.sector,
     profession: organization.profession,
     country: organization.country,
-  } : null);
+  });
 
   const tabs = [
     { name: 'Profil', href: '/parametres/profil' },

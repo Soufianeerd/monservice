@@ -80,6 +80,16 @@ describe('Practice Structure Server Actions', () => {
     vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(mockOrg);
   });
 
+  it('rejects action when organization is missing (not found)', async () => {
+    vi.mocked(organizationModule.organizationService.getById).mockResolvedValue(null);
+
+    await expect(createPracticeLocationAction({
+      name: 'Test',
+      timezone: 'Europe/Paris',
+    })).rejects.toThrow(/Organization introuvable/);
+    expect(practiceStructureService.createLocation).not.toHaveBeenCalled();
+  });
+
   it('rejects action when organization is not paramedical workspace', async () => {
     const genericOrg: Organization = {
       id: mockOrgId,
@@ -98,6 +108,7 @@ describe('Practice Structure Server Actions', () => {
       name: 'Test',
       timezone: 'Europe/Paris',
     })).rejects.toThrow(/réservée au workspace paramédical/);
+    expect(practiceStructureService.createLocation).not.toHaveBeenCalled();
   });
 
   describe('Location Actions', () => {

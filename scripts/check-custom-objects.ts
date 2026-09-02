@@ -1,5 +1,21 @@
 import postgres from 'postgres';
 
+interface ExpectedFunctionContract {
+  security_definer: boolean;
+  public_exec: boolean;
+  anon_exec: boolean;
+  auth_exec: boolean;
+}
+
+interface ExactPolicyContract {
+  policyName: string;
+  tableName: string;
+  expectedRoles: string[];
+  expectedCmd: string;
+  qualSemantics: string[];
+  withCheckSemantics: string[];
+}
+
 async function verifyCustomObjects() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -76,7 +92,7 @@ async function verifyCustomObjects() {
     WHERE p.proname IN ('handle_new_auth_user', 'current_organization_id');
   `;
 
-  const expectedFuncs: Record<string, any> = {
+  const expectedFuncs: Record<string, ExpectedFunctionContract> = {
     handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true }
   };
@@ -153,13 +169,115 @@ async function verifyCustomObjects() {
     errorCount++;
   }
 
+  // 5. Exact Policy Contracts for Practice Structure
+  const commonPracticeSemantics = [
+    'current_organization_id',
+    'auth.uid',
+    'profile_type',
+    'professional'
+  ];
+
+  const exactPracticePolicies: ExactPolicyContract[] = [
+    {
+      policyName: 'practice_locations_tenant_isolation',
+      tableName: 'practice_locations',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonPracticeSemantics,
+      withCheckSemantics: commonPracticeSemantics,
+    },
+    {
+      policyName: 'practice_practitioners_tenant_isolation',
+      tableName: 'practice_practitioners',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonPracticeSemantics,
+      withCheckSemantics: [...commonPracticeSemantics, 'user_id', 'professional'],
+    },
+    {
+      policyName: 'practitioner_locations_tenant_isolation',
+      tableName: 'practitioner_locations',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonPracticeSemantics,
+      withCheckSemantics: commonPracticeSemantics,
+    },
+    {
+      policyName: 'practice_rooms_tenant_isolation',
+      tableName: 'practice_rooms',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonPracticeSemantics,
+      withCheckSemantics: commonPracticeSemantics,
+    },
+    {
+      policyName: 'practice_resources_tenant_isolation',
+      tableName: 'practice_resources',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonPracticeSemantics,
+      withCheckSemantics: commonPracticeSemantics,
+    },
+  ];
+
+  for (const ep of exactPracticePolicies) {
+    const p = policies.find(x => x.policyname === ep.policyName && x.tablename === ep.tableName);
+    if (!p) {
+      console.error(`❌ ERROR: Policy '${ep.policyName}' on table '${ep.tableName}' not found.`);
+      errorCount++;
+      continue;
+    }
+
+    // Check roles
+    for (const expectedRole of ep.expectedRoles) {
+      if (!p.roles.includes(expectedRole)) {
+        console.error(`❌ ERROR: Policy '${ep.policyName}' missing expected role '${expectedRole}' (actual: ${p.roles.join(', ')}).`);
+        errorCount++;
+      }
+    }
+
+    // Check command
+    if (p.cmd !== ep.expectedCmd) {
+      console.error(`❌ ERROR: Policy '${ep.policyName}' cmd is '${p.cmd}', expected '${ep.expectedCmd}'.`);
+      errorCount++;
+    }
+
+    // Check qual present & semantics
+    if (!p.qual) {
+      console.error(`❌ ERROR: Policy '${ep.policyName}' missing USING (qual) expression.`);
+      errorCount++;
+    } else {
+      const normalizedQual = p.qual.toLowerCase().replace(/\s+/g, '');
+      for (const sem of ep.qualSemantics) {
+        if (!normalizedQual.includes(sem.replace(/\s+/g, ''))) {
+          console.error(`❌ ERROR: Policy '${ep.policyName}' USING clause missing semantic element '${sem}'.`);
+          errorCount++;
+        }
+      }
+    }
+
+    // Check with_check present & semantics
+    if (!p.with_check) {
+      console.error(`❌ ERROR: Policy '${ep.policyName}' missing WITH CHECK expression.`);
+      errorCount++;
+    } else {
+      const normalizedWithCheck = p.with_check.toLowerCase().replace(/\s+/g, '');
+      for (const sem of ep.withCheckSemantics) {
+        if (!normalizedWithCheck.includes(sem.replace(/\s+/g, ''))) {
+          console.error(`❌ ERROR: Policy '${ep.policyName}' WITH CHECK clause missing semantic element '${sem}'.`);
+          errorCount++;
+        }
+      }
+    }
+  }
+
   await sql.end();
 
   if (errorCount > 0) {
     console.error(`\n❌ Custom objects check failed with ${errorCount} errors.`);
     process.exit(1);
   } else {
-    console.log('✅ Custom Supabase objects, strict GRANTS, and RLS verified successfully!');
+    console.log('✅ Custom Supabase objects, strict GRANTS, RLS, and exact policy semantics verified successfully!');
   }
 }
 

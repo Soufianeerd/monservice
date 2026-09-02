@@ -2,6 +2,14 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import * as schema from '../src/lib/db/schema';
 import postgres from 'postgres';
 
+interface ExactFkContract {
+  constraintName: string;
+  tableName: string;
+  foreignTable: string;
+  localCols: string[];
+  foreignCols: string[];
+}
+
 async function verifyContract() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -39,13 +47,13 @@ async function verifyContract() {
   
   // Calculate dynamic table count
   const schemaTables = [];
-  for (const [key, value] of Object.entries(schema)) {
+  for (const [, value] of Object.entries(schema)) {
     try {
       const config = getTableConfig(value as any);
       if (config.name) {
         schemaTables.push(config.name);
       }
-    } catch (e) {
+    } catch {
       // Not a valid table config, ignore
     }
   }
@@ -65,7 +73,7 @@ async function verifyContract() {
       try {
         const c = getTableConfig(val as any);
         if (c.name === tableName) config = c;
-      } catch (e) {
+      } catch {
         // Not a valid table config, ignore
       }
     }
@@ -124,8 +132,7 @@ async function verifyContract() {
       }
     }
 
-    // Verify constraints presence conceptually (if Drizzle exposes PK/FKs easily)
-    // We check if the table has PK in DB if schema defines one.
+    // Verify constraints presence conceptually
     const hasSchemaPk = config.primaryKeys && config.primaryKeys.length > 0 || config.columns.some((c: any) => c.primary);
     const hasDbPk = constraints.some(c => c.table_name === tableName && c.contype === 'p');
     
@@ -153,7 +160,6 @@ async function verifyContract() {
     console.error(`❌ ERROR: 'organizations_profession_health_check' is not a CHECK constraint.`);
     errorCount++;
   } else {
-    // Semantic verification robust to formatting (lowercase, remove spaces)
     const def = orgCheck.condef.toLowerCase().replace(/\s+/g, '');
     const expectedElements = [
       'profession',
@@ -205,13 +211,105 @@ async function verifyContract() {
     }
   }
 
+  // --- Specific Contract: Exact Composite Foreign Keys ---
+  const exactFkContracts: ExactFkContract[] = [
+    {
+      constraintName: 'practice_practitioners_user_fk',
+      tableName: 'practice_practitioners',
+      foreignTable: 'users',
+      localCols: ['user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'practitioner_locations_practitioner_fk',
+      tableName: 'practitioner_locations',
+      foreignTable: 'practice_practitioners',
+      localCols: ['practitioner_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'practitioner_locations_location_fk',
+      tableName: 'practitioner_locations',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'practice_rooms_location_fk',
+      tableName: 'practice_rooms',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'practice_resources_location_fk',
+      tableName: 'practice_resources',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'practice_resources_room_fk',
+      tableName: 'practice_resources',
+      foreignTable: 'practice_rooms',
+      localCols: ['room_id', 'location_id', 'organization_id'],
+      foreignCols: ['id', 'location_id', 'organization_id'],
+    },
+  ];
+
+  for (const fk of exactFkContracts) {
+    const con = constraints.find(c => c.table_name === fk.tableName && c.conname === fk.constraintName);
+    if (!con) {
+      console.error(`❌ ERROR: Composite FK '${fk.constraintName}' on table '${fk.tableName}' not found.`);
+      errorCount++;
+      continue;
+    }
+    if (con.contype !== 'f') {
+      console.error(`❌ ERROR: Constraint '${fk.constraintName}' is not a foreign key (contype=${con.contype}).`);
+      errorCount++;
+    }
+
+    const normDef = con.condef.toLowerCase().replace(/\s+/g, '');
+    const expectedLocal = `(${fk.localCols.join(',')})`.toLowerCase();
+    const expectedForeign = `${fk.foreignTable}(${fk.foreignCols.join(',')})`.toLowerCase();
+
+    if (!normDef.includes(expectedLocal)) {
+      console.error(`❌ ERROR: FK '${fk.constraintName}' missing local columns '${expectedLocal}' in definition: '${con.condef}'`);
+      errorCount++;
+    }
+    if (!normDef.includes(expectedForeign)) {
+      console.error(`❌ ERROR: FK '${fk.constraintName}' missing foreign target '${expectedForeign}' in definition: '${con.condef}'`);
+      errorCount++;
+    }
+  }
+
+  // --- Specific Contract: Exact Critical Indexes ---
+  const criticalIndexes = [
+    'users_id_org_unique',
+    'practice_locations_org_id_unique',
+    'practice_locations_primary_active_idx',
+    'practice_practitioners_org_id_unique',
+    'practice_practitioners_org_user_unique',
+    'practice_rooms_org_location_id_unique',
+    'practitioner_locations_assignment_unique',
+    'practitioner_locations_primary_active_idx'
+  ];
+
+  for (const idxName of criticalIndexes) {
+    const idx = indexes.find(i => i.indexname === idxName);
+    if (!idx) {
+      console.error(`❌ ERROR: Critical index '${idxName}' not found in database.`);
+      errorCount++;
+    }
+  }
+
   await sql.end();
 
   if (errorCount > 0) {
     console.error(`\n❌ Schema contract check failed with ${errorCount} errors.`);
     process.exit(1);
   } else {
-    console.log(`✅ Actual database schema contract (tables, columns, types, nullability, precision, constraints, indexes) perfectly matches schema.ts!`);
+    console.log(`✅ Actual database schema contract (tables, columns, types, nullability, precision, constraints, exact composite FKs, critical indexes) perfectly matches schema.ts!`);
     console.log(`Total verified tables: ${schemaTables.length}`);
   }
 }

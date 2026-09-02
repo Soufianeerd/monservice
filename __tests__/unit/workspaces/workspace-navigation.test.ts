@@ -27,6 +27,11 @@ describe('Workspace Navigation', () => {
     // dataTour conservés
     expect(nav.find(n => n.id === 'clients')?.dataTour).toBe('clients-nav');
     expect(nav.find(n => n.id === 'settings')?.dataTour).toBe('settings-nav');
+
+    // Generic settings ne contient PAS /parametres/cabinet
+    const settings = nav.find(n => n.id === 'settings');
+    expect(settings?.subItems?.some(s => s.href === '/parametres/cabinet')).toBe(false);
+    expect(settings?.subItems?.some(s => s.name === 'Cabinet')).toBe(false);
   });
 
   it('construit la navigation paramédicale avec les modules adéquats', () => {
@@ -55,6 +60,11 @@ describe('Workspace Navigation', () => {
 
     // dataTour settings conservé
     expect(nav.find(n => n.id === 'settings')?.dataTour).toBe('settings-nav');
+
+    // Paramedical settings contient exactement une entrée Cabinet (/parametres/cabinet)
+    const settings = nav.find(n => n.id === 'settings');
+    const cabinetItems = settings?.subItems?.filter(s => s.href === '/parametres/cabinet' && s.name === 'Cabinet') || [];
+    expect(cabinetItems).toHaveLength(1);
 
     // Produit le label à partir de servicePlural
     const facturation = nav.find(n => n.id === 'billing');

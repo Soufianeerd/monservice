@@ -90,7 +90,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
     });
   });
 
-  describe('Authenticated POSITIVE Access (Own Tenant)', () => {
+  describe('Authenticated POSITIVE Access (Own Tenant - Pro A & Pro B)', () => {
     it('Pro A SELECTs practice_locations A -> exactly 1 row', async () => {
       const { data, error } = await proAClient
         .from('practice_locations')
@@ -150,6 +150,33 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
         .from('practice_practitioners')
         .select('*')
         .eq('id', SEED_PRACTICE_IDS.practitionerB);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+    });
+
+    it('Pro B SELECTs practitioner_locations B -> exactly 1 row', async () => {
+      const { data, error } = await proBClient
+        .from('practitioner_locations')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.assignmentB);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+    });
+
+    it('Pro B SELECTs practice_rooms B -> exactly 1 row', async () => {
+      const { data, error } = await proBClient
+        .from('practice_rooms')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.roomB);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+    });
+
+    it('Pro B SELECTs practice_resources B -> exactly 1 row', async () => {
+      const { data, error } = await proBClient
+        .from('practice_resources')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.resourceB);
       expect(error).toBeNull();
       expect(data).toHaveLength(1);
     });
@@ -275,6 +302,167 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
           organization_id: SEED_PRACTICE_IDS.orgA,
           user_id: cliAId,
           display_name: 'Dr. Fake Client Practitioner',
+          profession: 'physiotherapist',
+        })
+        .select();
+      expect(error).not.toBeNull();
+      expect(error?.code).toBe('42501');
+    });
+  });
+
+  describe('Client Profile Direct Access Denial (Same Tenant Org A)', () => {
+    it('Client A cannot SELECT practice_locations A -> 0 rows', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_locations')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.locationA);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+    });
+
+    it('Client A cannot SELECT practice_practitioners A -> 0 rows', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_practitioners')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.practitionerA);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+    });
+
+    it('Client A cannot SELECT practitioner_locations A -> 0 rows', async () => {
+      const { data, error } = await cliAClient
+        .from('practitioner_locations')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.assignmentA);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+    });
+
+    it('Client A cannot SELECT practice_rooms A -> 0 rows', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_rooms')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.roomA);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+    });
+
+    it('Client A cannot SELECT practice_resources A -> 0 rows', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_resources')
+        .select('*')
+        .eq('id', SEED_PRACTICE_IDS.resourceA);
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+    });
+
+    it('Client A cannot UPDATE practice_locations A -> 0 rows affected', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_locations')
+        .update({ name: 'Hacked By Client' })
+        .eq('id', SEED_PRACTICE_IDS.locationA)
+        .select();
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+
+      const { data: proCheck } = await proAClient
+        .from('practice_locations')
+        .select('name')
+        .eq('id', SEED_PRACTICE_IDS.locationA)
+        .single();
+      expect(proCheck?.name).toBe('Cabinet Paris 15');
+    });
+
+    it('Client A cannot UPDATE practice_practitioners A -> 0 rows affected', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_practitioners')
+        .update({ display_name: 'Hacked Doctor' })
+        .eq('id', SEED_PRACTICE_IDS.practitionerA)
+        .select();
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+
+      const { data: proCheck } = await proAClient
+        .from('practice_practitioners')
+        .select('display_name')
+        .eq('id', SEED_PRACTICE_IDS.practitionerA)
+        .single();
+      expect(proCheck?.display_name).toBe('Dr. Jane Doe');
+    });
+
+    it('Client A cannot UPDATE practitioner_locations A -> 0 rows affected', async () => {
+      const { data, error } = await cliAClient
+        .from('practitioner_locations')
+        .update({ is_primary: false })
+        .eq('id', SEED_PRACTICE_IDS.assignmentA)
+        .select();
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+
+      const { data: proCheck } = await proAClient
+        .from('practitioner_locations')
+        .select('is_primary')
+        .eq('id', SEED_PRACTICE_IDS.assignmentA)
+        .single();
+      expect(proCheck?.is_primary).toBe(true);
+    });
+
+    it('Client A cannot UPDATE practice_rooms A -> 0 rows affected', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_rooms')
+        .update({ name: 'Hacked Room' })
+        .eq('id', SEED_PRACTICE_IDS.roomA)
+        .select();
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+
+      const { data: proCheck } = await proAClient
+        .from('practice_rooms')
+        .select('name')
+        .eq('id', SEED_PRACTICE_IDS.roomA)
+        .single();
+      expect(proCheck?.name).toBe('Salle Rééducation 1');
+    });
+
+    it('Client A cannot UPDATE practice_resources A -> 0 rows affected', async () => {
+      const { data, error } = await cliAClient
+        .from('practice_resources')
+        .update({ name: 'Hacked Table' })
+        .eq('id', SEED_PRACTICE_IDS.resourceA)
+        .select();
+      expect(error).toBeNull();
+      expect(data).toHaveLength(0);
+
+      const { data: proCheck } = await proAClient
+        .from('practice_resources')
+        .select('name')
+        .eq('id', SEED_PRACTICE_IDS.resourceA)
+        .single();
+      expect(proCheck?.name).toBe('Table Bobath');
+    });
+
+    it('Client A cannot INSERT practice_locations in Org A -> RLS 42501 error', async () => {
+      const { error } = await cliAClient
+        .from('practice_locations')
+        .insert({
+          id: '10000000-0000-4000-8000-888888888888',
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          name: 'Client Injected Location',
+          timezone: 'Europe/Paris',
+        })
+        .select();
+      expect(error).not.toBeNull();
+      expect(error?.code).toBe('42501');
+    });
+
+    it('Client A cannot INSERT practice_practitioners in Org A with user_id = NULL -> RLS 42501 error', async () => {
+      const { error } = await cliAClient
+        .from('practice_practitioners')
+        .insert({
+          id: '10000000-0000-4000-8000-888888888889',
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          user_id: null,
+          display_name: 'Client Injected Practitioner',
           profession: 'physiotherapist',
         })
         .select();
