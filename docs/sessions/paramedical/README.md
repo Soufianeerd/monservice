@@ -23,3 +23,5 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **06B** | Practice Dashboard Contract Finalization | 1 Septembre 2026 | Terminée | [Session 06B](SESSION_06B_PRACTICE_DASHBOARD_CONTRACT_FINALIZATION.md) |
 | **06C** | Dashboard Final Test Cleanup | 1 Septembre 2026 | Terminée | [Session 06C](SESSION_06C_DASHBOARD_FINAL_TEST_CLEANUP.md) |
 | **07** | Practice Structure Foundation | 2 Septembre 2026 | Terminée | [Session 07](SESSION_07_PRACTICE_STRUCTURE_FOUNDATION.md) |
+| **07B** | Practice Structure Contract Finalization | 2 Septembre 2026 | Terminée | [Session 07B](SESSION_07B_PRACTICE_STRUCTURE_CONTRACT_FINALIZATION.md) |
+

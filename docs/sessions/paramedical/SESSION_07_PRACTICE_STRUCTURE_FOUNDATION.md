@@ -41,4 +41,5 @@ Implémenter la structure physique et organisationnelle d'un cabinet paramédica
 - Ajout de `test:practice-structure` dans `package.json` et GitHub Actions.
 
 ## Readiness Session 08
-OUI. La structure du cabinet est en place et les tests sont inclus dans le pipeline CI.
+NON (voir Session 07B). La finalisation des contrats d'ordonnancement de migration, RLS avec auth Supabase réelle, tests unitaires dédiés et typage strict est réalisée en Session 07B.
+

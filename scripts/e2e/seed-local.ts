@@ -1,9 +1,35 @@
 import { createClient } from '@supabase/supabase-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { organizations, users, clients, invoices, requests, practiceLocations, practicePractitioners, practitionerLocations, practiceRooms, practiceResources } from '../../src/lib/db/schema';
+import { 
+  organizations, 
+  users, 
+  clients, 
+  invoices, 
+  requests, 
+  practiceLocations, 
+  practicePractitioners, 
+  practitionerLocations, 
+  practiceRooms, 
+  practiceResources 
+} from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+
+export const SEED_PRACTICE_IDS = {
+  orgA: 'org-a-1234',
+  orgB: 'org-b-5678',
+  locationA: '10000000-0000-4000-8000-000000000001',
+  locationB: '20000000-0000-4000-8000-000000000001',
+  practitionerA: '10000000-0000-4000-8000-000000000002',
+  practitionerB: '20000000-0000-4000-8000-000000000002',
+  assignmentA: '10000000-0000-4000-8000-000000000003',
+  assignmentB: '20000000-0000-4000-8000-000000000003',
+  roomA: '10000000-0000-4000-8000-000000000004',
+  roomB: '20000000-0000-4000-8000-000000000004',
+  resourceA: '10000000-0000-4000-8000-000000000005',
+  resourceB: '20000000-0000-4000-8000-000000000005',
+};
 
 async function seed() {
   const dbUrl = process.env.DATABASE_URL;
@@ -48,14 +74,13 @@ async function seed() {
 
   console.log('Seeding local database...');
 
-  // 1. Create Organizations
+  // 1. Create Organizations (keeping generic sectors)
   await db.insert(organizations).values([
-    { id: 'org-a-1234', name: 'Organization A', slug: 'org-a', sector: 'IT', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'org-b-5678', name: 'Organization B', slug: 'org-b', sector: 'Consulting', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: SEED_PRACTICE_IDS.orgA, name: 'Organization A', slug: 'org-a', sector: 'IT', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_PRACTICE_IDS.orgB, name: 'Organization B', slug: 'org-b', sector: 'Consulting', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string) => {
-    // Check if user exists
     const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
     if (listError) {
       console.error('Error listing users:', listError);
@@ -78,18 +103,16 @@ async function seed() {
     }
 
     if (existingUser) {
-      // The trigger on_auth_user_created will have inserted the user into public.users.
-      // We just need to update their organizationId.
       await db.update(users).set({ organizationId: orgId }).where(eq(users.id, existingUser.id));
       return existingUser.id;
     }
   };
 
   // 2. Create Users
-  const proAId = await createAuthUser('pro_a@monservice.com', 'Professional A', 'professional', 'org-a-1234');
-  const cliAId = await createAuthUser('client_a@monservice.com', 'Client A', 'client', 'org-a-1234');
-  const proBId = await createAuthUser('pro_b@monservice.com', 'Professional B', 'professional', 'org-b-5678');
-  const cliBId = await createAuthUser('client_b@monservice.com', 'Client B', 'client', 'org-b-5678');
+  const proAId = await createAuthUser('pro_a@monservice.com', 'Professional A', 'professional', SEED_PRACTICE_IDS.orgA);
+  const cliAId = await createAuthUser('client_a@monservice.com', 'Client A', 'client', SEED_PRACTICE_IDS.orgA);
+  const proBId = await createAuthUser('pro_b@monservice.com', 'Professional B', 'professional', SEED_PRACTICE_IDS.orgB);
+  const cliBId = await createAuthUser('client_b@monservice.com', 'Client B', 'client', SEED_PRACTICE_IDS.orgB);
 
   console.log('Users seeded successfully');
   
@@ -98,14 +121,14 @@ async function seed() {
   const clientIdB = 'cli-rec-b-5678';
 
   await db.insert(clients).values([
-    { id: clientIdA, organizationId: 'org-a-1234', userId: cliAId!, name: 'Client A Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: clientIdB, organizationId: 'org-b-5678', userId: cliBId!, name: 'Client B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: clientIdA, organizationId: SEED_PRACTICE_IDS.orgA, userId: cliAId!, name: 'Client A Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: clientIdB, organizationId: SEED_PRACTICE_IDS.orgB, userId: cliBId!, name: 'Client B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   // 4. Create Invoices
   await db.insert(invoices).values([
-    { id: randomUUID(), organizationId: 'org-a-1234', clientId: clientIdA, type: 'invoice', number: 'INV-A-001', date: new Date().toISOString(), status: 'sent', totalHT: 100, taxAmount: 20, totalTTC: 120, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: randomUUID(), organizationId: 'org-b-5678', clientId: clientIdB, type: 'invoice', number: 'INV-B-001', date: new Date().toISOString(), status: 'sent', totalHT: 200, taxAmount: 40, totalTTC: 240, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: randomUUID(), organizationId: SEED_PRACTICE_IDS.orgA, clientId: clientIdA, type: 'invoice', number: 'INV-A-001', date: new Date().toISOString(), status: 'sent', totalHT: 100, taxAmount: 20, totalTTC: 120, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: randomUUID(), organizationId: SEED_PRACTICE_IDS.orgB, clientId: clientIdB, type: 'invoice', number: 'INV-B-001', date: new Date().toISOString(), status: 'sent', totalHT: 200, taxAmount: 40, totalTTC: 240, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   // 5. Create Marketplace Request
@@ -113,33 +136,137 @@ async function seed() {
     { id: randomUUID(), clientId: clientIdA, title: 'Need IT Consulting', description: 'Looking for a network upgrade.', category: 'IT', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
-  console.log('Seed completed successfully!');
+  console.log('Base Seed completed successfully!');
 
-  // 6. Practice Structure
-  const locationIdA = randomUUID();
+  // 6. Practice Structure Org A (Deterministic IDs)
   await db.insert(practiceLocations).values([
-    { id: locationIdA, organizationId: 'org-a-1234', name: 'Cabinet Principal', city: 'Paris', timezone: 'Europe/Paris', isPrimary: true, isActive: true }
+    { 
+      id: SEED_PRACTICE_IDS.locationA, 
+      organizationId: SEED_PRACTICE_IDS.orgA, 
+      name: 'Cabinet Principal Paris', 
+      address: '10 Rue de la Paix',
+      city: 'Paris', 
+      postalCode: '75001',
+      country: 'France',
+      timezone: 'Europe/Paris', 
+      phone: '0102030405',
+      isPrimary: true, 
+      isActive: true 
+    }
   ]).onConflictDoNothing();
 
-  const pracIdA = randomUUID();
   await db.insert(practicePractitioners).values([
-    { id: pracIdA, organizationId: 'org-a-1234', userId: proAId, displayName: 'Dr. Jane Doe', profession: 'physiotherapist', isActive: true }
+    { 
+      id: SEED_PRACTICE_IDS.practitionerA, 
+      organizationId: SEED_PRACTICE_IDS.orgA, 
+      userId: proAId, 
+      displayName: 'Dr. Jane Doe', 
+      profession: 'physiotherapist', 
+      email: 'jane.doe@cabinet-a.fr',
+      phone: '0601020304',
+      isActive: true 
+    }
   ]).onConflictDoNothing();
 
   await db.insert(practitionerLocations).values([
-    { id: randomUUID(), organizationId: 'org-a-1234', practitionerId: pracIdA, locationId: locationIdA, isPrimary: true, isActive: true }
+    { 
+      id: SEED_PRACTICE_IDS.assignmentA, 
+      organizationId: SEED_PRACTICE_IDS.orgA, 
+      practitionerId: SEED_PRACTICE_IDS.practitionerA, 
+      locationId: SEED_PRACTICE_IDS.locationA, 
+      isPrimary: true, 
+      isActive: true 
+    }
   ]).onConflictDoNothing();
 
-  const roomId = randomUUID();
   await db.insert(practiceRooms).values([
-    { id: roomId, organizationId: 'org-a-1234', locationId: locationIdA, name: 'Salle 1', isActive: true }
+    { 
+      id: SEED_PRACTICE_IDS.roomA, 
+      organizationId: SEED_PRACTICE_IDS.orgA, 
+      locationId: SEED_PRACTICE_IDS.locationA, 
+      name: 'Salle 1 - Rééducation', 
+      description: 'Plateau technique',
+      isActive: true 
+    }
   ]).onConflictDoNothing();
 
   await db.insert(practiceResources).values([
-    { id: randomUUID(), organizationId: 'org-a-1234', locationId: locationIdA, roomId, name: 'Table de massage', isActive: true }
+    { 
+      id: SEED_PRACTICE_IDS.resourceA, 
+      organizationId: SEED_PRACTICE_IDS.orgA, 
+      locationId: SEED_PRACTICE_IDS.locationA, 
+      roomId: SEED_PRACTICE_IDS.roomA, 
+      name: 'Table de rééducation électrique', 
+      description: 'Modèle 3 plans',
+      isActive: true 
+    }
   ]).onConflictDoNothing();
 
-  console.log('Practice structure seeded successfully!');
+  // 7. Practice Structure Org B (Deterministic IDs)
+  await db.insert(practiceLocations).values([
+    { 
+      id: SEED_PRACTICE_IDS.locationB, 
+      organizationId: SEED_PRACTICE_IDS.orgB, 
+      name: 'Cabinet Lyon Centre', 
+      address: '5 Place Bellecour',
+      city: 'Lyon', 
+      postalCode: '69002',
+      country: 'France',
+      timezone: 'Europe/Paris', 
+      phone: '0405060708',
+      isPrimary: true, 
+      isActive: true 
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practicePractitioners).values([
+    { 
+      id: SEED_PRACTICE_IDS.practitionerB, 
+      organizationId: SEED_PRACTICE_IDS.orgB, 
+      userId: proBId, 
+      displayName: 'Dr. John Smith', 
+      profession: 'osteopath', 
+      email: 'john.smith@cabinet-b.fr',
+      phone: '0605060708',
+      isActive: true 
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerLocations).values([
+    { 
+      id: SEED_PRACTICE_IDS.assignmentB, 
+      organizationId: SEED_PRACTICE_IDS.orgB, 
+      practitionerId: SEED_PRACTICE_IDS.practitionerB, 
+      locationId: SEED_PRACTICE_IDS.locationB, 
+      isPrimary: true, 
+      isActive: true 
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practiceRooms).values([
+    { 
+      id: SEED_PRACTICE_IDS.roomB, 
+      organizationId: SEED_PRACTICE_IDS.orgB, 
+      locationId: SEED_PRACTICE_IDS.locationB, 
+      name: 'Cabinet Ostéopathie 1', 
+      description: 'Consultation',
+      isActive: true 
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practiceResources).values([
+    { 
+      id: SEED_PRACTICE_IDS.resourceB, 
+      organizationId: SEED_PRACTICE_IDS.orgB, 
+      locationId: SEED_PRACTICE_IDS.locationB, 
+      roomId: SEED_PRACTICE_IDS.roomB, 
+      name: 'Table Ostéopathique Manuelle', 
+      description: 'Spécifique manipulation',
+      isActive: true 
+    }
+  ]).onConflictDoNothing();
+
+  console.log('Practice structure Org A & Org B seeded successfully!');
   await sql.end();
   process.exit(0);
 }
@@ -148,3 +275,4 @@ seed().catch(err => {
   console.error('Seed failed:', err);
   process.exit(1);
 });
+

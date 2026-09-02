@@ -26,10 +26,18 @@ export interface PractitionerLocationAssignmentDTO {
   isActive: boolean;
 }
 
+export interface LinkedProfessionalUser {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
 export interface PracticeStructureOverview {
   locations: PracticeLocationDTO[];
   practitioners: PracticePractitionerDTO[];
   assignments: PractitionerLocationAssignmentDTO[];
   rooms: PracticeRoomDTO[];
   resources: PracticeResourceDTO[];
+  eligibleUsers: LinkedProfessionalUser[];
 }
+

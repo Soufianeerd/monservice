@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test:unit": "vitest run __tests__/unit/services",
-    "test:onboarding": "vitest run tests/unit/onboarding tests/integration/onboarding",
-    "test:practice-structure": "vitest run tests/unit/practice-structure tests/integration/practice-structure-rls.integration.test.ts tests/integration/db-constraints.integration.test.ts",
+    "test:onboarding": "vitest run __tests__/unit/onboarding",
+    "test:practice-structure": "vitest run tests/unit/practice-structure",
     "test:workspace": "vitest run __tests__/unit/workspaces",
     "test:dashboard": "vitest run tests/unit/dashboard",
     "test:compliance": "vitest run __tests__/compliance",
@@ -27,7 +27,7 @@
     "db:check-custom-objects": "npx tsx scripts/check-custom-objects.ts",
     "seed:local": "npx tsx scripts/e2e/seed-local.ts",
     "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts",
-    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts"
+    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

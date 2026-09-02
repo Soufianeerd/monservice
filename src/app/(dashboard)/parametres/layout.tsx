@@ -1,10 +1,16 @@
 import { Tabs } from '@/components/ui/Tabs';
 import { requireProfessional } from '@/lib/auth/session';
+import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
 export default async function ParametresLayout({ children }: { children: React.ReactNode }) {
   const context = await requireProfessional();
-  const workspace = resolveWorkspace(context);
+  const organization = context.organizationId ? await organizationService.getById(context.organizationId) : null;
+  const workspace = resolveWorkspace(organization ? {
+    sector: organization.sector,
+    profession: organization.profession,
+    country: organization.country,
+  } : null);
 
   const tabs = [
     { name: 'Profil', href: '/parametres/profil' },
@@ -37,3 +43,4 @@ export default async function ParametresLayout({ children }: { children: React.R
     </div>
   );
 }
+

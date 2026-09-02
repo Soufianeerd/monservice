@@ -64,7 +64,7 @@ jobs:
         run: npm run test:workspace
       - name: Run Dashboard Unit Tests
         run: npm run test:dashboard
-      - name: Run Practice Structure Tests
+      - name: Run Practice Structure Unit Tests
         run: npm run test:practice-structure
       - run: npm run test:compliance
       - run: npm run build

@@ -2,6 +2,8 @@
 
 import { requireProfessional } from '@/lib/auth/session';
 import { practiceStructureService } from '@/lib/services/practice-structure.service';
+import { organizationService } from '@/lib/services/organization.service';
+import { resolveWorkspace } from '@/lib/workspaces';
 import { revalidatePath } from 'next/cache';
 import { 
   practiceLocationCreateSchema,
@@ -15,14 +17,28 @@ import {
   practitionerLocationsSetSchema
 } from '@/lib/practice-structure/validation';
 
+async function requireParamedicalContext() {
+  const context = await requireProfessional();
+  const organization = await organizationService.getById(context.organizationId);
+  const workspace = resolveWorkspace({
+    sector: organization?.sector,
+    profession: organization?.profession,
+    country: organization?.country,
+  });
+  if (workspace.type !== 'paramedical') {
+    throw new Error('Cette action est réservée au workspace paramédical');
+  }
+  return { ...context, organization };
+}
+
 export async function getPracticeStructureAction() {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   return practiceStructureService.getOverview(organizationId);
 }
 
 // LOCATIONS
 export async function createPracticeLocationAction(data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceLocationCreateSchema.parse(data);
   const location = await practiceStructureService.createLocation(organizationId, validData);
   revalidatePath('/parametres/cabinet');
@@ -30,7 +46,7 @@ export async function createPracticeLocationAction(data: unknown) {
 }
 
 export async function updatePracticeLocationAction(id: string, data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceLocationUpdateSchema.parse(data);
   const location = await practiceStructureService.updateLocation(organizationId, id, validData);
   revalidatePath('/parametres/cabinet');
@@ -38,20 +54,20 @@ export async function updatePracticeLocationAction(id: string, data: unknown) {
 }
 
 export async function setPrimaryPracticeLocationAction(id: string) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   await practiceStructureService.setPrimaryLocation(organizationId, id);
   revalidatePath('/parametres/cabinet');
 }
 
 export async function setPracticeLocationActiveAction(id: string, isActive: boolean) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   await practiceStructureService.setLocationActive(organizationId, id, isActive);
   revalidatePath('/parametres/cabinet');
 }
 
 // PRACTITIONERS
 export async function createPracticePractitionerAction(data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practicePractitionerCreateSchema.parse(data);
   const practitioner = await practiceStructureService.createPractitioner(organizationId, validData);
   revalidatePath('/parametres/cabinet');
@@ -59,7 +75,7 @@ export async function createPracticePractitionerAction(data: unknown) {
 }
 
 export async function updatePracticePractitionerAction(id: string, data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practicePractitionerUpdateSchema.parse(data);
   const practitioner = await practiceStructureService.updatePractitioner(organizationId, id, validData);
   revalidatePath('/parametres/cabinet');
@@ -67,13 +83,13 @@ export async function updatePracticePractitionerAction(id: string, data: unknown
 }
 
 export async function setPracticePractitionerActiveAction(id: string, isActive: boolean) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   await practiceStructureService.setPractitionerActive(organizationId, id, isActive);
   revalidatePath('/parametres/cabinet');
 }
 
 export async function setPractitionerLocationsAction(practitionerId: string, assignments: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validAssignments = practitionerLocationsSetSchema.parse(assignments);
   await practiceStructureService.setPractitionerLocations(organizationId, practitionerId, validAssignments);
   revalidatePath('/parametres/cabinet');
@@ -81,7 +97,7 @@ export async function setPractitionerLocationsAction(practitionerId: string, ass
 
 // ROOMS
 export async function createPracticeRoomAction(data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceRoomCreateSchema.parse(data);
   const room = await practiceStructureService.createRoom(organizationId, validData);
   revalidatePath('/parametres/cabinet');
@@ -89,7 +105,7 @@ export async function createPracticeRoomAction(data: unknown) {
 }
 
 export async function updatePracticeRoomAction(id: string, data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceRoomUpdateSchema.parse(data);
   const room = await practiceStructureService.updateRoom(organizationId, id, validData);
   revalidatePath('/parametres/cabinet');
@@ -97,14 +113,14 @@ export async function updatePracticeRoomAction(id: string, data: unknown) {
 }
 
 export async function setPracticeRoomActiveAction(id: string, isActive: boolean) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   await practiceStructureService.setRoomActive(organizationId, id, isActive);
   revalidatePath('/parametres/cabinet');
 }
 
 // RESOURCES
 export async function createPracticeResourceAction(data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceResourceCreateSchema.parse(data);
   const resource = await practiceStructureService.createResource(organizationId, validData);
   revalidatePath('/parametres/cabinet');
@@ -112,7 +128,7 @@ export async function createPracticeResourceAction(data: unknown) {
 }
 
 export async function updatePracticeResourceAction(id: string, data: unknown) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   const validData = practiceResourceUpdateSchema.parse(data);
   const resource = await practiceStructureService.updateResource(organizationId, id, validData);
   revalidatePath('/parametres/cabinet');
@@ -120,7 +136,7 @@ export async function updatePracticeResourceAction(id: string, data: unknown) {
 }
 
 export async function setPracticeResourceActiveAction(id: string, isActive: boolean) {
-  const { organizationId } = await requireProfessional();
+  const { organizationId } = await requireParamedicalContext();
   await practiceStructureService.setResourceActive(organizationId, id, isActive);
   revalidatePath('/parametres/cabinet');
 }
