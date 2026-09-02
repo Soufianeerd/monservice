@@ -370,7 +370,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
         .select('name')
         .eq('id', SEED_PRACTICE_IDS.locationA)
         .single();
-      expect(proCheck?.name).toBe('Cabinet Paris 15');
+      expect(proCheck?.name).toBe('Cabinet Principal Paris');
     });
 
     it('Client A cannot UPDATE practice_practitioners A -> 0 rows affected', async () => {
@@ -421,7 +421,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
         .select('name')
         .eq('id', SEED_PRACTICE_IDS.roomA)
         .single();
-      expect(proCheck?.name).toBe('Salle Rééducation 1');
+      expect(proCheck?.name).toBe('Salle 1 - Rééducation');
     });
 
     it('Client A cannot UPDATE practice_resources A -> 0 rows affected', async () => {
@@ -438,7 +438,7 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
         .select('name')
         .eq('id', SEED_PRACTICE_IDS.resourceA)
         .single();
-      expect(proCheck?.name).toBe('Table Bobath');
+      expect(proCheck?.name).toBe('Table de rééducation électrique');
     });
 
     it('Client A cannot INSERT practice_locations in Org A -> RLS 42501 error', async () => {
