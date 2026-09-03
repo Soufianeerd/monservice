@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
   timestamp,
+  date,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -610,6 +611,95 @@ export const practiceResources = sqliteTable('practice_resources', {
     columns: [t.roomId, t.locationId, t.organizationId],
     foreignColumns: [practiceRooms.id, practiceRooms.locationId, practiceRooms.organizationId],
     name: 'practice_resources_room_fk'
+  })
+]);
+
+// ---------------------------------------------------------------------------
+// PATIENT REGISTRY (Paramedical / Identity & Representatives)
+// ---------------------------------------------------------------------------
+
+// Patient Profiles
+export const patientProfiles = sqliteTable('patient_profiles', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  birthName: text('birth_name').notNull(),
+  firstBirthName: text('first_birth_name').notNull(),
+  birthFirstNames: text('birth_first_names'),
+  usedName: text('used_name'),
+  usedFirstName: text('used_first_name'),
+  birthDate: date('birth_date').notNull(),
+  sex: text('sex').notNull(),
+  birthPlace: text('birth_place'),
+  birthPlaceCode: text('birth_place_code'),
+  birthCountry: text('birth_country'),
+  email: text('email'),
+  phone: text('phone'),
+  address: text('address'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  country: text('country'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('patient_profiles_organization_id_idx').on(t.organizationId),
+  uniqueIndex('patient_profiles_org_id_unique').on(t.id, t.organizationId),
+  index('patient_profiles_org_birth_name_idx').on(t.organizationId, t.birthName),
+  index('patient_profiles_org_birth_date_idx').on(t.organizationId, t.birthDate),
+  check('patient_profiles_sex_check', sql`${t.sex} IN ('female', 'male', 'indeterminate', 'unknown')`),
+]);
+
+// Patient Representatives
+export const patientRepresentatives = sqliteTable('patient_representatives', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  firstName: text('first_name').notNull(),
+  lastName: text('last_name').notNull(),
+  email: text('email'),
+  phone: text('phone'),
+  address: text('address'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  country: text('country'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('patient_representatives_organization_id_idx').on(t.organizationId),
+  uniqueIndex('patient_representatives_org_id_unique').on(t.id, t.organizationId),
+]);
+
+// Patient Representative Links (many-to-many with roles/metadata)
+export const patientRepresentativeLinks = sqliteTable('patient_representative_links', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  representativeId: text('representative_id').notNull(),
+  relationship: text('relationship').notNull(),
+  isLegalRepresentative: boolean('is_legal_representative').notNull().default(false),
+  isPrimaryContact: boolean('is_primary_contact').notNull().default(false),
+  isEmergencyContact: boolean('is_emergency_contact').notNull().default(false),
+  isBillingContact: boolean('is_billing_contact').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('patient_rep_links_org_patient_idx').on(t.organizationId, t.patientId),
+  index('patient_rep_links_org_representative_idx').on(t.organizationId, t.representativeId),
+  uniqueIndex('patient_rep_links_assignment_unique').on(t.organizationId, t.patientId, t.representativeId),
+  uniqueIndex('patient_rep_links_primary_active_idx')
+    .on(t.organizationId, t.patientId)
+    .where(sql`${t.isPrimaryContact} = true AND ${t.isActive} = true`),
+  check('patient_rep_links_relationship_check', sql`${t.relationship} IN ('parent', 'legal_guardian', 'spouse_partner', 'adult_child', 'sibling', 'caregiver', 'other')`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'patient_rep_links_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.representativeId, t.organizationId],
+    foreignColumns: [patientRepresentatives.id, patientRepresentatives.organizationId],
+    name: 'patient_rep_links_representative_fk'
   })
 ]);
 

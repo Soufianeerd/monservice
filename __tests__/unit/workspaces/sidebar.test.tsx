@@ -45,10 +45,10 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
     expect(screen.queryByText('Marketplace')).not.toBeInTheDocument();
     expect(screen.queryByText('Messagerie')).not.toBeInTheDocument();
     
-    // N'affiche jamais 'Patients' dans la session 05
-    expect(screen.queryByText('Patients')).not.toBeInTheDocument();
+    // Affiche 'Patients' pour le paramédical
+    expect(screen.getByText('Patients')).toBeInTheDocument();
 
-    // Mais affiche les modules restants
+    // Et affiche les autres modules restants
     expect(screen.getByText('Tableau de bord')).toBeInTheDocument();
     expect(screen.getByText('Facturation')).toBeInTheDocument();
     expect(screen.getByText('Agenda')).toBeInTheDocument();

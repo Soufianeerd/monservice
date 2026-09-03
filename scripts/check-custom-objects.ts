@@ -52,7 +52,10 @@ async function verifyCustomObjects() {
     practice_practitioners: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     practitioner_locations: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     practice_rooms: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practice_resources: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
+    practice_resources: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_profiles: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_representatives: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_representative_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
   };
 
   const dbGrants = await sql`
@@ -147,7 +150,8 @@ async function verifyCustomObjects() {
   const expectedRlsTables = [
     'users', 'organizations', 'clients', 'contacts', 'deals', 'products', 
     'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests',
-    'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources'
+    'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources',
+    'patient_profiles', 'patient_representatives', 'patient_representative_links'
   ];
 
   for (const table of expectedRlsTables) {
@@ -169,58 +173,82 @@ async function verifyCustomObjects() {
     errorCount++;
   }
 
-  // 5. Exact Policy Contracts for Practice Structure
-  const commonPracticeSemantics = [
+  // 5. Exact Policy Contracts for Practice Structure & Patient Registry
+  const commonProfessionalSemantics = [
     'current_organization_id',
     'auth.uid',
     'profile_type',
     'professional'
   ];
 
-  const exactPracticePolicies: ExactPolicyContract[] = [
+  const exactPolicies: ExactPolicyContract[] = [
     {
       policyName: 'practice_locations_tenant_isolation',
       tableName: 'practice_locations',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
-      qualSemantics: commonPracticeSemantics,
-      withCheckSemantics: commonPracticeSemantics,
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
     },
     {
       policyName: 'practice_practitioners_tenant_isolation',
       tableName: 'practice_practitioners',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
-      qualSemantics: commonPracticeSemantics,
-      withCheckSemantics: [...commonPracticeSemantics, 'user_id', 'professional'],
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: [...commonProfessionalSemantics, 'user_id', 'professional'],
     },
     {
       policyName: 'practitioner_locations_tenant_isolation',
       tableName: 'practitioner_locations',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
-      qualSemantics: commonPracticeSemantics,
-      withCheckSemantics: commonPracticeSemantics,
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
     },
     {
       policyName: 'practice_rooms_tenant_isolation',
       tableName: 'practice_rooms',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
-      qualSemantics: commonPracticeSemantics,
-      withCheckSemantics: commonPracticeSemantics,
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
     },
     {
       policyName: 'practice_resources_tenant_isolation',
       tableName: 'practice_resources',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
-      qualSemantics: commonPracticeSemantics,
-      withCheckSemantics: commonPracticeSemantics,
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'patient_profiles_tenant_isolation',
+      tableName: 'patient_profiles',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'patient_representatives_tenant_isolation',
+      tableName: 'patient_representatives',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'patient_representative_links_tenant_isolation',
+      tableName: 'patient_representative_links',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
     },
   ];
 
-  for (const ep of exactPracticePolicies) {
+  for (const ep of exactPolicies) {
     const p = policies.find(x => x.policyname === ep.policyName && x.tablename === ep.tableName);
     if (!p) {
       console.error(`❌ ERROR: Policy '${ep.policyName}' on table '${ep.tableName}' not found.`);
@@ -228,12 +256,17 @@ async function verifyCustomObjects() {
       continue;
     }
 
-    // Check roles
+    // Check roles strictly (no missing, no extra)
     for (const expectedRole of ep.expectedRoles) {
       if (!p.roles.includes(expectedRole)) {
         console.error(`❌ ERROR: Policy '${ep.policyName}' missing expected role '${expectedRole}' (actual: ${p.roles.join(', ')}).`);
         errorCount++;
       }
+    }
+    const extraRoles = p.roles.filter((r: string) => !ep.expectedRoles.includes(r));
+    if (extraRoles.length > 0) {
+      console.error(`❌ ERROR: Policy '${ep.policyName}' has unexpected extra roles: ${extraRoles.join(', ')}`);
+      errorCount++;
     }
 
     // Check command

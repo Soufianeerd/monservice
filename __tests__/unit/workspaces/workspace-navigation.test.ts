@@ -24,6 +24,12 @@ describe('Workspace Navigation', () => {
       'Paramètres'
     ]);
 
+    // Generic: Clients présent, Patients absent, /patients absent
+    expect(navNames).toContain('Clients');
+    expect(navNames).not.toContain('Patients');
+    const genericHrefs = nav.flatMap(n => [n.href, ...(n.subItems?.map(sub => sub.href) || [])]);
+    expect(genericHrefs.some(h => h === '/patients' || h.includes('patients'))).toBe(false);
+
     // dataTour conservés
     expect(nav.find(n => n.id === 'clients')?.dataTour).toBe('clients-nav');
     expect(nav.find(n => n.id === 'settings')?.dataTour).toBe('settings-nav');
@@ -43,8 +49,13 @@ describe('Workspace Navigation', () => {
     const nav = buildProfessionalNavigation(config);
     const navNames = nav.map(n => n.name);
 
-    // Patients est absent même si capability 'patients' est présente
-    expect(navNames).not.toContain('Patients');
+    // Patients est présent exactement une fois
+    expect(navNames.filter(n => n === 'Patients')).toHaveLength(1);
+    const patientsItem = nav.find(n => n.id === 'patients');
+    expect(patientsItem).toBeDefined();
+    expect(patientsItem?.href).toBe('/patients');
+    expect(patientsItem?.icon).toBe('users');
+    expect(patientsItem?.dataTour).toBe('patients-nav');
     
     // Modules exclus
     expect(navNames).not.toContain('Clients');
@@ -54,6 +65,7 @@ describe('Workspace Navigation', () => {
 
     // Modules inclus
     expect(navNames).toContain('Tableau de bord');
+    expect(navNames).toContain('Patients');
     expect(navNames).toContain('Facturation');
     expect(navNames).toContain('Agenda');
     expect(navNames).toContain('Paramètres');
@@ -79,6 +91,9 @@ describe('Workspace Navigation', () => {
 
     const nav = buildProfessionalNavigation(config);
     
+    // Patients est présent
+    expect(nav.map(n => n.name)).toContain('Patients');
+    
     // Le label par défaut est issu de PARAMEDICAL_TERMINOLOGY de base
     const facturation = nav.find(n => n.id === 'billing');
     expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
@@ -92,10 +107,9 @@ describe('Workspace Navigation', () => {
 
     const nav = buildProfessionalNavigation(config);
     
-    // Aucune de ces capabilities ne devrait avoir généré un menu
+    // Aucune de ces capabilities futures ne devrait avoir généré un menu
     const hrefs = nav.flatMap(n => [n.href, ...(n.subItems?.map(sub => sub.href) || [])]);
     
-    expect(hrefs.some(h => h.includes('patients'))).toBe(false);
     expect(hrefs.some(h => h.includes('clinical'))).toBe(false);
     expect(hrefs.some(h => h.includes('encounters'))).toBe(false);
     expect(hrefs.some(h => h.includes('care'))).toBe(false);

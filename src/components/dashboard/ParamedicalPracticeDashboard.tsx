@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Calendar, CheckSquare, FileText, Settings, MapPin, Briefcase, AlertCircle, Clock } from 'lucide-react';
+import { Calendar, CheckSquare, FileText, Settings, MapPin, Briefcase, AlertCircle, Clock, Users } from 'lucide-react';
 import { ParamedicalWorkspaceConfig } from '@/lib/workspaces/types';
 import { PracticeDashboardData } from '@/lib/services/practice-dashboard.service';
 import { Organization } from '@/lib/data/interfaces';
@@ -157,6 +157,16 @@ export default function ParamedicalPracticeDashboard({
               Accès rapides
             </h2>
             <nav className="space-y-2">
+              <Link 
+                href="/patients"
+                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
+              >
+                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
+                  <Users className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
+                </div>
+                <span className="font-medium">Patients</span>
+              </Link>
+
               <Link 
                 href="/agenda"
                 className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"

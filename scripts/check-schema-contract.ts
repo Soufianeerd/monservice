@@ -211,6 +211,52 @@ async function verifyContract() {
     }
   }
 
+  // --- Specific Contract: Patient Registry CHECK constraints ---
+  const sexCheck = constraints.find(c => c.table_name === 'patient_profiles' && c.conname === 'patient_profiles_sex_check');
+  if (!sexCheck) {
+    console.error(`❌ ERROR: 'patient_profiles_sex_check' constraint not found on patient_profiles table.`);
+    errorCount++;
+  } else if (sexCheck.contype !== 'c') {
+    console.error(`❌ ERROR: 'patient_profiles_sex_check' is not a CHECK constraint.`);
+    errorCount++;
+  } else {
+    const def = sexCheck.condef.toLowerCase().replace(/\s+/g, '');
+    const expectedSexes = ['sex', 'female', 'male', 'indeterminate', 'unknown'];
+    for (const el of expectedSexes) {
+      if (!def.includes(el)) {
+        console.error(`❌ ERROR: 'patient_profiles_sex_check' missing semantic element: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  const relCheck = constraints.find(c => c.table_name === 'patient_representative_links' && c.conname === 'patient_rep_links_relationship_check');
+  if (!relCheck) {
+    console.error(`❌ ERROR: 'patient_rep_links_relationship_check' constraint not found on patient_representative_links table.`);
+    errorCount++;
+  } else if (relCheck.contype !== 'c') {
+    console.error(`❌ ERROR: 'patient_rep_links_relationship_check' is not a CHECK constraint.`);
+    errorCount++;
+  } else {
+    const def = relCheck.condef.toLowerCase().replace(/\s+/g, '');
+    const expectedRels = [
+      'relationship',
+      'parent',
+      'legal_guardian',
+      'spouse_partner',
+      'adult_child',
+      'sibling',
+      'caregiver',
+      'other'
+    ];
+    for (const el of expectedRels) {
+      if (!def.includes(el)) {
+        console.error(`❌ ERROR: 'patient_rep_links_relationship_check' missing semantic element: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
   // --- Specific Contract: Exact Composite Foreign Keys ---
   const exactFkContracts: ExactFkContract[] = [
     {
@@ -255,6 +301,20 @@ async function verifyContract() {
       localCols: ['room_id', 'location_id', 'organization_id'],
       foreignCols: ['id', 'location_id', 'organization_id'],
     },
+    {
+      constraintName: 'patient_rep_links_patient_fk',
+      tableName: 'patient_representative_links',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_rep_links_representative_fk',
+      tableName: 'patient_representative_links',
+      foreignTable: 'patient_representatives',
+      localCols: ['representative_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -292,7 +352,13 @@ async function verifyContract() {
     'practice_practitioners_org_user_unique',
     'practice_rooms_org_location_id_unique',
     'practitioner_locations_assignment_unique',
-    'practitioner_locations_primary_active_idx'
+    'practitioner_locations_primary_active_idx',
+    'patient_profiles_org_id_unique',
+    'patient_profiles_org_birth_name_idx',
+    'patient_profiles_org_birth_date_idx',
+    'patient_representatives_org_id_unique',
+    'patient_rep_links_assignment_unique',
+    'patient_rep_links_primary_active_idx',
   ];
 
   for (const idxName of criticalIndexes) {

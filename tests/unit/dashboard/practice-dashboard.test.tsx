@@ -43,6 +43,9 @@ describe('ParamedicalPracticeDashboard', () => {
     expect(screen.getByText('Masseur-Kinésithérapeute')).toBeInTheDocument();
     
     // Links
+    const patientsLink = screen.getByRole('link', { name: /patients/i });
+    expect(patientsLink).toBeInTheDocument();
+    expect(patientsLink).toHaveAttribute('href', '/patients');
     expect(screen.getByText('Agenda')).toBeInTheDocument();
     expect(screen.getByText('Tâches')).toBeInTheDocument();
     expect(screen.getByText('Facturation')).toBeInTheDocument();
@@ -106,7 +109,6 @@ describe('ParamedicalPracticeDashboard', () => {
     
     expect(screen.queryByText('Clients')).not.toBeInTheDocument();
     expect(screen.queryByText('Deals')).not.toBeInTheDocument();
-    expect(screen.queryByText('Patients')).not.toBeInTheDocument();
     expect(screen.queryByText('Rendez-vous')).not.toBeInTheDocument();
     expect(screen.queryByText('Séances aujourd’hui')).not.toBeInTheDocument();
   });

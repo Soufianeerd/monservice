@@ -11,7 +11,10 @@ import {
   practicePractitioners, 
   practitionerLocations, 
   practiceRooms, 
-  practiceResources 
+  practiceResources,
+  patientProfiles,
+  patientRepresentatives,
+  patientRepresentativeLinks
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -29,6 +32,15 @@ export const SEED_PRACTICE_IDS = {
   roomB: '20000000-0000-4000-8000-000000000004',
   resourceA: '10000000-0000-4000-8000-000000000005',
   resourceB: '20000000-0000-4000-8000-000000000005',
+};
+
+export const SEED_PATIENT_IDS = {
+  patientA: '30000000-0000-4000-8000-000000000001',
+  representativeA: '30000000-0000-4000-8000-000000000002',
+  linkA: '30000000-0000-4000-8000-000000000003',
+  patientB: '40000000-0000-4000-8000-000000000001',
+  representativeB: '40000000-0000-4000-8000-000000000002',
+  linkB: '40000000-0000-4000-8000-000000000003',
 };
 
 async function seed() {
@@ -267,6 +279,120 @@ async function seed() {
   ]).onConflictDoNothing();
 
   console.log('Practice structure Org A & Org B seeded successfully!');
+
+  // Seed Patient Registry for Org A
+  await db.insert(patientProfiles).values([
+    {
+      id: SEED_PATIENT_IDS.patientA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      birthName: 'DUPONT',
+      firstBirthName: 'Alice',
+      birthFirstNames: 'Alice Marie',
+      usedName: 'MARTIN',
+      usedFirstName: 'Alice',
+      birthDate: '1990-05-15',
+      sex: 'female',
+      birthPlace: 'Paris',
+      birthPlaceCode: '75056',
+      birthCountry: 'France',
+      email: 'alice.dupont@example.com',
+      phone: '0612345678',
+      address: '10 rue de la Paix',
+      city: 'Paris',
+      postalCode: '75002',
+      country: 'France',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(patientRepresentatives).values([
+    {
+      id: SEED_PATIENT_IDS.representativeA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      firstName: 'Pierre',
+      lastName: 'DUPONT',
+      email: 'pierre.dupont@example.com',
+      phone: '0687654321',
+      address: '10 rue de la Paix',
+      city: 'Paris',
+      postalCode: '75002',
+      country: 'France',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(patientRepresentativeLinks).values([
+    {
+      id: SEED_PATIENT_IDS.linkA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      representativeId: SEED_PATIENT_IDS.representativeA,
+      relationship: 'parent',
+      isLegalRepresentative: true,
+      isPrimaryContact: true,
+      isEmergencyContact: true,
+      isBillingContact: true,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  // Seed Patient Registry for Org B
+  await db.insert(patientProfiles).values([
+    {
+      id: SEED_PATIENT_IDS.patientB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      birthName: 'DURAND',
+      firstBirthName: 'Bob',
+      birthFirstNames: 'Bob Thomas',
+      usedName: null,
+      usedFirstName: null,
+      birthDate: '1985-11-20',
+      sex: 'male',
+      birthPlace: 'Lyon',
+      birthPlaceCode: '69123',
+      birthCountry: 'France',
+      email: 'bob.durand@example.com',
+      phone: '0622334455',
+      address: '5 cours Lafayette',
+      city: 'Lyon',
+      postalCode: '69003',
+      country: 'France',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(patientRepresentatives).values([
+    {
+      id: SEED_PATIENT_IDS.representativeB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      firstName: 'Claire',
+      lastName: 'DURAND',
+      email: 'claire.durand@example.com',
+      phone: '0699887766',
+      address: '5 cours Lafayette',
+      city: 'Lyon',
+      postalCode: '69003',
+      country: 'France',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(patientRepresentativeLinks).values([
+    {
+      id: SEED_PATIENT_IDS.linkB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      representativeId: SEED_PATIENT_IDS.representativeB,
+      relationship: 'spouse_partner',
+      isLegalRepresentative: false,
+      isPrimaryContact: true,
+      isEmergencyContact: true,
+      isBillingContact: false,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  console.log('Patient registry Org A & Org B seeded successfully!');
   await sql.end();
 }
 

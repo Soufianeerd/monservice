@@ -82,6 +82,13 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
     return [
       { id: 'dashboard', name: 'Tableau de bord', href: '/dashboard', icon: 'dashboard' },
       {
+        id: 'patients',
+        name: workspace.terminology.customerPlural,
+        href: '/patients',
+        icon: 'users',
+        dataTour: 'patients-nav',
+      },
+      {
         id: 'billing',
         name: 'Facturation',
         href: '/facturation',
