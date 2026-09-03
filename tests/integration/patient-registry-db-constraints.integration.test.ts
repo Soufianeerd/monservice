@@ -1,130 +1,193 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
-import { SEED_PRACTICE_IDS, SEED_PATIENT_IDS } from '../../scripts/e2e/seed-local';
 
-describe('Patient Registry DB Constraints Integration', () => {
-  const dbUrl = process.env.DATABASE_URL;
-  let sql: ReturnType<typeof postgres>;
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-  beforeAll(() => {
-    if (dbUrl) {
-      sql = postgres(dbUrl);
-    }
+describe('Patient Registry Database Integrity Constraints', () => {
+  let sql: postgres.Sql;
+
+  const orgA = 'org-patient-test-a';
+  const orgB = 'org-patient-test-b';
+
+  beforeAll(async () => {
+    sql = postgres(DATABASE_URL);
+    await sql`INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (${orgA}, 'Patient Test Org A', 'patient-test-a', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO organizations (id, name, slug, created_at, updated_at) VALUES (${orgB}, 'Patient Test Org B', 'patient-test-b', now(), now()) ON CONFLICT DO NOTHING`;
   });
 
   afterAll(async () => {
-    if (sql) {
-      await sql.end();
-    }
+    await sql`DELETE FROM patient_representative_links WHERE organization_id IN (${orgA}, ${orgB})`;
+    await sql`DELETE FROM patient_representatives WHERE organization_id IN (${orgA}, ${orgB})`;
+    await sql`DELETE FROM patient_profiles WHERE organization_id IN (${orgA}, ${orgB})`;
+    await sql`DELETE FROM organizations WHERE id IN (${orgA}, ${orgB})`;
+    await sql.end();
   });
 
-  it('rejects duplicate patient_profiles assignment on (id, organization_id)', async () => {
-    if (!sql) return;
+  it('rejects duplicate patient_profiles assignment on (id, organization_id) with SQLSTATE 23505', async () => {
+    const patientId = randomUUID();
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patientId}, ${orgA}, 'DUPONT', 'Alice', '1990-05-15', 'female')
+    `;
 
-    let threw = false;
     try {
       await sql`
         INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
-        VALUES (${SEED_PATIENT_IDS.patientA}, ${SEED_PRACTICE_IDS.orgA}, 'DUPONT', 'Alice', '1990-05-15', 'female')
+        VALUES (${patientId}, ${orgA}, 'DUPONT_BIS', 'Alice', '1990-05-15', 'female')
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown unique constraint violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23505');
+    } finally {
+      await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;
     }
-    expect(threw).toBe(true);
   });
 
-  it('rejects duplicate patient_representative_links assignment on (organization_id, patient_id, representative_id)', async () => {
-    if (!sql) return;
+  it('rejects duplicate patient_representative_links assignment with SQLSTATE 23505', async () => {
+    const patientId = randomUUID();
+    const repId = randomUUID();
+    const linkId1 = randomUUID();
+    const linkId2 = randomUUID();
 
-    let threw = false;
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patientId}, ${orgA}, 'MARTIN', 'Lucas', '2010-04-12', 'male')
+    `;
+    await sql`
+      INSERT INTO patient_representatives (id, organization_id, first_name, last_name)
+      VALUES (${repId}, ${orgA}, 'Claire', 'MARTIN')
+    `;
+
+    await sql`
+      INSERT INTO patient_representative_links (id, organization_id, patient_id, representative_id, relationship)
+      VALUES (${linkId1}, ${orgA}, ${patientId}, ${repId}, 'parent')
+    `;
+
     try {
       await sql`
         INSERT INTO patient_representative_links (id, organization_id, patient_id, representative_id, relationship)
-        VALUES (${randomUUID()}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${SEED_PATIENT_IDS.representativeA}, 'caregiver')
+        VALUES (${linkId2}, ${orgA}, ${patientId}, ${repId}, 'caregiver')
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown duplicate assignment violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23505');
+    } finally {
+      await sql`DELETE FROM patient_representative_links WHERE id IN (${linkId1}, ${linkId2})`;
+      await sql`DELETE FROM patient_representatives WHERE id = ${repId}`;
+      await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;
     }
-    expect(threw).toBe(true);
   });
 
-  it('rejects multiple active primary contacts for the same patient in an organization', async () => {
-    if (!sql) return;
-
-    // Create a second representative in Org A
+  it('rejects multiple active primary contacts for the same patient with SQLSTATE 23505', async () => {
+    const patientId = randomUUID();
+    const rep1Id = randomUUID();
     const rep2Id = randomUUID();
+    const link1 = randomUUID();
+    const link2 = randomUUID();
+
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patientId}, ${orgA}, 'PETIT', 'Emma', '2015-08-01', 'female')
+    `;
     await sql`
       INSERT INTO patient_representatives (id, organization_id, first_name, last_name)
-      VALUES (${rep2Id}, ${SEED_PRACTICE_IDS.orgA}, 'Jean', 'DUPONT')
+      VALUES 
+        (${rep1Id}, ${orgA}, 'Marc', 'PETIT'),
+        (${rep2Id}, ${orgA}, 'Julie', 'PETIT')
     `;
 
-    // Attempt to insert a second active primary contact for patientA
-    let threw = false;
+    await sql`
+      INSERT INTO patient_representative_links (
+        id, organization_id, patient_id, representative_id, relationship, is_primary_contact, is_active
+      )
+      VALUES (${link1}, ${orgA}, ${patientId}, ${rep1Id}, 'parent', true, true)
+    `;
+
     try {
       await sql`
         INSERT INTO patient_representative_links (
           id, organization_id, patient_id, representative_id, relationship, is_primary_contact, is_active
         )
-        VALUES (
-          ${randomUUID()}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${rep2Id}, 'legal_guardian', true, true
-        )
+        VALUES (${link2}, ${orgA}, ${patientId}, ${rep2Id}, 'parent', true, true)
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown partial unique constraint violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23505');
+    } finally {
+      await sql`DELETE FROM patient_representative_links WHERE id IN (${link1}, ${link2})`;
+      await sql`DELETE FROM patient_representatives WHERE id IN (${rep1Id}, ${rep2Id})`;
+      await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;
     }
-    expect(threw).toBe(true);
   });
 
-  it('blocks cross-tenant link insertion via composite foreign keys', async () => {
-    if (!sql) return;
+  it('blocks cross-tenant link insertion via composite foreign keys with SQLSTATE 23503', async () => {
+    const patientA = randomUUID();
+    const repB = randomUUID();
+    const linkId = randomUUID();
 
-    // Attempt to link patientA (Org A) to representativeB (Org B) in Org A
-    let threw = false;
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patientA}, ${orgA}, 'LEROY', 'Hugo', '2000-01-01', 'male')
+    `;
+    await sql`
+      INSERT INTO patient_representatives (id, organization_id, first_name, last_name)
+      VALUES (${repB}, ${orgB}, 'Sarah', 'LEROY')
+    `;
+
     try {
+      // Attempting to link patientA (Org A) with representative B (Org B) inside Org A
       await sql`
         INSERT INTO patient_representative_links (id, organization_id, patient_id, representative_id, relationship)
-        VALUES (${randomUUID()}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${SEED_PATIENT_IDS.representativeB}, 'parent')
+        VALUES (${linkId}, ${orgA}, ${patientA}, ${repB}, 'parent')
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown foreign key violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23503');
+    } finally {
+      await sql`DELETE FROM patient_profiles WHERE id = ${patientA}`;
+      await sql`DELETE FROM patient_representatives WHERE id = ${repB}`;
     }
-    expect(threw).toBe(true);
   });
 
-  it('rejects invalid sex value in patient_profiles via CHECK constraint', async () => {
-    if (!sql) return;
-
-    let threw = false;
+  it('rejects invalid sex value in patient_profiles with SQLSTATE 23514', async () => {
+    const patientId = randomUUID();
     try {
       await sql`
         INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
-        VALUES (${randomUUID()}, ${SEED_PRACTICE_IDS.orgA}, 'TEST', 'InvalidSex', '1990-01-01', 'other_invalid_sex')
+        VALUES (${patientId}, ${orgA}, 'TEST', 'InvalidSex', '1990-01-01', 'other_invalid_sex')
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown check constraint violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23514');
     }
-    expect(threw).toBe(true);
   });
 
-  it('rejects invalid relationship in patient_representative_links via CHECK constraint', async () => {
-    if (!sql) return;
-
+  it('rejects invalid relationship in patient_representative_links with SQLSTATE 23514', async () => {
+    const patientId = randomUUID();
     const repId = randomUUID();
+    const linkId = randomUUID();
+
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patientId}, ${orgA}, 'TEST', 'CheckRel', '1990-01-01', 'male')
+    `;
     await sql`
       INSERT INTO patient_representatives (id, organization_id, first_name, last_name)
-      VALUES (${repId}, ${SEED_PRACTICE_IDS.orgA}, 'Jacques', 'TEST')
+      VALUES (${repId}, ${orgA}, 'Jacques', 'TEST')
     `;
 
-    let threw = false;
     try {
       await sql`
         INSERT INTO patient_representative_links (id, organization_id, patient_id, representative_id, relationship)
-        VALUES (${randomUUID()}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${repId}, 'friend_invalid')
+        VALUES (${linkId}, ${orgA}, ${patientId}, ${repId}, 'invalid_relation_code')
       `;
-    } catch {
-      threw = true;
+      expect.unreachable('Should have thrown check constraint violation');
+    } catch (err: any) {
+      expect(err.code).toBe('23514');
+    } finally {
+      await sql`DELETE FROM patient_representatives WHERE id = ${repId}`;
+      await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;
     }
-    expect(threw).toBe(true);
   });
 });
