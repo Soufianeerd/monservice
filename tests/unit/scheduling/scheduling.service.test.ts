@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { schedulingService, isPgConflictError } from '@/lib/services/scheduling.service';
 import { db } from '@/lib/db/server';
+import { AppError } from '@/lib/errors';
+
+const mockReturning = vi.fn();
+const mockValues = vi.fn(() => ({ returning: mockReturning }));
+const mockWhere = vi.fn(() => ({ returning: mockReturning }));
+const mockSet = vi.fn(() => ({ where: mockWhere }));
 
 vi.mock('@/lib/db/server', () => {
   return {
     db: {
       select: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn(),
+      insert: vi.fn(() => ({ values: mockValues })),
+      update: vi.fn(() => ({ set: mockSet })),
     },
   };
 });
@@ -260,6 +266,46 @@ describe('Scheduling Service Unit Tests', () => {
       ).rejects.toThrow('Les séances traversant minuit ne sont pas autorisées');
     });
 
+    it('rejects appointment when requested slot is outside practitioner availability (PRACTITIONER_UNAVAILABLE)', async () => {
+      let callCount = 0;
+      const mockSelect = vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockImplementation(() => {
+              callCount++;
+              if (callCount === 1) return Promise.resolve([{ id: 'user-1', profileType: 'professional' }]);
+              if (callCount === 2) return Promise.resolve([{ id: 'pat-1', isActive: true }]);
+              if (callCount === 3) return Promise.resolve([{ id: 'prac-1', isActive: true }]);
+              if (callCount === 4) return Promise.resolve([{ id: 'loc-1', isActive: true, timezone: 'Europe/Paris' }]);
+              if (callCount === 5) return Promise.resolve([{ practitionerId: 'prac-1', locationId: 'loc-1', isActive: true }]);
+              if (callCount === 6) return Promise.resolve([{ id: 'type-1', isActive: true, durationMinutes: 30, bufferBeforeMinutes: 0, bufferAfterMinutes: 0 }]);
+              return Promise.resolve([]);
+            }),
+          }),
+        }),
+      }));
+      vi.mocked(db.select).mockImplementation(mockSelect);
+
+      vi.spyOn(schedulingService, 'listAvailabilityRules').mockResolvedValue([]);
+      vi.spyOn(schedulingService, 'listAvailabilityExceptions').mockResolvedValue([]);
+
+      try {
+        await schedulingService.createAppointment('org-1', 'user-1', {
+          ...validPayload,
+          roomId: null,
+          localStartTime: '10:00',
+        });
+        expect.unreachable('Should have thrown PRACTITIONER_UNAVAILABLE');
+      } catch (err: unknown) {
+        if (!(err instanceof AppError)) {
+          expect.unreachable('Expected error to be an instance of AppError');
+        }
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe('PRACTITIONER_UNAVAILABLE');
+        expect(err.message).toBe("Le créneau demandé n'est pas couvert par les disponibilités du praticien");
+      }
+    });
+
     it('maps 23P01 DB exclusion violation error to 409 SCHEDULING_CONFLICT in createAppointment', async () => {
       let callCount = 0;
       const mockSelect = vi.fn().mockImplementation(() => ({
@@ -302,11 +348,7 @@ describe('Scheduling Service Unit Tests', () => {
       const pgConflict = Object.assign(new Error('conflicting key value violates exclusion constraint'), {
         code: '23P01',
       });
-      vi.mocked(db.insert).mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockRejectedValue(pgConflict),
-        }),
-      } as unknown as ReturnType<typeof db.insert>);
+      mockReturning.mockRejectedValueOnce(pgConflict);
 
       try {
         await schedulingService.createAppointment('org-1', 'user-1', {
@@ -315,8 +357,11 @@ describe('Scheduling Service Unit Tests', () => {
         });
         expect.unreachable('Should have thrown 409 conflict');
       } catch (err: unknown) {
-        expect((err as { statusCode?: number }).statusCode).toBe(409);
-        expect((err as { code?: string }).code).toBe('SCHEDULING_CONFLICT');
+        if (!(err instanceof AppError)) {
+          expect.unreachable('Expected error to be an instance of AppError');
+        }
+        expect(err.statusCode).toBe(409);
+        expect(err.code).toBe('SCHEDULING_CONFLICT');
       }
     });
 
@@ -377,13 +422,7 @@ describe('Scheduling Service Unit Tests', () => {
       const pgConflict = Object.assign(new Error('exclusion violation 23P01'), {
         code: '23P01',
       });
-      vi.mocked(db.update).mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockRejectedValue(pgConflict),
-          }),
-        }),
-      } as unknown as ReturnType<typeof db.update>);
+      mockReturning.mockRejectedValueOnce(pgConflict);
 
       try {
         await schedulingService.rescheduleAppointment('org-1', 'user-1', {
@@ -398,8 +437,11 @@ describe('Scheduling Service Unit Tests', () => {
         });
         expect.unreachable('Should have thrown 409 conflict');
       } catch (err: unknown) {
-        expect((err as { statusCode?: number }).statusCode).toBe(409);
-        expect((err as { code?: string }).code).toBe('SCHEDULING_CONFLICT');
+        if (!(err instanceof AppError)) {
+          expect.unreachable('Expected error to be an instance of AppError');
+        }
+        expect(err.statusCode).toBe(409);
+        expect(err.code).toBe('SCHEDULING_CONFLICT');
       }
     });
   });
