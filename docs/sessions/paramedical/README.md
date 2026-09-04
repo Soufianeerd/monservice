@@ -28,6 +28,7 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **08** | Patient Identity & Representatives | 3 Septembre 2026 | Terminée | [Session 08](SESSION_08_PATIENT_IDENTITY_REPRESENTATIVES.md) |
 | **08B** | Patient Identity Contract Finalization | 3 Septembre 2026 | Terminée | [Session 08B](SESSION_08B_PATIENT_IDENTITY_CONTRACT_FINALIZATION.md) |
 | **09** | Scheduling & Availability Foundation | 4 Septembre 2026 | Terminée | [Session 09](SESSION_09_SCHEDULING_AVAILABILITY_FOUNDATION.md) |
-| **09B** | Scheduling Contract Finalization | 4 Septembre 2026 | Terminée | [Session 09B](SESSION_09B_SCHEDULING_CONTRACT_FINALIZATION.md) |
+| **09B** | Scheduling Contract Finalization | 5 Septembre 2026 | Terminée | [Session 09B](SESSION_09B_SCHEDULING_CONTRACT_FINALIZATION.md) |
+| **09C** | Scheduling Final Test Cleanup | 5 Septembre 2026 | Terminée | [Session 09C](SESSION_09C_SCHEDULING_FINAL_TEST_CLEANUP.md) |
 
 

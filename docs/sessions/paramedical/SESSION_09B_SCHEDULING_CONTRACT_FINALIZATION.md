@@ -34,17 +34,21 @@ Aucun schéma de base de données n'a été modifié et **aucune migration `0015
 ---
 
 ## HEAD Initial & Git
-- **HEAD initial** : `831d490b1265524b7a13398b1e7f0f980bb34136` (Session 09 terminée)
-- **Code commit** : `b9ca825`
+- **HEAD initial 09B** : `831d490b1265524b7a13398b1e7f0f980bb34136` (Session 09 terminée)
+- **Commits Session 09B** :
+  - `b9ca8259737f373a403b4fa7b023897172f54b23` : `fix(scheduling): finalize scheduling contracts`
+  - `96382f9a2b697e83e4a88286f1a649651cd0998c` : `fix(rls): align expected availability exception kind in scheduling test`
+  - `285002a4dbc2e7f176cd95b7745fadd84c58664e` : `docs(scheduling): add Session 09B documentation and update index`
+- **HEAD repository Session 09B** : `285002a4dbc2e7f176cd95b7745fadd84c58664e`
+- **Run repository validé avant 09C** : `33927278108` (Status: `completed`, Conclusion: `success`)
 - **Branche** : `main`
-- **Working tree initial & final** : clean
+- **Working tree** : clean
 
 ---
 
 ## Validation des Tests & Qualité
 - **TypeScript** : 0 erreur (`npm run typecheck`).
 - **ESLint** : 0 erreur (`npm run lint`).
-- **Zero Lying Cast** : 0 `as any`, 0 `as unknown as`, 0 `as never`, 0 `: any` sur l'ensemble du périmètre.
 - **Unit Tests** :
   - `test:scheduling` : 61 tests passés avec succès.
   - `test:patients`, `test:practice-structure`, `test:dashboard`, `test:workspace`, `test:onboarding`, `test:security`, `test:unit`, `test:compliance` : 100% verts.
@@ -52,8 +56,10 @@ Aucun schéma de base de données n'a été modifié et **aucune migration `0015
   - `scheduling-db-constraints.integration.test.ts` : 100% validé.
   - `scheduling-rls.integration.test.ts` : 100% validé.
 - **Build** : `npm run build` complété avec succès.
+- **Note de transition 09C** : Suite à l'audit 09B, les 2 casts résiduels dans `scheduling.service.test.ts` et le test explicite `PRACTITIONER_UNAVAILABLE` ont fait l'objet de la clôture définitive en Session 09C.
 
 ---
 
 ## Readiness Session 10
-**OUI**. Tous les contrats du socle de planification paramédicale sont validés, éprouvés et documentés.
+**NON jusqu'à 09C**. Clôture définitive du handoff et des tests en Session 09C.
+
