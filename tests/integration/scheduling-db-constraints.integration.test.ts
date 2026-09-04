@@ -57,8 +57,8 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
     await sql`INSERT INTO practice_rooms (id, organization_id, location_id, name, created_at, updated_at) VALUES (${roomB}, ${orgB}, ${locB}, 'Salle B1', now(), now()) ON CONFLICT DO NOTHING`;
 
     // Setup Practitioners
-    await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA}, ${orgA}, ${userA}, 'Dr Pro A', 'masseur_kinesitherapeute', now(), now()) ON CONFLICT DO NOTHING`;
-    await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracB}, ${orgB}, ${userB}, 'Dr Pro B', 'masseur_kinesitherapeute', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA}, ${orgA}, ${userA}, 'Dr Pro A', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracB}, ${orgB}, ${userB}, 'Dr Pro B', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
 
     // Setup Practitioner-Location assignments
     await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
