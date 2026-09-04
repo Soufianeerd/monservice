@@ -16,9 +16,9 @@ Elle implémente :
 ## HEAD Initial & Git
 - **HEAD initial** : `fb3bb3355590d1a631d3326621acfc0e6cdf20f3` (Session 08B acceptée)
 - **Feature commit** : `3986de577dae80a4f88fd4c30aa82082e2fc8b74`
-- **Corrective commit** : `0da6f68c1bf9b8c2bbc454a4afe531e23eecaed9`
-- **HEAD final** : `0da6f68c1bf9b8c2bbc454a4afe531e23eecaed9`
-- **CI Run ID final** : `33922582301` (status: `completed`, conclusion: `success`)
+- **Corrective commits** : `7243e24...`, `0da6f68...`, `831d490...`
+- **HEAD final Session 09** : `831d490b1265524b7a13398b1e7f0f980bb34136`
+- **CI Run ID final Session 09** : `33923051828` (status: `completed`, conclusion: `success`)
 - **Branche** : `main`
 - **Working tree initial & final** : clean
 
@@ -189,4 +189,4 @@ Toute tentative concurrente de collision horaire déclenche l'erreur PostgreSQL 
 ---
 
 ## Readiness Session 10
-**OUI**. Le socle de planification paramédical est complet, testé et hermétiquement isolé.
+**NON — voir Session 09B**. Session 09B finalise les contrats de tests RLS/DB exhaustifs, la gestion des exceptions ouvertes pleine journée et la cohérence de snapshot de fuseau horaire.
