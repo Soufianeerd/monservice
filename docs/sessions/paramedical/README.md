@@ -26,6 +26,6 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **07B** | Practice Structure Contract Finalization | 2 Septembre 2026 | Terminée | [Session 07B](SESSION_07B_PRACTICE_STRUCTURE_CONTRACT_FINALIZATION.md) |
 | **07C** | Practice Structure Authorization Finalization | 2 Septembre 2026 | Terminée | [Session 07C](SESSION_07C_PRACTICE_STRUCTURE_AUTHORIZATION_FINALIZATION.md) |
 | **08** | Patient Identity & Representatives | 3 Septembre 2026 | Terminée | [Session 08](SESSION_08_PATIENT_IDENTITY_REPRESENTATIVES.md) |
-| **09** | Scheduling & Availability Foundation | 4 Septembre 2026 | En cours | [Session 09](SESSION_09_SCHEDULING_AVAILABILITY_FOUNDATION.md) |
+| **09** | Scheduling & Availability Foundation | 4 Septembre 2026 | Terminée | [Session 09](SESSION_09_SCHEDULING_AVAILABILITY_FOUNDATION.md) |
 
 

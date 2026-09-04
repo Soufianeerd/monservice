@@ -15,8 +15,12 @@ Elle implémente :
 
 ## HEAD Initial & Git
 - **HEAD initial** : `fb3bb3355590d1a631d3326621acfc0e6cdf20f3` (Session 08B acceptée)
+- **Feature commit** : `3986de577dae80a4f88fd4c30aa82082e2fc8b74`
+- **Corrective commit** : `0da6f68c1bf9b8c2bbc454a4afe531e23eecaed9`
+- **HEAD final** : `0da6f68c1bf9b8c2bbc454a4afe531e23eecaed9`
+- **CI Run ID final** : `33922582301` (status: `completed`, conclusion: `success`)
 - **Branche** : `main`
-- **Working tree initial** : clean
+- **Working tree initial & final** : clean
 
 ---
 
