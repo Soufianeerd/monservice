@@ -13,10 +13,20 @@ import {
   listAvailabilityAction,
 } from '@/app/actions/scheduling.actions';
 import { AppointmentForm } from './AppointmentForm';
-import { computeEffectiveAvailability, minutesToTimeString, timeStringToMinutes } from '@/lib/scheduling/availability';
+import {
+  computeEffectiveAvailability,
+  getCurrentLocalDateInTimezone,
+  minutesToTimeString,
+  timeStringToMinutes,
+} from '@/lib/scheduling/availability';
 
 interface Props {
   bootstrap: SchedulingBootstrapDTO;
+}
+
+function parseLocalDateStringToDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y ?? 2026, (m ?? 1) - 1, d ?? 1);
 }
 
 export function ParamedicalCalendar({ bootstrap }: Props) {
@@ -25,8 +35,14 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
   );
   const [selectedPractitionerId, setSelectedPractitionerId] = useState<string>('');
 
-  // Date Navigation State (Default to current date)
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const selectedLocation = bootstrap.locations.find((l) => l.id === selectedLocationId);
+  const selectedTimezone = selectedLocation?.timezone || 'Europe/Paris';
+
+  // Date Navigation State (Default to current date in location timezone)
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    const todayStr = getCurrentLocalDateInTimezone(new Date(), bootstrap.locations[0]?.timezone || 'Europe/Paris');
+    return parseLocalDateStringToDate(todayStr);
+  });
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week');
 
   const [appointments, setAppointments] = useState<AppointmentCalendarEventDTO[]>([]);
@@ -49,8 +65,6 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
     localDate?: string;
     localStartTime?: string;
   } | undefined>(undefined);
-
-  const selectedLocation = bootstrap.locations.find((l) => l.id === selectedLocationId);
 
   // Helper to compute date range string YYYY-MM-DD
   const formatDateISO = (d: Date): string => {
@@ -122,7 +136,7 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
         const [appts, avail] = await Promise.all([
           listAppointmentsForCalendarAction({
             locationId: selectedLocationId,
-            practitionerId: selectedPractitionerId || null,
+            practitionerId: selectedPractitionerId || undefined,
             startDate,
             endDate,
           }),
@@ -166,14 +180,16 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    const todayStr = getCurrentLocalDateInTimezone(new Date(), selectedTimezone);
+    setCurrentDate(parseLocalDateStringToDate(todayStr));
   };
 
   const openNewAppointmentModal = (dateStr?: string, timeStr?: string) => {
+    const defaultDate = dateStr || getCurrentLocalDateInTimezone(new Date(), selectedTimezone);
     setModalInitialData({
       locationId: selectedLocationId,
       practitionerId: selectedPractitionerId || bootstrap.practitioners[0]?.id,
-      localDate: dateStr || formatDateISO(currentDate),
+      localDate: defaultDate,
       localStartTime: timeStr || '09:00',
     });
     setIsBookingModalOpen(true);

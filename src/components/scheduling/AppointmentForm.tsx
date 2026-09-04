@@ -11,6 +11,7 @@ import {
   rescheduleAppointmentAction,
   searchPatientsAction,
 } from '@/app/actions/scheduling.actions';
+import { getCurrentLocalDateInTimezone } from '@/lib/scheduling/availability';
 
 interface Props {
   bootstrap: SchedulingBootstrapDTO;
@@ -52,8 +53,14 @@ export function AppointmentForm({
   const [appointmentTypeId, setAppointmentTypeId] = useState(
     initialData?.appointmentTypeId || bootstrap.appointmentTypes[0]?.id || ''
   );
+
+  const initialLocation = bootstrap.locations.find(
+    (l) => l.id === (initialData?.locationId || bootstrap.locations[0]?.id)
+  );
+  const initialTimezone = initialLocation?.timezone || 'Europe/Paris';
+
   const [localDate, setLocalDate] = useState(
-    initialData?.localDate || new Date().toISOString().slice(0, 10)
+    initialData?.localDate || getCurrentLocalDateInTimezone(new Date(), initialTimezone)
   );
   const [localStartTime, setLocalStartTime] = useState(
     initialData?.localStartTime || '09:00'

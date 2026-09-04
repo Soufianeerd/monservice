@@ -135,6 +135,16 @@ export function formatUtcToLocal(
 }
 
 /**
+ * Returns today's date formatted as YYYY-MM-DD in the specified IANA timezone.
+ */
+export function getCurrentLocalDateInTimezone(
+  now: Date = new Date(),
+  timezone: string = 'Europe/Paris'
+): string {
+  return formatUtcToLocal(now, timezone).localDate;
+}
+
+/**
  * Verifies that converting local date/time to UTC and back yields the exact same local date/time.
  * Protects against non-existent local times during Daylight Saving Time (DST) spring forward transitions.
  */
@@ -246,6 +256,7 @@ export function subtractIntervals(
  * Rule:
  * 1. Base availability comes from active weekly availability rules valid on this date.
  * 2. Active 'open' exceptions on this date add available intervals.
+ *    - Full-day 'open' (startTime=null, endTime=null) opens the whole day: 00:00 -> 24:00 (0 to 1440 min).
  * 3. Active 'closed' exceptions on this date subtract intervals (CLOSED ALWAYS WINS).
  */
 export function computeEffectiveAvailability(params: {
@@ -278,11 +289,20 @@ export function computeEffectiveAvailability(params: {
   // Open exceptions
   const openExceptions = dateExceptions.filter((e) => e.kind === 'open');
   const addedIntervals: TimeInterval[] = openExceptions
-    .filter((e) => e.startTime !== null && e.endTime !== null)
-    .map((e) => ({
-      startMinutes: timeStringToMinutes(e.startTime as string),
-      endMinutes: timeStringToMinutes(e.endTime as string),
-    }));
+    .map((e) => {
+      // Full-day open exception (00:00 to 24:00)
+      if (e.startTime === null && e.endTime === null) {
+        return { startMinutes: 0, endMinutes: 1440 };
+      }
+      if (e.startTime !== null && e.endTime !== null) {
+        return {
+          startMinutes: timeStringToMinutes(e.startTime),
+          endMinutes: timeStringToMinutes(e.endTime),
+        };
+      }
+      return null;
+    })
+    .filter((int): int is TimeInterval => int !== null);
 
   const allOpenIntervals = [...baseIntervals, ...addedIntervals];
 

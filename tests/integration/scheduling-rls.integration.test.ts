@@ -148,7 +148,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
       expect(appts).toHaveLength(0);
     });
 
-    it('Pro A cannot UPDATE Org B scheduling fixtures (0 rows affected)', async () => {
+    it('Pro A cannot UPDATE Org B scheduling fixtures (0 rows affected) and Pro B confirms integrity', async () => {
       const { data: updType } = await proAClient
         .from('appointment_types')
         .update({ name: 'HACKED' })
@@ -184,9 +184,30 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .eq('id', SEED_SCHEDULING_IDS.appointmentTypeB)
         .single();
       expect(checkType?.name).not.toBe('HACKED');
+
+      const { data: checkRule } = await proBClient
+        .from('practitioner_availability_rules')
+        .select('start_time')
+        .eq('id', SEED_SCHEDULING_IDS.availabilityRuleB)
+        .single();
+      expect(checkRule?.start_time).not.toBe('00:00');
+
+      const { data: checkExc } = await proBClient
+        .from('practitioner_availability_exceptions')
+        .select('kind')
+        .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionB)
+        .single();
+      expect(checkExc?.kind).not.toBe('closed');
+
+      const { data: checkAppt } = await proBClient
+        .from('appointments')
+        .select('timezone')
+        .eq('id', SEED_SCHEDULING_IDS.appointmentB)
+        .single();
+      expect(checkAppt?.timezone).not.toBe('HACKED');
     });
 
-    it('Pro A cannot INSERT into Org B scheduling tables (RLS violation 42501)', async () => {
+    it('Pro A cannot INSERT into any of the 4 Org B scheduling tables (RLS violation 42501)', async () => {
       const orgBId = '00000000-0000-0000-0000-000000000002';
 
       const { error: insType } = await proAClient.from('appointment_types').insert({
@@ -196,6 +217,28 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         duration_minutes: 30,
       });
       expect(insType?.code).toBe('42501');
+
+      const { error: insRule } = await proAClient.from('practitioner_availability_rules').insert({
+        id: randomUUID(),
+        organization_id: orgBId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerB,
+        location_id: SEED_PRACTICE_IDS.locationB,
+        weekday: 1,
+        start_time: '09:00',
+        end_time: '12:00',
+        valid_from: '2026-09-01',
+      });
+      expect(insRule?.code).toBe('42501');
+
+      const { error: insExc } = await proAClient.from('practitioner_availability_exceptions').insert({
+        id: randomUUID(),
+        organization_id: orgBId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerB,
+        location_id: SEED_PRACTICE_IDS.locationB,
+        local_date: '2026-09-20',
+        kind: 'closed',
+      });
+      expect(insExc?.code).toBe('42501');
 
       const { error: insAppt } = await proAClient.from('appointments').insert({
         id: randomUUID(),
@@ -242,7 +285,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
       expect(appts).toHaveLength(0);
     });
 
-    it('Client A cannot UPDATE any of the 4 scheduling tables (0 rows affected)', async () => {
+    it('Client A cannot UPDATE any of the 4 scheduling tables (0 rows affected) and Pro A confirms integrity', async () => {
       const { data: updType } = await clientAClient
         .from('appointment_types')
         .update({ name: 'HACKED' })
@@ -250,12 +293,55 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .select();
       expect(updType).toHaveLength(0);
 
+      const { data: updRule } = await clientAClient
+        .from('practitioner_availability_rules')
+        .update({ start_time: '00:00' })
+        .eq('id', SEED_SCHEDULING_IDS.availabilityRuleA)
+        .select();
+      expect(updRule).toHaveLength(0);
+
+      const { data: updExc } = await clientAClient
+        .from('practitioner_availability_exceptions')
+        .update({ kind: 'open' })
+        .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionA)
+        .select();
+      expect(updExc).toHaveLength(0);
+
       const { data: updAppt } = await clientAClient
         .from('appointments')
         .update({ timezone: 'HACKED' })
         .eq('id', SEED_SCHEDULING_IDS.appointmentA)
         .select();
       expect(updAppt).toHaveLength(0);
+
+      // Verify Org A fixtures integrity via Pro A
+      const { data: checkType } = await proAClient
+        .from('appointment_types')
+        .select('name')
+        .eq('id', SEED_SCHEDULING_IDS.appointmentTypeA)
+        .single();
+      expect(checkType?.name).not.toBe('HACKED');
+
+      const { data: checkRule } = await proAClient
+        .from('practitioner_availability_rules')
+        .select('start_time')
+        .eq('id', SEED_SCHEDULING_IDS.availabilityRuleA)
+        .single();
+      expect(checkRule?.start_time).not.toBe('00:00');
+
+      const { data: checkExc } = await proAClient
+        .from('practitioner_availability_exceptions')
+        .select('kind')
+        .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionA)
+        .single();
+      expect(checkExc?.kind).not.toBe('open');
+
+      const { data: checkAppt } = await proAClient
+        .from('appointments')
+        .select('timezone')
+        .eq('id', SEED_SCHEDULING_IDS.appointmentA)
+        .single();
+      expect(checkAppt?.timezone).not.toBe('HACKED');
     });
 
     it('Client A cannot INSERT into any of the 4 scheduling tables (RLS violation 42501)', async () => {
@@ -268,6 +354,28 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         duration_minutes: 30,
       });
       expect(insType?.code).toBe('42501');
+
+      const { error: insRule } = await clientAClient.from('practitioner_availability_rules').insert({
+        id: randomUUID(),
+        organization_id: orgAId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        location_id: SEED_PRACTICE_IDS.locationA,
+        weekday: 1,
+        start_time: '09:00',
+        end_time: '12:00',
+        valid_from: '2026-09-01',
+      });
+      expect(insRule?.code).toBe('42501');
+
+      const { error: insExc } = await clientAClient.from('practitioner_availability_exceptions').insert({
+        id: randomUUID(),
+        organization_id: orgAId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        location_id: SEED_PRACTICE_IDS.locationA,
+        local_date: '2026-09-20',
+        kind: 'closed',
+      });
+      expect(insExc?.code).toBe('42501');
 
       const { error: insAppt } = await clientAClient.from('appointments').insert({
         id: randomUUID(),
@@ -288,7 +396,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
   });
 
   describe('Anonymous Rejection', () => {
-    it('Anon cannot SELECT from any scheduling table (RLS error 42501)', async () => {
+    it('Anon cannot SELECT from any of the 4 scheduling tables (RLS error 42501)', async () => {
       const { error: errType } = await anonClient.from('appointment_types').select('*');
       expect(errType?.code).toBe('42501');
 
@@ -302,10 +410,42 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
       expect(errAppt?.code).toBe('42501');
     });
 
-    it('Anon cannot INSERT into any scheduling table (RLS error 42501)', async () => {
+    it('Anon cannot INSERT into any of the 4 scheduling tables (RLS error 42501)', async () => {
+      const orgAId = '00000000-0000-0000-0000-000000000001';
+
+      const { error: insType } = await anonClient.from('appointment_types').insert({
+        id: randomUUID(),
+        organization_id: orgAId,
+        name: 'Type Anon',
+        duration_minutes: 30,
+      });
+      expect(insType?.code).toBe('42501');
+
+      const { error: insRule } = await anonClient.from('practitioner_availability_rules').insert({
+        id: randomUUID(),
+        organization_id: orgAId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        location_id: SEED_PRACTICE_IDS.locationA,
+        weekday: 1,
+        start_time: '09:00',
+        end_time: '12:00',
+        valid_from: '2026-09-01',
+      });
+      expect(insRule?.code).toBe('42501');
+
+      const { error: insExc } = await anonClient.from('practitioner_availability_exceptions').insert({
+        id: randomUUID(),
+        organization_id: orgAId,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        location_id: SEED_PRACTICE_IDS.locationA,
+        local_date: '2026-09-20',
+        kind: 'closed',
+      });
+      expect(insExc?.code).toBe('42501');
+
       const { error: insAppt } = await anonClient.from('appointments').insert({
         id: randomUUID(),
-        organization_id: '00000000-0000-0000-0000-000000000001',
+        organization_id: orgAId,
         patient_id: SEED_PATIENT_IDS.patientA,
         practitioner_id: SEED_PRACTICE_IDS.practitionerA,
         appointment_type_id: SEED_SCHEDULING_IDS.appointmentTypeA,

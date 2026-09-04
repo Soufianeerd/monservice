@@ -1099,7 +1099,6 @@ export const schedulingService = {
     if (loc.length === 0 || !loc[0]) {
       throw new AppError('Lieu non trouvé', 404, 'NOT_FOUND');
     }
-    const location = loc[0];
 
     // Build UTC range for query bounds covering [startDate, endDate] in location timezone
     // Add 1 day safety buffer on both sides for timezone offset span
@@ -1189,8 +1188,8 @@ export const schedulingService = {
 
     for (const r of rows) {
       const appt = r.appointment;
-      const startLocal = formatUtcToLocal(appt.startsAt, location.timezone);
-      const endLocal = formatUtcToLocal(appt.endsAt, location.timezone);
+      const startLocal = formatUtcToLocal(appt.startsAt, appt.timezone);
+      const endLocal = formatUtcToLocal(appt.endsAt, appt.timezone);
 
       // Only include if localDate falls within [startDate, endDate]
       if (startLocal.localDate >= validated.startDate && startLocal.localDate <= validated.endDate) {

@@ -6,6 +6,7 @@ import {
   getWeekdayFromLocalDate,
   formatUtcToLocal,
   verifyTimezoneRoundTrip,
+  getCurrentLocalDateInTimezone,
   doAvailabilityRulesOverlap,
   mergeIntervals,
   subtractIntervals,
@@ -58,6 +59,16 @@ describe('Availability Engine & Timezone Helpers', () => {
       const formatted = formatUtcToLocal(utcDate, tz);
       expect(formatted.localDate).toBe(localDate);
       expect(formatted.localTime).toBe(localTime);
+    });
+
+    it('flags non-existent local times during DST spring-forward transitions as invalid', () => {
+      // In Europe/Paris on 2026-03-29 at 02:00, clocks jump to 03:00. 02:30 does not exist!
+      const nonExistentDate = '2026-03-29';
+      const nonExistentTime = '02:30';
+      const tz = 'Europe/Paris';
+
+      const result = verifyTimezoneRoundTrip(nonExistentDate, nonExistentTime, tz);
+      expect(result.isValid).toBe(false);
     });
   });
 
@@ -146,6 +157,141 @@ describe('Availability Engine & Timezone Helpers', () => {
           availableIntervals: intervals,
         })
       ).toBe(false);
+    });
+
+    it('handles full-day open exception (00:00 to 24:00 / 0 to 1440 min)', () => {
+      const fullDayOpen: AvailabilityExceptionDTO = {
+        id: 'exc-open-full',
+        organizationId: 'org-1',
+        practitionerId: 'prac-1',
+        locationId: 'loc-1',
+        localDate: '2026-09-06', // Sunday (no weekly rules)
+        kind: 'open',
+        startTime: null,
+        endTime: null,
+        isActive: true,
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-01T00:00:00Z',
+      };
+
+      const intervals = computeEffectiveAvailability({
+        localDate: '2026-09-06',
+        rules: [baseRule], // Friday only
+        exceptions: [fullDayOpen],
+      });
+
+      expect(intervals).toEqual([{ startMinutes: 0, endMinutes: 1440 }]);
+
+      expect(
+        isSlotAvailable({
+          localStartTime: '08:00',
+          durationMinutes: 60,
+          availableIntervals: intervals,
+        })
+      ).toBe(true);
+
+      expect(
+        isSlotAvailable({
+          localStartTime: '22:00',
+          durationMinutes: 60,
+          availableIntervals: intervals,
+        })
+      ).toBe(true);
+    });
+
+    it('full-day open exception with partial closed exception subtracts closed period', () => {
+      const fullDayOpen: AvailabilityExceptionDTO = {
+        id: 'exc-open-full',
+        organizationId: 'org-1',
+        practitionerId: 'prac-1',
+        locationId: 'loc-1',
+        localDate: '2026-09-06', // Sunday
+        kind: 'open',
+        startTime: null,
+        endTime: null,
+        isActive: true,
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-01T00:00:00Z',
+      };
+
+      const partialClosed: AvailabilityExceptionDTO = {
+        id: 'exc-closed-part',
+        organizationId: 'org-1',
+        practitionerId: 'prac-1',
+        locationId: 'loc-1',
+        localDate: '2026-09-06',
+        kind: 'closed',
+        startTime: '12:00',
+        endTime: '14:00',
+        isActive: true,
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-01T00:00:00Z',
+      };
+
+      const intervals = computeEffectiveAvailability({
+        localDate: '2026-09-06',
+        rules: [],
+        exceptions: [fullDayOpen, partialClosed],
+      });
+
+      expect(intervals).toEqual([
+        { startMinutes: 0, endMinutes: 720 }, // 00:00 - 12:00
+        { startMinutes: 840, endMinutes: 1440 }, // 14:00 - 24:00
+      ]);
+
+      expect(
+        isSlotAvailable({
+          localStartTime: '11:00',
+          durationMinutes: 60,
+          availableIntervals: intervals,
+        })
+      ).toBe(true);
+
+      expect(
+        isSlotAvailable({
+          localStartTime: '12:30',
+          durationMinutes: 30,
+          availableIntervals: intervals,
+        })
+      ).toBe(false);
+    });
+
+    it('full-day open with full-day closed produces empty availability (CLOSED ALWAYS WINS)', () => {
+      const fullDayOpen: AvailabilityExceptionDTO = {
+        id: 'exc-open-full',
+        organizationId: 'org-1',
+        practitionerId: 'prac-1',
+        locationId: 'loc-1',
+        localDate: '2026-09-06',
+        kind: 'open',
+        startTime: null,
+        endTime: null,
+        isActive: true,
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-01T00:00:00Z',
+      };
+
+      const fullDayClosed: AvailabilityExceptionDTO = {
+        id: 'exc-closed-full',
+        organizationId: 'org-1',
+        practitionerId: 'prac-1',
+        locationId: 'loc-1',
+        localDate: '2026-09-06',
+        kind: 'closed',
+        startTime: null,
+        endTime: null,
+        isActive: true,
+        createdAt: '2026-09-01T00:00:00Z',
+        updatedAt: '2026-09-01T00:00:00Z',
+      };
+
+      const intervals = computeEffectiveAvailability({
+        localDate: '2026-09-06',
+        rules: [],
+        exceptions: [fullDayOpen, fullDayClosed],
+      });
+
+      expect(intervals).toEqual([]);
     });
 
     it('ignores rule if date is outside validity period (expired or future)', () => {
@@ -333,6 +479,16 @@ describe('Availability Engine & Timezone Helpers', () => {
       };
       // 09:00-12:00 and 12:00-17:00 are back-to-back (not overlapping)
       expect(doAvailabilityRulesOverlap(rule1, rule2)).toBe(false);
+    });
+  });
+
+  describe('getCurrentLocalDateInTimezone', () => {
+    it('computes local date in specified timezone correctly across UTC boundary', () => {
+      // 2026-09-04 at 23:30 UTC is 2026-09-05 at 01:30 in Europe/Paris (UTC+2)
+      const lateUtc = new Date('2026-09-04T23:30:00.000Z');
+      expect(getCurrentLocalDateInTimezone(lateUtc, 'Europe/Paris')).toBe('2026-09-05');
+      // In New York (UTC-4 in EDT), it is still 2026-09-04 (19:30)
+      expect(getCurrentLocalDateInTimezone(lateUtc, 'America/New_York')).toBe('2026-09-04');
     });
   });
 });

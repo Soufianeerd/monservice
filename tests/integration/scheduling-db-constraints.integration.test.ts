@@ -115,6 +115,32 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
       }
     });
 
+    it('rejects slot_step_minutes < 5 with 23514', async () => {
+      try {
+        await sql`
+          INSERT INTO appointment_types (id, organization_id, name, duration_minutes, slot_step_minutes)
+          VALUES (${randomUUID()}, ${orgA}, 'Slot step trop court', 30, 4)
+        `;
+        expect.unreachable('Should have thrown check constraint violation');
+      } catch (error: unknown) {
+        expect(hasPostgresErrorCode(error)).toBe(true);
+        if (hasPostgresErrorCode(error)) expect(error.code).toBe('23514');
+      }
+    });
+
+    it('rejects slot_step_minutes > 120 with 23514', async () => {
+      try {
+        await sql`
+          INSERT INTO appointment_types (id, organization_id, name, duration_minutes, slot_step_minutes)
+          VALUES (${randomUUID()}, ${orgA}, 'Slot step trop long', 30, 125)
+        `;
+        expect.unreachable('Should have thrown check constraint violation');
+      } catch (error: unknown) {
+        expect(hasPostgresErrorCode(error)).toBe(true);
+        if (hasPostgresErrorCode(error)) expect(error.code).toBe('23514');
+      }
+    });
+
     it('rejects duplicate type name within same tenant with 23505', async () => {
       try {
         await sql`
@@ -254,6 +280,42 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
             starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
           ) VALUES (
             ${randomUUID()}, ${orgA}, ${patientA}, ${pracB}, ${typeA}, ${locA}, ${userA},
+            '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', 'Europe/Paris'
+          )
+        `;
+        expect.unreachable('Should have thrown FK violation');
+      } catch (error: unknown) {
+        expect(hasPostgresErrorCode(error)).toBe(true);
+        if (hasPostgresErrorCode(error)) expect(error.code).toBe('23503');
+      }
+    });
+
+    it('rejects Appointment Org A with Appointment Type B with 23503', async () => {
+      try {
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${patientA}, ${pracA}, ${typeB}, ${locA}, ${userA},
+            '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', 'Europe/Paris'
+          )
+        `;
+        expect.unreachable('Should have thrown FK violation');
+      } catch (error: unknown) {
+        expect(hasPostgresErrorCode(error)).toBe(true);
+        if (hasPostgresErrorCode(error)) expect(error.code).toBe('23503');
+      }
+    });
+
+    it('rejects Appointment Org A with Location B with 23503', async () => {
+      try {
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${patientA}, ${pracA}, ${typeA}, ${locB}, ${userA},
             '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', '2026-09-10T08:00:00Z', '2026-09-10T08:30:00Z', 'Europe/Paris'
           )
         `;
@@ -473,6 +535,99 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
         if (hasPostgresErrorCode(error)) expect(error.code).toBe('23P01');
       } finally {
         await sql`DELETE FROM appointments WHERE id = ${appt1Id}`;
+      }
+    });
+
+    it('accepts concurrent appointments for two different practitioners with different patients at the same time', async () => {
+      const appt1Id = randomUUID();
+      const appt2Id = randomUUID();
+
+      const userA2 = 'user-sched-pro-a4';
+      const pracA2 = 'prac-sched-test-a4';
+      const patA2 = 'pat-sched-test-a4';
+
+      await sql`INSERT INTO users (id, email, organization_id, profile_type, created_at, updated_at) VALUES (${userA2}, 'proA4@sched.test', ${orgA}, 'professional', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A4', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at) VALUES (${patA2}, ${orgA}, 'BERNARD', 'Lucas', '1990-01-01', 'male', now(), now()) ON CONFLICT DO NOTHING`;
+
+      try {
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${appt1Id}, ${orgA}, ${patientA}, ${pracA}, ${typeA}, ${locA}, ${userA},
+            '2026-09-10T16:00:00Z', '2026-09-10T16:30:00Z', '2026-09-10T16:00:00Z', '2026-09-10T16:30:00Z', 'Europe/Paris'
+          )
+        `;
+
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${appt2Id}, ${orgA}, ${patA2}, ${pracA2}, ${typeA}, ${locA}, ${userA},
+            '2026-09-10T16:00:00Z', '2026-09-10T16:30:00Z', '2026-09-10T16:00:00Z', '2026-09-10T16:30:00Z', 'Europe/Paris'
+          )
+        `;
+
+        const check = await sql`SELECT count(*) as cnt FROM appointments WHERE id IN (${appt1Id}, ${appt2Id})`;
+        expect(Number(check[0]?.cnt)).toBe(2);
+      } finally {
+        await sql`DELETE FROM appointments WHERE id IN (${appt1Id}, ${appt2Id})`;
+        await sql`DELETE FROM patient_profiles WHERE id = ${patA2}`;
+        await sql`DELETE FROM practitioner_locations WHERE practitioner_id = ${pracA2}`;
+        await sql`DELETE FROM practice_practitioners WHERE id = ${pracA2}`;
+        await sql`DELETE FROM users WHERE id = ${userA2}`;
+      }
+    });
+
+    it('accepts concurrent appointments in two different rooms with different practitioners and patients', async () => {
+      const appt1Id = randomUUID();
+      const appt2Id = randomUUID();
+
+      const userA2 = 'user-sched-pro-a5';
+      const pracA2 = 'prac-sched-test-a5';
+      const patA2 = 'pat-sched-test-a5';
+      const roomA2 = 'room-sched-test-a2';
+
+      await sql`INSERT INTO users (id, email, organization_id, profile_type, created_at, updated_at) VALUES (${userA2}, 'proA5@sched.test', ${orgA}, 'professional', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A5', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at) VALUES (${patA2}, ${orgA}, 'MOREAU', 'Julie', '1993-05-15', 'female', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practice_rooms (id, organization_id, location_id, name, created_at, updated_at) VALUES (${roomA2}, ${orgA}, ${locA}, 'Salle A2', now(), now()) ON CONFLICT DO NOTHING`;
+
+      try {
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, room_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${appt1Id}, ${orgA}, ${patientA}, ${pracA}, ${typeA}, ${locA}, ${roomA}, ${userA},
+            '2026-09-10T17:00:00Z', '2026-09-10T17:30:00Z', '2026-09-10T17:00:00Z', '2026-09-10T17:30:00Z', 'Europe/Paris'
+          )
+        `;
+
+        await sql`
+          INSERT INTO appointments (
+            id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, room_id, created_by_user_id,
+            starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone
+          ) VALUES (
+            ${appt2Id}, ${orgA}, ${patA2}, ${pracA2}, ${typeA}, ${locA}, ${roomA2}, ${userA},
+            '2026-09-10T17:00:00Z', '2026-09-10T17:30:00Z', '2026-09-10T17:00:00Z', '2026-09-10T17:30:00Z', 'Europe/Paris'
+          )
+        `;
+
+        const check = await sql`SELECT count(*) as cnt FROM appointments WHERE id IN (${appt1Id}, ${appt2Id})`;
+        expect(Number(check[0]?.cnt)).toBe(2);
+      } finally {
+        await sql`DELETE FROM appointments WHERE id IN (${appt1Id}, ${appt2Id})`;
+        await sql`DELETE FROM practice_rooms WHERE id = ${roomA2}`;
+        await sql`DELETE FROM patient_profiles WHERE id = ${patA2}`;
+        await sql`DELETE FROM practitioner_locations WHERE practitioner_id = ${pracA2}`;
+        await sql`DELETE FROM practice_practitioners WHERE id = ${pracA2}`;
+        await sql`DELETE FROM users WHERE id = ${userA2}`;
       }
     });
   });

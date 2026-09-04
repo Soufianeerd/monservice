@@ -15,6 +15,7 @@ import {
   updateAvailabilityExceptionAction,
   setAvailabilityExceptionActiveAction,
 } from '@/app/actions/scheduling.actions';
+import { getCurrentLocalDateInTimezone } from '@/lib/scheduling/availability';
 
 const WEEKDAYS = [
   { id: 1, name: 'Lundi' },
@@ -46,6 +47,9 @@ export function AvailabilityManager({
     locations[0]?.id || ''
   );
 
+  const selectedLocation = locations.find((l) => l.id === selectedLocationId);
+  const selectedTimezone = selectedLocation?.timezone || 'Europe/Paris';
+
   const [rules, setRules] = useState<AvailabilityRuleDTO[]>(initialRules);
   const [exceptions, setExceptions] = useState<AvailabilityExceptionDTO[]>(initialExceptions);
 
@@ -59,7 +63,7 @@ export function AvailabilityManager({
     weekday: 1,
     startTime: '09:00',
     endTime: '18:00',
-    validFrom: new Date().toISOString().slice(0, 10),
+    validFrom: getCurrentLocalDateInTimezone(new Date(), selectedTimezone),
     validUntil: '',
   });
 
@@ -67,7 +71,7 @@ export function AvailabilityManager({
   const [isExceptionModalOpen, setIsExceptionModalOpen] = useState(false);
   const [editingException, setEditingException] = useState<AvailabilityExceptionDTO | null>(null);
   const [exceptionFormData, setExceptionFormData] = useState({
-    localDate: new Date().toISOString().slice(0, 10),
+    localDate: getCurrentLocalDateInTimezone(new Date(), selectedTimezone),
     kind: 'closed' as 'open' | 'closed',
     isAllDay: true,
     startTime: '09:00',
@@ -93,7 +97,7 @@ export function AvailabilityManager({
       weekday: 1,
       startTime: '09:00',
       endTime: '18:00',
-      validFrom: new Date().toISOString().slice(0, 10),
+      validFrom: getCurrentLocalDateInTimezone(new Date(), selectedTimezone),
       validUntil: '',
     });
     setErrorMessage(null);
@@ -144,7 +148,7 @@ export function AvailabilityManager({
             startTime: ruleFormData.startTime,
             endTime: ruleFormData.endTime,
             validFrom: ruleFormData.validFrom,
-            validUntil: ruleFormData.validUntil ? ruleFormData.validUntil : null,
+            validUntil: ruleFormData.validUntil || null,
           });
           setRules((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
         } else {
@@ -155,7 +159,7 @@ export function AvailabilityManager({
             startTime: ruleFormData.startTime,
             endTime: ruleFormData.endTime,
             validFrom: ruleFormData.validFrom,
-            validUntil: ruleFormData.validUntil ? ruleFormData.validUntil : null,
+            validUntil: ruleFormData.validUntil || null,
           });
           setRules((prev) => [...prev, created]);
         }
@@ -173,7 +177,7 @@ export function AvailabilityManager({
   const openCreateExceptionModal = () => {
     setEditingException(null);
     setExceptionFormData({
-      localDate: new Date().toISOString().slice(0, 10),
+      localDate: getCurrentLocalDateInTimezone(new Date(), selectedTimezone),
       kind: 'closed',
       isAllDay: true,
       startTime: '09:00',

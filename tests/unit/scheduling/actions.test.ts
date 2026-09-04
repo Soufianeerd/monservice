@@ -59,6 +59,20 @@ describe('Scheduling Actions Guard Tests', () => {
     );
   });
 
+  it('rejects action if organization is not found in database', async () => {
+    vi.mocked(sessionModule.requireProfessional).mockResolvedValue({
+      userId: 'user-1',
+      organizationId: 'org-missing',
+      email: 'user@test.fr',
+      profileType: 'professional',
+    });
+
+    vi.mocked(organizationService.getById).mockResolvedValue(null);
+
+    await expect(listAppointmentTypesAction()).rejects.toThrow('Organization introuvable');
+    expect(schedulingService.listAppointmentTypes).not.toHaveBeenCalled();
+  });
+
   it('rejects action if organizationId is missing', async () => {
     vi.mocked(sessionModule.requireProfessional).mockResolvedValue({
       userId: 'user-1',
