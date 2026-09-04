@@ -1,10 +1,38 @@
 import { Tabs } from '@/components/ui/Tabs';
+import { requireProfessional } from '@/lib/auth/session';
+import { organizationService } from '@/lib/services/organization.service';
+import { resolveWorkspace } from '@/lib/workspaces/resolver';
+import { notFound } from 'next/navigation';
 
-export default function AgendaLayout({ children }: { children: React.ReactNode }) {
+export default async function AgendaLayout({ children }: { children: React.ReactNode }) {
+  const context = await requireProfessional();
+  if (!context.organizationId) {
+    notFound();
+  }
+
+  const organization = await organizationService.getById(context.organizationId);
+  if (!organization) {
+    notFound();
+  }
+
+  const workspace = resolveWorkspace({
+    sector: organization.sector,
+    profession: organization.profession,
+    country: organization.country,
+  });
+
   const tabs = [
     { name: 'Calendrier', href: '/agenda/calendrier' },
-    { name: 'Tâches', href: '/agenda/taches' },
   ];
+
+  if (workspace.type === 'paramedical') {
+    tabs.push(
+      { name: 'Disponibilités', href: '/agenda/disponibilites' },
+      { name: 'Types de séances', href: '/agenda/types-seances' }
+    );
+  }
+
+  tabs.push({ name: 'Tâches', href: '/agenda/taches' });
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -12,7 +40,9 @@ export default function AgendaLayout({ children }: { children: React.ReactNode }
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Agenda</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Gérez vos tâches et consultez votre calendrier.
+            {workspace.type === 'paramedical'
+              ? 'Gérez vos séances, vos disponibilités et vos tâches.'
+              : 'Gérez vos tâches et consultez votre calendrier.'}
           </p>
         </div>
       </div>

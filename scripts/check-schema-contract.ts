@@ -257,6 +257,15 @@ async function verifyContract() {
     }
   }
 
+  // --- Specific Contract: Extension btree_gist ---
+  const extensions = await sql`
+    SELECT extname FROM pg_extension WHERE extname = 'btree_gist'
+  `;
+  if (extensions.length === 0) {
+    console.error(`❌ ERROR: Extension 'btree_gist' not installed in database.`);
+    errorCount++;
+  }
+
   // --- Specific Contract: Exact Composite Foreign Keys ---
   const exactFkContracts: ExactFkContract[] = [
     {
@@ -315,6 +324,69 @@ async function verifyContract() {
       localCols: ['representative_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
+    {
+      constraintName: 'availability_rules_practitioner_location_fk',
+      tableName: 'practitioner_availability_rules',
+      foreignTable: 'practitioner_locations',
+      localCols: ['organization_id', 'practitioner_id', 'location_id'],
+      foreignCols: ['organization_id', 'practitioner_id', 'location_id'],
+    },
+    {
+      constraintName: 'availability_exceptions_practitioner_location_fk',
+      tableName: 'practitioner_availability_exceptions',
+      foreignTable: 'practitioner_locations',
+      localCols: ['organization_id', 'practitioner_id', 'location_id'],
+      foreignCols: ['organization_id', 'practitioner_id', 'location_id'],
+    },
+    {
+      constraintName: 'appointments_patient_fk',
+      tableName: 'appointments',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'appointments_practitioner_fk',
+      tableName: 'appointments',
+      foreignTable: 'practice_practitioners',
+      localCols: ['practitioner_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'appointments_appointment_type_fk',
+      tableName: 'appointments',
+      foreignTable: 'appointment_types',
+      localCols: ['appointment_type_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'appointments_location_fk',
+      tableName: 'appointments',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'appointments_practitioner_location_fk',
+      tableName: 'appointments',
+      foreignTable: 'practitioner_locations',
+      localCols: ['organization_id', 'practitioner_id', 'location_id'],
+      foreignCols: ['organization_id', 'practitioner_id', 'location_id'],
+    },
+    {
+      constraintName: 'appointments_room_fk',
+      tableName: 'appointments',
+      foreignTable: 'practice_rooms',
+      localCols: ['room_id', 'location_id', 'organization_id'],
+      foreignCols: ['id', 'location_id', 'organization_id'],
+    },
+    {
+      constraintName: 'appointments_created_by_user_fk',
+      tableName: 'appointments',
+      foreignTable: 'users',
+      localCols: ['created_by_user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -359,12 +431,36 @@ async function verifyContract() {
     'patient_representatives_org_id_unique',
     'patient_rep_links_assignment_unique',
     'patient_rep_links_primary_active_idx',
+    'appointment_types_org_id_unique',
+    'appointment_types_org_name_unique',
+    'availability_rules_org_id_unique',
+    'availability_rules_unique_slot',
+    'availability_exceptions_org_id_unique',
+    'appointments_org_id_unique',
   ];
 
   for (const idxName of criticalIndexes) {
     const idx = indexes.find(i => i.indexname === idxName);
     if (!idx) {
       console.error(`❌ ERROR: Critical index '${idxName}' not found in database.`);
+      errorCount++;
+    }
+  }
+
+  // --- Specific Contract: Exclusion Constraints (contype = 'x') ---
+  const exclusionContracts = [
+    { name: 'appointments_practitioner_no_overlap', table: 'appointments' },
+    { name: 'appointments_patient_no_overlap', table: 'appointments' },
+    { name: 'appointments_room_no_overlap', table: 'appointments' },
+  ];
+
+  for (const exc of exclusionContracts) {
+    const con = constraints.find(c => c.table_name === exc.table && c.conname === exc.name);
+    if (!con) {
+      console.error(`❌ ERROR: Exclusion constraint '${exc.name}' not found on table '${exc.table}'.`);
+      errorCount++;
+    } else if (con.contype !== 'x') {
+      console.error(`❌ ERROR: Constraint '${exc.name}' is not an exclusion constraint (contype=${con.contype}).`);
       errorCount++;
     }
   }

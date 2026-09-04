@@ -81,6 +81,15 @@ describe('Workspace Navigation', () => {
     // Produit le label à partir de servicePlural
     const facturation = nav.find(n => n.id === 'billing');
     expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
+
+    // Agenda subItems paramédical
+    const agenda = nav.find(n => n.id === 'agenda');
+    expect(agenda?.subItems).toEqual([
+      { name: 'Calendrier', href: '/agenda/calendrier' },
+      { name: 'Disponibilités', href: '/agenda/disponibilites' },
+      { name: 'Types de séances', href: '/agenda/types-seances' },
+      { name: 'Tâches', href: '/agenda/taches' },
+    ]);
   });
 
   it('gère le paramédical de base (health sans profession connue)', () => {

@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   timestamp,
   date,
+  time,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -734,4 +735,155 @@ export const userRoles = sqliteTable('user_roles', {
   roleId: text('role_id').notNull().references(() => roles.id),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
 });
+
+// ---------------------------------------------------------------------------
+// PARAMEDICAL SCHEDULING FOUNDATION (Session 09)
+// ---------------------------------------------------------------------------
+
+// Appointment Types
+export const appointmentTypes = sqliteTable('appointment_types', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  durationMinutes: integer('duration_minutes').notNull(),
+  bufferBeforeMinutes: integer('buffer_before_minutes').notNull().default(0),
+  bufferAfterMinutes: integer('buffer_after_minutes').notNull().default(0),
+  slotStepMinutes: integer('slot_step_minutes').notNull().default(15),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('appointment_types_organization_id_idx').on(t.organizationId),
+  uniqueIndex('appointment_types_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('appointment_types_org_name_unique').on(t.organizationId, t.name),
+  check('appointment_types_duration_check', sql`${t.durationMinutes} >= 5 AND ${t.durationMinutes} <= 480`),
+  check('appointment_types_buffer_before_check', sql`${t.bufferBeforeMinutes} >= 0 AND ${t.bufferBeforeMinutes} <= 240`),
+  check('appointment_types_buffer_after_check', sql`${t.bufferAfterMinutes} >= 0 AND ${t.bufferAfterMinutes} <= 240`),
+  check('appointment_types_slot_step_check', sql`${t.slotStepMinutes} >= 5 AND ${t.slotStepMinutes} <= 120`),
+]);
+
+// Practitioner Availability Rules
+export const practitionerAvailabilityRules = sqliteTable('practitioner_availability_rules', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  practitionerId: text('practitioner_id').notNull(),
+  locationId: text('location_id').notNull(),
+  weekday: integer('weekday').notNull(),
+  startTime: time('start_time').notNull(),
+  endTime: time('end_time').notNull(),
+  validFrom: date('valid_from').notNull(),
+  validUntil: date('valid_until'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('availability_rules_org_practitioner_idx').on(t.organizationId, t.practitionerId),
+  index('availability_rules_org_location_idx').on(t.organizationId, t.locationId),
+  index('availability_rules_lookup_idx').on(t.organizationId, t.practitionerId, t.locationId, t.weekday),
+  uniqueIndex('availability_rules_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('availability_rules_unique_slot').on(t.organizationId, t.practitionerId, t.locationId, t.weekday, t.validFrom, t.startTime, t.endTime),
+  check('availability_rules_weekday_check', sql`${t.weekday} BETWEEN 0 AND 6`),
+  check('availability_rules_time_check', sql`${t.startTime} < ${t.endTime}`),
+  check('availability_rules_valid_until_check', sql`${t.validUntil} IS NULL OR ${t.validUntil} >= ${t.validFrom}`),
+  foreignKey({
+    columns: [t.organizationId, t.practitionerId, t.locationId],
+    foreignColumns: [practitionerLocations.organizationId, practitionerLocations.practitionerId, practitionerLocations.locationId],
+    name: 'availability_rules_practitioner_location_fk'
+  }),
+]);
+
+// Practitioner Availability Exceptions
+export const practitionerAvailabilityExceptions = sqliteTable('practitioner_availability_exceptions', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  practitionerId: text('practitioner_id').notNull(),
+  locationId: text('location_id').notNull(),
+  localDate: date('local_date').notNull(),
+  kind: text('kind').notNull(),
+  startTime: time('start_time'),
+  endTime: time('end_time'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('availability_exceptions_org_practitioner_date_idx').on(t.organizationId, t.practitionerId, t.localDate),
+  index('availability_exceptions_org_location_date_idx').on(t.organizationId, t.locationId, t.localDate),
+  uniqueIndex('availability_exceptions_org_id_unique').on(t.id, t.organizationId),
+  check('availability_exceptions_kind_check', sql`${t.kind} IN ('open', 'closed')`),
+  check('availability_exceptions_time_check', sql`(${t.startTime} IS NULL AND ${t.endTime} IS NULL) OR (${t.startTime} IS NOT NULL AND ${t.endTime} IS NOT NULL AND ${t.startTime} < ${t.endTime})`),
+  foreignKey({
+    columns: [t.organizationId, t.practitionerId, t.locationId],
+    foreignColumns: [practitionerLocations.organizationId, practitionerLocations.practitionerId, practitionerLocations.locationId],
+    name: 'availability_exceptions_practitioner_location_fk'
+  }),
+]);
+
+// Appointments
+export const appointments = sqliteTable('appointments', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  appointmentTypeId: text('appointment_type_id').notNull(),
+  locationId: text('location_id').notNull(),
+  roomId: text('room_id'),
+  createdByUserId: text('created_by_user_id').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  occupancyStartsAt: timestamp('occupancy_starts_at', { withTimezone: true }).notNull(),
+  occupancyEndsAt: timestamp('occupancy_ends_at', { withTimezone: true }).notNull(),
+  timezone: text('timezone').notNull(),
+  status: text('status').notNull().default('scheduled'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('appointments_organization_start_idx').on(t.organizationId, t.startsAt),
+  index('appointments_practitioner_start_idx').on(t.organizationId, t.practitionerId, t.startsAt),
+  index('appointments_patient_start_idx').on(t.organizationId, t.patientId, t.startsAt),
+  index('appointments_location_start_idx').on(t.organizationId, t.locationId, t.startsAt),
+  index('appointments_room_start_idx').on(t.organizationId, t.roomId, t.startsAt),
+  uniqueIndex('appointments_org_id_unique').on(t.id, t.organizationId),
+  check('appointments_status_check', sql`${t.status} IN ('scheduled')`),
+  check('appointments_time_check', sql`${t.startsAt} < ${t.endsAt}`),
+  check('appointments_occupancy_starts_check', sql`${t.occupancyStartsAt} <= ${t.startsAt}`),
+  check('appointments_occupancy_ends_check', sql`${t.occupancyEndsAt} >= ${t.endsAt}`),
+  check('appointments_occupancy_order_check', sql`${t.occupancyStartsAt} < ${t.occupancyEndsAt}`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'appointments_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'appointments_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.appointmentTypeId, t.organizationId],
+    foreignColumns: [appointmentTypes.id, appointmentTypes.organizationId],
+    name: 'appointments_appointment_type_fk'
+  }),
+  foreignKey({
+    columns: [t.locationId, t.organizationId],
+    foreignColumns: [practiceLocations.id, practiceLocations.organizationId],
+    name: 'appointments_location_fk'
+  }),
+  foreignKey({
+    columns: [t.organizationId, t.practitionerId, t.locationId],
+    foreignColumns: [practitionerLocations.organizationId, practitionerLocations.practitionerId, practitionerLocations.locationId],
+    name: 'appointments_practitioner_location_fk'
+  }),
+  foreignKey({
+    columns: [t.roomId, t.locationId, t.organizationId],
+    foreignColumns: [practiceRooms.id, practiceRooms.locationId, practiceRooms.organizationId],
+    name: 'appointments_room_fk'
+  }),
+  foreignKey({
+    columns: [t.createdByUserId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'appointments_created_by_user_fk'
+  }),
+]);
+
 

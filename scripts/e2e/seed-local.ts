@@ -14,7 +14,11 @@ import {
   practiceResources,
   patientProfiles,
   patientRepresentatives,
-  patientRepresentativeLinks
+  patientRepresentativeLinks,
+  appointmentTypes,
+  practitionerAvailabilityRules,
+  practitionerAvailabilityExceptions,
+  appointments
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -41,6 +45,17 @@ export const SEED_PATIENT_IDS = {
   patientB: '40000000-0000-4000-8000-000000000001',
   representativeB: '40000000-0000-4000-8000-000000000002',
   linkB: '40000000-0000-4000-8000-000000000003',
+};
+
+export const SEED_SCHEDULING_IDS = {
+  appointmentTypeA: '50000000-0000-4000-8000-000000000001',
+  availabilityRuleA: '50000000-0000-4000-8000-000000000002',
+  availabilityExceptionA: '50000000-0000-4000-8000-000000000003',
+  appointmentA: '50000000-0000-4000-8000-000000000004',
+  appointmentTypeB: '60000000-0000-4000-8000-000000000001',
+  availabilityRuleB: '60000000-0000-4000-8000-000000000002',
+  availabilityExceptionB: '60000000-0000-4000-8000-000000000003',
+  appointmentB: '60000000-0000-4000-8000-000000000004',
 };
 
 async function seed() {
@@ -393,6 +408,134 @@ async function seed() {
   ]).onConflictDoNothing();
 
   console.log('Patient registry Org A & Org B seeded successfully!');
+
+  // 8. Seed Scheduling for Org A
+  await db.insert(appointmentTypes).values([
+    {
+      id: SEED_SCHEDULING_IDS.appointmentTypeA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      name: 'Consultation Kiné',
+      description: 'Séance de rééducation standard',
+      durationMinutes: 30,
+      bufferBeforeMinutes: 0,
+      bufferAfterMinutes: 0,
+      slotStepMinutes: 15,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerAvailabilityRules).values([
+    {
+      id: SEED_SCHEDULING_IDS.availabilityRuleA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      locationId: SEED_PRACTICE_IDS.locationA,
+      weekday: 1, // Lundi
+      startTime: '09:00:00',
+      endTime: '18:00:00',
+      validFrom: '2026-01-01',
+      validUntil: '2030-12-31',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerAvailabilityExceptions).values([
+    {
+      id: SEED_SCHEDULING_IDS.availabilityExceptionA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      locationId: SEED_PRACTICE_IDS.locationA,
+      localDate: '2026-12-25',
+      kind: 'closed',
+      startTime: null,
+      endTime: null,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(appointments).values([
+    {
+      id: SEED_SCHEDULING_IDS.appointmentA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      appointmentTypeId: SEED_SCHEDULING_IDS.appointmentTypeA,
+      locationId: SEED_PRACTICE_IDS.locationA,
+      roomId: SEED_PRACTICE_IDS.roomA,
+      createdByUserId: proAId!,
+      startsAt: new Date('2026-10-05T09:00:00.000Z'),
+      endsAt: new Date('2026-10-05T09:30:00.000Z'),
+      occupancyStartsAt: new Date('2026-10-05T09:00:00.000Z'),
+      occupancyEndsAt: new Date('2026-10-05T09:30:00.000Z'),
+      timezone: 'Europe/Paris',
+      status: 'scheduled',
+    }
+  ]).onConflictDoNothing();
+
+  // 9. Seed Scheduling for Org B
+  await db.insert(appointmentTypes).values([
+    {
+      id: SEED_SCHEDULING_IDS.appointmentTypeB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      name: 'Consultation Ostéo',
+      description: 'Bilan ostéopathique complet',
+      durationMinutes: 45,
+      bufferBeforeMinutes: 5,
+      bufferAfterMinutes: 10,
+      slotStepMinutes: 15,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerAvailabilityRules).values([
+    {
+      id: SEED_SCHEDULING_IDS.availabilityRuleB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      locationId: SEED_PRACTICE_IDS.locationB,
+      weekday: 2, // Mardi
+      startTime: '08:30:00',
+      endTime: '17:30:00',
+      validFrom: '2026-01-01',
+      validUntil: '2030-12-31',
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(practitionerAvailabilityExceptions).values([
+    {
+      id: SEED_SCHEDULING_IDS.availabilityExceptionB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      locationId: SEED_PRACTICE_IDS.locationB,
+      localDate: '2026-12-25',
+      kind: 'closed',
+      startTime: null,
+      endTime: null,
+      isActive: true,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(appointments).values([
+    {
+      id: SEED_SCHEDULING_IDS.appointmentB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      appointmentTypeId: SEED_SCHEDULING_IDS.appointmentTypeB,
+      locationId: SEED_PRACTICE_IDS.locationB,
+      roomId: SEED_PRACTICE_IDS.roomB,
+      createdByUserId: proBId!,
+      startsAt: new Date('2026-10-06T09:00:00.000Z'),
+      endsAt: new Date('2026-10-06T09:45:00.000Z'),
+      occupancyStartsAt: new Date('2026-10-06T08:55:00.000Z'),
+      occupancyEndsAt: new Date('2026-10-06T09:55:00.000Z'),
+      timezone: 'Europe/Paris',
+      status: 'scheduled',
+    }
+  ]).onConflictDoNothing();
+
+  console.log('Scheduling foundation Org A & Org B seeded successfully!');
   await sql.end();
 }
 

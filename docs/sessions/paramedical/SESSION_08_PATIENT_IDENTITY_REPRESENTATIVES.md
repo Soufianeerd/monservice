@@ -5,7 +5,8 @@
 - **Commits Session 08 / 08B** :
   - `1cab1264f7187bfd47e74fa7e2b01b2cfee2d53f` : `feat(patients): implement patient identity registry and representatives (Session 08)`
   - `723062c8c1e16208830a72cef9ff8710f4ceb418` : `fix(tests): make patient-registry-db-constraints test self-contained with isolated org fixtures`
-  - *Commit Session 08B* : `fix(patients): finalize patient registry contracts`
+  - `fb3bb3355590d1a631d3326621acfc0e6cdf20f3` : `fix(patients): finalize patient registry contracts (Session 08B)`
+- **Run GitHub Actions final validé 08B** : `33898749793` (status: `completed`, conclusion: `success`)
 - **Migration DB** : `drizzle/postgres/0013_aspiring_daimon_hellstrom.sql` (aucune migration `0014` créée).
 - **Statut** : **Validée / Complète**.
 

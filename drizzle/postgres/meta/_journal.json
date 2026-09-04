@@ -99,6 +99,13 @@
       "when": 1788427384787,
       "tag": "0013_aspiring_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788553085116,
+      "tag": "0014_wise_the_hunter",
+      "breakpoints": true
     }
   ]
 }

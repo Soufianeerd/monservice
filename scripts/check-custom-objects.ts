@@ -55,7 +55,11 @@ async function verifyCustomObjects() {
     practice_resources: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     patient_profiles: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     patient_representatives: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_representative_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
+    patient_representative_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_types: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_availability_rules: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_availability_exceptions: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
   };
 
   const dbGrants = await sql`
@@ -151,7 +155,8 @@ async function verifyCustomObjects() {
     'users', 'organizations', 'clients', 'contacts', 'deals', 'products', 
     'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests',
     'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources',
-    'patient_profiles', 'patient_representatives', 'patient_representative_links'
+    'patient_profiles', 'patient_representatives', 'patient_representative_links',
+    'appointment_types', 'practitioner_availability_rules', 'practitioner_availability_exceptions', 'appointments'
   ];
 
   for (const table of expectedRlsTables) {
@@ -173,7 +178,7 @@ async function verifyCustomObjects() {
     errorCount++;
   }
 
-  // 5. Exact Policy Contracts for Practice Structure & Patient Registry
+  // 5. Exact Policy Contracts for Practice Structure & Patient Registry & Scheduling
   const commonProfessionalSemantics = [
     'current_organization_id',
     'auth.uid',
@@ -241,6 +246,38 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_representative_links_tenant_isolation',
       tableName: 'patient_representative_links',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'appointment_types_tenant_isolation',
+      tableName: 'appointment_types',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'practitioner_availability_rules_tenant_isolation',
+      tableName: 'practitioner_availability_rules',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'practitioner_availability_exceptions_tenant_isolation',
+      tableName: 'practitioner_availability_exceptions',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'appointments_tenant_isolation',
+      tableName: 'appointments',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,

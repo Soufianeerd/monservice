@@ -106,6 +106,8 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         icon: 'agenda',
         subItems: [
           { name: 'Calendrier', href: '/agenda/calendrier' },
+          { name: 'Disponibilités', href: '/agenda/disponibilites' },
+          { name: 'Types de séances', href: '/agenda/types-seances' },
           { name: 'Tâches', href: '/agenda/taches' },
         ],
       },

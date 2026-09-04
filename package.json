@@ -11,6 +11,7 @@
     "test:onboarding": "vitest run __tests__/unit/onboarding",
     "test:practice-structure": "vitest run tests/unit/practice-structure",
     "test:patients": "vitest run tests/unit/patients",
+    "test:scheduling": "vitest run tests/unit/scheduling",
     "test:workspace": "vitest run __tests__/unit/workspaces",
     "test:dashboard": "vitest run tests/unit/dashboard",
     "test:compliance": "vitest run __tests__/compliance",
@@ -27,8 +28,8 @@
     "db:check-contract": "npx tsx scripts/check-schema-contract.ts",
     "db:check-custom-objects": "npx tsx scripts/check-custom-objects.ts",
     "seed:local": "npx tsx scripts/e2e/seed-local.ts",
-    "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts tests/integration/patient-registry-db-constraints.integration.test.ts",
-    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts tests/integration/patient-registry-rls.integration.test.ts"
+    "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts tests/integration/patient-registry-db-constraints.integration.test.ts tests/integration/scheduling-db-constraints.integration.test.ts",
+    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts tests/integration/patient-registry-rls.integration.test.ts tests/integration/scheduling-rls.integration.test.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",

@@ -68,6 +68,8 @@ jobs:
         run: npm run test:practice-structure
       - name: Run Patient Registry Unit Tests
         run: npm run test:patients
+      - name: Run Scheduling Unit Tests
+        run: npm run test:scheduling
       - run: npm run test:compliance
       - run: npm run build
       
