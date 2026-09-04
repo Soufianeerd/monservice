@@ -1,15 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   listPatientsAction,
-  getPatientDetailAction,
   createPatientAction,
-  updatePatientAction,
   setPatientActiveAction,
-  createRepresentativeAndLinkAction,
-  linkExistingRepresentativeAction,
-  updateRepresentativeAction,
-  updateRepresentativeLinkAction,
-  setRepresentativeLinkActiveAction,
 } from '@/app/actions/patient-registry.actions';
 import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';

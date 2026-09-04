@@ -494,14 +494,18 @@ export const patientRegistryService = {
     representativeId: string,
     linkInput: PatientRepresentativeLinkCreateInput
   ): Promise<PatientRepresentativeLinkDTO> {
-    // 1. Validation de l'appartenance au tenant
+    // 1. Validation de l'appartenance au tenant et statut actif du patient
     const patient = await this.getPatientById(organizationId, patientId);
-    if (!patient) {
-      throw new Error('Patient introuvable dans cette organisation');
+    if (!patient || !patient.isActive) {
+      throw new Error('Patient introuvable ou inactif dans cette organisation');
     }
 
+    // 2. Validation de l'appartenance au tenant et statut actif du représentant
     const [representative] = await db
-      .select({ id: patientRepresentatives.id })
+      .select({ 
+        id: patientRepresentatives.id, 
+        isActive: patientRepresentatives.isActive 
+      })
       .from(patientRepresentatives)
       .where(
         and(
@@ -510,8 +514,8 @@ export const patientRegistryService = {
         )
       );
 
-    if (!representative) {
-      throw new Error('Représentant introuvable dans cette organisation');
+    if (!representative || !representative.isActive) {
+      throw new Error('Représentant introuvable ou inactif dans cette organisation');
     }
 
     return db.transaction(async (tx) => {
@@ -616,8 +620,8 @@ export const patientRegistryService = {
     linkInput: PatientRepresentativeLinkCreateInput
   ): Promise<{ representative: PatientRepresentativeDTO; link: PatientRepresentativeLinkDTO }> {
     const patient = await this.getPatientById(organizationId, patientId);
-    if (!patient) {
-      throw new Error('Patient introuvable dans cette organisation');
+    if (!patient || !patient.isActive) {
+      throw new Error('Patient introuvable ou inactif dans cette organisation');
     }
 
     return db.transaction(async (tx) => {
@@ -783,6 +787,7 @@ export const patientRegistryService = {
       .select({
         id: patientRepresentativeLinks.id,
         patientId: patientRepresentativeLinks.patientId,
+        representativeId: patientRepresentativeLinks.representativeId,
         isPrimaryContact: patientRepresentativeLinks.isPrimaryContact,
       })
       .from(patientRepresentativeLinks)
@@ -795,6 +800,31 @@ export const patientRegistryService = {
 
     if (!existing) {
       throw new Error('Lien représentant introuvable dans cette organisation');
+    }
+
+    // Si on réactive le lien, vérifier impérativement que le patient ET le représentant sont actifs
+    if (isActive) {
+      const patient = await this.getPatientById(organizationId, existing.patientId);
+      if (!patient || !patient.isActive) {
+        throw new Error('Impossible de réactiver un lien pour un patient archivé ou introuvable');
+      }
+
+      const [representative] = await db
+        .select({ 
+          id: patientRepresentatives.id, 
+          isActive: patientRepresentatives.isActive 
+        })
+        .from(patientRepresentatives)
+        .where(
+          and(
+            eq(patientRepresentatives.id, existing.representativeId),
+            eq(patientRepresentatives.organizationId, organizationId)
+          )
+        );
+
+      if (!representative || !representative.isActive) {
+        throw new Error('Impossible de réactiver un lien pour un représentant archivé ou introuvable');
+      }
     }
 
     return db.transaction(async (tx) => {

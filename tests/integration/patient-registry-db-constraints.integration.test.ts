@@ -4,6 +4,15 @@ import { randomUUID } from 'crypto';
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
+function hasPostgresErrorCode(error: unknown): error is { code: string } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof Reflect.get(error, 'code') === 'string'
+  );
+}
+
 describe('Patient Registry Database Integrity Constraints', () => {
   let sql: postgres.Sql;
 
@@ -37,11 +46,44 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${patientId}, ${orgA}, 'DUPONT_BIS', 'Alice', '1990-05-15', 'female')
       `;
       expect.unreachable('Should have thrown unique constraint violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23505');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23505');
+      }
     } finally {
       await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;
     }
+  });
+
+  it('allows duplicate civil identity (same birth_name, first_birth_name, birth_date) with different IDs', async () => {
+    const patient1Id = randomUUID();
+    const patient2Id = randomUUID();
+
+    // Insert patient 1
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patient1Id}, ${orgA}, 'DUPONT', 'Alice', '1990-05-15', 'female')
+    `;
+
+    // Insert patient 2 with identical civil traits but distinct ID
+    await sql`
+      INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex)
+      VALUES (${patient2Id}, ${orgA}, 'DUPONT', 'Alice', '1990-05-15', 'female')
+    `;
+
+    const rows = await sql`
+      SELECT id FROM patient_profiles 
+      WHERE organization_id = ${orgA} 
+        AND birth_name = 'DUPONT' 
+        AND first_birth_name = 'Alice' 
+        AND birth_date = '1990-05-15'
+    `;
+
+    expect(rows).toHaveLength(2);
+
+    // Cleanup
+    await sql`DELETE FROM patient_profiles WHERE id IN (${patient1Id}, ${patient2Id})`;
   });
 
   it('rejects duplicate patient_representative_links assignment with SQLSTATE 23505', async () => {
@@ -70,8 +112,11 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${linkId2}, ${orgA}, ${patientId}, ${repId}, 'caregiver')
       `;
       expect.unreachable('Should have thrown duplicate assignment violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23505');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23505');
+      }
     } finally {
       await sql`DELETE FROM patient_representative_links WHERE id IN (${linkId1}, ${linkId2})`;
       await sql`DELETE FROM patient_representatives WHERE id = ${repId}`;
@@ -112,8 +157,11 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${link2}, ${orgA}, ${patientId}, ${rep2Id}, 'parent', true, true)
       `;
       expect.unreachable('Should have thrown partial unique constraint violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23505');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23505');
+      }
     } finally {
       await sql`DELETE FROM patient_representative_links WHERE id IN (${link1}, ${link2})`;
       await sql`DELETE FROM patient_representatives WHERE id IN (${rep1Id}, ${rep2Id})`;
@@ -142,8 +190,11 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${linkId}, ${orgA}, ${patientA}, ${repB}, 'parent')
       `;
       expect.unreachable('Should have thrown foreign key violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23503');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23503');
+      }
     } finally {
       await sql`DELETE FROM patient_profiles WHERE id = ${patientA}`;
       await sql`DELETE FROM patient_representatives WHERE id = ${repB}`;
@@ -158,8 +209,11 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${patientId}, ${orgA}, 'TEST', 'InvalidSex', '1990-01-01', 'other_invalid_sex')
       `;
       expect.unreachable('Should have thrown check constraint violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23514');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23514');
+      }
     }
   });
 
@@ -183,8 +237,11 @@ describe('Patient Registry Database Integrity Constraints', () => {
         VALUES (${linkId}, ${orgA}, ${patientId}, ${repId}, 'invalid_relation_code')
       `;
       expect.unreachable('Should have thrown check constraint violation');
-    } catch (err: any) {
-      expect(err.code).toBe('23514');
+    } catch (error: unknown) {
+      expect(hasPostgresErrorCode(error)).toBe(true);
+      if (hasPostgresErrorCode(error)) {
+        expect(error.code).toBe('23514');
+      }
     } finally {
       await sql`DELETE FROM patient_representatives WHERE id = ${repId}`;
       await sql`DELETE FROM patient_profiles WHERE id = ${patientId}`;

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   patientCreateSchema,
-  patientUpdateSchema,
   patientRepresentativeCreateSchema,
   patientRepresentativeLinkCreateSchema,
   patientListFiltersSchema,
@@ -204,6 +203,22 @@ describe('Patient Validation Schemas', () => {
       expect(parsed.offset).toBe(20);
       expect(parsed.active).toBe('all');
       expect(parsed.birthName).toBe('Dupont');
+    });
+
+    it('validates birthDate filter with real calendar date or normalizes empty to null', () => {
+      // Valid calendar date
+      const valid = patientListFiltersSchema.parse({ birthDate: '1990-05-15' });
+      expect(valid.birthDate).toBe('1990-05-15');
+
+      // Empty string normalized to null
+      const empty = patientListFiltersSchema.parse({ birthDate: '   ' });
+      expect(empty.birthDate).toBeNull();
+
+      // Invalid calendar date (February 30)
+      expect(() => patientListFiltersSchema.parse({ birthDate: '2024-02-30' })).toThrow();
+
+      // Invalid format (not a date string)
+      expect(() => patientListFiltersSchema.parse({ birthDate: 'foo' })).toThrow();
     });
   });
 });

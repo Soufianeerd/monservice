@@ -8,8 +8,9 @@ Fermer définitivement la faille d'autorisation au niveau RLS PostgreSQL pour em
 - **Commits 07C** :
   - `f48ace9e2cceac9a6f13cf241b5c9a115a7cb656` : `fix(practice): enforce professional-only structure access`
   - `536a5329d46c7db02e17c7eb3f831a2265c73ca2` : `fix(rls): align expected fixture names in client update tests with seed data`
-- **HEAD final validé 07C** : `536a5329d46c7db02e17c7eb3f831a2265c73ca2`
-- **Run GitHub Actions validé 07C** : `33651430003` (status: `completed`, conclusion: `success`)
+  - `12d52d5492522d56731f8f4ac9edb51c18635f21` : `docs(practice): document completed session 07c validation`
+- **HEAD code validé 07C** : `536a5329d46c7db02e17c7eb3f831a2265c73ca2` (Run CI `33651430003`, completed / success)
+- **HEAD final de clôture repository 07C** : `12d52d5492522d56731f8f4ac9edb51c18635f21` (Run CI `33655076264`, completed / success)
 
 ## 1. Contexte & Cause Racine (Root Cause)
 - `public.current_organization_id()` retourne l'organisation de `auth.uid()` mais ne filtre pas le `profile_type`.

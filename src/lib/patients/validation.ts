@@ -116,10 +116,22 @@ export const patientRepresentativeLinkUpdateSchema = z.object({
   isBillingContact: z.boolean().optional(),
 });
 
+const birthDateFilterSchema = z
+  .string()
+  .nullish()
+  .transform(emptyToNull)
+  .refine(
+    (val) => {
+      if (val === null) return true;
+      return isValidCalendarDate(val);
+    },
+    { message: 'Format ou calendrier de date de naissance invalide (AAAA-MM-JJ attendu)' }
+  );
+
 export const patientListFiltersSchema = z.object({
   birthName: z.string().nullish().transform(emptyToNull),
   firstName: z.string().nullish().transform(emptyToNull),
-  birthDate: z.string().nullish().transform(emptyToNull),
+  birthDate: birthDateFilterSchema,
   active: z.enum(['active', 'archived', 'all']).default('active'),
   limit: z.coerce.number().int().positive().max(100).default(25),
   offset: z.coerce.number().int().nonnegative().default(0),
