@@ -165,7 +165,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
 
       const { data: updExc } = await proAClient
         .from('practitioner_availability_exceptions')
-        .update({ kind: 'closed' })
+        .update({ kind: 'open' })
         .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionB)
         .select();
       expect(updExc).toHaveLength(0);
@@ -197,7 +197,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .select('kind')
         .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionB)
         .single();
-      expect(checkExc?.kind).not.toBe('closed');
+      expect(checkExc?.kind).toBe('closed');
 
       const { data: checkAppt } = await proBClient
         .from('appointments')
@@ -334,7 +334,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .select('kind')
         .eq('id', SEED_SCHEDULING_IDS.availabilityExceptionA)
         .single();
-      expect(checkExc?.kind).not.toBe('open');
+      expect(checkExc?.kind).toBe('closed');
 
       const { data: checkAppt } = await proAClient
         .from('appointments')
