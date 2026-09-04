@@ -325,9 +325,9 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
       // Create a 2nd practitioner in Org A for this test
       const pracA2 = 'prac-sched-test-a2';
       const userA2 = 'user-sched-pro-a2';
-      await sql`INSERT INTO users (id, email, organization_id, profile_type) VALUES (${userA2}, 'proA2@sched.test', ${orgA}, 'professional') ON CONFLICT DO NOTHING`;
-      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A2') ON CONFLICT DO NOTHING`;
-      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO users (id, email, organization_id, profile_type, created_at, updated_at) VALUES (${userA2}, 'proA2@sched.test', ${orgA}, 'professional', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A2', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
 
       await sql`
         INSERT INTO appointments (
@@ -370,10 +370,10 @@ describe('Scheduling Database Integrity & Exclusion Constraints', () => {
       const pracA2 = 'prac-sched-test-a3';
       const userA2 = 'user-sched-pro-a3';
       const patA2 = 'pat-sched-test-a2';
-      await sql`INSERT INTO users (id, email, organization_id, profile_type) VALUES (${userA2}, 'proA3@sched.test', ${orgA}, 'professional') ON CONFLICT DO NOTHING`;
-      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A3') ON CONFLICT DO NOTHING`;
-      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}) ON CONFLICT DO NOTHING`;
-      await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex) VALUES (${patA2}, ${orgA}, 'LECLERC', 'Claire', '1995-07-12', 'female') ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO users (id, email, organization_id, profile_type, created_at, updated_at) VALUES (${userA2}, 'proA3@sched.test', ${orgA}, 'professional', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA2}, ${orgA}, ${userA2}, 'Dr Pro A3', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA2}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
+      await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at) VALUES (${patA2}, ${orgA}, 'LECLERC', 'Claire', '1995-07-12', 'female', now(), now()) ON CONFLICT DO NOTHING`;
 
       await sql`
         INSERT INTO appointments (
