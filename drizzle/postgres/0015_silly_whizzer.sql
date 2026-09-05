@@ -54,9 +54,10 @@ BEGIN
       RAISE EXCEPTION 'Appointments must be inserted with status scheduled'
         USING ERRCODE = '23514';
     END IF;
-    NEW.cancellation_reason_code := NULL;
-    NEW.cancelled_at := NULL;
-    NEW.no_show_at := NULL;
+    IF NEW.cancellation_reason_code IS NOT NULL OR NEW.cancelled_at IS NOT NULL OR NEW.no_show_at IS NOT NULL THEN
+      RAISE EXCEPTION 'New appointments cannot contain cancellation or no_show metadata'
+        USING ERRCODE = '23514';
+    END IF;
     RETURN NEW;
   ELSIF TG_OP = 'UPDATE' THEN
     -- If already terminal, reject any update
@@ -99,7 +100,7 @@ BEGIN
     IF OLD.status = 'scheduled' AND NEW.status = 'no_show' THEN
       -- P0 Invariant: OLD.starts_at must be in the past or current time
       IF OLD.starts_at > now() THEN
-        RAISE EXCEPTION 'Future appointments cannot be marked no_show'
+        RAISE EXCEPTION 'Cannot mark a future appointment as no_show'
           USING ERRCODE = '23514';
       END IF;
 
@@ -130,6 +131,10 @@ BEGIN
 
     -- scheduled -> scheduled (rescheduling, room/practitioner/type update)
     IF OLD.status = 'scheduled' AND NEW.status = 'scheduled' THEN
+      IF NEW.cancellation_reason_code IS NOT NULL OR NEW.cancelled_at IS NOT NULL OR NEW.no_show_at IS NOT NULL THEN
+        RAISE EXCEPTION 'Scheduled appointments cannot contain cancellation or no_show metadata'
+          USING ERRCODE = '23514';
+      END IF;
       NEW.cancellation_reason_code := NULL;
       NEW.cancelled_at := NULL;
       NEW.no_show_at := NULL;
@@ -158,9 +163,10 @@ BEGIN
       RAISE EXCEPTION 'Waitlist entries must be inserted with status waiting'
         USING ERRCODE = '23514';
     END IF;
-    NEW.resolution_code := NULL;
-    NEW.resolved_at := NULL;
-    NEW.resolved_appointment_id := NULL;
+    IF NEW.resolution_code IS NOT NULL OR NEW.resolved_at IS NOT NULL OR NEW.resolved_appointment_id IS NOT NULL THEN
+      RAISE EXCEPTION 'New waitlist entries cannot contain resolution metadata'
+        USING ERRCODE = '23514';
+    END IF;
     RETURN NEW;
   ELSIF TG_OP = 'UPDATE' THEN
     -- If already resolved, reject any mutation
@@ -189,6 +195,10 @@ BEGIN
 
     -- waiting -> waiting (update preferences)
     IF OLD.status = 'waiting' AND NEW.status = 'waiting' THEN
+      IF NEW.resolution_code IS NOT NULL OR NEW.resolved_at IS NOT NULL OR NEW.resolved_appointment_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Active waiting entries cannot contain resolution metadata'
+          USING ERRCODE = '23514';
+      END IF;
       NEW.resolution_code := NULL;
       NEW.resolved_at := NULL;
       NEW.resolved_appointment_id := NULL;
