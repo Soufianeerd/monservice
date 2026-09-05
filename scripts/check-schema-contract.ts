@@ -402,10 +402,10 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id'],
     },
     {
-      constraintName: 'waitlist_practitioner_fk',
+      constraintName: 'waitlist_patient_fk',
       tableName: 'appointment_waitlist_entries',
-      foreignTable: 'practice_practitioners',
-      localCols: ['practitioner_id', 'organization_id'],
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
     {
@@ -416,10 +416,24 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id'],
     },
     {
-      constraintName: 'waitlist_booked_appointment_fk',
+      constraintName: 'waitlist_location_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_practitioner_location_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'practitioner_locations',
+      localCols: ['organization_id', 'practitioner_id', 'location_id'],
+      foreignCols: ['organization_id', 'practitioner_id', 'location_id'],
+    },
+    {
+      constraintName: 'waitlist_resolved_appointment_fk',
       tableName: 'appointment_waitlist_entries',
       foreignTable: 'appointments',
-      localCols: ['booked_appointment_id', 'organization_id'],
+      localCols: ['resolved_appointment_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
     {
@@ -479,11 +493,11 @@ async function verifyContract() {
     'availability_rules_unique_slot',
     'availability_exceptions_org_id_unique',
     'appointments_org_id_unique',
-    'waitlist_org_id_unique',
-    'waitlist_org_status_priority_idx',
-    'waitlist_org_patient_idx',
-    'waitlist_org_location_idx',
-    'waitlist_org_practitioner_idx',
+    'appointment_waitlist_entries_org_id_unique',
+    'waitlist_org_status_idx',
+    'waitlist_patient_idx',
+    'waitlist_practitioner_idx',
+    'waitlist_match_idx',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -535,19 +549,24 @@ async function verifyContract() {
       elements: ['status', 'waiting', 'resolved'],
     },
     {
-      name: 'waitlist_priority_check',
-      table: 'appointment_waitlist_entries',
-      elements: ['priority', 'low', 'normal', 'high', 'urgent'],
-    },
-    {
       name: 'waitlist_resolution_code_check',
       table: 'appointment_waitlist_entries',
       elements: ['resolution_code', 'booked', 'withdrawn', 'not_needed', 'other'],
     },
     {
-      name: 'waitlist_status_metadata_check',
+      name: 'waitlist_date_check',
       table: 'appointment_waitlist_entries',
-      elements: ['status', 'resolved_at', 'resolution_code'],
+      elements: ['preferred_date_until', 'preferred_date_from'],
+    },
+    {
+      name: 'waitlist_time_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['preferred_start_time', 'preferred_end_time'],
+    },
+    {
+      name: 'waitlist_state_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['status', 'resolution_code', 'resolved_at', 'resolved_appointment_id'],
     },
   ];
 
