@@ -31,5 +31,7 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **09B** | Scheduling Contract Finalization | 5 Septembre 2026 | Terminée | [Session 09B](SESSION_09B_SCHEDULING_CONTRACT_FINALIZATION.md) |
 | **09C** | Scheduling Final Test Cleanup | 5 Septembre 2026 | Terminée | [Session 09C](SESSION_09C_SCHEDULING_FINAL_TEST_CLEANUP.md) |
 | **10** | Appointment Lifecycle, Cancellation, No-Show & Waitlist | 5 Septembre 2026 | Terminée | [Session 10](SESSION_10_APPOINTMENT_LIFECYCLE_WAITLIST.md) |
+| **10B** | Appointment Lifecycle Finalization & DB Hardening | 5 Septembre 2026 | Terminée | [Session 10B](SESSION_10B_APPOINTMENT_LIFECYCLE_FINALIZATION.md) |
+
 
 

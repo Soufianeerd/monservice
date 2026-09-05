@@ -71,7 +71,10 @@ Dans [src/lib/services/scheduling.service.ts](file:///Users/soufianeelrhadi/Proj
 - `markAppointmentNoShow` : Vérifie l'autorisation professionnelle, valide que `starts_at <= now()`, et enregistre l'absence.
 - `rescheduleAppointment` : Guard applicatif explicite rejetant les séances annulées ou absentes avant vérification de conflit et recalcul du créneau.
 - `createWaitlistEntry`, `updateWaitlistEntry`, `resolveWaitlistEntry`, `listWaitlistEntries` : Gestion complète de la file d'attente avec vérification d'appartenance organisationnelle et contrôle de validité des intervalles temporels.
-- `listMatchingWaitlistForAppointment` : Algorithme de scoring et filtrage ordonné (praticien exact = +10 pts, heure exacte = +5 pts, ordonné par ancienneté `created_at ASC`) pour proposer les meilleurs candidats lors d'une annulation ou création de créneau.
+- `listMatchingWaitlistForAppointment` : Algorithme de filtrage ordonné (filtrage sur organisation, statut `waiting`, lieu, type de séance, praticien ciblé ou tout praticien, fenêtre de dates et créneau horaire) avec calcul de score (base 50 pts, praticien ciblé +50 pts vs tout praticien +30 pts, créneau horaire restreint +10 pts, ordonné par ancienneté `created_at ASC`) pour proposer les meilleurs candidats lors d'une libération de créneau.
+
+> [!NOTE]
+> **Audit & Handoff Session 10 / 10B** : La Session 10 initiale a fait l'objet d'un audit ayant identifié le défaut bloquant de marquage `no_show` direct sur séance future au niveau DB (bypass PostgREST), ainsi que des manques de tests unitaires sur les server actions et composants UI (`AppointmentDetailsModal`, `WaitlistManager`). La Session 10B parachève et durcit l'ensemble de ces invariants (voir [SESSION_10B_APPOINTMENT_LIFECYCLE_FINALIZATION.md](file:///Users/soufianeelrhadi/Projets/monservice/docs/sessions/paramedical/SESSION_10B_APPOINTMENT_LIFECYCLE_FINALIZATION.md)).
 
 ---
 
