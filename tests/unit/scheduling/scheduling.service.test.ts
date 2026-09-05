@@ -467,8 +467,8 @@ describe('Scheduling Service Unit Tests', () => {
       }));
       vi.mocked(db.select).mockImplementation(mockSelect);
 
-      await expect(
-        schedulingService.rescheduleAppointment('org-1', 'user-1', {
+      try {
+        await schedulingService.rescheduleAppointment('org-1', 'user-1', {
           appointmentId: 'appt-1',
           patientId: 'pat-1',
           practitionerId: 'prac-1',
@@ -477,8 +477,16 @@ describe('Scheduling Service Unit Tests', () => {
           roomId: null,
           localDate: '2026-09-04',
           localStartTime: '10:00',
-        })
-      ).rejects.toThrow('Impossible de replanifier une séance non planifiée');
+        });
+        expect.unreachable('Should have thrown APPOINTMENT_NOT_SCHEDULED');
+      } catch (err: unknown) {
+        if (!(err instanceof AppError)) {
+          expect.unreachable('Expected error to be an instance of AppError');
+        }
+        expect(err.statusCode).toBe(409);
+        expect(err.code).toBe('APPOINTMENT_NOT_SCHEDULED');
+        expect(err.message).toBe('Impossible de replanifier une séance non planifiée');
+      }
     });
   });
 
@@ -622,9 +630,17 @@ describe('Scheduling Service Unit Tests', () => {
       }));
       vi.mocked(db.select).mockImplementation(mockSelect);
 
-      await expect(
-        schedulingService.markAppointmentNoShow('org-1', 'user-1', 'appt-1')
-      ).rejects.toThrow('Impossible de marquer absent pour une séance future');
+      try {
+        await schedulingService.markAppointmentNoShow('org-1', 'user-1', 'appt-1');
+        expect.unreachable('Should have thrown FUTURE_NO_SHOW_FORBIDDEN');
+      } catch (err: unknown) {
+        if (!(err instanceof AppError)) {
+          expect.unreachable('Expected error to be an instance of AppError');
+        }
+        expect(err.statusCode).toBe(400);
+        expect(err.code).toBe('FUTURE_NO_SHOW_FORBIDDEN');
+        expect(err.message).toBe('Impossible de marquer absent pour une séance future');
+      }
     });
 
     it('markAppointmentNoShow succeeds for past or current appointment', async () => {

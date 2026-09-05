@@ -1688,7 +1688,7 @@ export const schedulingService = {
     }
 
     if (existing[0].status !== 'scheduled') {
-      throw new AppError('Impossible de replanifier une séance non planifiée', 400, 'APPOINTMENT_NOT_SCHEDULED');
+      throw new AppError('Impossible de replanifier une séance non planifiée', 409, 'APPOINTMENT_NOT_SCHEDULED');
     }
 
     // 1. Guard Creator (must be professional)

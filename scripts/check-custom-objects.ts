@@ -93,6 +93,7 @@ async function verifyCustomObjects() {
   // 2. Verify functions strictly
   const funcs = await sql`
     SELECT p.proname, p.prosecdef as security_definer,
+           pg_get_functiondef(p.oid) as funcdef,
            (SELECT has_function_privilege('public', p.oid, 'execute')) as public_exec,
            (SELECT has_function_privilege('anon', p.oid, 'execute')) as anon_exec,
            (SELECT has_function_privilege('authenticated', p.oid, 'execute')) as auth_exec
@@ -132,6 +133,29 @@ async function verifyCustomObjects() {
     }
   }
 
+  // Check function definition semantic contracts for enforce_appointment_status_transition
+  const apptFunc = funcs.find(x => x.proname === 'enforce_appointment_status_transition');
+  if (apptFunc?.funcdef) {
+    const normDef = apptFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'no_show',
+      'old.starts_at',
+      'now()',
+      '23514',
+      'patient_id',
+      'practitioner_id',
+      'starts_at',
+      'ends_at',
+      'timezone',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_appointment_status_transition' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
   // 3. Verify triggers
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
@@ -145,22 +169,39 @@ async function verifyCustomObjects() {
   `;
 
   const triggers = await sql`
-    SELECT tgname, relname FROM pg_trigger 
+    SELECT tgname, relname, pg_get_triggerdef(pg_trigger.oid, true) as triggerdef
+    FROM pg_trigger 
     JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
     WHERE tgname IN ('on_auth_user_created', 'appointments_status_transition_guard', 'appointment_waitlist_status_transition_guard')
   `;
   
   const requiredTriggers = [
     { name: 'on_auth_user_created' },
-    { name: 'appointments_status_transition_guard', table: 'appointments' },
-    { name: 'appointment_waitlist_status_transition_guard', table: 'appointment_waitlist_entries' },
+    {
+      name: 'appointments_status_transition_guard',
+      table: 'appointments',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_appointment_status_transition'],
+    },
+    {
+      name: 'appointment_waitlist_status_transition_guard',
+      table: 'appointment_waitlist_entries',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_waitlist_status_transition'],
+    },
   ];
 
   for (const rt of requiredTriggers) {
     const match = triggers.find(t => t.tgname === rt.name && (!rt.table || t.relname === rt.table));
     if (!match) {
-      console.error(`❌ ERROR: Trigger '${rt.name}' not found.`);
+      console.error(`❌ ERROR: Trigger '${rt.name}' not found on table '${rt.table ?? 'any'}'.`);
       errorCount++;
+    } else if (rt.requiredElements && match.triggerdef) {
+      const normDef = match.triggerdef.toLowerCase().replace(/\s+/g, ' ');
+      for (const el of rt.requiredElements) {
+        if (!normDef.includes(el.toLowerCase())) {
+          console.error(`❌ ERROR: Trigger '${rt.name}' missing definition element: '${el}'. Definition: '${match.triggerdef}'`);
+          errorCount++;
+        }
+      }
     }
   }
 

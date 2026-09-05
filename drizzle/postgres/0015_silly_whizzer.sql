@@ -67,6 +67,25 @@ BEGIN
 
     -- scheduled -> cancelled
     IF OLD.status = 'scheduled' AND NEW.status = 'cancelled' THEN
+      -- Guard against structural mutation during terminal transition
+      IF NEW.id <> OLD.id
+         OR NEW.organization_id <> OLD.organization_id
+         OR NEW.patient_id <> OLD.patient_id
+         OR NEW.practitioner_id <> OLD.practitioner_id
+         OR NEW.appointment_type_id <> OLD.appointment_type_id
+         OR NEW.location_id <> OLD.location_id
+         OR NEW.room_id IS DISTINCT FROM OLD.room_id
+         OR NEW.created_by_user_id <> OLD.created_by_user_id
+         OR NEW.starts_at <> OLD.starts_at
+         OR NEW.ends_at <> OLD.ends_at
+         OR NEW.occupancy_starts_at <> OLD.occupancy_starts_at
+         OR NEW.occupancy_ends_at <> OLD.occupancy_ends_at
+         OR NEW.timezone <> OLD.timezone
+         OR NEW.created_at <> OLD.created_at THEN
+        RAISE EXCEPTION 'Structural mutation is not allowed during terminal status transition'
+          USING ERRCODE = '23514';
+      END IF;
+
       IF NEW.cancellation_reason_code IS NULL THEN
         RAISE EXCEPTION 'Cancellation reason code is required when cancelling appointment'
           USING ERRCODE = '23514';
@@ -78,6 +97,31 @@ BEGIN
 
     -- scheduled -> no_show
     IF OLD.status = 'scheduled' AND NEW.status = 'no_show' THEN
+      -- P0 Invariant: OLD.starts_at must be in the past or current time
+      IF OLD.starts_at > now() THEN
+        RAISE EXCEPTION 'Future appointments cannot be marked no_show'
+          USING ERRCODE = '23514';
+      END IF;
+
+      -- Guard against structural mutation during terminal transition
+      IF NEW.id <> OLD.id
+         OR NEW.organization_id <> OLD.organization_id
+         OR NEW.patient_id <> OLD.patient_id
+         OR NEW.practitioner_id <> OLD.practitioner_id
+         OR NEW.appointment_type_id <> OLD.appointment_type_id
+         OR NEW.location_id <> OLD.location_id
+         OR NEW.room_id IS DISTINCT FROM OLD.room_id
+         OR NEW.created_by_user_id <> OLD.created_by_user_id
+         OR NEW.starts_at <> OLD.starts_at
+         OR NEW.ends_at <> OLD.ends_at
+         OR NEW.occupancy_starts_at <> OLD.occupancy_starts_at
+         OR NEW.occupancy_ends_at <> OLD.occupancy_ends_at
+         OR NEW.timezone <> OLD.timezone
+         OR NEW.created_at <> OLD.created_at THEN
+        RAISE EXCEPTION 'Structural mutation is not allowed during terminal status transition'
+          USING ERRCODE = '23514';
+      END IF;
+
       NEW.no_show_at := now();
       NEW.cancelled_at := NULL;
       NEW.cancellation_reason_code := NULL;

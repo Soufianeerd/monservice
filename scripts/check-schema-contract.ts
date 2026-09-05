@@ -1,4 +1,5 @@
-import { getTableConfig } from 'drizzle-orm/pg-core';
+import { getTableConfig, PgTable, type PgColumn } from 'drizzle-orm/pg-core';
+import { is } from 'drizzle-orm';
 import * as schema from '../src/lib/db/schema';
 import postgres from 'postgres';
 
@@ -46,15 +47,13 @@ async function verifyContract() {
   const dbTables = new Set(dbColumns.map(c => c.table_name));
   
   // Calculate dynamic table count
-  const schemaTables = [];
+  const schemaTables: string[] = [];
   for (const [, value] of Object.entries(schema)) {
-    try {
-      const config = getTableConfig(value as any);
+    if (is(value, PgTable)) {
+      const config = getTableConfig(value);
       if (config.name) {
         schemaTables.push(config.name);
       }
-    } catch {
-      // Not a valid table config, ignore
     }
   }
 
@@ -68,15 +67,15 @@ async function verifyContract() {
 
   for (const tableName of schemaTables) {
     // Find the schema object
-    let config: any;
+    let config: ReturnType<typeof getTableConfig> | null = null;
     for (const val of Object.values(schema)) {
-      try {
-        const c = getTableConfig(val as any);
+      if (is(val, PgTable)) {
+        const c = getTableConfig(val);
         if (c.name === tableName) config = c;
-      } catch {
-        // Not a valid table config, ignore
       }
     }
+
+    if (!config) continue;
 
     if (!dbTables.has(tableName)) {
       console.error(`❌ ERROR: Table '${tableName}' not found in actual database.`);
@@ -86,7 +85,7 @@ async function verifyContract() {
 
     const tableCols = dbColumns.filter(c => c.table_name === tableName);
     const dbColNames = new Set(tableCols.map(c => c.column_name));
-    const expectedColNames = new Set(config.columns.map((c: any) => c.name));
+    const expectedColNames = new Set(config.columns.map((c: PgColumn) => c.name));
 
     // Verify all expected columns and their properties
     for (const expectedCol of config.columns) {
@@ -113,12 +112,13 @@ async function verifyContract() {
       
       // Precision / scale for numeric
       if (expectedCol.columnType === 'PgNumeric') {
-        if (expectedCol.precision !== undefined && dbCol.numeric_precision !== expectedCol.precision) {
-          console.error(`❌ ERROR: Column '${tableName}.${expectedCol.name}' precision mismatch (schema=${expectedCol.precision}, db=${dbCol.numeric_precision})`);
+        const numCol = expectedCol as { precision?: number; scale?: number };
+        if (numCol.precision !== undefined && dbCol.numeric_precision !== numCol.precision) {
+          console.error(`❌ ERROR: Column '${tableName}.${expectedCol.name}' precision mismatch (schema=${numCol.precision}, db=${dbCol.numeric_precision})`);
           errorCount++;
         }
-        if (expectedCol.scale !== undefined && dbCol.numeric_scale !== expectedCol.scale) {
-          console.error(`❌ ERROR: Column '${tableName}.${expectedCol.name}' scale mismatch (schema=${expectedCol.scale}, db=${dbCol.numeric_scale})`);
+        if (numCol.scale !== undefined && dbCol.numeric_scale !== numCol.scale) {
+          console.error(`❌ ERROR: Column '${tableName}.${expectedCol.name}' scale mismatch (schema=${numCol.scale}, db=${dbCol.numeric_scale})`);
           errorCount++;
         }
       }
@@ -133,7 +133,7 @@ async function verifyContract() {
     }
 
     // Verify constraints presence conceptually
-    const hasSchemaPk = config.primaryKeys && config.primaryKeys.length > 0 || config.columns.some((c: any) => c.primary);
+    const hasSchemaPk = (config.primaryKeys && config.primaryKeys.length > 0) || config.columns.some((c: PgColumn) => c.primary);
     const hasDbPk = constraints.some(c => c.table_name === tableName && c.contype === 'p');
     
     if (hasSchemaPk && !hasDbPk) {
@@ -510,9 +510,21 @@ async function verifyContract() {
 
   // --- Specific Contract: Exclusion Constraints (contype = 'x') ---
   const exclusionContracts = [
-    { name: 'appointments_practitioner_no_overlap', table: 'appointments' },
-    { name: 'appointments_patient_no_overlap', table: 'appointments' },
-    { name: 'appointments_room_no_overlap', table: 'appointments' },
+    {
+      name: 'appointments_practitioner_no_overlap',
+      table: 'appointments',
+      predicateElements: ['status', 'scheduled'],
+    },
+    {
+      name: 'appointments_patient_no_overlap',
+      table: 'appointments',
+      predicateElements: ['status', 'scheduled'],
+    },
+    {
+      name: 'appointments_room_no_overlap',
+      table: 'appointments',
+      predicateElements: ['status', 'scheduled', 'room_id', 'is not null'],
+    },
   ];
 
   for (const exc of exclusionContracts) {
@@ -523,6 +535,14 @@ async function verifyContract() {
     } else if (con.contype !== 'x') {
       console.error(`❌ ERROR: Constraint '${exc.name}' is not an exclusion constraint (contype=${con.contype}).`);
       errorCount++;
+    } else {
+      const def = con.condef.toLowerCase().replace(/\s+/g, ' ');
+      for (const el of exc.predicateElements) {
+        if (!def.includes(el.toLowerCase())) {
+          console.error(`❌ ERROR: Exclusion constraint '${exc.name}' missing predicate element: '${el}'. Definition: '${con.condef}'`);
+          errorCount++;
+        }
+      }
     }
   }
 
