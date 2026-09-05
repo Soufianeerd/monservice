@@ -835,6 +835,9 @@ export const appointments = sqliteTable('appointments', {
   occupancyEndsAt: timestamp('occupancy_ends_at', { withTimezone: true }).notNull(),
   timezone: text('timezone').notNull(),
   status: text('status').notNull().default('scheduled'),
+  cancellationReasonCode: text('cancellation_reason_code'),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  noShowAt: timestamp('no_show_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -844,7 +847,9 @@ export const appointments = sqliteTable('appointments', {
   index('appointments_location_start_idx').on(t.organizationId, t.locationId, t.startsAt),
   index('appointments_room_start_idx').on(t.organizationId, t.roomId, t.startsAt),
   uniqueIndex('appointments_org_id_unique').on(t.id, t.organizationId),
-  check('appointments_status_check', sql`${t.status} IN ('scheduled')`),
+  check('appointments_status_check', sql`${t.status} IN ('scheduled', 'cancelled', 'no_show')`),
+  check('appointments_cancellation_reason_check', sql`${t.cancellationReasonCode} IS NULL OR ${t.cancellationReasonCode} IN ('patient_request', 'practitioner_request', 'practice_unavailable', 'scheduling_error', 'duplicate', 'other')`),
+  check('appointments_status_metadata_check', sql`(${t.status} = 'scheduled' AND ${t.cancellationReasonCode} IS NULL AND ${t.cancelledAt} IS NULL AND ${t.noShowAt} IS NULL) OR (${t.status} = 'cancelled' AND ${t.cancellationReasonCode} IS NOT NULL AND ${t.cancelledAt} IS NOT NULL AND ${t.noShowAt} IS NULL) OR (${t.status} = 'no_show' AND ${t.cancellationReasonCode} IS NULL AND ${t.cancelledAt} IS NULL AND ${t.noShowAt} IS NOT NULL)`),
   check('appointments_time_check', sql`${t.startsAt} < ${t.endsAt}`),
   check('appointments_occupancy_starts_check', sql`${t.occupancyStartsAt} <= ${t.startsAt}`),
   check('appointments_occupancy_ends_check', sql`${t.occupancyEndsAt} >= ${t.endsAt}`),
@@ -885,5 +890,69 @@ export const appointments = sqliteTable('appointments', {
     name: 'appointments_created_by_user_fk'
   }),
 ]);
+
+// Appointment Waitlist Entries
+export const appointmentWaitlistEntries = sqliteTable('appointment_waitlist_entries', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  appointmentTypeId: text('appointment_type_id').notNull(),
+  locationId: text('location_id').notNull(),
+  practitionerId: text('practitioner_id'),
+  preferredDateFrom: date('preferred_date_from').notNull(),
+  preferredDateUntil: date('preferred_date_until'),
+  preferredStartTime: time('preferred_start_time'),
+  preferredEndTime: time('preferred_end_time'),
+  timezone: text('timezone').notNull(),
+  status: text('status').notNull().default('waiting'),
+  resolutionCode: text('resolution_code'),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolvedAppointmentId: text('resolved_appointment_id'),
+  createdByUserId: text('created_by_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('waitlist_org_status_idx').on(t.organizationId, t.status),
+  index('waitlist_patient_idx').on(t.organizationId, t.patientId),
+  index('waitlist_practitioner_idx').on(t.organizationId, t.practitionerId),
+  index('waitlist_match_idx').on(t.organizationId, t.locationId, t.appointmentTypeId, t.status, t.preferredDateFrom),
+  uniqueIndex('appointment_waitlist_entries_org_id_unique').on(t.id, t.organizationId),
+  check('waitlist_status_check', sql`${t.status} IN ('waiting', 'resolved')`),
+  check('waitlist_resolution_code_check', sql`${t.resolutionCode} IS NULL OR ${t.resolutionCode} IN ('booked', 'withdrawn', 'not_needed', 'other')`),
+  check('waitlist_date_check', sql`${t.preferredDateUntil} IS NULL OR ${t.preferredDateUntil} >= ${t.preferredDateFrom}`),
+  check('waitlist_time_check', sql`(${t.preferredStartTime} IS NULL AND ${t.preferredEndTime} IS NULL) OR (${t.preferredStartTime} IS NOT NULL AND ${t.preferredEndTime} IS NOT NULL AND ${t.preferredStartTime} < ${t.preferredEndTime})`),
+  check('waitlist_state_check', sql`(${t.status} = 'waiting' AND ${t.resolutionCode} IS NULL AND ${t.resolvedAt} IS NULL AND ${t.resolvedAppointmentId} IS NULL) OR (${t.status} = 'resolved' AND ${t.resolutionCode} = 'booked' AND ${t.resolvedAt} IS NOT NULL AND ${t.resolvedAppointmentId} IS NOT NULL) OR (${t.status} = 'resolved' AND ${t.resolutionCode} IN ('withdrawn', 'not_needed', 'other') AND ${t.resolvedAt} IS NOT NULL AND ${t.resolvedAppointmentId} IS NULL)`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'waitlist_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.appointmentTypeId, t.organizationId],
+    foreignColumns: [appointmentTypes.id, appointmentTypes.organizationId],
+    name: 'waitlist_appointment_type_fk'
+  }),
+  foreignKey({
+    columns: [t.locationId, t.organizationId],
+    foreignColumns: [practiceLocations.id, practiceLocations.organizationId],
+    name: 'waitlist_location_fk'
+  }),
+  foreignKey({
+    columns: [t.organizationId, t.practitionerId, t.locationId],
+    foreignColumns: [practitionerLocations.organizationId, practitionerLocations.practitionerId, practitionerLocations.locationId],
+    name: 'waitlist_practitioner_location_fk'
+  }),
+  foreignKey({
+    columns: [t.resolvedAppointmentId, t.organizationId],
+    foreignColumns: [appointments.id, appointments.organizationId],
+    name: 'waitlist_resolved_appointment_fk'
+  }),
+  foreignKey({
+    columns: [t.createdByUserId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'waitlist_created_by_user_fk'
+  }),
+]);
+
 
 

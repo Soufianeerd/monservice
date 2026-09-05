@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { AVAILABILITY_EXCEPTION_KINDS } from './types';
+import {
+  AVAILABILITY_EXCEPTION_KINDS,
+  APPOINTMENT_CANCELLATION_REASON_CODES,
+  WAITLIST_STATUS_CODES,
+  WAITLIST_RESOLUTION_CODES,
+} from './types';
 
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/;
 const DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -169,3 +174,125 @@ export const patientSearchSchema = z.object({
   query: z.string().trim().min(1, 'Terme de recherche obligatoire'),
   limit: z.number().int().min(1).max(20).default(10),
 });
+
+export const appointmentCancelSchema = z.object({
+  appointmentId: z.string().min(1, "L'identifiant de la séance est obligatoire"),
+  reasonCode: z.enum(APPOINTMENT_CANCELLATION_REASON_CODES, {
+    message: "Motif d'annulation invalide",
+  }),
+});
+
+export const appointmentNoShowSchema = z.object({
+  appointmentId: z.string().min(1, "L'identifiant de la séance est obligatoire"),
+});
+
+export const waitlistCreateSchema = z
+  .object({
+    patientId: z.string().min(1, 'Le patient est obligatoire'),
+    appointmentTypeId: z.string().min(1, 'Le type de séance est obligatoire'),
+    locationId: z.string().min(1, 'Le lieu est obligatoire'),
+    practitionerId: z.string().trim().nullable().optional(),
+    preferredDateFrom: z.string().regex(DATE_REGEX, 'Format de date invalide (YYYY-MM-DD)'),
+    preferredDateUntil: z
+      .string()
+      .regex(DATE_REGEX, 'Format de date invalide (YYYY-MM-DD)')
+      .nullable()
+      .optional(),
+    preferredStartTime: z
+      .string()
+      .regex(TIME_REGEX, "Format d'heure de début invalide (HH:mm)")
+      .nullable()
+      .optional(),
+    preferredEndTime: z
+      .string()
+      .regex(TIME_REGEX, "Format d'heure de fin invalide (HH:mm)")
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.preferredDateUntil) return true;
+      return data.preferredDateUntil >= data.preferredDateFrom;
+    },
+    {
+      message: 'La date de fin de préférence doit être postérieure ou égale à la date de début',
+      path: ['preferredDateUntil'],
+    }
+  )
+  .refine(
+    (data) => {
+      const hasStart =
+        data.preferredStartTime !== undefined &&
+        data.preferredStartTime !== null &&
+        data.preferredStartTime.trim() !== '';
+      const hasEnd =
+        data.preferredEndTime !== undefined &&
+        data.preferredEndTime !== null &&
+        data.preferredEndTime.trim() !== '';
+      return (hasStart && hasEnd) || (!hasStart && !hasEnd);
+    },
+    {
+      message:
+        'Les heures de début et de fin doivent être toutes les deux renseignées ou toutes les deux laissées vides',
+      path: ['preferredEndTime'],
+    }
+  )
+  .refine(
+    (data) => {
+      const hasStart =
+        data.preferredStartTime !== undefined &&
+        data.preferredStartTime !== null &&
+        data.preferredStartTime.trim() !== '';
+      const hasEnd =
+        data.preferredEndTime !== undefined &&
+        data.preferredEndTime !== null &&
+        data.preferredEndTime.trim() !== '';
+      if (hasStart && hasEnd && data.preferredStartTime && data.preferredEndTime) {
+        const start = data.preferredStartTime.slice(0, 5);
+        const end = data.preferredEndTime.slice(0, 5);
+        return start < end;
+      }
+      return true;
+    },
+    {
+      message: "L'heure de début doit être strictement antérieure à l'heure de fin",
+      path: ['preferredEndTime'],
+    }
+  );
+
+export const waitlistUpdateSchema = waitlistCreateSchema.extend({
+  id: z.string().min(1, "L'identifiant de l'entrée de liste d'attente est obligatoire"),
+});
+
+export const waitlistResolveSchema = z
+  .object({
+    id: z.string().min(1, "L'identifiant de l'entrée de liste d'attente est obligatoire"),
+    resolutionCode: z.enum(WAITLIST_RESOLUTION_CODES, {
+      message: 'Code de résolution invalide',
+    }),
+    resolvedAppointmentId: z.string().trim().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.resolutionCode === 'booked') {
+        return !!data.resolvedAppointmentId && data.resolvedAppointmentId.trim().length > 0;
+      }
+      return !data.resolvedAppointmentId;
+    },
+    {
+      message:
+        'Une séance doit être spécifiée uniquement pour la résolution de type "Planifié" (booked)',
+      path: ['resolvedAppointmentId'],
+    }
+  );
+
+export const waitlistFiltersSchema = z.object({
+  status: z.enum(WAITLIST_STATUS_CODES).optional(),
+  locationId: z.string().optional(),
+  practitionerId: z.string().optional(),
+  appointmentTypeId: z.string().optional(),
+  search: z.string().optional(),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(25),
+});
+

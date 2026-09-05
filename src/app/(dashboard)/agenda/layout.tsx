@@ -28,7 +28,8 @@ export default async function AgendaLayout({ children }: { children: React.React
   if (workspace.type === 'paramedical') {
     tabs.push(
       { name: 'Disponibilités', href: '/agenda/disponibilites' },
-      { name: 'Types de séances', href: '/agenda/types-seances' }
+      { name: 'Types de séances', href: '/agenda/types-seances' },
+      { name: "Liste d'attente", href: '/agenda/liste-attente' }
     );
   }
 

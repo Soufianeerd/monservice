@@ -1,5 +1,28 @@
-export const APPOINTMENT_STATUS_CODES = ['scheduled'] as const;
+export const APPOINTMENT_STATUS_CODES = ['scheduled', 'cancelled', 'no_show'] as const;
 export type AppointmentStatus = (typeof APPOINTMENT_STATUS_CODES)[number];
+
+export const APPOINTMENT_CANCELLATION_REASON_CODES = [
+  'patient_request',
+  'practitioner_request',
+  'practice_unavailable',
+  'scheduling_error',
+  'duplicate',
+  'other',
+] as const;
+export type AppointmentCancellationReasonCode =
+  (typeof APPOINTMENT_CANCELLATION_REASON_CODES)[number];
+
+export const WAITLIST_STATUS_CODES = ['waiting', 'resolved'] as const;
+export type WaitlistStatus = (typeof WAITLIST_STATUS_CODES)[number];
+
+export const WAITLIST_RESOLUTION_CODES = [
+  'booked',
+  'withdrawn',
+  'not_needed',
+  'other',
+] as const;
+export type WaitlistResolutionCode =
+  (typeof WAITLIST_RESOLUTION_CODES)[number];
 
 export const AVAILABILITY_EXCEPTION_KINDS = ['open', 'closed'] as const;
 export type AvailabilityExceptionKind = (typeof AVAILABILITY_EXCEPTION_KINDS)[number];
@@ -62,6 +85,9 @@ export interface AppointmentDTO {
   occupancyEndsAt: string; // ISO UTC timestamptz string
   timezone: string; // IANA snapshot
   status: AppointmentStatus;
+  cancellationReasonCode: AppointmentCancellationReasonCode | null;
+  cancelledAt: string | null;
+  noShowAt: string | null;
   createdAt: string;
   updatedAt: string;
   // Denormalized/joined display fields (optional for DTO consumers)
@@ -90,9 +116,52 @@ export interface AppointmentCalendarEventDTO {
   occupancyEndsAt: string; // ISO UTC
   timezone: string;
   status: AppointmentStatus;
+  cancellationReasonCode: AppointmentCancellationReasonCode | null;
+  cancelledAt: string | null;
+  noShowAt: string | null;
   localDate: string; // YYYY-MM-DD in Location's timezone
   localStartTime: string; // HH:mm in Location's timezone
   localEndTime: string; // HH:mm in Location's timezone
+}
+
+export interface WaitlistEntryDTO {
+  id: string;
+  organizationId: string;
+  patientId: string;
+  patientName?: string;
+  appointmentTypeId: string;
+  appointmentTypeName?: string;
+  locationId: string;
+  locationName?: string;
+  practitionerId: string | null;
+  practitionerName?: string | null;
+  preferredDateFrom: string; // YYYY-MM-DD
+  preferredDateUntil: string | null; // YYYY-MM-DD or null
+  preferredStartTime: string | null; // HH:mm:ss or HH:mm or null
+  preferredEndTime: string | null; // HH:mm:ss or HH:mm or null
+  timezone: string;
+  status: WaitlistStatus;
+  resolutionCode: WaitlistResolutionCode | null;
+  resolvedAt: string | null;
+  resolvedAppointmentId: string | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WaitlistFilters {
+  status?: WaitlistStatus;
+  locationId?: string;
+  practitionerId?: string;
+  appointmentTypeId?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface WaitlistMatchDTO {
+  waitlistEntry: WaitlistEntryDTO;
+  matchScore: number;
 }
 
 export interface SchedulingLocationDTO {
@@ -128,3 +197,4 @@ export interface SchedulingBootstrapDTO {
   rooms: SchedulingRoomDTO[];
   appointmentTypes: AppointmentTypeDTO[];
 }
+

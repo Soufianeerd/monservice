@@ -15,6 +15,12 @@ import {
   appointmentCreateSchema,
   appointmentRescheduleSchema,
   appointmentCalendarRangeSchema,
+  appointmentCancelSchema,
+  appointmentNoShowSchema,
+  waitlistCreateSchema,
+  waitlistUpdateSchema,
+  waitlistResolveSchema,
+  waitlistFiltersSchema,
   patientSearchSchema,
 } from '@/lib/scheduling/validation';
 
@@ -170,6 +176,7 @@ export async function createAppointmentAction(data: unknown) {
   const result = await schedulingService.createAppointment(organizationId, userId, validData);
   revalidatePath('/agenda');
   revalidatePath('/agenda/calendrier');
+  revalidatePath('/agenda/liste-attente');
   return result;
 }
 
@@ -179,5 +186,74 @@ export async function rescheduleAppointmentAction(data: unknown) {
   const result = await schedulingService.rescheduleAppointment(organizationId, userId, validData);
   revalidatePath('/agenda');
   revalidatePath('/agenda/calendrier');
+  revalidatePath('/agenda/liste-attente');
   return result;
 }
+
+export async function cancelAppointmentAction(data: unknown) {
+  const { organizationId, userId } = await requireParamedicalContext();
+  const validData = appointmentCancelSchema.parse(data);
+  const result = await schedulingService.cancelAppointment(organizationId, userId, validData);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/calendrier');
+  revalidatePath('/agenda/liste-attente');
+  return result;
+}
+
+export async function markAppointmentNoShowAction(appointmentId: string) {
+  const { organizationId, userId } = await requireParamedicalContext();
+  const validData = appointmentNoShowSchema.parse({ appointmentId });
+  const result = await schedulingService.markAppointmentNoShow(organizationId, userId, validData.appointmentId);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/calendrier');
+  revalidatePath('/agenda/liste-attente');
+  return result;
+}
+
+// ==========================================
+// WAITING LIST
+// ==========================================
+export async function listWaitlistEntriesAction(filters?: unknown) {
+  const { organizationId } = await requireParamedicalContext();
+  const validFilters = filters ? waitlistFiltersSchema.parse(filters) : undefined;
+  return schedulingService.listWaitlistEntries(organizationId, validFilters);
+}
+
+export async function getWaitlistEntryByIdAction(id: string) {
+  const { organizationId } = await requireParamedicalContext();
+  return schedulingService.getWaitlistEntryById(organizationId, id);
+}
+
+export async function createWaitlistEntryAction(data: unknown) {
+  const { organizationId, userId } = await requireParamedicalContext();
+  const validData = waitlistCreateSchema.parse(data);
+  const result = await schedulingService.createWaitlistEntry(organizationId, userId, validData);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/liste-attente');
+  return result;
+}
+
+export async function updateWaitlistEntryAction(data: unknown) {
+  const { organizationId, userId } = await requireParamedicalContext();
+  const validData = waitlistUpdateSchema.parse(data);
+  const result = await schedulingService.updateWaitlistEntry(organizationId, userId, validData);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/liste-attente');
+  return result;
+}
+
+export async function resolveWaitlistEntryAction(data: unknown) {
+  const { organizationId, userId } = await requireParamedicalContext();
+  const validData = waitlistResolveSchema.parse(data);
+  const result = await schedulingService.resolveWaitlistEntry(organizationId, userId, validData);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/calendrier');
+  revalidatePath('/agenda/liste-attente');
+  return result;
+}
+
+export async function listMatchingWaitlistForAppointmentAction(appointmentId: string) {
+  const { organizationId } = await requireParamedicalContext();
+  return schedulingService.listMatchingWaitlistForAppointment(organizationId, appointmentId);
+}
+

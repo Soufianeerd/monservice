@@ -4,6 +4,7 @@ import {
   practitionerAvailabilityRules,
   practitionerAvailabilityExceptions,
   appointments,
+  appointmentWaitlistEntries,
   patientProfiles,
   practicePractitioners,
   practiceLocations,
@@ -11,7 +12,7 @@ import {
   practiceRooms,
   users,
 } from '@/lib/db/schema';
-import { eq, and, sql, desc, asc, ilike, or, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, desc, asc, ilike, or, gte, lte, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { AppError } from '@/lib/errors';
 import {
@@ -20,6 +21,13 @@ import {
   AvailabilityExceptionDTO,
   AppointmentDTO,
   AppointmentCalendarEventDTO,
+  AppointmentStatus,
+  AppointmentCancellationReasonCode,
+  WaitlistStatus,
+  WaitlistResolutionCode,
+  WaitlistEntryDTO,
+  WaitlistFilters,
+  WaitlistMatchDTO,
   SchedulingBootstrapDTO,
   SchedulingPractitionerDTO,
   SchedulingPatientOptionDTO,
@@ -34,6 +42,11 @@ import {
   appointmentCreateSchema,
   appointmentRescheduleSchema,
   appointmentCalendarRangeSchema,
+  appointmentCancelSchema,
+  appointmentNoShowSchema,
+  waitlistCreateSchema,
+  waitlistUpdateSchema,
+  waitlistResolveSchema,
   patientSearchSchema,
 } from '@/lib/scheduling/validation';
 import {
@@ -54,6 +67,11 @@ export type AvailabilityExceptionCreateInput = z.infer<typeof availabilityExcept
 export type AvailabilityExceptionUpdateInput = z.infer<typeof availabilityExceptionUpdateSchema>;
 export type AppointmentCreateInput = z.infer<typeof appointmentCreateSchema>;
 export type AppointmentRescheduleInput = z.infer<typeof appointmentRescheduleSchema>;
+export type AppointmentCancelInput = z.infer<typeof appointmentCancelSchema>;
+export type AppointmentNoShowInput = z.infer<typeof appointmentNoShowSchema>;
+export type WaitlistCreateInput = z.infer<typeof waitlistCreateSchema>;
+export type WaitlistUpdateInput = z.infer<typeof waitlistUpdateSchema>;
+export type WaitlistResolveInput = z.infer<typeof waitlistResolveSchema>;
 
 interface PostgresErrorLike {
   code?: string;
@@ -74,8 +92,41 @@ function toAvailabilityKind(kind: string): 'open' | 'closed' {
   return kind === 'open' ? 'open' : 'closed';
 }
 
-function toAppointmentStatus(_status: string): 'scheduled' {
-  return 'scheduled';
+function toAppointmentStatus(status: string): AppointmentStatus {
+  if (status === 'scheduled' || status === 'cancelled' || status === 'no_show') {
+    return status;
+  }
+  throw new AppError(`Statut de séance inconnu: ${status}`, 500);
+}
+
+function toCancellationReasonCode(code: string | null): AppointmentCancellationReasonCode | null {
+  if (!code) return null;
+  if (
+    code === 'patient_request' ||
+    code === 'practitioner_request' ||
+    code === 'practice_unavailable' ||
+    code === 'scheduling_error' ||
+    code === 'duplicate' ||
+    code === 'other'
+  ) {
+    return code;
+  }
+  throw new AppError(`Motif d'annulation inconnu: ${code}`, 500);
+}
+
+function toWaitlistStatus(status: string): WaitlistStatus {
+  if (status === 'waiting' || status === 'resolved') {
+    return status;
+  }
+  throw new AppError(`Statut de liste d'attente inconnu: ${status}`, 500);
+}
+
+function toWaitlistResolutionCode(code: string | null): WaitlistResolutionCode | null {
+  if (!code) return null;
+  if (code === 'booked' || code === 'withdrawn' || code === 'not_needed' || code === 'other') {
+    return code;
+  }
+  throw new AppError(`Code de résolution de liste d'attente inconnu: ${code}`, 500);
 }
 
 export function isPgConflictError(error: unknown): boolean {
@@ -1215,6 +1266,9 @@ export const schedulingService = {
           occupancyEndsAt: appt.occupancyEndsAt.toISOString(),
           timezone: appt.timezone,
           status: toAppointmentStatus(appt.status),
+          cancellationReasonCode: toCancellationReasonCode(appt.cancellationReasonCode),
+          cancelledAt: appt.cancelledAt ? appt.cancelledAt.toISOString() : null,
+          noShowAt: appt.noShowAt ? appt.noShowAt.toISOString() : null,
           localDate: startLocal.localDate,
           localStartTime: startLocal.localTime,
           localEndTime: endLocal.localTime,
@@ -1318,6 +1372,9 @@ export const schedulingService = {
       occupancyEndsAt: appt.occupancyEndsAt.toISOString(),
       timezone: appt.timezone,
       status: toAppointmentStatus(appt.status),
+      cancellationReasonCode: toCancellationReasonCode(appt.cancellationReasonCode),
+      cancelledAt: appt.cancelledAt ? appt.cancelledAt.toISOString() : null,
+      noShowAt: appt.noShowAt ? appt.noShowAt.toISOString() : null,
       createdAt: appt.createdAt.toISOString(),
       updatedAt: appt.updatedAt.toISOString(),
       patientName,
@@ -1589,6 +1646,9 @@ export const schedulingService = {
         occupancyEndsAt: created.occupancyEndsAt.toISOString(),
         timezone: created.timezone,
         status: toAppointmentStatus(created.status),
+        cancellationReasonCode: toCancellationReasonCode(created.cancellationReasonCode),
+        cancelledAt: created.cancelledAt ? created.cancelledAt.toISOString() : null,
+        noShowAt: created.noShowAt ? created.noShowAt.toISOString() : null,
         createdAt: created.createdAt.toISOString(),
         updatedAt: created.updatedAt.toISOString(),
       };
@@ -1625,6 +1685,10 @@ export const schedulingService = {
 
     if (existing.length === 0 || !existing[0]) {
       throw new AppError('Séance non trouvée', 404, 'NOT_FOUND');
+    }
+
+    if (existing[0].status !== 'scheduled') {
+      throw new AppError('Impossible de replanifier une séance non planifiée', 400, 'APPOINTMENT_NOT_SCHEDULED');
     }
 
     // 1. Guard Creator (must be professional)
@@ -1882,6 +1946,9 @@ export const schedulingService = {
         occupancyEndsAt: updated.occupancyEndsAt.toISOString(),
         timezone: updated.timezone,
         status: toAppointmentStatus(updated.status),
+        cancellationReasonCode: toCancellationReasonCode(updated.cancellationReasonCode),
+        cancelledAt: updated.cancelledAt ? updated.cancelledAt.toISOString() : null,
+        noShowAt: updated.noShowAt ? updated.noShowAt.toISOString() : null,
         createdAt: updated.createdAt.toISOString(),
         updatedAt: updated.updatedAt.toISOString(),
       };
@@ -1896,4 +1963,1133 @@ export const schedulingService = {
       throw error;
     }
   },
+
+  // ==========================================
+  // APPOINTMENT LIFECYCLE (CANCEL & NO-SHOW)
+  // ==========================================
+  async cancelAppointment(
+    organizationId: string,
+    userId: string,
+    data: AppointmentCancelInput
+  ): Promise<AppointmentDTO> {
+    const validated = appointmentCancelSchema.parse(data);
+
+    // 1. Guard Creator (must be professional in this tenant)
+    const actor = await db
+      .select({ id: users.id, profileType: users.profileType })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, userId),
+          eq(users.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (actor.length === 0 || actor[0]?.profileType !== 'professional') {
+      throw new AppError('Action non autorisée (professionnel requis)', 403, 'FORBIDDEN');
+    }
+
+    // 2. Fetch existing appointment
+    const existing = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.id, validated.appointmentId),
+          eq(appointments.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0 || !existing[0]) {
+      throw new AppError('Séance non trouvée', 404, 'NOT_FOUND');
+    }
+
+    if (existing[0].status !== 'scheduled') {
+      throw new AppError('Seules les séances planifiées peuvent être annulées', 400, 'APPOINTMENT_NOT_SCHEDULED');
+    }
+
+    // 3. Update appointment
+    const [updated] = await db
+      .update(appointments)
+      .set({
+        status: 'cancelled',
+        cancellationReasonCode: validated.reasonCode,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(appointments.id, validated.appointmentId),
+          eq(appointments.organizationId, organizationId)
+        )
+      )
+      .returning();
+
+    if (!updated) {
+      throw new AppError("Échec de l'annulation de la séance", 500);
+    }
+
+    return {
+      id: updated.id,
+      organizationId: updated.organizationId,
+      patientId: updated.patientId,
+      practitionerId: updated.practitionerId,
+      appointmentTypeId: updated.appointmentTypeId,
+      locationId: updated.locationId,
+      roomId: updated.roomId,
+      createdByUserId: updated.createdByUserId,
+      startsAt: updated.startsAt.toISOString(),
+      endsAt: updated.endsAt.toISOString(),
+      occupancyStartsAt: updated.occupancyStartsAt.toISOString(),
+      occupancyEndsAt: updated.occupancyEndsAt.toISOString(),
+      timezone: updated.timezone,
+      status: toAppointmentStatus(updated.status),
+      cancellationReasonCode: toCancellationReasonCode(updated.cancellationReasonCode),
+      cancelledAt: updated.cancelledAt ? updated.cancelledAt.toISOString() : null,
+      noShowAt: updated.noShowAt ? updated.noShowAt.toISOString() : null,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  },
+
+  async markAppointmentNoShow(
+    organizationId: string,
+    userId: string,
+    appointmentId: string
+  ): Promise<AppointmentDTO> {
+    const validated = appointmentNoShowSchema.parse({ appointmentId });
+
+    // 1. Guard Creator (must be professional in this tenant)
+    const actor = await db
+      .select({ id: users.id, profileType: users.profileType })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, userId),
+          eq(users.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (actor.length === 0 || actor[0]?.profileType !== 'professional') {
+      throw new AppError('Action non autorisée (professionnel requis)', 403, 'FORBIDDEN');
+    }
+
+    // 2. Fetch existing appointment
+    const existing = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.id, validated.appointmentId),
+          eq(appointments.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0 || !existing[0]) {
+      throw new AppError('Séance non trouvée', 404, 'NOT_FOUND');
+    }
+
+    if (existing[0].status !== 'scheduled') {
+      throw new AppError('Seules les séances planifiées peuvent être marquées absentes', 400, 'APPOINTMENT_NOT_SCHEDULED');
+    }
+
+    // 3. Guard against future appointment no-show
+    const now = new Date();
+    if (existing[0].startsAt > now) {
+      throw new AppError(
+        'Impossible de marquer absent pour une séance future',
+        400,
+        'FUTURE_NO_SHOW_FORBIDDEN'
+      );
+    }
+
+    // 4. Update appointment
+    const [updated] = await db
+      .update(appointments)
+      .set({
+        status: 'no_show',
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(appointments.id, validated.appointmentId),
+          eq(appointments.organizationId, organizationId)
+        )
+      )
+      .returning();
+
+    if (!updated) {
+      throw new AppError('Échec du marquage absent de la séance', 500);
+    }
+
+    return {
+      id: updated.id,
+      organizationId: updated.organizationId,
+      patientId: updated.patientId,
+      practitionerId: updated.practitionerId,
+      appointmentTypeId: updated.appointmentTypeId,
+      locationId: updated.locationId,
+      roomId: updated.roomId,
+      createdByUserId: updated.createdByUserId,
+      startsAt: updated.startsAt.toISOString(),
+      endsAt: updated.endsAt.toISOString(),
+      occupancyStartsAt: updated.occupancyStartsAt.toISOString(),
+      occupancyEndsAt: updated.occupancyEndsAt.toISOString(),
+      timezone: updated.timezone,
+      status: toAppointmentStatus(updated.status),
+      cancellationReasonCode: toCancellationReasonCode(updated.cancellationReasonCode),
+      cancelledAt: updated.cancelledAt ? updated.cancelledAt.toISOString() : null,
+      noShowAt: updated.noShowAt ? updated.noShowAt.toISOString() : null,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  },
+
+  // ==========================================
+  // WAITING LIST
+  // ==========================================
+  async createWaitlistEntry(
+    organizationId: string,
+    createdByUserId: string,
+    data: WaitlistCreateInput
+  ): Promise<WaitlistEntryDTO> {
+    const validated = waitlistCreateSchema.parse(data);
+
+    // 1. Guard Actor
+    const actor = await db
+      .select({ id: users.id, profileType: users.profileType })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, createdByUserId),
+          eq(users.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (actor.length === 0 || actor[0]?.profileType !== 'professional') {
+      throw new AppError('Action non autorisée (professionnel requis)', 403, 'FORBIDDEN');
+    }
+
+    // 2. Guard Patient
+    const patient = await db
+      .select()
+      .from(patientProfiles)
+      .where(
+        and(
+          eq(patientProfiles.id, validated.patientId),
+          eq(patientProfiles.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (patient.length === 0 || !patient[0]) {
+      throw new AppError('Patient non trouvé', 404, 'PATIENT_NOT_FOUND');
+    }
+    if (!patient[0].isActive) {
+      throw new AppError('Le dossier patient est archivé / inactif', 400, 'INACTIVE_PATIENT');
+    }
+
+    // 3. Guard Type
+    const apptType = await db
+      .select()
+      .from(appointmentTypes)
+      .where(
+        and(
+          eq(appointmentTypes.id, validated.appointmentTypeId),
+          eq(appointmentTypes.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (apptType.length === 0 || !apptType[0]) {
+      throw new AppError('Type de séance non trouvé', 404, 'TYPE_NOT_FOUND');
+    }
+    if (!apptType[0].isActive) {
+      throw new AppError('Ce type de séance est inactif', 400, 'INACTIVE_TYPE');
+    }
+
+    // 4. Guard Location
+    const location = await db
+      .select()
+      .from(practiceLocations)
+      .where(
+        and(
+          eq(practiceLocations.id, validated.locationId),
+          eq(practiceLocations.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (location.length === 0 || !location[0]) {
+      throw new AppError('Lieu de consultation non trouvé', 404, 'LOCATION_NOT_FOUND');
+    }
+    if (!location[0].isActive) {
+      throw new AppError('Le lieu de consultation est inactif', 400, 'INACTIVE_LOCATION');
+    }
+
+    // 5. Guard Practitioner (if specified)
+    if (validated.practitionerId) {
+      const practitioner = await db
+        .select()
+        .from(practicePractitioners)
+        .where(
+          and(
+            eq(practicePractitioners.id, validated.practitionerId),
+            eq(practicePractitioners.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (practitioner.length === 0 || !practitioner[0]) {
+        throw new AppError('Praticien non trouvé', 404, 'PRACTITIONER_NOT_FOUND');
+      }
+      if (!practitioner[0].isActive) {
+        throw new AppError('Le praticien est inactif', 400, 'INACTIVE_PRACTITIONER');
+      }
+
+      const assignment = await db
+        .select()
+        .from(practitionerLocations)
+        .where(
+          and(
+            eq(practitionerLocations.organizationId, organizationId),
+            eq(practitionerLocations.practitionerId, validated.practitionerId),
+            eq(practitionerLocations.locationId, validated.locationId)
+          )
+        )
+        .limit(1);
+
+      if (assignment.length === 0 || !assignment[0]) {
+        throw new AppError(
+          "Le praticien n'est pas affecté à ce lieu de consultation",
+          400,
+          'PRACTITIONER_LOCATION_MISMATCH'
+        );
+      }
+      if (!assignment[0].isActive) {
+        throw new AppError("L'affectation du praticien à ce lieu est inactive", 400, 'INACTIVE_ASSIGNMENT');
+      }
+    }
+
+    const id = randomUUID();
+    const [created] = await db
+      .insert(appointmentWaitlistEntries)
+      .values({
+        id,
+        organizationId,
+        patientId: validated.patientId,
+        appointmentTypeId: validated.appointmentTypeId,
+        locationId: validated.locationId,
+        practitionerId: validated.practitionerId || null,
+        preferredDateFrom: validated.preferredDateFrom,
+        preferredDateUntil: validated.preferredDateUntil || null,
+        preferredStartTime: validated.preferredStartTime || null,
+        preferredEndTime: validated.preferredEndTime || null,
+        timezone: location[0].timezone,
+        status: 'waiting',
+        createdByUserId,
+      })
+      .returning();
+
+    if (!created) {
+      throw new AppError("Échec de la création de l'entrée en liste d'attente", 500);
+    }
+
+    return {
+      id: created.id,
+      organizationId: created.organizationId,
+      patientId: created.patientId,
+      appointmentTypeId: created.appointmentTypeId,
+      locationId: created.locationId,
+      practitionerId: created.practitionerId,
+      preferredDateFrom: created.preferredDateFrom,
+      preferredDateUntil: created.preferredDateUntil,
+      preferredStartTime: created.preferredStartTime,
+      preferredEndTime: created.preferredEndTime,
+      timezone: created.timezone,
+      status: toWaitlistStatus(created.status),
+      resolutionCode: toWaitlistResolutionCode(created.resolutionCode),
+      resolvedAt: created.resolvedAt ? created.resolvedAt.toISOString() : null,
+      resolvedAppointmentId: created.resolvedAppointmentId,
+      createdByUserId: created.createdByUserId,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  },
+
+  async updateWaitlistEntry(
+    organizationId: string,
+    userId: string,
+    data: WaitlistUpdateInput
+  ): Promise<WaitlistEntryDTO> {
+    const validated = waitlistUpdateSchema.parse(data);
+
+    // 1. Guard Actor
+    const actor = await db
+      .select({ id: users.id, profileType: users.profileType })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, userId),
+          eq(users.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (actor.length === 0 || actor[0]?.profileType !== 'professional') {
+      throw new AppError('Action non autorisée (professionnel requis)', 403, 'FORBIDDEN');
+    }
+
+    // 2. Fetch existing
+    const existing = await db
+      .select()
+      .from(appointmentWaitlistEntries)
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.id, validated.id),
+          eq(appointmentWaitlistEntries.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0 || !existing[0]) {
+      throw new AppError("Entrée de liste d'attente non trouvée", 404, 'NOT_FOUND');
+    }
+
+    if (existing[0].status !== 'waiting') {
+      throw new AppError(
+        'Seules les demandes en attente peuvent être modifiées',
+        400,
+        'WAITLIST_ENTRY_IMMUTABLE'
+      );
+    }
+
+    // 3. Guard Patient
+    const patient = await db
+      .select()
+      .from(patientProfiles)
+      .where(
+        and(
+          eq(patientProfiles.id, validated.patientId),
+          eq(patientProfiles.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (patient.length === 0 || !patient[0]) {
+      throw new AppError('Patient non trouvé', 404, 'PATIENT_NOT_FOUND');
+    }
+    if (!patient[0].isActive) {
+      throw new AppError('Le dossier patient est archivé / inactif', 400, 'INACTIVE_PATIENT');
+    }
+
+    // 4. Guard Type
+    const apptType = await db
+      .select()
+      .from(appointmentTypes)
+      .where(
+        and(
+          eq(appointmentTypes.id, validated.appointmentTypeId),
+          eq(appointmentTypes.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (apptType.length === 0 || !apptType[0]) {
+      throw new AppError('Type de séance non trouvé', 404, 'TYPE_NOT_FOUND');
+    }
+    if (!apptType[0].isActive) {
+      throw new AppError('Ce type de séance est inactif', 400, 'INACTIVE_TYPE');
+    }
+
+    // 5. Guard Location
+    const location = await db
+      .select()
+      .from(practiceLocations)
+      .where(
+        and(
+          eq(practiceLocations.id, validated.locationId),
+          eq(practiceLocations.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (location.length === 0 || !location[0]) {
+      throw new AppError('Lieu de consultation non trouvé', 404, 'LOCATION_NOT_FOUND');
+    }
+    if (!location[0].isActive) {
+      throw new AppError('Le lieu de consultation est inactif', 400, 'INACTIVE_LOCATION');
+    }
+
+    // 6. Guard Practitioner (if specified)
+    if (validated.practitionerId) {
+      const practitioner = await db
+        .select()
+        .from(practicePractitioners)
+        .where(
+          and(
+            eq(practicePractitioners.id, validated.practitionerId),
+            eq(practicePractitioners.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (practitioner.length === 0 || !practitioner[0]) {
+        throw new AppError('Praticien non trouvé', 404, 'PRACTITIONER_NOT_FOUND');
+      }
+      if (!practitioner[0].isActive) {
+        throw new AppError('Le praticien est inactif', 400, 'INACTIVE_PRACTITIONER');
+      }
+
+      const assignment = await db
+        .select()
+        .from(practitionerLocations)
+        .where(
+          and(
+            eq(practitionerLocations.organizationId, organizationId),
+            eq(practitionerLocations.practitionerId, validated.practitionerId),
+            eq(practitionerLocations.locationId, validated.locationId)
+          )
+        )
+        .limit(1);
+
+      if (assignment.length === 0 || !assignment[0]) {
+        throw new AppError(
+          "Le praticien n'est pas affecté à ce lieu de consultation",
+          400,
+          'PRACTITIONER_LOCATION_MISMATCH'
+        );
+      }
+      if (!assignment[0].isActive) {
+        throw new AppError("L'affectation du praticien à ce lieu est inactive", 400, 'INACTIVE_ASSIGNMENT');
+      }
+    }
+
+    const [updated] = await db
+      .update(appointmentWaitlistEntries)
+      .set({
+        patientId: validated.patientId,
+        appointmentTypeId: validated.appointmentTypeId,
+        locationId: validated.locationId,
+        practitionerId: validated.practitionerId || null,
+        preferredDateFrom: validated.preferredDateFrom,
+        preferredDateUntil: validated.preferredDateUntil || null,
+        preferredStartTime: validated.preferredStartTime || null,
+        preferredEndTime: validated.preferredEndTime || null,
+        timezone: location[0].timezone,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.id, validated.id),
+          eq(appointmentWaitlistEntries.organizationId, organizationId)
+        )
+      )
+      .returning();
+
+    if (!updated) {
+      throw new AppError("Échec de la mise à jour de l'entrée en liste d'attente", 500);
+    }
+
+    return {
+      id: updated.id,
+      organizationId: updated.organizationId,
+      patientId: updated.patientId,
+      appointmentTypeId: updated.appointmentTypeId,
+      locationId: updated.locationId,
+      practitionerId: updated.practitionerId,
+      preferredDateFrom: updated.preferredDateFrom,
+      preferredDateUntil: updated.preferredDateUntil,
+      preferredStartTime: updated.preferredStartTime,
+      preferredEndTime: updated.preferredEndTime,
+      timezone: updated.timezone,
+      status: toWaitlistStatus(updated.status),
+      resolutionCode: toWaitlistResolutionCode(updated.resolutionCode),
+      resolvedAt: updated.resolvedAt ? updated.resolvedAt.toISOString() : null,
+      resolvedAppointmentId: updated.resolvedAppointmentId,
+      createdByUserId: updated.createdByUserId,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  },
+
+  async resolveWaitlistEntry(
+    organizationId: string,
+    userId: string,
+    data: WaitlistResolveInput
+  ): Promise<WaitlistEntryDTO> {
+    const validated = waitlistResolveSchema.parse(data);
+
+    // 1. Guard Actor
+    const actor = await db
+      .select({ id: users.id, profileType: users.profileType })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, userId),
+          eq(users.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (actor.length === 0 || actor[0]?.profileType !== 'professional') {
+      throw new AppError('Action non autorisée (professionnel requis)', 403, 'FORBIDDEN');
+    }
+
+    // 2. Fetch existing
+    const existing = await db
+      .select()
+      .from(appointmentWaitlistEntries)
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.id, validated.id),
+          eq(appointmentWaitlistEntries.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0 || !existing[0]) {
+      throw new AppError("Entrée de liste d'attente non trouvée", 404, 'NOT_FOUND');
+    }
+
+    const entry = existing[0];
+    if (entry.status !== 'waiting') {
+      throw new AppError(
+        'Cette demande est déjà résolue',
+        400,
+        'WAITLIST_ENTRY_IMMUTABLE'
+      );
+    }
+
+    // 3. If booked, validate appointment match
+    if (validated.resolutionCode === 'booked') {
+      if (!validated.resolvedAppointmentId) {
+        throw new AppError(
+          'Une séance est obligatoire pour la résolution "Planifié"',
+          400,
+          'WAITLIST_APPOINTMENT_REQUIRED'
+        );
+      }
+
+      const apptRows = await db
+        .select()
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.id, validated.resolvedAppointmentId),
+            eq(appointments.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+
+      if (apptRows.length === 0 || !apptRows[0]) {
+        throw new AppError('Séance non trouvée', 404, 'APPOINTMENT_NOT_FOUND');
+      }
+
+      const appt = apptRows[0];
+
+      if (appt.status !== 'scheduled') {
+        throw new AppError(
+          'La séance associée doit être dans le statut planifiée',
+          400,
+          'APPOINTMENT_NOT_SCHEDULED'
+        );
+      }
+
+      if (appt.patientId !== entry.patientId) {
+        throw new AppError(
+          'La séance ne correspond pas au patient de la liste d\'attente',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      if (appt.appointmentTypeId !== entry.appointmentTypeId) {
+        throw new AppError(
+          'Le type de séance ne correspond pas à la demande en attente',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      if (appt.locationId !== entry.locationId) {
+        throw new AppError(
+          'Le lieu de séance ne correspond pas à la demande en attente',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      if (entry.practitionerId && appt.practitionerId !== entry.practitionerId) {
+        throw new AppError(
+          'Le praticien ne correspond pas au praticien demandé',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      // Convert appointment time into waitlist entry timezone snapshot
+      const startLocal = formatUtcToLocal(appt.startsAt, entry.timezone);
+      const endLocal = formatUtcToLocal(appt.endsAt, entry.timezone);
+
+      if (startLocal.localDate < entry.preferredDateFrom) {
+        throw new AppError(
+          'La date de la séance est antérieure à la date de début demandée',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      if (entry.preferredDateUntil && startLocal.localDate > entry.preferredDateUntil) {
+        throw new AppError(
+          'La date de la séance est postérieure à la date de fin demandée',
+          400,
+          'WAITLIST_APPOINTMENT_MISMATCH'
+        );
+      }
+
+      if (entry.preferredStartTime && entry.preferredEndTime) {
+        const prefStart = entry.preferredStartTime.slice(0, 5);
+        const prefEnd = entry.preferredEndTime.slice(0, 5);
+        if (startLocal.localTime < prefStart || endLocal.localTime > prefEnd) {
+          throw new AppError(
+            "L'horaire de la séance ne respecte pas les préférences horaires demandées",
+            400,
+            'WAITLIST_APPOINTMENT_MISMATCH'
+          );
+        }
+      }
+    }
+
+    const [resolved] = await db
+      .update(appointmentWaitlistEntries)
+      .set({
+        status: 'resolved',
+        resolutionCode: validated.resolutionCode,
+        resolvedAppointmentId:
+          validated.resolutionCode === 'booked' ? validated.resolvedAppointmentId : null,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.id, validated.id),
+          eq(appointmentWaitlistEntries.organizationId, organizationId)
+        )
+      )
+      .returning();
+
+    if (!resolved) {
+      throw new AppError("Échec de la résolution de l'entrée en liste d'attente", 500);
+    }
+
+    return {
+      id: resolved.id,
+      organizationId: resolved.organizationId,
+      patientId: resolved.patientId,
+      appointmentTypeId: resolved.appointmentTypeId,
+      locationId: resolved.locationId,
+      practitionerId: resolved.practitionerId,
+      preferredDateFrom: resolved.preferredDateFrom,
+      preferredDateUntil: resolved.preferredDateUntil,
+      preferredStartTime: resolved.preferredStartTime,
+      preferredEndTime: resolved.preferredEndTime,
+      timezone: resolved.timezone,
+      status: toWaitlistStatus(resolved.status),
+      resolutionCode: toWaitlistResolutionCode(resolved.resolutionCode),
+      resolvedAt: resolved.resolvedAt ? resolved.resolvedAt.toISOString() : null,
+      resolvedAppointmentId: resolved.resolvedAppointmentId,
+      createdByUserId: resolved.createdByUserId,
+      createdAt: resolved.createdAt.toISOString(),
+      updatedAt: resolved.updatedAt.toISOString(),
+    };
+  },
+
+  async listWaitlistEntries(
+    organizationId: string,
+    filters?: WaitlistFilters
+  ): Promise<{ entries: WaitlistEntryDTO[]; total: number }> {
+    const page = filters?.page || 1;
+    const pageSize = filters?.pageSize || 25;
+    const offset = (page - 1) * pageSize;
+
+    const conditions = [eq(appointmentWaitlistEntries.organizationId, organizationId)];
+
+    if (filters?.status) {
+      conditions.push(eq(appointmentWaitlistEntries.status, filters.status));
+    }
+    if (filters?.locationId) {
+      conditions.push(eq(appointmentWaitlistEntries.locationId, filters.locationId));
+    }
+    if (filters?.practitionerId) {
+      conditions.push(eq(appointmentWaitlistEntries.practitionerId, filters.practitionerId));
+    }
+    if (filters?.appointmentTypeId) {
+      conditions.push(eq(appointmentWaitlistEntries.appointmentTypeId, filters.appointmentTypeId));
+    }
+
+    // Optional patient search condition
+    if (filters?.search && filters.search.trim()) {
+      const q = `%${filters.search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(patientProfiles.birthName, q),
+          ilike(patientProfiles.usedName, q),
+          ilike(patientProfiles.firstBirthName, q),
+          ilike(patientProfiles.usedFirstName, q)
+        )!
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [totalRow] = await db
+      .select({ val: count() })
+      .from(appointmentWaitlistEntries)
+      .innerJoin(
+        patientProfiles,
+        and(
+          eq(appointmentWaitlistEntries.patientId, patientProfiles.id),
+          eq(appointmentWaitlistEntries.organizationId, patientProfiles.organizationId)
+        )
+      )
+      .where(whereClause);
+
+    const rows = await db
+      .select({
+        entry: appointmentWaitlistEntries,
+        patient: {
+          birthName: patientProfiles.birthName,
+          usedName: patientProfiles.usedName,
+          firstBirthName: patientProfiles.firstBirthName,
+          usedFirstName: patientProfiles.usedFirstName,
+        },
+        practitioner: {
+          displayName: practicePractitioners.displayName,
+        },
+        type: {
+          name: appointmentTypes.name,
+        },
+        location: {
+          name: practiceLocations.name,
+        },
+      })
+      .from(appointmentWaitlistEntries)
+      .innerJoin(
+        patientProfiles,
+        and(
+          eq(appointmentWaitlistEntries.patientId, patientProfiles.id),
+          eq(appointmentWaitlistEntries.organizationId, patientProfiles.organizationId)
+        )
+      )
+      .innerJoin(
+        appointmentTypes,
+        and(
+          eq(appointmentWaitlistEntries.appointmentTypeId, appointmentTypes.id),
+          eq(appointmentWaitlistEntries.organizationId, appointmentTypes.organizationId)
+        )
+      )
+      .innerJoin(
+        practiceLocations,
+        and(
+          eq(appointmentWaitlistEntries.locationId, practiceLocations.id),
+          eq(appointmentWaitlistEntries.organizationId, practiceLocations.organizationId)
+        )
+      )
+      .leftJoin(
+        practicePractitioners,
+        and(
+          eq(appointmentWaitlistEntries.practitionerId, practicePractitioners.id),
+          eq(appointmentWaitlistEntries.organizationId, practicePractitioners.organizationId)
+        )
+      )
+      .where(whereClause)
+      .orderBy(desc(appointmentWaitlistEntries.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+
+    const entries: WaitlistEntryDTO[] = rows.map((r) => {
+      const e = r.entry;
+      const patientName = `${(r.patient.usedName || r.patient.birthName).toUpperCase()} ${
+        r.patient.usedFirstName || r.patient.firstBirthName
+      }`;
+
+      return {
+        id: e.id,
+        organizationId: e.organizationId,
+        patientId: e.patientId,
+        patientName,
+        appointmentTypeId: e.appointmentTypeId,
+        appointmentTypeName: r.type.name,
+        locationId: e.locationId,
+        locationName: r.location.name,
+        practitionerId: e.practitionerId,
+        practitionerName: r.practitioner?.displayName || null,
+        preferredDateFrom: e.preferredDateFrom,
+        preferredDateUntil: e.preferredDateUntil,
+        preferredStartTime: e.preferredStartTime,
+        preferredEndTime: e.preferredEndTime,
+        timezone: e.timezone,
+        status: toWaitlistStatus(e.status),
+        resolutionCode: toWaitlistResolutionCode(e.resolutionCode),
+        resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
+        resolvedAppointmentId: e.resolvedAppointmentId,
+        createdByUserId: e.createdByUserId,
+        createdAt: e.createdAt.toISOString(),
+        updatedAt: e.updatedAt.toISOString(),
+      };
+    });
+
+    return {
+      entries,
+      total: totalRow ? Number(totalRow.val) : 0,
+    };
+  },
+
+  async getWaitlistEntryById(
+    organizationId: string,
+    id: string
+  ): Promise<WaitlistEntryDTO | null> {
+    const rows = await db
+      .select({
+        entry: appointmentWaitlistEntries,
+        patient: {
+          birthName: patientProfiles.birthName,
+          usedName: patientProfiles.usedName,
+          firstBirthName: patientProfiles.firstBirthName,
+          usedFirstName: patientProfiles.usedFirstName,
+        },
+        practitioner: {
+          displayName: practicePractitioners.displayName,
+        },
+        type: {
+          name: appointmentTypes.name,
+        },
+        location: {
+          name: practiceLocations.name,
+        },
+      })
+      .from(appointmentWaitlistEntries)
+      .innerJoin(
+        patientProfiles,
+        and(
+          eq(appointmentWaitlistEntries.patientId, patientProfiles.id),
+          eq(appointmentWaitlistEntries.organizationId, patientProfiles.organizationId)
+        )
+      )
+      .innerJoin(
+        appointmentTypes,
+        and(
+          eq(appointmentWaitlistEntries.appointmentTypeId, appointmentTypes.id),
+          eq(appointmentWaitlistEntries.organizationId, appointmentTypes.organizationId)
+        )
+      )
+      .innerJoin(
+        practiceLocations,
+        and(
+          eq(appointmentWaitlistEntries.locationId, practiceLocations.id),
+          eq(appointmentWaitlistEntries.organizationId, practiceLocations.organizationId)
+        )
+      )
+      .leftJoin(
+        practicePractitioners,
+        and(
+          eq(appointmentWaitlistEntries.practitionerId, practicePractitioners.id),
+          eq(appointmentWaitlistEntries.organizationId, practicePractitioners.organizationId)
+        )
+      )
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.id, id),
+          eq(appointmentWaitlistEntries.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (rows.length === 0 || !rows[0]) return null;
+
+    const r = rows[0];
+    const e = r.entry;
+    const patientName = `${(r.patient.usedName || r.patient.birthName).toUpperCase()} ${
+      r.patient.usedFirstName || r.patient.firstBirthName
+    }`;
+
+    return {
+      id: e.id,
+      organizationId: e.organizationId,
+      patientId: e.patientId,
+      patientName,
+      appointmentTypeId: e.appointmentTypeId,
+      appointmentTypeName: r.type.name,
+      locationId: e.locationId,
+      locationName: r.location.name,
+      practitionerId: e.practitionerId,
+      practitionerName: r.practitioner?.displayName || null,
+      preferredDateFrom: e.preferredDateFrom,
+      preferredDateUntil: e.preferredDateUntil,
+      preferredStartTime: e.preferredStartTime,
+      preferredEndTime: e.preferredEndTime,
+      timezone: e.timezone,
+      status: toWaitlistStatus(e.status),
+      resolutionCode: toWaitlistResolutionCode(e.resolutionCode),
+      resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
+      resolvedAppointmentId: e.resolvedAppointmentId,
+      createdByUserId: e.createdByUserId,
+      createdAt: e.createdAt.toISOString(),
+      updatedAt: e.updatedAt.toISOString(),
+    };
+  },
+
+  async listMatchingWaitlistForAppointment(
+    organizationId: string,
+    appointmentId: string
+  ): Promise<WaitlistMatchDTO[]> {
+    // 1. Fetch appointment details
+    const appt = await this.getAppointmentById(organizationId, appointmentId);
+    if (!appt) {
+      throw new AppError('Séance non trouvée', 404, 'NOT_FOUND');
+    }
+
+    // 2. Fetch all waiting entries in this organization matching location & appointment type
+    const candidateRows = await db
+      .select({
+        entry: appointmentWaitlistEntries,
+        patient: {
+          birthName: patientProfiles.birthName,
+          usedName: patientProfiles.usedName,
+          firstBirthName: patientProfiles.firstBirthName,
+          usedFirstName: patientProfiles.usedFirstName,
+        },
+        practitioner: {
+          displayName: practicePractitioners.displayName,
+        },
+        type: {
+          name: appointmentTypes.name,
+        },
+        location: {
+          name: practiceLocations.name,
+        },
+      })
+      .from(appointmentWaitlistEntries)
+      .innerJoin(
+        patientProfiles,
+        and(
+          eq(appointmentWaitlistEntries.patientId, patientProfiles.id),
+          eq(appointmentWaitlistEntries.organizationId, patientProfiles.organizationId)
+        )
+      )
+      .innerJoin(
+        appointmentTypes,
+        and(
+          eq(appointmentWaitlistEntries.appointmentTypeId, appointmentTypes.id),
+          eq(appointmentWaitlistEntries.organizationId, appointmentTypes.organizationId)
+        )
+      )
+      .innerJoin(
+        practiceLocations,
+        and(
+          eq(appointmentWaitlistEntries.locationId, practiceLocations.id),
+          eq(appointmentWaitlistEntries.organizationId, practiceLocations.organizationId)
+        )
+      )
+      .leftJoin(
+        practicePractitioners,
+        and(
+          eq(appointmentWaitlistEntries.practitionerId, practicePractitioners.id),
+          eq(appointmentWaitlistEntries.organizationId, practicePractitioners.organizationId)
+        )
+      )
+      .where(
+        and(
+          eq(appointmentWaitlistEntries.organizationId, organizationId),
+          eq(appointmentWaitlistEntries.status, 'waiting'),
+          eq(appointmentWaitlistEntries.locationId, appt.locationId),
+          eq(appointmentWaitlistEntries.appointmentTypeId, appt.appointmentTypeId)
+        )
+      )
+      .orderBy(asc(appointmentWaitlistEntries.createdAt));
+
+    const matches: WaitlistMatchDTO[] = [];
+    const apptStartsAt = new Date(appt.startsAt);
+    const apptEndsAt = new Date(appt.endsAt);
+
+    for (const r of candidateRows) {
+      const e = r.entry;
+
+      // 1. Practitioner check: practitionerId is null (any) OR exact match
+      if (e.practitionerId && e.practitionerId !== appt.practitionerId) {
+        continue;
+      }
+
+      // 2. Timezone conversion: format appointment in the entry's snapshot timezone
+      const startLocal = formatUtcToLocal(apptStartsAt, e.timezone);
+      const endLocal = formatUtcToLocal(apptEndsAt, e.timezone);
+
+      // 3. Date window check
+      if (startLocal.localDate < e.preferredDateFrom) {
+        continue;
+      }
+      if (e.preferredDateUntil && startLocal.localDate > e.preferredDateUntil) {
+        continue;
+      }
+
+      // 4. Time window check
+      if (e.preferredStartTime && e.preferredEndTime) {
+        const prefStart = e.preferredStartTime.slice(0, 5);
+        const prefEnd = e.preferredEndTime.slice(0, 5);
+        if (startLocal.localTime < prefStart || endLocal.localTime > prefEnd) {
+          continue;
+        }
+      }
+
+      // Calculate score
+      let score = 50;
+      if (e.practitionerId === appt.practitionerId) {
+        score += 50; // exact practitioner match
+      } else {
+        score += 30; // any practitioner acceptable
+      }
+      if (e.preferredStartTime && e.preferredEndTime) {
+        score += 10; // specific time window matched
+      }
+
+      const patientName = `${(r.patient.usedName || r.patient.birthName).toUpperCase()} ${
+        r.patient.usedFirstName || r.patient.firstBirthName
+      }`;
+
+      matches.push({
+        waitlistEntry: {
+          id: e.id,
+          organizationId: e.organizationId,
+          patientId: e.patientId,
+          patientName,
+          appointmentTypeId: e.appointmentTypeId,
+          appointmentTypeName: r.type.name,
+          locationId: e.locationId,
+          locationName: r.location.name,
+          practitionerId: e.practitionerId,
+          practitionerName: r.practitioner?.displayName || null,
+          preferredDateFrom: e.preferredDateFrom,
+          preferredDateUntil: e.preferredDateUntil,
+          preferredStartTime: e.preferredStartTime,
+          preferredEndTime: e.preferredEndTime,
+          timezone: e.timezone,
+          status: toWaitlistStatus(e.status),
+          resolutionCode: toWaitlistResolutionCode(e.resolutionCode),
+          resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
+          resolvedAppointmentId: e.resolvedAppointmentId,
+          createdByUserId: e.createdByUserId,
+          createdAt: e.createdAt.toISOString(),
+          updatedAt: e.updatedAt.toISOString(),
+        },
+        matchScore: score,
+      });
+    }
+
+    return matches.sort((a, b) => b.matchScore - a.matchScore);
+  },
 };
+

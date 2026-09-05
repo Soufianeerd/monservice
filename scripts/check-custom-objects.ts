@@ -59,7 +59,8 @@ async function verifyCustomObjects() {
     appointment_types: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     practitioner_availability_rules: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     practitioner_availability_exceptions: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
+    appointments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_waitlist_entries: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
   };
 
   const dbGrants = await sql`
@@ -96,12 +97,14 @@ async function verifyCustomObjects() {
            (SELECT has_function_privilege('anon', p.oid, 'execute')) as anon_exec,
            (SELECT has_function_privilege('authenticated', p.oid, 'execute')) as auth_exec
     FROM pg_proc p
-    WHERE p.proname IN ('handle_new_auth_user', 'current_organization_id');
+    WHERE p.proname IN ('handle_new_auth_user', 'current_organization_id', 'enforce_appointment_status_transition', 'enforce_waitlist_status_transition');
   `;
 
   const expectedFuncs: Record<string, ExpectedFunctionContract> = {
     handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
-    current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true }
+    current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_appointment_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_waitlist_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -129,7 +132,7 @@ async function verifyCustomObjects() {
     }
   }
 
-  // 3. Verify trigger
+  // 3. Verify triggers
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
     WHERE relrowsecurity = true AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
@@ -142,12 +145,23 @@ async function verifyCustomObjects() {
   `;
 
   const triggers = await sql`
-    SELECT tgname FROM pg_trigger 
-    WHERE tgname = 'on_auth_user_created'
+    SELECT tgname, relname FROM pg_trigger 
+    JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
+    WHERE tgname IN ('on_auth_user_created', 'appointments_status_transition_guard', 'appointment_waitlist_status_transition_guard')
   `;
-  if (triggers.length === 0) {
-    console.error('❌ ERROR: Trigger on_auth_user_created not found.');
-    errorCount++;
+  
+  const requiredTriggers = [
+    { name: 'on_auth_user_created' },
+    { name: 'appointments_status_transition_guard', table: 'appointments' },
+    { name: 'appointment_waitlist_status_transition_guard', table: 'appointment_waitlist_entries' },
+  ];
+
+  for (const rt of requiredTriggers) {
+    const match = triggers.find(t => t.tgname === rt.name && (!rt.table || t.relname === rt.table));
+    if (!match) {
+      console.error(`❌ ERROR: Trigger '${rt.name}' not found.`);
+      errorCount++;
+    }
   }
 
   // 4. Verify RLS enabled and policies present for core tenant tables
@@ -156,7 +170,8 @@ async function verifyCustomObjects() {
     'invoices', 'invoice_lines', 'tasks', 'message_templates', 'messages', 'requests',
     'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources',
     'patient_profiles', 'patient_representatives', 'patient_representative_links',
-    'appointment_types', 'practitioner_availability_rules', 'practitioner_availability_exceptions', 'appointments'
+    'appointment_types', 'practitioner_availability_rules', 'practitioner_availability_exceptions', 'appointments',
+    'appointment_waitlist_entries'
   ];
 
   for (const table of expectedRlsTables) {
@@ -278,6 +293,14 @@ async function verifyCustomObjects() {
     {
       policyName: 'appointments_tenant_isolation',
       tableName: 'appointments',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: commonProfessionalSemantics,
+      withCheckSemantics: commonProfessionalSemantics,
+    },
+    {
+      policyName: 'appointment_waitlist_entries_tenant_isolation',
+      tableName: 'appointment_waitlist_entries',
       expectedRoles: ['authenticated'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,

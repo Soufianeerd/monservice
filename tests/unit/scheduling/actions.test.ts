@@ -120,6 +120,9 @@ describe('Scheduling Actions Guard Tests', () => {
       occupancyEndsAt: '2026-09-10T08:30:00.000Z',
       timezone: 'Europe/Paris',
       status: 'scheduled',
+      cancellationReasonCode: null,
+      cancelledAt: null,
+      noShowAt: null,
       createdAt: '2026-09-04T00:00:00.000Z',
       updatedAt: '2026-09-04T00:00:00.000Z',
     });

@@ -13,6 +13,7 @@ import {
   listAvailabilityAction,
 } from '@/app/actions/scheduling.actions';
 import { AppointmentForm } from './AppointmentForm';
+import { AppointmentDetailsModal } from './AppointmentDetailsModal';
 import {
   computeEffectiveAvailability,
   getCurrentLocalDateInTimezone,
@@ -52,8 +53,10 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Modal State
+  // Modal States
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedAppointmentForDetails, setSelectedAppointmentForDetails] = useState<AppointmentCalendarEventDTO | null>(null);
   const [modalInitialData, setModalInitialData] = useState<{
     appointmentId?: string;
     patientId?: string;
@@ -193,6 +196,11 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
       localStartTime: timeStr || '09:00',
     });
     setIsBookingModalOpen(true);
+  };
+
+  const openDetailsModal = (event: AppointmentCalendarEventDTO) => {
+    setSelectedAppointmentForDetails(event);
+    setIsDetailsModalOpen(true);
   };
 
   const openRescheduleModal = (event: AppointmentCalendarEventDTO) => {
@@ -365,18 +373,26 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
                 >
                   <div className="text-right text-xs font-bold text-gray-700">{day.getDate()}</div>
                   <div className="space-y-1 my-1 overflow-y-auto max-h-24">
-                    {dayAppts.map((a) => (
-                      <div
-                        key={a.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openRescheduleModal(a);
-                        }}
-                        className="px-2 py-1 bg-blue-100 text-blue-900 rounded text-xs font-medium truncate hover:bg-blue-200 cursor-pointer shadow-xs"
-                      >
-                        <span className="font-bold">{a.localStartTime}</span> {a.patientName}
-                      </div>
-                    ))}
+                    {dayAppts.map((a) => {
+                      let badgeClass = 'bg-blue-100 text-blue-900 hover:bg-blue-200';
+                      if (a.status === 'cancelled') {
+                        badgeClass = 'bg-red-100 text-red-800 line-through hover:bg-red-200';
+                      } else if (a.status === 'no_show') {
+                        badgeClass = 'bg-amber-100 text-amber-900 hover:bg-amber-200';
+                      }
+                      return (
+                        <div
+                          key={a.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDetailsModal(a);
+                          }}
+                          className={`px-2 py-1 rounded text-xs font-medium truncate cursor-pointer shadow-xs ${badgeClass}`}
+                        >
+                          <span className="font-bold">{a.localStartTime}</span> {a.patientName}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="text-[10px] text-gray-400 text-center">+ Ajouter</div>
                 </div>
@@ -462,24 +478,32 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
                                 : 'bg-white'
                             }`}
                           >
-                            {hourAppts.map((a) => (
-                              <div
-                                key={a.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openRescheduleModal(a);
-                                }}
-                                className="p-1.5 bg-blue-600 text-white rounded-lg text-xs shadow-sm hover:bg-blue-700 transition-all cursor-pointer mb-1"
-                              >
-                                <div className="font-bold truncate">
-                                  {a.localStartTime} - {a.localEndTime}
+                            {hourAppts.map((a) => {
+                              let cardClass = 'bg-blue-600 text-white hover:bg-blue-700';
+                              if (a.status === 'cancelled') {
+                                cardClass = 'bg-red-500/80 text-white line-through hover:bg-red-600';
+                              } else if (a.status === 'no_show') {
+                                cardClass = 'bg-amber-600 text-white hover:bg-amber-700';
+                              }
+                              return (
+                                <div
+                                  key={a.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDetailsModal(a);
+                                  }}
+                                  className={`p-1.5 rounded-lg text-xs shadow-sm transition-all cursor-pointer mb-1 ${cardClass}`}
+                                >
+                                  <div className="font-bold truncate">
+                                    {a.localStartTime} - {a.localEndTime}
+                                  </div>
+                                  <div className="font-semibold truncate">{a.patientName}</div>
+                                  <div className="text-[10px] text-blue-100 truncate">
+                                    {a.appointmentTypeName} {a.roomName ? `• ${a.roomName}` : ''}
+                                  </div>
                                 </div>
-                                <div className="font-semibold truncate">{a.patientName}</div>
-                                <div className="text-[10px] text-blue-100 truncate">
-                                  {a.appointmentTypeName} {a.roomName ? `• ${a.roomName}` : ''}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         );
                       })}
@@ -491,6 +515,18 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
           </div>
         )}
       </div>
+
+      {/* DETAILS MODAL */}
+      <AppointmentDetailsModal
+        appointment={selectedAppointmentForDetails}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        onReschedule={(appt) => {
+          setIsDetailsModalOpen(false);
+          openRescheduleModal(appt);
+        }}
+        onRefresh={loadCalendarData}
+      />
 
       {/* MODAL (NEW / RESCHEDULE APPOINTMENT) */}
       {isBookingModalOpen && (

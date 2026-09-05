@@ -23,5 +23,7 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0012_practice_structure_foundation.sql` | Drizzle Kit + Manuel | YES | Mixed | Practice Structure (Locations, Practitioners, Rooms, Resources) + RLS | `0011_graceful_hammerhead` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0013_aspiring_daimon_hellstrom.sql` | Drizzle Kit + Manuel | YES | Mixed | Patient Identity Registry (Patients, Contacts, Representatives) + RLS | `0012_practice_structure_foundation` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0014_wise_the_hunter.sql` | Drizzle Kit + Manuel | YES | Mixed | Paramedical Scheduling Foundation (Types, Rules, Exceptions, Appointments) + Exclusion GIST Constraints + RLS | `0013_aspiring_daimon_hellstrom` | NOT_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0015_silly_whizzer.sql` | Drizzle Kit + Manuel | YES | Mixed | Appointment Lifecycle + Cancellation + No-Show + Waitlist + State-machine Triggers + RLS | `0014_wise_the_hunter.sql` | NOT_APPLIED | CANONICAL | Conserver |
+
 
 **Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).

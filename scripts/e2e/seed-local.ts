@@ -18,7 +18,8 @@ import {
   appointmentTypes,
   practitionerAvailabilityRules,
   practitionerAvailabilityExceptions,
-  appointments
+  appointments,
+  appointmentWaitlistEntries
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -52,10 +53,12 @@ export const SEED_SCHEDULING_IDS = {
   availabilityRuleA: '50000000-0000-4000-8000-000000000002',
   availabilityExceptionA: '50000000-0000-4000-8000-000000000003',
   appointmentA: '50000000-0000-4000-8000-000000000004',
+  waitlistEntryA: '50000000-0000-4000-8000-000000000005',
   appointmentTypeB: '60000000-0000-4000-8000-000000000001',
   availabilityRuleB: '60000000-0000-4000-8000-000000000002',
   availabilityExceptionB: '60000000-0000-4000-8000-000000000003',
   appointmentB: '60000000-0000-4000-8000-000000000004',
+  waitlistEntryB: '60000000-0000-4000-8000-000000000005',
 };
 
 async function seed() {
@@ -535,7 +538,43 @@ async function seed() {
     }
   ]).onConflictDoNothing();
 
-  console.log('Scheduling foundation Org A & Org B seeded successfully!');
+  await db.insert(appointmentWaitlistEntries).values([
+    {
+      id: SEED_SCHEDULING_IDS.waitlistEntryA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      locationId: SEED_PRACTICE_IDS.locationA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      appointmentTypeId: SEED_SCHEDULING_IDS.appointmentTypeA,
+      preferredDateFrom: '2026-10-01',
+      preferredDateUntil: '2026-10-31',
+      preferredStartTime: '09:00:00',
+      preferredEndTime: '12:00:00',
+      timezone: 'Europe/Paris',
+      status: 'waiting',
+      createdByUserId: proAId!,
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(appointmentWaitlistEntries).values([
+    {
+      id: SEED_SCHEDULING_IDS.waitlistEntryB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      locationId: SEED_PRACTICE_IDS.locationB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      appointmentTypeId: SEED_SCHEDULING_IDS.appointmentTypeB,
+      preferredDateFrom: '2026-10-01',
+      preferredDateUntil: '2026-10-31',
+      preferredStartTime: '14:00:00',
+      preferredEndTime: '18:00:00',
+      timezone: 'Europe/Paris',
+      status: 'waiting',
+      createdByUserId: proBId!,
+    }
+  ]).onConflictDoNothing();
+
+  console.log('Scheduling foundation & Waitlist Org A & Org B seeded successfully!');
   await sql.end();
 }
 

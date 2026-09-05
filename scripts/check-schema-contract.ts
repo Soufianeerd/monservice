@@ -387,6 +387,48 @@ async function verifyContract() {
       localCols: ['created_by_user_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
+    {
+      constraintName: 'waitlist_patient_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_location_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'practice_locations',
+      localCols: ['location_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_practitioner_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'practice_practitioners',
+      localCols: ['practitioner_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_appointment_type_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'appointment_types',
+      localCols: ['appointment_type_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_booked_appointment_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'appointments',
+      localCols: ['booked_appointment_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'waitlist_created_by_user_fk',
+      tableName: 'appointment_waitlist_entries',
+      foreignTable: 'users',
+      localCols: ['created_by_user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -437,6 +479,11 @@ async function verifyContract() {
     'availability_rules_unique_slot',
     'availability_exceptions_org_id_unique',
     'appointments_org_id_unique',
+    'waitlist_org_id_unique',
+    'waitlist_org_status_priority_idx',
+    'waitlist_org_patient_idx',
+    'waitlist_org_location_idx',
+    'waitlist_org_practitioner_idx',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -462,6 +509,64 @@ async function verifyContract() {
     } else if (con.contype !== 'x') {
       console.error(`❌ ERROR: Constraint '${exc.name}' is not an exclusion constraint (contype=${con.contype}).`);
       errorCount++;
+    }
+  }
+
+  // --- Specific Contract: Lifecycle & Waitlist Check Constraints ---
+  const specificChecks = [
+    {
+      name: 'appointments_status_check',
+      table: 'appointments',
+      elements: ['status', 'scheduled', 'cancelled', 'no_show'],
+    },
+    {
+      name: 'appointments_cancellation_reason_check',
+      table: 'appointments',
+      elements: ['cancellation_reason_code', 'patient_request', 'practitioner_request', 'practice_unavailable', 'scheduling_error', 'duplicate', 'other'],
+    },
+    {
+      name: 'appointments_status_metadata_check',
+      table: 'appointments',
+      elements: ['status', 'cancellation_reason_code', 'cancelled_at', 'no_show_at'],
+    },
+    {
+      name: 'waitlist_status_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['status', 'waiting', 'resolved'],
+    },
+    {
+      name: 'waitlist_priority_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['priority', 'low', 'normal', 'high', 'urgent'],
+    },
+    {
+      name: 'waitlist_resolution_code_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['resolution_code', 'booked', 'withdrawn', 'not_needed', 'other'],
+    },
+    {
+      name: 'waitlist_status_metadata_check',
+      table: 'appointment_waitlist_entries',
+      elements: ['status', 'resolved_at', 'resolution_code'],
+    },
+  ];
+
+  for (const chk of specificChecks) {
+    const con = constraints.find(c => c.table_name === chk.table && c.conname === chk.name);
+    if (!con) {
+      console.error(`❌ ERROR: Check constraint '${chk.name}' not found on table '${chk.table}'.`);
+      errorCount++;
+    } else if (con.contype !== 'c') {
+      console.error(`❌ ERROR: Constraint '${chk.name}' is not a CHECK constraint (contype=${con.contype}).`);
+      errorCount++;
+    } else {
+      const def = con.condef.toLowerCase().replace(/\s+/g, '');
+      for (const el of chk.elements) {
+        if (!def.includes(el.toLowerCase().replace(/\s+/g, ''))) {
+          console.error(`❌ ERROR: Check '${chk.name}' missing semantic element: '${el}'`);
+          errorCount++;
+        }
+      }
     }
   }
 
