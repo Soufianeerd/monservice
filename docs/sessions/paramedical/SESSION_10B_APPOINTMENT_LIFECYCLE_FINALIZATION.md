@@ -261,6 +261,18 @@ grep -R -nE "as any|as unknown as|as never|: any" \
 | Migration | Statut Local | Statut Supabase Prod | Commentaire |
 | :--- | :--- | :--- | :--- |
 | `0000_fluffy_mysterio.sql` | `APPLIED` | `APPLIED` | Baseline multi-tenant initiale |
-| ... | ... | ... | ... |
 | `0014_wise_the_hunter.sql` | `APPLIED` | `NOT_APPLIED` | Fondations de planification paramédicale (Session 09/09B/09C) — inchangée |
 | `0015_silly_whizzer.sql` | `APPLIED` | `NOT_APPLIED` | Cycle de vie des rendez-vous, liste d'attente, machine à états DB durcie (Session 10/10B) |
+
+---
+
+## 6. Post-Audit Session 10B & Traçabilité
+
+- **HEAD final Session 10B** : `71956792c786a49ad5ee86e379e44a41ac0fab69`
+- **CI final Session 10B** : `33957548286` (`completed` / `success`)
+- **Constat d'audit post-CI** :
+  - Le guard runtime DB dans le trigger `enforce_appointment_status_transition()` est parfaitement fonctionnel (`OLD.starts_at <= now()`).
+  - Cependant, le test d'intégration `P0: proves direct PostgREST authenticated professional UPDATE to future no_show is blocked by DB` inclus dans `appointment-lifecycle-db-constraints.integration.test.ts` s'est révélé vacuous (faux positif) en raison de l'ordre d'exécution de la CI : `test:db-constraints` s'exécutant avant le seed Supabase Auth, la tentative d'authentification échouait silencieusement et les sorties anticipées (`if (!proAClient) return;`) sautaient la requête PostgREST réelle.
+  - Par conséquent, la preuve de non-régression PostgREST est considérée invalide au terme de la Session 10B.
+- **Readiness Session 11 après audit 10B** : **NON** (attente de la formalisation de la preuve non-vacuous en Session 10C).
+
