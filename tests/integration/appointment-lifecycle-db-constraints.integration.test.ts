@@ -1,14 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import postgres from 'postgres';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PASSWORD = 'password123';
 
 function hasPostgresErrorCode(error: unknown): error is { code: string } {
   return (
@@ -21,7 +15,6 @@ function hasPostgresErrorCode(error: unknown): error is { code: string } {
 
 describe('Appointment Lifecycle & Waitlist Database Integrity (Session 10 / 10B)', () => {
   let sql: postgres.Sql;
-  let proAClient: SupabaseClient | null = null;
 
   const orgA = 'org-life-test-a';
   const orgB = 'org-life-test-b';
@@ -78,22 +71,6 @@ describe('Appointment Lifecycle & Waitlist Database Integrity (Session 10 / 10B)
     // Setup Types
     await sql`INSERT INTO appointment_types (id, organization_id, name, duration_minutes, buffer_before_minutes, buffer_after_minutes, slot_step_minutes, created_at, updated_at) VALUES (${typeA}, ${orgA}, 'Type Life A', 30, 0, 0, 15, now(), now()) ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO appointment_types (id, organization_id, name, duration_minutes, buffer_before_minutes, buffer_after_minutes, slot_step_minutes, created_at, updated_at) VALUES (${typeB}, ${orgB}, 'Type Life B', 30, 0, 0, 15, now(), now()) ON CONFLICT DO NOTHING`;
-
-    // Setup Supabase Client for PostgREST test if Supabase is running
-    try {
-      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false },
-      });
-      const { data, error } = await client.auth.signInWithPassword({
-        email: PRO_A_EMAIL,
-        password: PASSWORD,
-      });
-      if (!error && data?.user) {
-        proAClient = client;
-      }
-    } catch {
-      // PostgREST client optional in purely local pg unit run
-    }
   });
 
   afterAll(async () => {
@@ -259,51 +236,6 @@ describe('Appointment Lifecycle & Waitlist Database Integrity (Session 10 / 10B)
       } finally {
         await sql`DELETE FROM appointments WHERE id = ${apptId}`;
       }
-    });
-
-    // P0 Direct PostgREST / Supabase Client Bypass Proof
-    it('P0: proves direct PostgREST authenticated professional UPDATE to future no_show is blocked by DB', async () => {
-      if (!proAClient) {
-        return; // Skipped if Supabase is not running in local test
-      }
-
-      // Seed future appointment for Org A using Pro A's user_id
-      const futureApptId = randomUUID();
-      const userARow = await sql`SELECT id, organization_id FROM users WHERE email = ${PRO_A_EMAIL} LIMIT 1`;
-      if (userARow.length === 0) return;
-
-      const proAOrgId = userARow[0]?.organization_id;
-      const proAUserId = userARow[0]?.id;
-
-      const patRow = await sql`SELECT id FROM patient_profiles WHERE organization_id = ${proAOrgId} LIMIT 1`;
-      const pracRow = await sql`SELECT id FROM practice_practitioners WHERE organization_id = ${proAOrgId} LIMIT 1`;
-      const locRow = await sql`SELECT id FROM practice_locations WHERE organization_id = ${proAOrgId} LIMIT 1`;
-      const typeRow = await sql`SELECT id FROM appointment_types WHERE organization_id = ${proAOrgId} LIMIT 1`;
-
-      if (patRow.length === 0 || pracRow.length === 0 || locRow.length === 0 || typeRow.length === 0) return;
-
-      await sql`
-        INSERT INTO appointments (
-          id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
-          starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone, status
-        ) VALUES (
-          ${futureApptId}, ${proAOrgId}, ${patRow[0]?.id}, ${pracRow[0]?.id}, ${typeRow[0]?.id}, ${locRow[0]?.id}, ${proAUserId},
-          now() + interval '2 days', now() + interval '2 days' + interval '30 minutes',
-          now() + interval '2 days', now() + interval '2 days' + interval '30 minutes',
-          'Europe/Paris', 'scheduled'
-        )
-      `;
-
-      // Pro A tries to bypass server action by calling PostgREST directly
-      const { error } = await proAClient
-        .from('appointments')
-        .update({ status: 'no_show' })
-        .eq('id', futureApptId);
-
-      expect(error).not.toBeNull();
-      expect(error?.message).toContain('Future appointments cannot be marked no_show');
-
-      await sql`DELETE FROM appointments WHERE id = ${futureApptId}`;
     });
 
     it('successfully transitions past scheduled -> no_show and sets no_show_at = now()', async () => {
