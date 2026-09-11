@@ -620,10 +620,13 @@ async function seed() {
       patientId: SEED_PATIENT_IDS.patientA,
       authorPractitionerId: SEED_PRACTICE_IDS.practitionerA,
       content: 'Note clinique de test A.',
-      status: 'finalized',
-      finalizedAt: new Date('2026-08-01T09:30:00.000Z'),
+      status: 'draft',
     }
   ]).onConflictDoNothing();
+
+  await db.update(clinicalNotes)
+    .set({ status: 'finalized' })
+    .where(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteA));
 
   // 11. Clinical Records Org B
   await db.insert(careEpisodes).values([
@@ -658,10 +661,13 @@ async function seed() {
       patientId: SEED_PATIENT_IDS.patientB,
       authorPractitionerId: SEED_PRACTICE_IDS.practitionerB,
       content: 'Note clinique de test B.',
-      status: 'finalized',
-      finalizedAt: new Date('2026-08-01T09:30:00.000Z'),
+      status: 'draft',
     }
   ]).onConflictDoNothing();
+
+  await db.update(clinicalNotes)
+    .set({ status: 'finalized' })
+    .where(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteB));
 
   console.log('Scheduling foundation, Waitlist & Clinical Records Org A & Org B seeded successfully!');
   await sql.end();
