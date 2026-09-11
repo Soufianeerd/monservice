@@ -60,7 +60,10 @@ async function verifyCustomObjects() {
     practitioner_availability_rules: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     practitioner_availability_exceptions: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     appointments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointment_waitlist_entries: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
+    appointment_waitlist_entries: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    care_episodes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_encounters: { anon: [], authenticated: ['SELECT', 'INSERT'] },
+    clinical_notes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
   };
 
   const dbGrants = await sql`
@@ -98,14 +101,27 @@ async function verifyCustomObjects() {
            (SELECT has_function_privilege('anon', p.oid, 'execute')) as anon_exec,
            (SELECT has_function_privilege('authenticated', p.oid, 'execute')) as auth_exec
     FROM pg_proc p
-    WHERE p.proname IN ('handle_new_auth_user', 'current_organization_id', 'enforce_appointment_status_transition', 'enforce_waitlist_status_transition');
+    WHERE p.proname IN (
+      'handle_new_auth_user',
+      'current_organization_id',
+      'enforce_appointment_status_transition',
+      'enforce_waitlist_status_transition',
+      'current_clinical_practitioner_id',
+      'enforce_care_episode_transition',
+      'enforce_clinical_encounter_insert',
+      'enforce_clinical_note_transition'
+    );
   `;
 
   const expectedFuncs: Record<string, ExpectedFunctionContract> = {
     handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_appointment_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
-    enforce_waitlist_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
+    enforce_waitlist_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    current_clinical_practitioner_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_care_episode_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_clinical_encounter_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_clinical_note_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -156,6 +172,86 @@ async function verifyCustomObjects() {
     }
   }
 
+  // Check function definition semantic contracts for current_clinical_practitioner_id
+  const clinPractFunc = funcs.find(x => x.proname === 'current_clinical_practitioner_id');
+  if (clinPractFunc?.funcdef) {
+    const normDef = clinPractFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'auth.uid',
+      'current_organization_id',
+      'practice_practitioners',
+      'users',
+      'profile_type',
+      'professional',
+      'is_active',
+      'user_id',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'current_clinical_practitioner_id' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_care_episode_transition
+  const careEpFunc = funcs.find(x => x.proname === 'enforce_care_episode_transition');
+  if (careEpFunc?.funcdef) {
+    const normDef = careEpFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'active',
+      'closed',
+      '23514',
+      'draft',
+      'closed_at',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_care_episode_transition' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_clinical_encounter_insert
+  const encFunc = funcs.find(x => x.proname === 'enforce_clinical_encounter_insert');
+  if (encFunc?.funcdef) {
+    const normDef = encFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'occurred_at',
+      'now()',
+      '23514',
+      'care_episodes',
+      'appointments',
+      'scheduled',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_clinical_encounter_insert' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_clinical_note_transition
+  const noteFunc = funcs.find(x => x.proname === 'enforce_clinical_note_transition');
+  if (noteFunc?.funcdef) {
+    const normDef = noteFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'draft',
+      'finalized',
+      '23514',
+      'care_episodes',
+      'immutable',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_clinical_note_transition' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
   // 3. Verify triggers
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
@@ -172,7 +268,14 @@ async function verifyCustomObjects() {
     SELECT tgname, relname, pg_get_triggerdef(pg_trigger.oid, true) as triggerdef
     FROM pg_trigger 
     JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
-    WHERE tgname IN ('on_auth_user_created', 'appointments_status_transition_guard', 'appointment_waitlist_status_transition_guard')
+    WHERE tgname IN (
+      'on_auth_user_created',
+      'appointments_status_transition_guard',
+      'appointment_waitlist_status_transition_guard',
+      'care_episodes_transition_trigger',
+      'clinical_encounters_insert_trigger',
+      'clinical_notes_transition_trigger'
+    )
   `;
   
   const requiredTriggers = [
@@ -186,6 +289,21 @@ async function verifyCustomObjects() {
       name: 'appointment_waitlist_status_transition_guard',
       table: 'appointment_waitlist_entries',
       requiredElements: ['before insert or update', 'for each row', 'enforce_waitlist_status_transition'],
+    },
+    {
+      name: 'care_episodes_transition_trigger',
+      table: 'care_episodes',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_care_episode_transition'],
+    },
+    {
+      name: 'clinical_encounters_insert_trigger',
+      table: 'clinical_encounters',
+      requiredElements: ['before insert', 'for each row', 'enforce_clinical_encounter_insert'],
+    },
+    {
+      name: 'clinical_notes_transition_trigger',
+      table: 'clinical_notes',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_note_transition'],
     },
   ];
 
@@ -212,7 +330,10 @@ async function verifyCustomObjects() {
     'practice_locations', 'practice_practitioners', 'practitioner_locations', 'practice_rooms', 'practice_resources',
     'patient_profiles', 'patient_representatives', 'patient_representative_links',
     'appointment_types', 'practitioner_availability_rules', 'practitioner_availability_exceptions', 'appointments',
-    'appointment_waitlist_entries'
+    'appointment_waitlist_entries',
+    'care_episodes',
+    'clinical_encounters',
+    'clinical_notes'
   ];
 
   for (const table of expectedRlsTables) {
@@ -347,6 +468,70 @@ async function verifyCustomObjects() {
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
     },
+    {
+      policyName: 'care_episodes_select_owner_only',
+      tableName: 'care_episodes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'care_episodes_insert_owner_only',
+      tableName: 'care_episodes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'care_episodes_update_owner_only',
+      tableName: 'care_episodes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_encounters_select_owner_only',
+      tableName: 'clinical_encounters',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_encounters_insert_owner_only',
+      tableName: 'clinical_encounters',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_notes_select_owner_only',
+      tableName: 'clinical_notes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_notes_insert_owner_only',
+      tableName: 'clinical_notes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
+    },
+    {
+      policyName: 'clinical_notes_update_owner_only',
+      tableName: 'clinical_notes',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
+    },
   ];
 
   for (const ep of exactPolicies) {
@@ -376,30 +561,34 @@ async function verifyCustomObjects() {
       errorCount++;
     }
 
-    // Check qual present & semantics
-    if (!p.qual) {
-      console.error(`❌ ERROR: Policy '${ep.policyName}' missing USING (qual) expression.`);
-      errorCount++;
-    } else {
-      const normalizedQual = p.qual.toLowerCase().replace(/\s+/g, '');
-      for (const sem of ep.qualSemantics) {
-        if (!normalizedQual.includes(sem.replace(/\s+/g, ''))) {
-          console.error(`❌ ERROR: Policy '${ep.policyName}' USING clause missing semantic element '${sem}'.`);
-          errorCount++;
+    // Check qual present & semantics if expected
+    if (ep.qualSemantics.length > 0) {
+      if (!p.qual) {
+        console.error(`❌ ERROR: Policy '${ep.policyName}' missing USING (qual) expression.`);
+        errorCount++;
+      } else {
+        const normalizedQual = p.qual.toLowerCase().replace(/\s+/g, '');
+        for (const sem of ep.qualSemantics) {
+          if (!normalizedQual.includes(sem.replace(/\s+/g, ''))) {
+            console.error(`❌ ERROR: Policy '${ep.policyName}' USING clause missing semantic element '${sem}'.`);
+            errorCount++;
+          }
         }
       }
     }
 
-    // Check with_check present & semantics
-    if (!p.with_check) {
-      console.error(`❌ ERROR: Policy '${ep.policyName}' missing WITH CHECK expression.`);
-      errorCount++;
-    } else {
-      const normalizedWithCheck = p.with_check.toLowerCase().replace(/\s+/g, '');
-      for (const sem of ep.withCheckSemantics) {
-        if (!normalizedWithCheck.includes(sem.replace(/\s+/g, ''))) {
-          console.error(`❌ ERROR: Policy '${ep.policyName}' WITH CHECK clause missing semantic element '${sem}'.`);
-          errorCount++;
+    // Check with_check present & semantics if expected
+    if (ep.withCheckSemantics.length > 0) {
+      if (!p.with_check) {
+        console.error(`❌ ERROR: Policy '${ep.policyName}' missing WITH CHECK expression.`);
+        errorCount++;
+      } else {
+        const normalizedWithCheck = p.with_check.toLowerCase().replace(/\s+/g, '');
+        for (const sem of ep.withCheckSemantics) {
+          if (!normalizedWithCheck.includes(sem.replace(/\s+/g, ''))) {
+            console.error(`❌ ERROR: Policy '${ep.policyName}' WITH CHECK clause missing semantic element '${sem}'.`);
+            errorCount++;
+          }
         }
       }
     }

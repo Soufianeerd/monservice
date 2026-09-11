@@ -70,6 +70,8 @@ jobs:
         run: npm run test:patients
       - name: Run Scheduling Unit Tests
         run: npm run test:scheduling
+      - name: Run Clinical Records Unit Tests
+        run: npm run test:clinical
       - run: npm run test:compliance
       - run: npm run build
       

@@ -2,6 +2,7 @@ import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces';
 import { patientRegistryService } from '@/lib/services/patient-registry.service';
+import { findActiveClinicalPractitioner } from '@/lib/clinical/auth';
 import { notFound } from 'next/navigation';
 import PatientDetailManager from '@/components/patients/PatientDetailManager';
 
@@ -40,10 +41,17 @@ export default async function PatientDetailPage(props: PatientDetailPageProps) {
 
   const allRepresentatives = await patientRegistryService.listRepresentatives(organization.id);
 
+  let canAccessClinical = false;
+  if (workspace.capabilities.includes('clinicalRecords') && workspace.capabilities.includes('careEpisodes')) {
+    const practitionerId = await findActiveClinicalPractitioner(organization.id, context.userId);
+    canAccessClinical = Boolean(practitionerId);
+  }
+
   return (
     <PatientDetailManager
       initialDetail={detail}
       allRepresentatives={allRepresentatives}
+      canAccessClinical={canAccessClinical}
     />
   );
 }

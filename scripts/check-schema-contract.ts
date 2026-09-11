@@ -443,6 +443,41 @@ async function verifyContract() {
       localCols: ['created_by_user_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
+    {
+      constraintName: 'care_episodes_patient_fk',
+      tableName: 'care_episodes',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'care_episodes_practitioner_fk',
+      tableName: 'care_episodes',
+      foreignTable: 'practice_practitioners',
+      localCols: ['practitioner_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'clinical_encounters_episode_fk',
+      tableName: 'clinical_encounters',
+      foreignTable: 'care_episodes',
+      localCols: ['care_episode_id', 'organization_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
+    },
+    {
+      constraintName: 'clinical_encounters_appointment_fk',
+      tableName: 'clinical_encounters',
+      foreignTable: 'appointments',
+      localCols: ['appointment_id', 'organization_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
+    },
+    {
+      constraintName: 'clinical_notes_encounter_fk',
+      tableName: 'clinical_notes',
+      foreignTable: 'clinical_encounters',
+      localCols: ['encounter_id', 'organization_id', 'patient_id', 'author_practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -493,11 +528,28 @@ async function verifyContract() {
     'availability_rules_unique_slot',
     'availability_exceptions_org_id_unique',
     'appointments_org_id_unique',
+    'appointments_id_org_patient_practitioner_unique',
     'appointment_waitlist_entries_org_id_unique',
     'waitlist_org_status_idx',
     'waitlist_patient_idx',
     'waitlist_practitioner_idx',
     'waitlist_match_idx',
+    'care_episodes_org_id_unique',
+    'care_episodes_org_patient_practitioner_id_unique',
+    'care_episodes_organization_patient_idx',
+    'care_episodes_organization_practitioner_idx',
+    'care_episodes_org_status_idx',
+    'clinical_encounters_org_id_unique',
+    'clinical_encounters_org_patient_practitioner_id_unique',
+    'clinical_encounters_org_appointment_unique',
+    'clinical_encounters_org_patient_occurred_idx',
+    'clinical_encounters_org_practitioner_occurred_idx',
+    'clinical_encounters_org_episode_idx',
+    'clinical_encounters_org_appointment_idx',
+    'clinical_notes_org_id_unique',
+    'clinical_notes_org_patient_created_idx',
+    'clinical_notes_org_encounter_idx',
+    'clinical_notes_org_author_idx',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -587,6 +639,36 @@ async function verifyContract() {
       name: 'waitlist_state_check',
       table: 'appointment_waitlist_entries',
       elements: ['status', 'resolution_code', 'resolved_at', 'resolved_appointment_id'],
+    },
+    {
+      name: 'care_episodes_status_check',
+      table: 'care_episodes',
+      elements: ['status', 'active', 'closed'],
+    },
+    {
+      name: 'care_episodes_status_metadata_check',
+      table: 'care_episodes',
+      elements: ['status', 'active', 'closed_at', 'closed'],
+    },
+    {
+      name: 'care_episodes_title_length_check',
+      table: 'care_episodes',
+      elements: ['title', 'char_length', 'trim', '160'],
+    },
+    {
+      name: 'clinical_notes_status_check',
+      table: 'clinical_notes',
+      elements: ['status', 'draft', 'finalized'],
+    },
+    {
+      name: 'clinical_notes_status_metadata_check',
+      table: 'clinical_notes',
+      elements: ['status', 'draft', 'finalized_at', 'finalized'],
+    },
+    {
+      name: 'clinical_notes_content_length_check',
+      table: 'clinical_notes',
+      elements: ['content', 'char_length', 'trim', '50000'],
     },
   ];
 

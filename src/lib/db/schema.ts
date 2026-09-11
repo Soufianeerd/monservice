@@ -847,6 +847,7 @@ export const appointments = sqliteTable('appointments', {
   index('appointments_location_start_idx').on(t.organizationId, t.locationId, t.startsAt),
   index('appointments_room_start_idx').on(t.organizationId, t.roomId, t.startsAt),
   uniqueIndex('appointments_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('appointments_id_org_patient_practitioner_unique').on(t.id, t.organizationId, t.patientId, t.practitionerId),
   check('appointments_status_check', sql`${t.status} IN ('scheduled', 'cancelled', 'no_show')`),
   check('appointments_cancellation_reason_check', sql`${t.cancellationReasonCode} IS NULL OR ${t.cancellationReasonCode} IN ('patient_request', 'practitioner_request', 'practice_unavailable', 'scheduling_error', 'duplicate', 'other')`),
   check('appointments_status_metadata_check', sql`(${t.status} = 'scheduled' AND ${t.cancellationReasonCode} IS NULL AND ${t.cancelledAt} IS NULL AND ${t.noShowAt} IS NULL) OR (${t.status} = 'cancelled' AND ${t.cancellationReasonCode} IS NOT NULL AND ${t.cancelledAt} IS NOT NULL AND ${t.noShowAt} IS NULL) OR (${t.status} = 'no_show' AND ${t.cancellationReasonCode} IS NULL AND ${t.cancelledAt} IS NULL AND ${t.noShowAt} IS NOT NULL)`),
@@ -954,5 +955,93 @@ export const appointmentWaitlistEntries = sqliteTable('appointment_waitlist_entr
   }),
 ]);
 
+// Care Episodes
+export const careEpisodes = sqliteTable('care_episodes', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  title: text('title'),
+  status: text('status').notNull().default('active'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('care_episodes_organization_patient_idx').on(t.organizationId, t.patientId),
+  index('care_episodes_organization_practitioner_idx').on(t.organizationId, t.practitionerId),
+  index('care_episodes_org_status_idx').on(t.organizationId, t.status),
+  uniqueIndex('care_episodes_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('care_episodes_org_patient_practitioner_id_unique').on(t.id, t.organizationId, t.patientId, t.practitionerId),
+  check('care_episodes_status_check', sql`${t.status} IN ('active', 'closed')`),
+  check('care_episodes_status_metadata_check', sql`(${t.status} = 'active' AND ${t.closedAt} IS NULL) OR (${t.status} = 'closed' AND ${t.closedAt} IS NOT NULL)`),
+  check('care_episodes_title_length_check', sql`${t.title} IS NULL OR (char_length(trim(${t.title})) >= 1 AND char_length(${t.title}) <= 160)`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'care_episodes_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'care_episodes_practitioner_fk'
+  }),
+]);
 
+// Clinical Encounters
+export const clinicalEncounters = sqliteTable('clinical_encounters', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  careEpisodeId: text('care_episode_id').notNull(),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  appointmentId: text('appointment_id'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_encounters_org_patient_occurred_idx').on(t.organizationId, t.patientId, t.occurredAt),
+  index('clinical_encounters_org_practitioner_occurred_idx').on(t.organizationId, t.practitionerId, t.occurredAt),
+  index('clinical_encounters_org_episode_idx').on(t.organizationId, t.careEpisodeId),
+  index('clinical_encounters_org_appointment_idx').on(t.organizationId, t.appointmentId),
+  uniqueIndex('clinical_encounters_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('clinical_encounters_org_patient_practitioner_id_unique').on(t.id, t.organizationId, t.patientId, t.practitionerId),
+  uniqueIndex('clinical_encounters_org_appointment_unique').on(t.organizationId, t.appointmentId).where(sql`appointment_id IS NOT NULL`),
+  foreignKey({
+    columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [careEpisodes.id, careEpisodes.organizationId, careEpisodes.patientId, careEpisodes.practitionerId],
+    name: 'clinical_encounters_episode_fk'
+  }),
+  foreignKey({
+    columns: [t.appointmentId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [appointments.id, appointments.organizationId, appointments.patientId, appointments.practitionerId],
+    name: 'clinical_encounters_appointment_fk'
+  }),
+]);
 
+// Clinical Notes
+export const clinicalNotes = sqliteTable('clinical_notes', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  encounterId: text('encounter_id').notNull(),
+  patientId: text('patient_id').notNull(),
+  authorPractitionerId: text('author_practitioner_id').notNull(),
+  content: text('content').notNull(),
+  status: text('status').notNull().default('draft'),
+  finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_notes_org_patient_created_idx').on(t.organizationId, t.patientId, t.createdAt),
+  index('clinical_notes_org_encounter_idx').on(t.organizationId, t.encounterId),
+  index('clinical_notes_org_author_idx').on(t.organizationId, t.authorPractitionerId),
+  uniqueIndex('clinical_notes_org_id_unique').on(t.id, t.organizationId),
+  check('clinical_notes_status_check', sql`${t.status} IN ('draft', 'finalized')`),
+  check('clinical_notes_status_metadata_check', sql`(${t.status} = 'draft' AND ${t.finalizedAt} IS NULL) OR (${t.status} = 'finalized' AND ${t.finalizedAt} IS NOT NULL)`),
+  check('clinical_notes_content_length_check', sql`char_length(trim(${t.content})) >= 1 AND char_length(${t.content}) <= 50000`),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.patientId, t.authorPractitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_notes_encounter_fk'
+  }),
+]);

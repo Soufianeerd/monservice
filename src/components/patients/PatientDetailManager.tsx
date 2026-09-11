@@ -15,7 +15,8 @@ import {
   ArrowLeft,
   Shield,
   Building,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { 
   PatientDetailDTO, 
@@ -29,11 +30,13 @@ import RepresentativeManager from './RepresentativeManager';
 interface PatientDetailManagerProps {
   initialDetail: PatientDetailDTO;
   allRepresentatives: PatientRepresentativeDTO[];
+  canAccessClinical?: boolean;
 }
 
 export default function PatientDetailManager({
   initialDetail,
   allRepresentatives,
+  canAccessClinical = false,
 }: PatientDetailManagerProps) {
   const router = useRouter();
   const [detail, setDetail] = useState<PatientDetailDTO>(initialDetail);
@@ -118,6 +121,15 @@ export default function PatientDetailManager({
         <div className="flex items-center gap-2">
           {!isEditing && (
             <>
+              {canAccessClinical && (
+                <Link
+                  href={`/patients/${patient.id}/clinique`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg shadow-sm transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  Dossier clinique
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}

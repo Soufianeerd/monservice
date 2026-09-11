@@ -19,7 +19,10 @@ import {
   practitionerAvailabilityRules,
   practitionerAvailabilityExceptions,
   appointments,
-  appointmentWaitlistEntries
+  appointmentWaitlistEntries,
+  careEpisodes,
+  clinicalEncounters,
+  clinicalNotes
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -59,6 +62,15 @@ export const SEED_SCHEDULING_IDS = {
   availabilityExceptionB: '60000000-0000-4000-8000-000000000003',
   appointmentB: '60000000-0000-4000-8000-000000000004',
   waitlistEntryB: '60000000-0000-4000-8000-000000000005',
+};
+
+export const SEED_CLINICAL_IDS = {
+  careEpisodeA: '70000000-0000-4000-8000-000000000001',
+  clinicalEncounterA: '70000000-0000-4000-8000-000000000002',
+  clinicalNoteA: '70000000-0000-4000-8000-000000000003',
+  careEpisodeB: '80000000-0000-4000-8000-000000000001',
+  clinicalEncounterB: '80000000-0000-4000-8000-000000000002',
+  clinicalNoteB: '80000000-0000-4000-8000-000000000003',
 };
 
 async function seed() {
@@ -141,6 +153,7 @@ async function seed() {
   // 2. Create Users
   const proAId = await createAuthUser('pro_a@monservice.com', 'Professional A', 'professional', SEED_PRACTICE_IDS.orgA);
   const cliAId = await createAuthUser('client_a@monservice.com', 'Client A', 'client', SEED_PRACTICE_IDS.orgA);
+  const staffAId = await createAuthUser('staff_a@monservice.com', 'Staff A', 'professional', SEED_PRACTICE_IDS.orgA);
   const proBId = await createAuthUser('pro_b@monservice.com', 'Professional B', 'professional', SEED_PRACTICE_IDS.orgB);
   const cliBId = await createAuthUser('client_b@monservice.com', 'Client B', 'client', SEED_PRACTICE_IDS.orgB);
 
@@ -574,7 +587,83 @@ async function seed() {
     }
   ]).onConflictDoNothing();
 
-  console.log('Scheduling foundation & Waitlist Org A & Org B seeded successfully!');
+  // 10. Clinical Records Org A
+  await db.insert(careEpisodes).values([
+    {
+      id: SEED_CLINICAL_IDS.careEpisodeA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      title: 'Épisode de soins kinésithérapie initiale',
+      status: 'active',
+      startedAt: new Date('2026-08-01T08:00:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(clinicalEncounters).values([
+    {
+      id: SEED_CLINICAL_IDS.clinicalEncounterA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      appointmentId: null,
+      occurredAt: new Date('2026-08-01T09:00:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(clinicalNotes).values([
+    {
+      id: SEED_CLINICAL_IDS.clinicalNoteA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      authorPractitionerId: SEED_PRACTICE_IDS.practitionerA,
+      content: 'Note clinique de test A.',
+      status: 'finalized',
+      finalizedAt: new Date('2026-08-01T09:30:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  // 11. Clinical Records Org B
+  await db.insert(careEpisodes).values([
+    {
+      id: SEED_CLINICAL_IDS.careEpisodeB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      title: 'Épisode de soins ostéopathie initiale',
+      status: 'active',
+      startedAt: new Date('2026-08-01T08:00:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(clinicalEncounters).values([
+    {
+      id: SEED_CLINICAL_IDS.clinicalEncounterB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      appointmentId: null,
+      occurredAt: new Date('2026-08-01T09:00:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(clinicalNotes).values([
+    {
+      id: SEED_CLINICAL_IDS.clinicalNoteB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      authorPractitionerId: SEED_PRACTICE_IDS.practitionerB,
+      content: 'Note clinique de test B.',
+      status: 'finalized',
+      finalizedAt: new Date('2026-08-01T09:30:00.000Z'),
+    }
+  ]).onConflictDoNothing();
+
+  console.log('Scheduling foundation, Waitlist & Clinical Records Org A & Org B seeded successfully!');
   await sql.end();
 }
 
