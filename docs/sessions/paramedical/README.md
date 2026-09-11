@@ -33,3 +33,4 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **10** | Appointment Lifecycle, Cancellation, No-Show & Waitlist | 5 Septembre 2026 | Terminée | [Session 10](SESSION_10_APPOINTMENT_LIFECYCLE_WAITLIST.md) |
 | **10B** | Appointment Lifecycle Finalization & DB Hardening | 5 Septembre 2026 | Terminée | [Session 10B](SESSION_10B_APPOINTMENT_LIFECYCLE_FINALIZATION.md) |
 | **10C** | Appointment Lifecycle PostgREST Proof Finalization | 5 Septembre 2026 | Terminée | [Session 10C](SESSION_10C_POSTGREST_PROOF_FINALIZATION.md) |
+| **11** | Care Episodes, Clinical Encounters & Notes | 11 Septembre 2026 | Terminée | [Session 11](SESSION_11_CARE_EPISODES_ENCOUNTERS_CLINICAL_NOTES.md) |
