@@ -58,6 +58,10 @@ describe('Clinical Records Database Integrity & State Machines (Session 11)', ()
     await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA}, ${orgA}, ${userA}, 'Dr Clin A', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracB}, ${orgB}, ${userB}, 'Dr Clin B', 'osteopath', now(), now()) ON CONFLICT DO NOTHING`;
 
+    // Setup Practitioner-Location assignments
+    await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgB}, ${pracB}, ${locB}, now(), now()) ON CONFLICT DO NOTHING`;
+
     // Setup Patients
     await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at) VALUES (${patientA}, ${orgA}, 'MARTIN', 'Sophie', '1992-03-10', 'female', now(), now()) ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at) VALUES (${patientB}, ${orgB}, 'LEFEBVRE', 'Marc', '1988-07-22', 'male', now(), now()) ON CONFLICT DO NOTHING`;
