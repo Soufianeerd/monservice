@@ -369,4 +369,9 @@ REVOKE ALL PRIVILEGES ON TABLE "clinical_notes" FROM PUBLIC, anon, authenticated
 
 GRANT SELECT, INSERT, UPDATE ON TABLE "care_episodes" TO authenticated;--> statement-breakpoint
 GRANT SELECT, INSERT ON TABLE "clinical_encounters" TO authenticated;--> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE ON TABLE "clinical_notes" TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE "clinical_notes" TO authenticated;--> statement-breakpoint
+REVOKE EXECUTE ON FUNCTION public.enforce_care_episode_transition() FROM PUBLIC, anon, authenticated;--> statement-breakpoint
+REVOKE EXECUTE ON FUNCTION public.enforce_clinical_encounter_insert() FROM PUBLIC, anon, authenticated;--> statement-breakpoint
+REVOKE EXECUTE ON FUNCTION public.enforce_clinical_note_transition() FROM PUBLIC, anon, authenticated;--> statement-breakpoint
+REVOKE ALL ON FUNCTION public.current_clinical_practitioner_id() FROM PUBLIC, anon;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION public.current_clinical_practitioner_id() TO authenticated;
