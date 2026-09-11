@@ -98,27 +98,35 @@ describe('Clinical Records Database Integrity & State Machines (Session 11)', ()
     await sql`
       INSERT INTO appointments (
         id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
-        starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone, status,
-        cancellation_reason_code, cancelled_at
+        starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone, status
       ) VALUES (
         ${apptCancelledA}, ${orgA}, ${patientA}, ${pracA}, ${typeA}, ${locA}, ${userA},
         now() - interval '3 days', now() - interval '3 days' + interval '30 minutes',
         now() - interval '3 days', now() - interval '3 days' + interval '30 minutes',
-        'Europe/Paris', 'cancelled', 'patient_request', now() - interval '4 days'
+        'Europe/Paris', 'scheduled'
       ) ON CONFLICT DO NOTHING
+    `;
+    await sql`
+      UPDATE appointments
+      SET status = 'cancelled', cancellation_reason_code = 'patient_request'
+      WHERE id = ${apptCancelledA} AND status = 'scheduled'
     `;
 
     await sql`
       INSERT INTO appointments (
         id, organization_id, patient_id, practitioner_id, appointment_type_id, location_id, created_by_user_id,
-        starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone, status,
-        no_show_at
+        starts_at, ends_at, occupancy_starts_at, occupancy_ends_at, timezone, status
       ) VALUES (
         ${apptNoShowA}, ${orgA}, ${patientA}, ${pracA}, ${typeA}, ${locA}, ${userA},
         now() - interval '4 days', now() - interval '4 days' + interval '30 minutes',
         now() - interval '4 days', now() - interval '4 days' + interval '30 minutes',
-        'Europe/Paris', 'no_show', now() - interval '4 days'
+        'Europe/Paris', 'scheduled'
       ) ON CONFLICT DO NOTHING
+    `;
+    await sql`
+      UPDATE appointments
+      SET status = 'no_show'
+      WHERE id = ${apptNoShowA} AND status = 'scheduled'
     `;
   });
 
@@ -129,6 +137,7 @@ describe('Clinical Records Database Integrity & State Machines (Session 11)', ()
     await sql`DELETE FROM appointments WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM appointment_types WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM patient_profiles WHERE organization_id IN (${orgA}, ${orgB})`;
+    await sql`DELETE FROM practitioner_locations WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM practice_practitioners WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM practice_locations WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM users WHERE organization_id IN (${orgA}, ${orgB})`;
