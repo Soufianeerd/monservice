@@ -97,12 +97,12 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
           title, category, file_name, mime_type, size_bytes, storage_path, is_archived
         ) VALUES (
           ${docId}, ${orgA}, ${patientA}, ${pracA}, ${episodeA}, ${encounterA},
-          'Ordonnance de radiologie', 'imaging', 'radio.pdf', 'application/pdf', 102400, 'org-a/radio.pdf', false
+          'Ordonnance de radiologie', 'report', 'radio.pdf', 'application/pdf', 102400, 'org-a/radio.pdf', false
         ) RETURNING id, title, category
       `;
       expect(rows).toHaveLength(1);
       expect(rows[0].title).toBe('Ordonnance de radiologie');
-      expect(rows[0].category).toBe('imaging');
+      expect(rows[0].category).toBe('report');
     });
 
     it('rejects invalid category with check violation (23514)', async () => {
@@ -243,13 +243,13 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
         INSERT INTO clinical_form_templates (
           id, organization_id, practitioner_id, name, kind, description, schema_json, is_active
         ) VALUES (
-          ${templateId}, ${orgA}, ${pracA}, 'Bilan Initial Kiné', 'evaluation', 'Description',
+          ${templateId}, ${orgA}, ${pracA}, 'Bilan Initial Kiné', 'assessment', 'Description',
           '{"fields": [{"id": "score", "label": "Score", "type": "number", "required": true}]}'::jsonb, true
         ) RETURNING id, name, kind
       `;
       expect(rows).toHaveLength(1);
       expect(rows[0].name).toBe('Bilan Initial Kiné');
-      expect(rows[0].kind).toBe('evaluation');
+      expect(rows[0].kind).toBe('assessment');
     });
 
     it('rejects invalid form template kind (23514)', async () => {

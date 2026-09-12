@@ -158,7 +158,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12)', () => 
           care_episode_id: SEED_CLINICAL_IDS.careEpisodeA,
           encounter_id: SEED_CLINICAL_IDS.clinicalEncounterA,
           title: 'Radio Genou Pro A',
-          category: 'imaging',
+          category: 'report',
           file_name: 'radio_genou.png',
           mime_type: 'image/png',
           size_bytes: 204800,
