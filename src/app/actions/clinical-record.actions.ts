@@ -7,6 +7,7 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { clinicalRecordService } from '@/lib/services/clinical-record.service';
 import { clinicalStorageService } from '@/lib/services/clinical-storage.service';
 import { buildClinicalDocumentStoragePath } from '@/lib/clinical/documents';
+import type { ClinicalDocumentDTO } from '@/lib/clinical/types';
 import {
   createCareEpisodeSchema,
   createClinicalEncounterSchema,
@@ -189,22 +190,36 @@ export async function uploadClinicalDocumentAction(patientId: string, formData: 
 
   await clinicalStorageService.uploadFile(storagePath, buffer, validatedMeta.mimeType);
 
-  // 2. Enregistrer les métadonnées DB
-  const document = await clinicalRecordService.createClinicalDocumentMetadata(
-    organizationId,
-    patientId,
-    practitionerId,
-    {
-      careEpisodeId: validatedMeta.careEpisodeId,
-      encounterId: validatedMeta.encounterId,
-      title: validatedMeta.title,
-      category: validatedMeta.category,
-      fileName: validatedMeta.fileName,
-      mimeType: validatedMeta.mimeType,
-      sizeBytes: validatedMeta.sizeBytes,
-      storagePath,
-    },
-  );
+  // 2. Enregistrer les métadonnées DB avec compensation / rollback
+  let document: ClinicalDocumentDTO;
+  try {
+    document = await clinicalRecordService.createClinicalDocumentMetadata(
+      organizationId,
+      patientId,
+      practitionerId,
+      {
+        id: documentId,
+        careEpisodeId: validatedMeta.careEpisodeId,
+        encounterId: validatedMeta.encounterId,
+        title: validatedMeta.title,
+        category: validatedMeta.category,
+        fileName: validatedMeta.fileName,
+        mimeType: validatedMeta.mimeType,
+        sizeBytes: validatedMeta.sizeBytes,
+        storagePath,
+      },
+    );
+  } catch (dbError) {
+    try {
+      await clinicalStorageService.removeFileAfterFailedMetadataWrite(storagePath);
+    } catch (cleanupError) {
+      console.error('[ClinicalStorageRollbackError] Failed to remove orphan storage object after DB metadata failure', {
+        storagePath,
+        cleanupError: cleanupError instanceof Error ? cleanupError.message : 'Unknown storage error',
+      });
+    }
+    throw dbError;
+  }
 
   revalidatePath(`/patients/${patientId}`);
   revalidatePath(`/patients/${patientId}/clinique`);

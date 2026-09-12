@@ -927,6 +927,65 @@ export class ClinicalRecordService {
   // ==========================================
 
   /**
+   * Valide la cohérence des liens cliniques (épisode et séance).
+   * Si careEpisodeId ET encounterId sont fournis, vérifie que l'encounter appartient bien à ce careEpisode.
+   * Lève une AppError avec le code CLINICAL_CONTEXT_MISMATCH en cas d'incohérence.
+   */
+  async validateClinicalContextLinks(
+    organizationId: string,
+    patientId: string,
+    practitionerId: string,
+    careEpisodeId?: string | null,
+    encounterId?: string | null,
+  ): Promise<void> {
+    if (careEpisodeId) {
+      const [ep] = await db
+        .select({ id: careEpisodes.id })
+        .from(careEpisodes)
+        .where(
+          and(
+            eq(careEpisodes.id, careEpisodeId),
+            eq(careEpisodes.organizationId, organizationId),
+            eq(careEpisodes.patientId, patientId),
+            eq(careEpisodes.practitionerId, practitionerId),
+          ),
+        )
+        .limit(1);
+
+      if (!ep) {
+        throw new AppError('Épisode de soins introuvable ou non associé', 404, 'EPISODE_NOT_FOUND');
+      }
+    }
+
+    if (encounterId) {
+      const [enc] = await db
+        .select({ id: clinicalEncounters.id, careEpisodeId: clinicalEncounters.careEpisodeId })
+        .from(clinicalEncounters)
+        .where(
+          and(
+            eq(clinicalEncounters.id, encounterId),
+            eq(clinicalEncounters.organizationId, organizationId),
+            eq(clinicalEncounters.patientId, patientId),
+            eq(clinicalEncounters.practitionerId, practitionerId),
+          ),
+        )
+        .limit(1);
+
+      if (!enc) {
+        throw new AppError('Séance clinique introuvable ou non associée', 404, 'ENCOUNTER_NOT_FOUND');
+      }
+
+      if (careEpisodeId && enc.careEpisodeId !== careEpisodeId) {
+        throw new AppError(
+          'La séance clinique n’appartient pas à l’épisode de soins spécifié',
+          400,
+          'CLINICAL_CONTEXT_MISMATCH',
+        );
+      }
+    }
+  }
+
+  /**
    * Enregistre les métadonnées d'un document clinique après téléversement sécurisé.
    */
   async createClinicalDocumentMetadata(
@@ -944,47 +1003,15 @@ export class ClinicalRecordService {
       input.category,
     );
 
-    // Vérifier l'épisode si fourni
-    if (input.careEpisodeId) {
-      const [ep] = await db
-        .select({ id: careEpisodes.id })
-        .from(careEpisodes)
-        .where(
-          and(
-            eq(careEpisodes.id, input.careEpisodeId),
-            eq(careEpisodes.organizationId, organizationId),
-            eq(careEpisodes.patientId, patientId),
-            eq(careEpisodes.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
+    await this.validateClinicalContextLinks(
+      organizationId,
+      patientId,
+      practitionerId,
+      input.careEpisodeId,
+      input.encounterId,
+    );
 
-      if (!ep) {
-        throw new AppError('Épisode de soins introuvable ou non associé', 404, 'EPISODE_NOT_FOUND');
-      }
-    }
-
-    // Vérifier la séance si fournie
-    if (input.encounterId) {
-      const [enc] = await db
-        .select({ id: clinicalEncounters.id })
-        .from(clinicalEncounters)
-        .where(
-          and(
-            eq(clinicalEncounters.id, input.encounterId),
-            eq(clinicalEncounters.organizationId, organizationId),
-            eq(clinicalEncounters.patientId, patientId),
-            eq(clinicalEncounters.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
-
-      if (!enc) {
-        throw new AppError('Séance clinique introuvable ou non associée', 404, 'ENCOUNTER_NOT_FOUND');
-      }
-    }
-
-    const documentId = randomUUID();
+    const documentId = input.id || randomUUID();
 
     const [created] = await db
       .insert(clinicalDocuments)
@@ -1454,45 +1481,13 @@ export class ClinicalRecordService {
     // Valider les réponses partielles contre le schéma
     const validatedAnswers = validateFormAnswersAgainstSchema(template.schemaJson, input.answersJson, false);
 
-    // Vérifier l'épisode si fourni
-    if (input.careEpisodeId) {
-      const [ep] = await db
-        .select({ id: careEpisodes.id })
-        .from(careEpisodes)
-        .where(
-          and(
-            eq(careEpisodes.id, input.careEpisodeId),
-            eq(careEpisodes.organizationId, organizationId),
-            eq(careEpisodes.patientId, patientId),
-            eq(careEpisodes.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
-
-      if (!ep) {
-        throw new AppError('Épisode de soins introuvable ou non associé', 404, 'EPISODE_NOT_FOUND');
-      }
-    }
-
-    // Vérifier la séance si fournie
-    if (input.encounterId) {
-      const [enc] = await db
-        .select({ id: clinicalEncounters.id })
-        .from(clinicalEncounters)
-        .where(
-          and(
-            eq(clinicalEncounters.id, input.encounterId),
-            eq(clinicalEncounters.organizationId, organizationId),
-            eq(clinicalEncounters.patientId, patientId),
-            eq(clinicalEncounters.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
-
-      if (!enc) {
-        throw new AppError('Séance clinique introuvable ou non associée', 404, 'ENCOUNTER_NOT_FOUND');
-      }
-    }
+    await this.validateClinicalContextLinks(
+      organizationId,
+      patientId,
+      practitionerId,
+      input.careEpisodeId,
+      input.encounterId,
+    );
 
     const responseId = randomUUID();
 
@@ -1547,6 +1542,8 @@ export class ClinicalRecordService {
       .select({
         id: clinicalFormResponses.id,
         templateId: clinicalFormResponses.templateId,
+        careEpisodeId: clinicalFormResponses.careEpisodeId,
+        encounterId: clinicalFormResponses.encounterId,
         status: clinicalFormResponses.status,
       })
       .from(clinicalFormResponses)
@@ -1571,6 +1568,19 @@ export class ClinicalRecordService {
     const template = await this.getFormTemplate(organizationId, practitionerId, existing.templateId);
     if (!template) {
       throw new AppError('Template associé introuvable', 404, 'TEMPLATE_NOT_FOUND');
+    }
+
+    const targetEpisodeId = input.careEpisodeId !== undefined ? input.careEpisodeId : existing.careEpisodeId;
+    const targetEncounterId = input.encounterId !== undefined ? input.encounterId : existing.encounterId;
+
+    if (input.careEpisodeId !== undefined || input.encounterId !== undefined) {
+      await this.validateClinicalContextLinks(
+        organizationId,
+        patientId,
+        practitionerId,
+        targetEpisodeId,
+        targetEncounterId,
+      );
     }
 
     const validatedAnswers = validateFormAnswersAgainstSchema(template.schemaJson, input.answersJson, false);
@@ -1858,45 +1868,13 @@ export class ClinicalRecordService {
 
     const validated = validateMeasurementInput(input);
 
-    // Vérifier l'épisode si fourni
-    if (validated.careEpisodeId) {
-      const [ep] = await db
-        .select({ id: careEpisodes.id })
-        .from(careEpisodes)
-        .where(
-          and(
-            eq(careEpisodes.id, validated.careEpisodeId),
-            eq(careEpisodes.organizationId, organizationId),
-            eq(careEpisodes.patientId, patientId),
-            eq(careEpisodes.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
-
-      if (!ep) {
-        throw new AppError('Épisode de soins introuvable ou non associé', 404, 'EPISODE_NOT_FOUND');
-      }
-    }
-
-    // Vérifier la séance si fournie
-    if (validated.encounterId) {
-      const [enc] = await db
-        .select({ id: clinicalEncounters.id })
-        .from(clinicalEncounters)
-        .where(
-          and(
-            eq(clinicalEncounters.id, validated.encounterId),
-            eq(clinicalEncounters.organizationId, organizationId),
-            eq(clinicalEncounters.patientId, patientId),
-            eq(clinicalEncounters.practitionerId, practitionerId),
-          ),
-        )
-        .limit(1);
-
-      if (!enc) {
-        throw new AppError('Séance clinique introuvable ou non associée', 404, 'ENCOUNTER_NOT_FOUND');
-      }
-    }
+    await this.validateClinicalContextLinks(
+      organizationId,
+      patientId,
+      practitionerId,
+      validated.careEpisodeId,
+      validated.encounterId,
+    );
 
     const measurementId = randomUUID();
 

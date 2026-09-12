@@ -35,6 +35,7 @@ vi.mock('@/lib/services/clinical-storage.service', () => ({
   clinicalStorageService: {
     uploadFile: vi.fn(),
     getSignedDownloadUrl: vi.fn(),
+    removeFileAfterFailedMetadataWrite: vi.fn(),
   },
 }));
 
@@ -55,52 +56,95 @@ describe('Clinical Record Expansion Server Actions', () => {
     vi.mocked(requireClinicalPractitionerContext).mockResolvedValue(mockContext);
   });
 
-  describe('Document Actions', () => {
-    it('uploadClinicalDocumentAction coordinates storage upload and DB metadata creation', async () => {
+  describe('Document Actions & Atomicity', () => {
+    it('uploadClinicalDocumentAction uses single canonical documentId for both storagePath segment 4 and DB row ID', async () => {
       const mockBlob = new Blob(['sample pdf content'], { type: 'application/pdf' });
       const formData = new FormData();
       formData.append('file', mockBlob, 'prescription.pdf');
       formData.append('title', 'Ordonnance kiné');
       formData.append('category', 'prescription');
 
-      vi.mocked(clinicalStorageService.uploadFile).mockResolvedValue(undefined);
+      let capturedStoragePath = '';
+      let capturedDocIdInMeta = '';
 
-      vi.mocked(clinicalRecordService.createClinicalDocumentMetadata).mockResolvedValue({
-        id: 'doc-1',
-        organizationId: mockContext.organizationId,
-        patientId: 'patient-1',
-        practitionerId: mockContext.practitionerId,
-        careEpisodeId: null,
-        encounterId: null,
-        title: 'Ordonnance kiné',
-        category: 'prescription',
-        fileName: 'prescription.pdf',
-        mimeType: 'application/pdf',
-        sizeBytes: 100,
-        storagePath: 'org-health-1/practitioner-1/patient-1/doc-1/prescription.pdf',
-        isArchived: false,
-        createdAt: '2026-09-12T10:00:00.000Z',
-        updatedAt: '2026-09-12T10:00:00.000Z',
+      vi.mocked(clinicalStorageService.uploadFile).mockImplementation(async (path) => {
+        capturedStoragePath = path;
       });
+
+      vi.mocked(clinicalRecordService.createClinicalDocumentMetadata).mockImplementation(
+        async (_org, _pat, _prac, meta) => {
+          capturedDocIdInMeta = meta.id || '';
+          return {
+            id: meta.id || 'generated-id',
+            organizationId: mockContext.organizationId,
+            patientId: 'patient-1',
+            practitionerId: mockContext.practitionerId,
+            careEpisodeId: null,
+            encounterId: null,
+            title: meta.title,
+            category: meta.category,
+            fileName: meta.fileName,
+            mimeType: meta.mimeType,
+            sizeBytes: meta.sizeBytes,
+            storagePath: meta.storagePath,
+            isArchived: false,
+            createdAt: '2026-09-12T10:00:00.000Z',
+            updatedAt: '2026-09-12T10:00:00.000Z',
+          };
+        },
+      );
 
       const result = await uploadClinicalDocumentAction('patient-1', formData);
 
-      expect(clinicalStorageService.uploadFile).toHaveBeenCalledWith(
-        expect.stringMatching(/^org-health-1\/practitioner-1\/patient-1\/[0-9a-f-]+\/prescription\.pdf$/),
-        expect.any(Buffer),
-        'application/pdf',
-      );
-      expect(clinicalRecordService.createClinicalDocumentMetadata).toHaveBeenCalledWith(
-        mockContext.organizationId,
-        'patient-1',
-        mockContext.practitionerId,
-        expect.objectContaining({
-          title: 'Ordonnance kiné',
-          category: 'prescription',
-        }),
-      );
-      expect(revalidatePath).toHaveBeenCalledWith('/patients/patient-1/clinique');
-      expect(result.id).toBe('doc-1');
+      // Extract 4th segment (index 3) from storagePath: org/practitioner/patient/documentId/file.pdf
+      const pathSegments = capturedStoragePath.split('/');
+      const pathDocumentId = pathSegments[3];
+
+      expect(pathSegments).toHaveLength(5);
+      expect(pathDocumentId).toBeDefined();
+      expect(pathDocumentId).toBe(capturedDocIdInMeta);
+      expect(result.id).toBe(pathDocumentId);
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).not.toHaveBeenCalled();
+    });
+
+    it('triggers internal storage rollback when DB metadata creation fails after upload', async () => {
+      const mockBlob = new Blob(['sample pdf content'], { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', mockBlob, 'prescription.pdf');
+      formData.append('title', 'Ordonnance kiné');
+      formData.append('category', 'prescription');
+
+      let capturedStoragePath = '';
+
+      vi.mocked(clinicalStorageService.uploadFile).mockImplementation(async (path) => {
+        capturedStoragePath = path;
+      });
+
+      const dbError = new Error('Database connection lost');
+      vi.mocked(clinicalRecordService.createClinicalDocumentMetadata).mockRejectedValue(dbError);
+      vi.mocked(clinicalStorageService.removeFileAfterFailedMetadataWrite).mockResolvedValue(undefined);
+
+      await expect(uploadClinicalDocumentAction('patient-1', formData)).rejects.toThrow('Database connection lost');
+
+      expect(clinicalStorageService.uploadFile).toHaveBeenCalledTimes(1);
+      expect(clinicalRecordService.createClinicalDocumentMetadata).toHaveBeenCalledTimes(1);
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledTimes(1);
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledWith(capturedStoragePath);
+    });
+
+    it('does not attempt DB metadata creation or storage rollback if initial storage upload fails', async () => {
+      const mockBlob = new Blob(['sample pdf content'], { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', mockBlob, 'prescription.pdf');
+      formData.append('title', 'Ordonnance kiné');
+      formData.append('category', 'prescription');
+
+      vi.mocked(clinicalStorageService.uploadFile).mockRejectedValue(new Error('Storage quota exceeded'));
+
+      await expect(uploadClinicalDocumentAction('patient-1', formData)).rejects.toThrow('Storage quota exceeded');
+
+      expect(clinicalRecordService.createClinicalDocumentMetadata).not.toHaveBeenCalled();
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).not.toHaveBeenCalled();
     });
 
     it('archiveClinicalDocumentAction invokes service and revalidates path', async () => {

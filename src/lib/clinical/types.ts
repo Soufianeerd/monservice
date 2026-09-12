@@ -329,6 +329,7 @@ export interface EligibleAppointmentDTO {
 }
 
 export interface CreateClinicalDocumentMetadataInput {
+  id?: string;
   careEpisodeId?: string | null;
   encounterId?: string | null;
   title: string;

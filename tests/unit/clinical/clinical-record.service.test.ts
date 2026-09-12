@@ -412,4 +412,125 @@ describe('ClinicalRecordService Unit Tests', () => {
       expect(finalized.finalizedAt).not.toBeNull();
     });
   });
+
+  describe('validateClinicalContextLinks (Session 12B Coherence)', () => {
+    it('succeeds when careEpisode and encounter match correctly', async () => {
+      const mockSelect = vi.fn();
+      // Episode lookup
+      mockSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'ep-1' }]),
+          }),
+        }),
+      });
+      // Encounter lookup: returns careEpisodeId = 'ep-1'
+      mockSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'enc-1', careEpisodeId: 'ep-1' }]),
+          }),
+        }),
+      });
+      vi.mocked(db.select).mockImplementation(mockSelect);
+
+      await expect(
+        clinicalRecordService.validateClinicalContextLinks(
+          orgId,
+          patientId,
+          practitionerId,
+          'ep-1',
+          'enc-1',
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects with CLINICAL_CONTEXT_MISMATCH when encounter belongs to another care episode', async () => {
+      const mockSelect = vi.fn();
+      // Episode lookup
+      mockSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'ep-1' }]),
+          }),
+        }),
+      });
+      // Encounter lookup: returns careEpisodeId = 'ep-2' (different!)
+      mockSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'enc-1', careEpisodeId: 'ep-2' }]),
+          }),
+        }),
+      });
+      vi.mocked(db.select).mockImplementation(mockSelect);
+
+      await expect(
+        clinicalRecordService.validateClinicalContextLinks(
+          orgId,
+          patientId,
+          practitionerId,
+          'ep-1',
+          'enc-1',
+        ),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          statusCode: 400,
+          code: 'CLINICAL_CONTEXT_MISMATCH',
+        }),
+      );
+    });
+
+    it('rejects when care episode does not exist', async () => {
+      const mockSelect = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+      vi.mocked(db.select).mockImplementation(mockSelect);
+
+      await expect(
+        clinicalRecordService.validateClinicalContextLinks(
+          orgId,
+          patientId,
+          practitionerId,
+          'ep-nonexistent',
+          null,
+        ),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          statusCode: 404,
+          code: 'EPISODE_NOT_FOUND',
+        }),
+      );
+    });
+
+    it('rejects when encounter does not exist', async () => {
+      const mockSelect = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+      vi.mocked(db.select).mockImplementation(mockSelect);
+
+      await expect(
+        clinicalRecordService.validateClinicalContextLinks(
+          orgId,
+          patientId,
+          practitionerId,
+          null,
+          'enc-nonexistent',
+        ),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          statusCode: 404,
+          code: 'ENCOUNTER_NOT_FOUND',
+        }),
+      );
+    });
+  });
 });

@@ -1,9 +1,25 @@
 import 'server-only';
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { AppError } from '@/lib/errors';
 
 export const CLINICAL_DOCUMENTS_BUCKET = 'clinical-documents';
 export const SIGNED_URL_TTL_SECONDS = 60;
+
+function getPrivilegedStorageClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (url && serviceRoleKey) {
+    return createSupabaseAdminClient(url, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+  return null;
+}
 
 export const clinicalStorageService = {
   /**
@@ -47,5 +63,26 @@ export const clinicalStorageService = {
     }
 
     return data.signedUrl;
+  },
+
+  /**
+   * Opération interne de compensation serveur : supprime un fichier téléversé si l'insertion des métadonnées DB échoue.
+   * Ne doit JAMAIS être exposée directement aux utilisateurs comme fonctionnalité de suppression.
+   */
+  async removeFileAfterFailedMetadataWrite(storagePath: string): Promise<void> {
+    const privilegedClient = getPrivilegedStorageClient();
+    const storageClient = privilegedClient ? privilegedClient.storage : (await createClient()).storage;
+
+    const { error } = await storageClient
+      .from(CLINICAL_DOCUMENTS_BUCKET)
+      .remove([storagePath]);
+
+    if (error) {
+      throw new AppError(
+        `Échec du nettoyage du fichier orphelin : ${error.message}`,
+        500,
+        'STORAGE_CLEANUP_FAILED',
+      );
+    }
   },
 };

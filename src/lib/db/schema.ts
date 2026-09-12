@@ -1008,6 +1008,7 @@ export const clinicalEncounters = sqliteTable('clinical_encounters', {
   index('clinical_encounters_org_appointment_idx').on(t.organizationId, t.appointmentId),
   uniqueIndex('clinical_encounters_org_id_unique').on(t.id, t.organizationId),
   uniqueIndex('clinical_encounters_org_patient_practitioner_id_unique').on(t.id, t.organizationId, t.patientId, t.practitionerId),
+  uniqueIndex('clinical_encounters_id_org_episode_patient_practitioner_unique').on(t.id, t.organizationId, t.careEpisodeId, t.patientId, t.practitionerId),
   uniqueIndex('clinical_encounters_org_appointment_unique').on(t.organizationId, t.appointmentId).where(sql`appointment_id IS NOT NULL`),
   foreignKey({
     columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
@@ -1096,6 +1097,11 @@ export const clinicalDocuments = sqliteTable('clinical_documents', {
     foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
     name: 'clinical_documents_encounter_fk'
   }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.careEpisodeId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.careEpisodeId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_documents_encounter_episode_fk'
+  }),
 ]);
 
 // Clinical Form Templates
@@ -1171,6 +1177,11 @@ export const clinicalFormResponses = sqliteTable('clinical_form_responses', {
     foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
     name: 'clinical_form_responses_encounter_fk'
   }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.careEpisodeId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.careEpisodeId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_form_responses_encounter_episode_fk'
+  }),
 ]);
 
 // Clinical Measurements
@@ -1219,6 +1230,11 @@ export const clinicalMeasurements = sqliteTable('clinical_measurements', {
     columns: [t.encounterId, t.organizationId, t.patientId, t.practitionerId],
     foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
     name: 'clinical_measurements_encounter_fk'
+  }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.careEpisodeId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.careEpisodeId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_measurements_encounter_episode_fk'
   }),
 ]);
 

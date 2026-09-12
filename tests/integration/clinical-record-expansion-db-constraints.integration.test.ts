@@ -32,6 +32,7 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
   const patientB = 'pat-exp-test-b';
 
   const episodeA = 'ep-exp-test-a';
+  const episodeA2 = 'ep-exp-test-a2';
   const episodeB = 'ep-exp-test-b';
 
   const encounterA = 'enc-exp-test-a';
@@ -62,6 +63,7 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
 
     // Setup Episodes & Encounters
     await sql`INSERT INTO care_episodes (id, organization_id, patient_id, practitioner_id, title, status, started_at, created_at, updated_at) VALUES (${episodeA}, ${orgA}, ${patientA}, ${pracA}, 'Épisode A', 'active', now(), now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO care_episodes (id, organization_id, patient_id, practitioner_id, title, status, started_at, created_at, updated_at) VALUES (${episodeA2}, ${orgA}, ${patientA}, ${pracA}, 'Épisode A2', 'active', now(), now(), now()) ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO care_episodes (id, organization_id, patient_id, practitioner_id, title, status, started_at, created_at, updated_at) VALUES (${episodeB}, ${orgB}, ${patientB}, ${pracB}, 'Épisode B', 'active', now(), now(), now()) ON CONFLICT DO NOTHING`;
 
     await sql`INSERT INTO clinical_encounters (id, organization_id, care_episode_id, patient_id, practitioner_id, occurred_at, created_at, updated_at) VALUES (${encounterA}, ${orgA}, ${episodeA}, ${patientA}, ${pracA}, now() - interval '1 hour', now(), now()) ON CONFLICT DO NOTHING`;
@@ -103,6 +105,42 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
       expect(rows).toHaveLength(1);
       expect(rows[0].title).toBe('Ordonnance de radiologie');
       expect(rows[0].category).toBe('report');
+    });
+
+    it('rejects document with mismatched care_episode_id and encounter_id (23503)', async () => {
+      const docId = randomUUID();
+      try {
+        // encounterA belongs to episodeA, but we provide episodeA2
+        await sql`
+          INSERT INTO clinical_documents (
+            id, organization_id, patient_id, practitioner_id, care_episode_id, encounter_id,
+            title, category, file_name, mime_type, size_bytes, storage_path, is_archived
+          ) VALUES (
+            ${docId}, ${orgA}, ${patientA}, ${pracA}, ${episodeA2}, ${encounterA},
+            'Ordonnance incohérente', 'report', 'radio.pdf', 'application/pdf', 102400, 'org-a/radio.pdf', false
+          )
+        `;
+        expect.fail('Should have failed composite encounter-episode FK constraint');
+      } catch (err: unknown) {
+        expect(hasPostgresErrorCode(err)).toBe(true);
+        if (hasPostgresErrorCode(err)) {
+          expect(err.code).toBe('23503');
+        }
+      }
+    });
+
+    it('accepts document when encounter_id is provided and care_episode_id is NULL', async () => {
+      const docId = randomUUID();
+      const rows = await sql`
+        INSERT INTO clinical_documents (
+          id, organization_id, patient_id, practitioner_id, care_episode_id, encounter_id,
+          title, category, file_name, mime_type, size_bytes, storage_path, is_archived
+        ) VALUES (
+          ${docId}, ${orgA}, ${patientA}, ${pracA}, NULL, ${encounterA},
+          'Doc séance sans épisode', 'report', 'doc.pdf', 'application/pdf', 102400, 'org-a/doc.pdf', false
+        ) RETURNING id
+      `;
+      expect(rows).toHaveLength(1);
     });
 
     it('rejects invalid category with check violation (23514)', async () => {
@@ -285,6 +323,27 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
       expect(rows[0].status).toBe('draft');
     });
 
+    it('rejects form response with mismatched care_episode_id and encounter_id (23503)', async () => {
+      const responseId = randomUUID();
+      try {
+        await sql`
+          INSERT INTO clinical_form_responses (
+            id, organization_id, template_id, patient_id, practitioner_id, care_episode_id, encounter_id,
+            answers_json, status
+          ) VALUES (
+            ${responseId}, ${orgA}, ${templateId}, ${patientA}, ${pracA}, ${episodeA2}, ${encounterA},
+            '{"score": 8}'::jsonb, 'draft'
+          )
+        `;
+        expect.fail('Should have failed composite encounter-episode FK constraint');
+      } catch (err: unknown) {
+        expect(hasPostgresErrorCode(err)).toBe(true);
+        if (hasPostgresErrorCode(err)) {
+          expect(err.code).toBe('23503');
+        }
+      }
+    });
+
     it('allows draft -> finalized transition and records finalized_at timestamp', async () => {
       const responseId = randomUUID();
       await sql`
@@ -443,6 +502,41 @@ describe('Clinical Records Expansion Database Integrity & State Machines (Sessio
           expect(err.code).toBe('23514');
         }
       }
+    });
+
+    it('rejects measurement with mismatched care_episode_id and encounter_id (23503)', async () => {
+      const mId = randomUUID();
+      try {
+        await sql`
+          INSERT INTO clinical_measurements (
+            id, organization_id, patient_id, practitioner_id, care_episode_id, encounter_id,
+            code, label, value_numeric, observed_at
+          ) VALUES (
+            ${mId}, ${orgA}, ${patientA}, ${pracA}, ${episodeA2}, ${encounterA},
+            'pain_score', 'Douleur', 7, now() - interval '1 hour'
+          )
+        `;
+        expect.fail('Should have failed composite encounter-episode FK constraint');
+      } catch (err: unknown) {
+        expect(hasPostgresErrorCode(err)).toBe(true);
+        if (hasPostgresErrorCode(err)) {
+          expect(err.code).toBe('23503');
+        }
+      }
+    });
+
+    it('accepts measurement with matching care_episode_id and encounter_id', async () => {
+      const mId = randomUUID();
+      const rows = await sql`
+        INSERT INTO clinical_measurements (
+          id, organization_id, patient_id, practitioner_id, care_episode_id, encounter_id,
+          code, label, value_numeric, observed_at
+        ) VALUES (
+          ${mId}, ${orgA}, ${patientA}, ${pracA}, ${episodeA}, ${encounterA},
+          'pain_score', 'Douleur', 4, now() - interval '1 hour'
+        ) RETURNING id
+      `;
+      expect(rows).toHaveLength(1);
     });
   });
 });

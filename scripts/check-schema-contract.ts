@@ -507,6 +507,13 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
     },
     {
+      constraintName: 'clinical_documents_encounter_episode_fk',
+      tableName: 'clinical_documents',
+      foreignTable: 'clinical_encounters',
+      localCols: ['encounter_id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
+    },
+    {
       constraintName: 'clinical_form_templates_practitioner_fk',
       tableName: 'clinical_form_templates',
       foreignTable: 'practice_practitioners',
@@ -549,6 +556,13 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
     },
     {
+      constraintName: 'clinical_form_responses_encounter_episode_fk',
+      tableName: 'clinical_form_responses',
+      foreignTable: 'clinical_encounters',
+      localCols: ['encounter_id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
+    },
+    {
       constraintName: 'clinical_measurements_patient_fk',
       tableName: 'clinical_measurements',
       foreignTable: 'patient_profiles',
@@ -575,6 +589,13 @@ async function verifyContract() {
       foreignTable: 'clinical_encounters',
       localCols: ['encounter_id', 'organization_id', 'patient_id', 'practitioner_id'],
       foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
+    },
+    {
+      constraintName: 'clinical_measurements_encounter_episode_fk',
+      tableName: 'clinical_measurements',
+      foreignTable: 'clinical_encounters',
+      localCols: ['encounter_id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
     },
   ];
 
@@ -639,6 +660,7 @@ async function verifyContract() {
     'care_episodes_org_status_idx',
     'clinical_encounters_org_id_unique',
     'clinical_encounters_org_patient_practitioner_id_unique',
+    'clinical_encounters_id_org_episode_patient_practitioner_unique',
     'clinical_encounters_org_appointment_unique',
     'clinical_encounters_org_patient_occurred_idx',
     'clinical_encounters_org_practitioner_occurred_idx',
