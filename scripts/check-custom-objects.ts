@@ -285,9 +285,9 @@ async function verifyCustomObjects() {
       'care_episodes_transition_trigger',
       'clinical_encounters_insert_trigger',
       'clinical_notes_transition_trigger',
-      'clinical_documents_mutation_trigger',
-      'clinical_form_responses_transition_trigger',
-      'clinical_measurements_insert_trigger'
+      'clinical_documents_mutation_guard',
+      'clinical_form_responses_transition_guard',
+      'clinical_measurements_insert_guard'
     )
   `;
   
@@ -319,19 +319,19 @@ async function verifyCustomObjects() {
       requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_note_transition'],
     },
     {
-      name: 'clinical_documents_mutation_trigger',
+      name: 'clinical_documents_mutation_guard',
       table: 'clinical_documents',
-      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_document_mutation'],
+      requiredElements: ['before update', 'for each row', 'enforce_clinical_document_mutation'],
     },
     {
-      name: 'clinical_form_responses_transition_trigger',
+      name: 'clinical_form_responses_transition_guard',
       table: 'clinical_form_responses',
       requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_form_response_transition'],
     },
     {
-      name: 'clinical_measurements_insert_trigger',
+      name: 'clinical_measurements_insert_guard',
       table: 'clinical_measurements',
-      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_measurement_insert'],
+      requiredElements: ['before insert', 'for each row', 'enforce_clinical_measurement_insert'],
     },
   ];
 
@@ -744,10 +744,9 @@ async function verifyCustomObjects() {
   `;
 
   const expectedStoragePolicies = [
-    'clinical_documents_storage_select',
-    'clinical_documents_storage_insert',
-    'clinical_documents_storage_update',
-    'clinical_documents_storage_delete',
+    'clinical_documents_storage_select_owner_only',
+    'clinical_documents_storage_insert_owner_only',
+    'clinical_documents_storage_update_owner_only',
   ];
 
   for (const polName of expectedStoragePolicies) {
