@@ -13,6 +13,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:5
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || '';
+
 const PRO_A_EMAIL = 'pro_a@monservice.com';
 const PRO_B_EMAIL = 'pro_b@monservice.com';
 const CLIENT_A_EMAIL = 'client_a@monservice.com';
@@ -91,9 +93,12 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       await sql`DELETE FROM clinical_documents WHERE id IN ${sql(dynamicDocIds)}`;
     }
 
-    // Cleanup Storage test objects via SQL
-    if (createdStoragePaths.length > 0) {
-      await sql`DELETE FROM storage.objects WHERE bucket_id = 'clinical-documents' AND name IN ${sql(createdStoragePaths)}`;
+    // Cleanup Storage test objects via Storage API (admin authority)
+    if (createdStoragePaths.length > 0 && SUPABASE_SERVICE_ROLE_KEY) {
+      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      });
+      await adminClient.storage.from('clinical-documents').remove(createdStoragePaths);
     }
 
     await sql.end();
