@@ -1,5 +1,5 @@
 {
-  "id": "7223de66-903b-4274-ab13-3e555c6a0e46",
+  "id": "d4a8ed9c-8194-4146-8d30-ac3d387248f3",
   "prevId": "c1784f5b-61f5-47c1-8d63-dedd265d6a88",
   "version": "7",
   "dialect": "postgresql",
@@ -2069,6 +2069,27 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "clinical_documents_encounter_episode_fk": {
+          "name": "clinical_documents_encounter_episode_fk",
+          "tableFrom": "clinical_documents",
+          "tableTo": "clinical_encounters",
+          "columnsFrom": [
+            "encounter_id",
+            "organization_id",
+            "care_episode_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id",
+            "care_episode_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2288,6 +2309,45 @@
             },
             {
               "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "patient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "practitioner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "clinical_encounters_id_org_episode_patient_practitioner_unique": {
+          "name": "clinical_encounters_id_org_episode_patient_practitioner_unique",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "care_episode_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2705,6 +2765,27 @@
           "columnsTo": [
             "id",
             "organization_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "clinical_form_responses_encounter_episode_fk": {
+          "name": "clinical_form_responses_encounter_episode_fk",
+          "tableFrom": "clinical_form_responses",
+          "tableTo": "clinical_encounters",
+          "columnsFrom": [
+            "encounter_id",
+            "organization_id",
+            "care_episode_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id",
+            "care_episode_id",
             "patient_id",
             "practitioner_id"
           ],
@@ -3223,6 +3304,27 @@
           "columnsTo": [
             "id",
             "organization_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "clinical_measurements_encounter_episode_fk": {
+          "name": "clinical_measurements_encounter_episode_fk",
+          "tableFrom": "clinical_measurements",
+          "tableTo": "clinical_encounters",
+          "columnsFrom": [
+            "encounter_id",
+            "organization_id",
+            "care_episode_id",
+            "patient_id",
+            "practitioner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id",
+            "care_episode_id",
             "patient_id",
             "practitioner_id"
           ],
