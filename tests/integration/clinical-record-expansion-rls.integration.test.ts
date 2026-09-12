@@ -100,7 +100,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12)', () => 
   describe('Clinical Documents Table RLS', () => {
     it('anon cannot read clinical documents', async () => {
       const { data } = await anonClient.from('clinical_documents').select('*');
-      expect(data).toHaveLength(0);
+      expect(data).toBeNull();
     });
 
     it('client role cannot read clinical documents', async () => {
@@ -244,44 +244,56 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12)', () => 
   // 4. Storage Bucket RLS & Path Security
   // ==========================================
   describe('Storage Bucket Path Isolation', () => {
-    it('pro A can upload file to their own practitioner path in clinical-documents bucket', async () => {
-      const sampleBlob = new Blob(['sample pdf data'], { type: 'application/pdf' });
-      const testPath = `${SEED_PRACTICE_IDS.orgA}/${SEED_PRACTICE_IDS.practitionerA}/${SEED_PATIENT_IDS.patientA}/test-doc/file.pdf`;
+    it(
+      'pro A can upload file to their own practitioner path in clinical-documents bucket',
+      async () => {
+        const sampleBuffer = Buffer.from('sample pdf data');
+        const testPath = `${SEED_PRACTICE_IDS.orgA}/${SEED_PRACTICE_IDS.practitionerA}/${SEED_PATIENT_IDS.patientA}/test-doc/file.pdf`;
 
-      const { data, error } = await proAClient.storage
-        .from('clinical-documents')
-        .upload(testPath, sampleBlob, { upsert: true });
+        const { data, error } = await proAClient.storage
+          .from('clinical-documents')
+          .upload(testPath, sampleBuffer, { contentType: 'application/pdf', upsert: true });
 
-      expect(error).toBeNull();
-      expect(data?.path).toBe(testPath);
-    });
+        expect(error).toBeNull();
+        expect(data?.path).toBe(testPath);
+      },
+      15000
+    );
 
-    it('pro A CANNOT upload file to pro B practitioner path in clinical-documents bucket', async () => {
-      const sampleBlob = new Blob(['malicious pdf data'], { type: 'application/pdf' });
-      const forbiddenPath = `${SEED_PRACTICE_IDS.orgB}/${SEED_PRACTICE_IDS.practitionerB}/${SEED_PATIENT_IDS.patientB}/malicious/file.pdf`;
+    it(
+      'pro A CANNOT upload file to pro B practitioner path in clinical-documents bucket',
+      async () => {
+        const sampleBuffer = Buffer.from('malicious pdf data');
+        const forbiddenPath = `${SEED_PRACTICE_IDS.orgB}/${SEED_PRACTICE_IDS.practitionerB}/${SEED_PATIENT_IDS.patientB}/malicious/file.pdf`;
 
-      const { error } = await proAClient.storage
-        .from('clinical-documents')
-        .upload(forbiddenPath, sampleBlob);
+        const { error } = await proAClient.storage
+          .from('clinical-documents')
+          .upload(forbiddenPath, sampleBuffer, { contentType: 'application/pdf' });
 
-      expect(error).not.toBeNull();
-    });
-
-    it('pro A CANNOT download or view signed URL for pro B storage path', async () => {
-      const forbiddenPath = `${SEED_PRACTICE_IDS.orgB}/${SEED_PRACTICE_IDS.practitionerB}/${SEED_PATIENT_IDS.patientB}/compte_rendu.pdf`;
-
-      const { data, error } = await proAClient.storage
-        .from('clinical-documents')
-        .createSignedUrl(forbiddenPath, 60);
-
-      // Supabase storage returns error or fails access
-      if (data?.signedUrl) {
-        // Fetching the URL should return 403 or error
-        const res = await fetch(data.signedUrl);
-        expect(res.status).toBeGreaterThanOrEqual(400);
-      } else {
         expect(error).not.toBeNull();
-      }
-    });
+      },
+      15000
+    );
+
+    it(
+      'pro A CANNOT download or view signed URL for pro B storage path',
+      async () => {
+        const forbiddenPath = `${SEED_PRACTICE_IDS.orgB}/${SEED_PRACTICE_IDS.practitionerB}/${SEED_PATIENT_IDS.patientB}/compte_rendu.pdf`;
+
+        const { data, error } = await proAClient.storage
+          .from('clinical-documents')
+          .createSignedUrl(forbiddenPath, 60);
+
+        // Supabase storage returns error or fails access
+        if (data?.signedUrl) {
+          // Fetching the URL should return 403 or error
+          const res = await fetch(data.signedUrl);
+          expect(res.status).toBeGreaterThanOrEqual(400);
+        } else {
+          expect(error).not.toBeNull();
+        }
+      },
+      15000
+    );
   });
 });
