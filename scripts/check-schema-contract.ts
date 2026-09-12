@@ -665,7 +665,7 @@ async function verifyContract() {
     'clinical_measurements_org_id_unique',
     'clinical_measurements_org_patient_observed_idx',
     'clinical_measurements_org_practitioner_observed_idx',
-    'clinical_measurements_org_code_observed_idx',
+    'clinical_measurements_org_patient_code_idx',
     'clinical_measurements_org_episode_idx',
     'clinical_measurements_org_encounter_idx',
   ];
@@ -791,10 +791,10 @@ async function verifyContract() {
     {
       name: 'clinical_documents_category_check',
       table: 'clinical_documents',
-      elements: ['category', 'prescription', 'exam_result', 'correspondence', 'imaging', 'certificate', 'other'],
+      elements: ['category', 'report', 'assessment', 'prescription', 'referral', 'result', 'consent', 'correspondence', 'administrative', 'other'],
     },
     {
-      name: 'clinical_documents_mime_check',
+      name: 'clinical_documents_mime_type_check',
       table: 'clinical_documents',
       elements: ['mime_type', 'application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
     },
@@ -811,7 +811,7 @@ async function verifyContract() {
     {
       name: 'clinical_form_templates_kind_check',
       table: 'clinical_form_templates',
-      elements: ['kind', 'evaluation', 'intake', 'follow_up', 'discharge', 'satisfaction'],
+      elements: ['kind', 'assessment', 'questionnaire', 'intake', 'follow_up', 'outcome', 'other'],
     },
     {
       name: 'clinical_form_templates_name_check',

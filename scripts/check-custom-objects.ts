@@ -284,7 +284,10 @@ async function verifyCustomObjects() {
       'appointment_waitlist_status_transition_guard',
       'care_episodes_transition_trigger',
       'clinical_encounters_insert_trigger',
-      'clinical_notes_transition_trigger'
+      'clinical_notes_transition_trigger',
+      'clinical_documents_mutation_trigger',
+      'clinical_form_responses_transition_trigger',
+      'clinical_measurements_insert_trigger'
     )
   `;
   
