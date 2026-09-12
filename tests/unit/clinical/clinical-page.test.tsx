@@ -20,6 +20,12 @@ vi.mock('@/lib/services/clinical-record.service', () => ({
     listCareEpisodes: vi.fn(),
     listClinicalEncounters: vi.fn(),
     listEligibleAppointmentsForEncounter: vi.fn(),
+    getPatientClinicalOverview: vi.fn(),
+    getPatientClinicalTimeline: vi.fn(),
+    listClinicalDocuments: vi.fn(),
+    listFormTemplates: vi.fn(),
+    listFormResponses: vi.fn(),
+    listMeasurements: vi.fn(),
   },
 }));
 

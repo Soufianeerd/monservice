@@ -11,9 +11,11 @@ import {
   date,
   time,
   check,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { foreignKey } from 'drizzle-orm/pg-core';
+import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
 
 /**
  * Schéma PostgreSQL unique.
@@ -1045,3 +1047,178 @@ export const clinicalNotes = sqliteTable('clinical_notes', {
     name: 'clinical_notes_encounter_fk'
   }),
 ]);
+
+// Clinical Documents
+export const clinicalDocuments = sqliteTable('clinical_documents', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  careEpisodeId: text('care_episode_id'),
+  encounterId: text('encounter_id'),
+  title: text('title').notNull(),
+  category: text('category').notNull(),
+  fileName: text('file_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  storagePath: text('storage_path').notNull(),
+  isArchived: boolean('is_archived').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_documents_org_patient_created_idx').on(t.organizationId, t.patientId, t.createdAt),
+  index('clinical_documents_org_practitioner_created_idx').on(t.organizationId, t.practitionerId, t.createdAt),
+  index('clinical_documents_org_episode_idx').on(t.organizationId, t.careEpisodeId),
+  index('clinical_documents_org_encounter_idx').on(t.organizationId, t.encounterId),
+  uniqueIndex('clinical_documents_org_id_unique').on(t.id, t.organizationId),
+  check('clinical_documents_category_check', sql`${t.category} IN ('report', 'assessment', 'prescription', 'referral', 'result', 'consent', 'correspondence', 'administrative', 'other')`),
+  check('clinical_documents_mime_type_check', sql`${t.mimeType} IN ('application/pdf', 'image/jpeg', 'image/png', 'image/webp')`),
+  check('clinical_documents_size_check', sql`${t.sizeBytes} > 0 AND ${t.sizeBytes} <= 10485760`),
+  check('clinical_documents_title_check', sql`char_length(trim(${t.title})) >= 1 AND char_length(${t.title}) <= 200`),
+  check('clinical_documents_file_name_check', sql`char_length(trim(${t.fileName})) >= 1 AND char_length(${t.fileName}) <= 255`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'clinical_documents_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'clinical_documents_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [careEpisodes.id, careEpisodes.organizationId, careEpisodes.patientId, careEpisodes.practitionerId],
+    name: 'clinical_documents_episode_fk'
+  }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_documents_encounter_fk'
+  }),
+]);
+
+// Clinical Form Templates
+export const clinicalFormTemplates = sqliteTable('clinical_form_templates', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  practitionerId: text('practitioner_id').notNull(),
+  name: text('name').notNull(),
+  kind: text('kind').notNull(),
+  description: text('description'),
+  schemaJson: jsonb('schema_json').$type<ClinicalFormTemplateSchema>().notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_form_templates_org_practitioner_idx').on(t.organizationId, t.practitionerId),
+  uniqueIndex('clinical_form_templates_org_id_unique').on(t.id, t.organizationId),
+  uniqueIndex('clinical_form_templates_org_practitioner_id_unique').on(t.id, t.organizationId, t.practitionerId),
+  check('clinical_form_templates_kind_check', sql`${t.kind} IN ('assessment', 'questionnaire', 'intake', 'follow_up', 'outcome', 'other')`),
+  check('clinical_form_templates_name_check', sql`char_length(trim(${t.name})) >= 1 AND char_length(${t.name}) <= 200`),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'clinical_form_templates_practitioner_fk'
+  }),
+]);
+
+// Clinical Form Responses
+export const clinicalFormResponses = sqliteTable('clinical_form_responses', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  templateId: text('template_id').notNull(),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  careEpisodeId: text('care_episode_id'),
+  encounterId: text('encounter_id'),
+  answersJson: jsonb('answers_json').$type<ClinicalFormAnswers>().notNull(),
+  status: text('status').notNull().default('draft'),
+  finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_form_responses_org_patient_created_idx').on(t.organizationId, t.patientId, t.createdAt),
+  index('clinical_form_responses_org_practitioner_created_idx').on(t.organizationId, t.practitionerId, t.createdAt),
+  index('clinical_form_responses_org_template_idx').on(t.organizationId, t.templateId),
+  index('clinical_form_responses_org_episode_idx').on(t.organizationId, t.careEpisodeId),
+  index('clinical_form_responses_org_encounter_idx').on(t.organizationId, t.encounterId),
+  uniqueIndex('clinical_form_responses_org_id_unique').on(t.id, t.organizationId),
+  check('clinical_form_responses_status_check', sql`${t.status} IN ('draft', 'finalized')`),
+  check('clinical_form_responses_status_metadata_check', sql`(${t.status} = 'draft' AND ${t.finalizedAt} IS NULL) OR (${t.status} = 'finalized' AND ${t.finalizedAt} IS NOT NULL)`),
+  foreignKey({
+    columns: [t.templateId, t.organizationId, t.practitionerId],
+    foreignColumns: [clinicalFormTemplates.id, clinicalFormTemplates.organizationId, clinicalFormTemplates.practitionerId],
+    name: 'clinical_form_responses_template_fk'
+  }),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'clinical_form_responses_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'clinical_form_responses_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [careEpisodes.id, careEpisodes.organizationId, careEpisodes.patientId, careEpisodes.practitionerId],
+    name: 'clinical_form_responses_episode_fk'
+  }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_form_responses_encounter_fk'
+  }),
+]);
+
+// Clinical Measurements
+export const clinicalMeasurements = sqliteTable('clinical_measurements', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  careEpisodeId: text('care_episode_id'),
+  encounterId: text('encounter_id'),
+  code: text('code').notNull(),
+  label: text('label').notNull(),
+  valueNumeric: numeric('value_numeric'),
+  valueText: text('value_text'),
+  unit: text('unit'),
+  observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('clinical_measurements_org_patient_observed_idx').on(t.organizationId, t.patientId, t.observedAt),
+  index('clinical_measurements_org_practitioner_observed_idx').on(t.organizationId, t.practitionerId, t.observedAt),
+  index('clinical_measurements_org_patient_code_idx').on(t.organizationId, t.patientId, t.code, t.observedAt),
+  index('clinical_measurements_org_episode_idx').on(t.organizationId, t.careEpisodeId),
+  index('clinical_measurements_org_encounter_idx').on(t.organizationId, t.encounterId),
+  uniqueIndex('clinical_measurements_org_id_unique').on(t.id, t.organizationId),
+  check('clinical_measurements_value_xor_check', sql`(${t.valueNumeric} IS NOT NULL AND ${t.valueText} IS NULL) OR (${t.valueNumeric} IS NULL AND ${t.valueText} IS NOT NULL)`),
+  check('clinical_measurements_code_format_check', sql`${t.code} ~ '^[a-z0-9][a-z0-9_.-]{0,99}$'`),
+  check('clinical_measurements_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(${t.label}) <= 160`),
+  check('clinical_measurements_unit_check', sql`${t.unit} IS NULL OR char_length(${t.unit}) <= 40`),
+  check('clinical_measurements_value_text_check', sql`${t.valueText} IS NULL OR char_length(${t.valueText}) <= 500`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'clinical_measurements_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'clinical_measurements_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [careEpisodes.id, careEpisodes.organizationId, careEpisodes.patientId, careEpisodes.practitionerId],
+    name: 'clinical_measurements_episode_fk'
+  }),
+  foreignKey({
+    columns: [t.encounterId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
+    name: 'clinical_measurements_encounter_fk'
+  }),
+]);
+

@@ -27,11 +27,29 @@ export default async function PatientClinicalPage(props: PatientClinicalPageProp
     notFound();
   }
 
-  const episodes = await clinicalRecordService.listCareEpisodes(
-    organizationId,
-    patientId,
-    practitionerId,
-  );
+  const [
+    episodes,
+    eligibleAppointments,
+    overview,
+    timeline,
+    documents,
+    formTemplates,
+    formResponses,
+    measurements,
+  ] = await Promise.all([
+    clinicalRecordService.listCareEpisodes(organizationId, patientId, practitionerId),
+    clinicalRecordService.listEligibleAppointmentsForEncounter(
+      organizationId,
+      patientId,
+      practitionerId,
+    ),
+    clinicalRecordService.getPatientClinicalOverview(organizationId, patientId, practitionerId),
+    clinicalRecordService.getPatientClinicalTimeline(organizationId, patientId, practitionerId),
+    clinicalRecordService.listClinicalDocuments(organizationId, patientId, practitionerId),
+    clinicalRecordService.listFormTemplates(organizationId, practitionerId, true),
+    clinicalRecordService.listFormResponses(organizationId, patientId, practitionerId),
+    clinicalRecordService.listMeasurements(organizationId, patientId, practitionerId),
+  ]);
 
   const encountersByEpisode: Record<string, ClinicalEncounterWithNotesDTO[]> = {};
   for (const episode of episodes) {
@@ -43,18 +61,18 @@ export default async function PatientClinicalPage(props: PatientClinicalPageProp
     );
   }
 
-  const eligibleAppointments = await clinicalRecordService.listEligibleAppointmentsForEncounter(
-    organizationId,
-    patientId,
-    practitionerId,
-  );
-
   return (
     <ClinicalRecordManager
       patient={detail.patient}
       initialEpisodes={episodes}
       initialEncountersByEpisode={encountersByEpisode}
       initialEligibleAppointments={eligibleAppointments}
+      initialOverview={overview}
+      initialTimeline={timeline}
+      initialDocuments={documents}
+      initialFormTemplates={formTemplates}
+      initialFormResponses={formResponses}
+      initialMeasurements={measurements}
     />
   );
 }

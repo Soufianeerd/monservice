@@ -63,7 +63,11 @@ async function verifyCustomObjects() {
     appointment_waitlist_entries: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     care_episodes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     clinical_encounters: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    clinical_notes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] }
+    clinical_notes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_documents: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_form_templates: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_form_responses: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_measurements: { anon: [], authenticated: ['SELECT', 'INSERT'] }
   };
 
   const dbGrants = await sql`
@@ -109,7 +113,10 @@ async function verifyCustomObjects() {
       'current_clinical_practitioner_id',
       'enforce_care_episode_transition',
       'enforce_clinical_encounter_insert',
-      'enforce_clinical_note_transition'
+      'enforce_clinical_note_transition',
+      'enforce_clinical_document_mutation',
+      'enforce_clinical_form_response_transition',
+      'enforce_clinical_measurement_insert'
     );
   `;
 
@@ -121,7 +128,10 @@ async function verifyCustomObjects() {
     current_clinical_practitioner_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_care_episode_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_clinical_encounter_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
-    enforce_clinical_note_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
+    enforce_clinical_note_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_clinical_document_mutation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_clinical_form_response_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_clinical_measurement_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -305,6 +315,21 @@ async function verifyCustomObjects() {
       table: 'clinical_notes',
       requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_note_transition'],
     },
+    {
+      name: 'clinical_documents_mutation_trigger',
+      table: 'clinical_documents',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_document_mutation'],
+    },
+    {
+      name: 'clinical_form_responses_transition_trigger',
+      table: 'clinical_form_responses',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_form_response_transition'],
+    },
+    {
+      name: 'clinical_measurements_insert_trigger',
+      table: 'clinical_measurements',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_clinical_measurement_insert'],
+    },
   ];
 
   for (const rt of requiredTriggers) {
@@ -333,7 +358,11 @@ async function verifyCustomObjects() {
     'appointment_waitlist_entries',
     'care_episodes',
     'clinical_encounters',
-    'clinical_notes'
+    'clinical_notes',
+    'clinical_documents',
+    'clinical_form_templates',
+    'clinical_form_responses',
+    'clinical_measurements'
   ];
 
   for (const table of expectedRlsTables) {
@@ -532,6 +561,94 @@ async function verifyCustomObjects() {
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
     },
+    {
+      policyName: 'clinical_documents_select_owner_only',
+      tableName: 'clinical_documents',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_documents_insert_owner_only',
+      tableName: 'clinical_documents',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_documents_update_owner_only',
+      tableName: 'clinical_documents',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_form_templates_select_owner_only',
+      tableName: 'clinical_form_templates',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_form_templates_insert_owner_only',
+      tableName: 'clinical_form_templates',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_form_templates_update_owner_only',
+      tableName: 'clinical_form_templates',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_form_responses_select_owner_only',
+      tableName: 'clinical_form_responses',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_form_responses_insert_owner_only',
+      tableName: 'clinical_form_responses',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_form_responses_update_owner_only',
+      tableName: 'clinical_form_responses',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'clinical_measurements_select_owner_only',
+      tableName: 'clinical_measurements',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'clinical_measurements_insert_owner_only',
+      tableName: 'clinical_measurements',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
   ];
 
   for (const ep of exactPolicies) {
@@ -591,6 +708,50 @@ async function verifyCustomObjects() {
           }
         }
       }
+    }
+  }
+
+  // 6. Verify Private Storage Bucket 'clinical-documents'
+  const storageBuckets = await sql`
+    SELECT id, name, public, file_size_limit, allowed_mime_types
+    FROM storage.buckets
+    WHERE id = 'clinical-documents'
+  `;
+
+  if (storageBuckets.length === 0) {
+    console.error(`❌ ERROR: Storage bucket 'clinical-documents' not found in database.`);
+    errorCount++;
+  } else {
+    const bucket = storageBuckets[0];
+    if (bucket.public !== false) {
+      console.error(`❌ ERROR: Storage bucket 'clinical-documents' must NOT be public (public=${bucket.public}).`);
+      errorCount++;
+    }
+    if (bucket.file_size_limit !== 10485760 && bucket.file_size_limit !== '10485760') {
+      console.error(`❌ ERROR: Storage bucket 'clinical-documents' file_size_limit is ${bucket.file_size_limit}, expected 10485760.`);
+      errorCount++;
+    }
+  }
+
+  // Verify Storage Objects RLS policies
+  const storagePolicies = await sql`
+    SELECT policyname, tablename, roles, cmd, qual, with_check
+    FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+  `;
+
+  const expectedStoragePolicies = [
+    'clinical_documents_storage_select',
+    'clinical_documents_storage_insert',
+    'clinical_documents_storage_update',
+    'clinical_documents_storage_delete',
+  ];
+
+  for (const polName of expectedStoragePolicies) {
+    const found = storagePolicies.find(p => p.policyname === polName);
+    if (!found) {
+      console.error(`❌ ERROR: Storage policy '${polName}' on storage.objects not found.`);
+      errorCount++;
     }
   }
 

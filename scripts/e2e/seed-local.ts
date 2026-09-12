@@ -22,7 +22,11 @@ import {
   appointmentWaitlistEntries,
   careEpisodes,
   clinicalEncounters,
-  clinicalNotes
+  clinicalNotes,
+  clinicalDocuments,
+  clinicalFormTemplates,
+  clinicalFormResponses,
+  clinicalMeasurements
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -71,6 +75,17 @@ export const SEED_CLINICAL_IDS = {
   careEpisodeB: '80000000-0000-4000-8000-000000000001',
   clinicalEncounterB: '80000000-0000-4000-8000-000000000002',
   clinicalNoteB: '80000000-0000-4000-8000-000000000003',
+};
+
+export const SEED_CLINICAL_EXPANSION_IDS = {
+  clinicalDocumentA: '90000000-0000-4000-8000-000000000001',
+  clinicalFormTemplateA: '90000000-0000-4000-8000-000000000002',
+  clinicalFormResponseA: '90000000-0000-4000-8000-000000000003',
+  clinicalMeasurementA: '90000000-0000-4000-8000-000000000004',
+  clinicalDocumentB: 'a0000000-0000-4000-8000-000000000001',
+  clinicalFormTemplateB: 'a0000000-0000-4000-8000-000000000002',
+  clinicalFormResponseB: 'a0000000-0000-4000-8000-000000000003',
+  clinicalMeasurementB: 'a0000000-0000-4000-8000-000000000004',
 };
 
 async function seed() {
@@ -669,7 +684,138 @@ async function seed() {
     .set({ status: 'finalized' })
     .where(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteB));
 
-  console.log('Scheduling foundation, Waitlist & Clinical Records Org A & Org B seeded successfully!');
+  // 12. Clinical Documents Org A & Org B
+  await db.insert(clinicalDocuments).values([
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeA,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterA,
+      title: 'Ordonnance kinésithérapie initiale',
+      category: 'prescription',
+      fileName: 'ordonnance_initiale.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 102400,
+      storagePath: `${SEED_PRACTICE_IDS.orgA}/${SEED_PRACTICE_IDS.practitionerA}/${SEED_PATIENT_IDS.patientA}/${SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA}/ordonnance_initiale.pdf`,
+      isArchived: false,
+    },
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeB,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterB,
+      title: 'Compte-rendu ostéopathique',
+      category: 'correspondence',
+      fileName: 'compte_rendu.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 204800,
+      storagePath: `${SEED_PRACTICE_IDS.orgB}/${SEED_PRACTICE_IDS.practitionerB}/${SEED_PATIENT_IDS.patientB}/${SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB}/compte_rendu.pdf`,
+      isArchived: false,
+    },
+  ]).onConflictDoNothing();
+
+  // 13. Clinical Form Templates Org A & Org B
+  await db.insert(clinicalFormTemplates).values([
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      name: 'Bilan initial kinésithérapie',
+      kind: 'assessment',
+      description: 'Évaluation posturale et amplitude',
+      schemaJson: {
+        fields: [
+          { id: 'douleur_eva', label: 'Score douleur EVA', type: 'scale', min: 0, max: 10, required: true },
+          { id: 'remarques', label: 'Remarques cliniques', type: 'textarea', required: false },
+        ],
+      },
+      isActive: true,
+    },
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      name: 'Questionnaire d’accueil ostéopathie',
+      kind: 'intake',
+      description: 'Anamnèse et antécédents',
+      schemaJson: {
+        fields: [
+          { id: 'antecedents', label: 'Antécédents notables', type: 'text', required: true },
+          { id: 'fumeur', label: 'Tabagisme actif', type: 'boolean', required: false },
+        ],
+      },
+      isActive: true,
+    },
+  ]).onConflictDoNothing();
+
+  // 14. Clinical Form Responses Org A & Org B
+  await db.insert(clinicalFormResponses).values([
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      templateId: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeA,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterA,
+      answersJson: { douleur_eva: 6, remarques: 'Lombalgie persistante' },
+      status: 'draft',
+    },
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      templateId: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeB,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterB,
+      answersJson: { antecedents: 'Entorse cheville 2024', fumeur: false },
+      status: 'draft',
+    },
+  ]).onConflictDoNothing();
+
+  // Finalize Form Response A
+  await db.update(clinicalFormResponses)
+    .set({ status: 'finalized', finalizedAt: new Date() })
+    .where(eq(clinicalFormResponses.id, SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA));
+
+  // 15. Clinical Measurements Org A & Org B
+  await db.insert(clinicalMeasurements).values([
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementA,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeA,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterA,
+      code: 'pain_score',
+      label: 'Échelle de douleur EVA',
+      valueNumeric: '6',
+      valueText: null,
+      unit: '/10',
+      observedAt: new Date('2026-08-01T09:15:00.000Z'),
+    },
+    {
+      id: SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB,
+      organizationId: SEED_PRACTICE_IDS.orgB,
+      patientId: SEED_PATIENT_IDS.patientB,
+      practitionerId: SEED_PRACTICE_IDS.practitionerB,
+      careEpisodeId: SEED_CLINICAL_IDS.careEpisodeB,
+      encounterId: SEED_CLINICAL_IDS.clinicalEncounterB,
+      code: 'posture_observation',
+      label: 'Observation posturale',
+      valueNumeric: null,
+      valueText: 'Bascule du bassin à droite',
+      unit: null,
+      observedAt: new Date('2026-08-01T09:15:00.000Z'),
+    },
+  ]).onConflictDoNothing();
+
+  console.log('Scheduling foundation, Waitlist & Clinical Expansion Records Org A & Org B seeded successfully!');
   await sql.end();
 }
 

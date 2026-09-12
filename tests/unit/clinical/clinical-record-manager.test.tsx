@@ -130,6 +130,17 @@ describe('ClinicalRecordManager Component', () => {
     },
   ];
 
+  const mockOverview = {
+    activeEpisodesCount: 1,
+    totalEpisodesCount: 2,
+    lastEncounter: null,
+    lastFinalizedNote: null,
+    recentDocuments: [],
+    recentMeasurements: [],
+    draftFormResponsesCount: 0,
+    totalDocumentsCount: 0,
+  };
+
   it('renders patient name and episode list', () => {
     render(
       <ClinicalRecordManager
@@ -137,10 +148,17 @@ describe('ClinicalRecordManager Component', () => {
         initialEpisodes={mockEpisodes}
         initialEncountersByEpisode={mockEncountersByEpisode}
         initialEligibleAppointments={mockEligibleAppointments}
+        initialOverview={mockOverview}
+        initialTimeline={[]}
+        initialDocuments={[]}
+        initialFormTemplates={[]}
+        initialFormResponses={[]}
+        initialMeasurements={[]}
       />,
     );
 
     expect(screen.getByText(/DUPONT Alice/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Épisodes & Séances'));
     expect(screen.getAllByText('Rééducation cheville').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Suivi post-opératoire ancien')).toBeInTheDocument();
   });
@@ -152,17 +170,25 @@ describe('ClinicalRecordManager Component', () => {
         initialEpisodes={mockEpisodes}
         initialEncountersByEpisode={mockEncountersByEpisode}
         initialEligibleAppointments={mockEligibleAppointments}
+        initialOverview={mockOverview}
+        initialTimeline={[]}
+        initialDocuments={[]}
+        initialFormTemplates={[]}
+        initialFormResponses={[]}
+        initialMeasurements={[]}
       />,
     );
 
+    fireEvent.click(screen.getByText('Épisodes & Séances'));
+
     // Finalized note content & badge
     expect(screen.getByText('Mobilisation passive sans douleur.')).toBeInTheDocument();
-    expect(screen.getByText('Finalisée')).toBeInTheDocument();
+    expect(screen.getByText('Note finalisée')).toBeInTheDocument();
 
     // Draft note content & action buttons
     expect(screen.getByText('Brouillon en cours de rédaction.')).toBeInTheDocument();
-    expect(screen.getByText('Modifier')).toBeInTheDocument();
-    expect(screen.getByText('Finaliser')).toBeInTheDocument();
+    expect(screen.getByTitle('Modifier le brouillon')).toBeInTheDocument();
+    expect(screen.getByTitle('Finaliser définitivement')).toBeInTheDocument();
   });
 
   it('shows finalization confirmation alert when clicking Finaliser on draft', () => {
@@ -172,16 +198,23 @@ describe('ClinicalRecordManager Component', () => {
         initialEpisodes={mockEpisodes}
         initialEncountersByEpisode={mockEncountersByEpisode}
         initialEligibleAppointments={mockEligibleAppointments}
+        initialOverview={mockOverview}
+        initialTimeline={[]}
+        initialDocuments={[]}
+        initialFormTemplates={[]}
+        initialFormResponses={[]}
+        initialMeasurements={[]}
       />,
     );
 
-    const finalizeBtn = screen.getByText('Finaliser');
+    fireEvent.click(screen.getByText('Épisodes & Séances'));
+    const finalizeBtn = screen.getByTitle('Finaliser définitivement');
     fireEvent.click(finalizeBtn);
 
     expect(
-      screen.getByText(/Confirmation de finalisation immuable/i),
+      screen.getByText(/Confirmation de finalisation/i),
     ).toBeInTheDocument();
-    expect(screen.getByText('Oui, finaliser la note')).toBeInTheDocument();
+    expect(screen.getByText('Confirmer et verrouiller')).toBeInTheDocument();
   });
 
   it('renders closed episode with lock indicator and no mutation buttons', () => {
@@ -191,9 +224,16 @@ describe('ClinicalRecordManager Component', () => {
         initialEpisodes={mockEpisodes}
         initialEncountersByEpisode={mockEncountersByEpisode}
         initialEligibleAppointments={mockEligibleAppointments}
+        initialOverview={mockOverview}
+        initialTimeline={[]}
+        initialDocuments={[]}
+        initialFormTemplates={[]}
+        initialFormResponses={[]}
+        initialMeasurements={[]}
       />,
     );
 
+    fireEvent.click(screen.getByText('Épisodes & Séances'));
     // Click on closed episode
     const closedEpisodeItem = screen.getByText('Suivi post-opératoire ancien');
     fireEvent.click(closedEpisodeItem);
