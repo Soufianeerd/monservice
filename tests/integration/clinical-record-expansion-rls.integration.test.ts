@@ -46,6 +46,10 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   const createdStoragePaths: string[] = [];
 
   beforeAll(async () => {
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for integration tests and cleanup');
+    }
+
     sql = postgres(DATABASE_URL);
 
     // 1. Anon Client (intentionally unauthenticated)
@@ -93,84 +97,120 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       await sql`DELETE FROM clinical_documents WHERE id IN ${sql(dynamicDocIds)}`;
     }
 
-    // Cleanup Storage test objects via Storage API (admin authority)
-    if (createdStoragePaths.length > 0 && SUPABASE_SERVICE_ROLE_KEY) {
+    // Cleanup Storage test objects via Storage API (admin authority fail-fast)
+    if (createdStoragePaths.length > 0) {
       const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false },
       });
-      await adminClient.storage.from('clinical-documents').remove(createdStoragePaths);
+      const { error: cleanupError } = await adminClient.storage.from('clinical-documents').remove(createdStoragePaths);
+      if (cleanupError) {
+        throw new Error(`Test storage cleanup failed: ${cleanupError.message}`);
+      }
     }
 
     await sql.end();
   });
 
   // ==========================================
-  // 1. Clinical Documents Table RLS
+  // 1. Clinical Documents Table RLS Matrix
   // ==========================================
-  describe('Clinical Documents Table RLS', () => {
-    it('anon cannot read clinical documents', async () => {
+  describe('Clinical Documents Table RLS Matrix', () => {
+    it('anon cannot read or insert clinical documents', async () => {
       const { data } = await anonClient.from('clinical_documents').select('*');
       expect(data).toBeNull();
+
+      const { error: insertError } = await anonClient.from('clinical_documents').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        title: 'Anon Doc',
+        category: 'other',
+        file_name: 'anon.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 1024,
+        storage_path: 'anon/path',
+      });
+      expect(insertError).not.toBeNull();
     });
 
-    it('client role cannot read clinical documents', async () => {
+    it('client A cannot read, insert, or update clinical documents', async () => {
       const { data } = await clientAClient.from('clinical_documents').select('*');
       expect(data).toHaveLength(0);
-    });
 
-    it('staff role (unlinked to practitioner) cannot read clinical documents', async () => {
-      const { data } = await staffAClient.from('clinical_documents').select('*');
-      expect(data).toHaveLength(0);
-    });
-
-    it('pro A reads only their own clinical documents, never pro B', async () => {
-      const { data, error } = await proAClient.from('clinical_documents').select('*');
-      expect(error).toBeNull();
-      expect(data).not.toBeNull();
-
-      // Should contain documentA
-      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
-      expect(foundA).toBeDefined();
-
-      // Should NOT contain documentB
-      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
-      expect(foundB).toBeUndefined();
-    });
-
-    it('pro B reads only their own clinical documents, never pro A', async () => {
-      const { data, error } = await proBClient.from('clinical_documents').select('*');
-      expect(error).toBeNull();
-      expect(data).not.toBeNull();
-
-      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
-      expect(foundB).toBeDefined();
-
-      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
-      expect(foundA).toBeUndefined();
-    });
-
-    it('pro A cannot insert clinical document under pro B authority', async () => {
-      const newDocId = randomUUID();
-      const { error } = await proAClient.from('clinical_documents').insert({
-        id: newDocId,
-        organization_id: SEED_PRACTICE_IDS.orgB,
-        patient_id: SEED_PATIENT_IDS.patientB,
-        practitioner_id: SEED_PRACTICE_IDS.practitionerB,
-        title: 'Document Frauduleux',
+      const { error: insertError } = await clientAClient.from('clinical_documents').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        title: 'Client Doc',
         category: 'other',
-        file_name: 'test.pdf',
+        file_name: 'client.pdf',
         mime_type: 'application/pdf',
         size_bytes: 1024,
         storage_path: 'path',
       });
-      expect(error).not.toBeNull();
+      expect(insertError).not.toBeNull();
+
+      const { error: updateError } = await clientAClient
+        .from('clinical_documents')
+        .update({ title: 'Hacked Title' })
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+      // Update should either return error or 0 rows modified
+      const { data: checkData } = await proAClient
+        .from('clinical_documents')
+        .select('title')
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA)
+        .single();
+      expect(checkData?.title).not.toBe('Hacked Title');
     });
 
-    it('pro A can insert valid document under their own authority', async () => {
+    it('staff A (unlinked professional) cannot read, insert, or update clinical documents', async () => {
+      const { data } = await staffAClient.from('clinical_documents').select('*');
+      expect(data).toHaveLength(0);
+
+      const { error: insertError } = await staffAClient.from('clinical_documents').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        title: 'Staff Doc',
+        category: 'other',
+        file_name: 'staff.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 1024,
+        storage_path: 'path',
+      });
+      expect(insertError).not.toBeNull();
+
+      await staffAClient
+        .from('clinical_documents')
+        .update({ title: 'Staff Hacked' })
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+
+      const { data: checkData } = await proAClient
+        .from('clinical_documents')
+        .select('title')
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA)
+        .single();
+      expect(checkData?.title).not.toBe('Staff Hacked');
+    });
+
+    it('pro A reads own documents and can insert own document', async () => {
+      const { data, error } = await proAClient.from('clinical_documents').select('*');
+      expect(error).toBeNull();
+      expect(data).not.toBeNull();
+
+      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+      expect(foundA).toBeDefined();
+
+      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
+      expect(foundB).toBeUndefined();
+
       const newDocId = randomUUID();
       dynamicDocIds.push(newDocId);
 
-      const { data, error } = await proAClient
+      const { data: inserted, error: insertError } = await proAClient
         .from('clinical_documents')
         .insert({
           id: newDocId,
@@ -189,40 +229,49 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         .select()
         .single();
 
+      expect(insertError).toBeNull();
+      expect(inserted?.title).toBe('Radio Genou Pro A');
+    });
+
+    it('pro B reads own documents (positive control)', async () => {
+      const { data, error } = await proBClient.from('clinical_documents').select('*');
       expect(error).toBeNull();
-      expect(data?.title).toBe('Radio Genou Pro A');
+      expect(data).not.toBeNull();
+
+      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
+      expect(foundB).toBeDefined();
+
+      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+      expect(foundA).toBeUndefined();
     });
 
-    it('client A cannot insert clinical document', async () => {
-      const { error } = await clientAClient.from('clinical_documents').insert({
-        id: randomUUID(),
-        organization_id: SEED_PRACTICE_IDS.orgA,
-        patient_id: SEED_PATIENT_IDS.patientA,
-        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
-        title: 'Hacked Doc',
+    it('pro A cannot access, insert, or update pro B clinical documents (cross-tenant)', async () => {
+      const newDocId = randomUUID();
+      const { error: insertError } = await proAClient.from('clinical_documents').insert({
+        id: newDocId,
+        organization_id: SEED_PRACTICE_IDS.orgB,
+        patient_id: SEED_PATIENT_IDS.patientB,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerB,
+        title: 'Document Frauduleux',
         category: 'other',
-        file_name: 'hacked.pdf',
+        file_name: 'test.pdf',
         mime_type: 'application/pdf',
         size_bytes: 1024,
         storage_path: 'path',
       });
-      expect(error).not.toBeNull();
-    });
+      expect(insertError).not.toBeNull();
 
-    it('staff A cannot insert clinical document', async () => {
-      const { error } = await staffAClient.from('clinical_documents').insert({
-        id: randomUUID(),
-        organization_id: SEED_PRACTICE_IDS.orgA,
-        patient_id: SEED_PATIENT_IDS.patientA,
-        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
-        title: 'Staff Doc',
-        category: 'other',
-        file_name: 'staff.pdf',
-        mime_type: 'application/pdf',
-        size_bytes: 1024,
-        storage_path: 'path',
-      });
-      expect(error).not.toBeNull();
+      await proAClient
+        .from('clinical_documents')
+        .update({ title: 'Hacked by Pro A' })
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
+
+      const { data: proBCheck } = await proBClient
+        .from('clinical_documents')
+        .select('title')
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB)
+        .single();
+      expect(proBCheck?.title).not.toBe('Hacked by Pro A');
     });
 
     it('pro A cannot delete clinical documents (hard delete denied)', async () => {
@@ -236,44 +285,188 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   });
 
   // ==========================================
-  // 2. Clinical Form Templates & Responses RLS
+  // 2. Clinical Form Templates Table RLS Matrix
   // ==========================================
-  describe('Clinical Form Templates & Responses Table RLS', () => {
-    it('pro A reads their own templates, never pro B templates', async () => {
+  describe('Clinical Form Templates Table RLS Matrix', () => {
+    it('anon cannot read or insert clinical form templates', async () => {
+      const { data } = await anonClient.from('clinical_form_templates').select('*');
+      expect(data).toBeNull();
+
+      const { error } = await anonClient.from('clinical_form_templates').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        name: 'Anon Template',
+        schema_json: { fields: [] },
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it('client A and staff A cannot read, insert, or update clinical form templates', async () => {
+      const { data: clientData } = await clientAClient.from('clinical_form_templates').select('*');
+      expect(clientData).toHaveLength(0);
+
+      const { error: clientInsert } = await clientAClient.from('clinical_form_templates').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        name: 'Client Template',
+        schema_json: { fields: [] },
+      });
+      expect(clientInsert).not.toBeNull();
+
+      const { data: staffData } = await staffAClient.from('clinical_form_templates').select('*');
+      expect(staffData).toHaveLength(0);
+
+      const { error: staffInsert } = await staffAClient.from('clinical_form_templates').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        name: 'Staff Template',
+        schema_json: { fields: [] },
+      });
+      expect(staffInsert).not.toBeNull();
+    });
+
+    it('pro A reads own templates and can insert own template', async () => {
       const { data } = await proAClient.from('clinical_form_templates').select('*');
       const foundA = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA);
       const foundB = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
+
+      const newTId = randomUUID();
+      dynamicTemplateIds.push(newTId);
+      const { data: inserted, error } = await proAClient
+        .from('clinical_form_templates')
+        .insert({
+          id: newTId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+          name: 'Template Bilan Dynamique',
+          kind: 'assessment',
+          schema_json: { fields: [{ id: 'f1', type: 'text', label: 'Motif' }] },
+        })
+        .select()
+        .single();
+
+      expect(error).toBeNull();
+      expect(inserted?.name).toBe('Template Bilan Dynamique');
     });
 
-    it('client A and staff A cannot read clinical form templates', async () => {
-      const { data: clientData } = await clientAClient.from('clinical_form_templates').select('*');
+    it('pro B reads own templates (positive control)', async () => {
+      const { data } = await proBClient.from('clinical_form_templates').select('*');
+      const foundB = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
+      expect(foundB).toBeDefined();
+    });
+
+    it('pro A cannot modify pro B template and cannot delete templates', async () => {
+      await proAClient
+        .from('clinical_form_templates')
+        .update({ name: 'Hacked by Pro A' })
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
+
+      const { data: proBCheck } = await proBClient
+        .from('clinical_form_templates')
+        .select('name')
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB)
+        .single();
+      expect(proBCheck?.name).not.toBe('Hacked by Pro A');
+
+      const { error: deleteError } = await proAClient
+        .from('clinical_form_templates')
+        .delete()
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA);
+      expect(deleteError).not.toBeNull();
+    });
+  });
+
+  // ==========================================
+  // 3. Clinical Form Responses Table RLS Matrix
+  // ==========================================
+  describe('Clinical Form Responses Table RLS Matrix', () => {
+    it('anon cannot read or insert clinical form responses', async () => {
+      const { data } = await anonClient.from('clinical_form_responses').select('*');
+      expect(data).toBeNull();
+
+      const { error } = await anonClient.from('clinical_form_responses').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        template_id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+        response_data: {},
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it('client A and staff A cannot read, insert, or update clinical form responses', async () => {
+      const { data: clientData } = await clientAClient.from('clinical_form_responses').select('*');
       expect(clientData).toHaveLength(0);
 
-      const { data: staffData } = await staffAClient.from('clinical_form_templates').select('*');
+      const { error: clientInsert } = await clientAClient.from('clinical_form_responses').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        template_id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+        response_data: {},
+      });
+      expect(clientInsert).not.toBeNull();
+
+      const { data: staffData } = await staffAClient.from('clinical_form_responses').select('*');
       expect(staffData).toHaveLength(0);
+
+      const { error: staffInsert } = await staffAClient.from('clinical_form_responses').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        template_id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+        response_data: {},
+      });
+      expect(staffInsert).not.toBeNull();
     });
 
-    it('pro A reads their own form responses, never pro B responses', async () => {
+    it('pro A reads own form responses and can insert own response', async () => {
       const { data } = await proAClient.from('clinical_form_responses').select('*');
       const foundA = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA);
       const foundB = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
+
+      const newRId = randomUUID();
+      dynamicResponseIds.push(newRId);
+
+      const { data: inserted, error } = await proAClient
+        .from('clinical_form_responses')
+        .insert({
+          id: newRId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          patient_id: SEED_PATIENT_IDS.patientA,
+          practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+          template_id: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+          care_episode_id: SEED_CLINICAL_IDS.careEpisodeA,
+          encounter_id: SEED_CLINICAL_IDS.clinicalEncounterA,
+          answers_json: { douleur: 'modérée' },
+          status: 'draft',
+        })
+        .select()
+        .single();
+
+      expect(error).toBeNull();
+      expect(inserted?.id).toBe(newRId);
     });
 
-    it('client A and staff A cannot read clinical form responses', async () => {
-      const { data: clientData } = await clientAClient.from('clinical_form_responses').select('*');
-      expect(clientData).toHaveLength(0);
-
-      const { data: staffData } = await staffAClient.from('clinical_form_responses').select('*');
-      expect(staffData).toHaveLength(0);
+    it('pro B reads own form responses (positive control)', async () => {
+      const { data } = await proBClient.from('clinical_form_responses').select('*');
+      const foundB = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
+      expect(foundB).toBeDefined();
     });
 
-    it('pro A cannot update pro B form response', async () => {
+    it('pro A cannot update pro B form response and cannot delete form responses', async () => {
       await proAClient
         .from('clinical_form_responses')
         .update({ answers_json: { hacked: true } })
@@ -286,40 +479,118 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         .single();
 
       expect(data?.answers_json).not.toHaveProperty('hacked');
-    });
 
-    it('pro A cannot delete clinical form responses (hard delete denied)', async () => {
-      const { error } = await proAClient
+      const { error: deleteError } = await proAClient
         .from('clinical_form_responses')
         .delete()
         .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA);
 
-      expect(error).not.toBeNull();
+      expect(deleteError).not.toBeNull();
     });
   });
 
   // ==========================================
-  // 3. Clinical Measurements RLS
+  // 4. Clinical Measurements Table RLS Matrix
   // ==========================================
-  describe('Clinical Measurements Table RLS', () => {
-    it('pro A reads their own measurements, never pro B measurements', async () => {
+  describe('Clinical Measurements Table RLS Matrix', () => {
+    it('anon cannot read or insert clinical measurements', async () => {
+      const { data } = await anonClient.from('clinical_measurements').select('*');
+      expect(data).toBeNull();
+
+      const { error } = await anonClient.from('clinical_measurements').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        code: 'pain_score',
+        label: 'Douleur',
+        value_numeric: 5,
+        observed_at: new Date().toISOString(),
+      });
+      expect(error).not.toBeNull();
+    });
+
+    it('client A and staff A cannot read or insert clinical measurements', async () => {
+      const { data: clientData } = await clientAClient.from('clinical_measurements').select('*');
+      expect(clientData).toHaveLength(0);
+
+      const { error: clientInsert } = await clientAClient.from('clinical_measurements').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        code: 'pain_score',
+        label: 'Douleur',
+        value_numeric: 5,
+        observed_at: new Date().toISOString(),
+      });
+      expect(clientInsert).not.toBeNull();
+
+      const { data: staffData } = await staffAClient.from('clinical_measurements').select('*');
+      expect(staffData).toHaveLength(0);
+
+      const { error: staffInsert } = await staffAClient.from('clinical_measurements').insert({
+        id: randomUUID(),
+        organization_id: SEED_PRACTICE_IDS.orgA,
+        patient_id: SEED_PATIENT_IDS.patientA,
+        practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+        code: 'pain_score',
+        label: 'Douleur',
+        value_numeric: 5,
+        observed_at: new Date().toISOString(),
+      });
+      expect(staffInsert).not.toBeNull();
+    });
+
+    it('pro A reads own measurements and can insert own measurement', async () => {
       const { data } = await proAClient.from('clinical_measurements').select('*');
       const foundA = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementA);
       const foundB = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
+
+      const newMId = randomUUID();
+      dynamicMeasurementIds.push(newMId);
+
+      const { data: inserted, error } = await proAClient
+        .from('clinical_measurements')
+        .insert({
+          id: newMId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          patient_id: SEED_PATIENT_IDS.patientA,
+          practitioner_id: SEED_PRACTICE_IDS.practitionerA,
+          care_episode_id: SEED_CLINICAL_IDS.careEpisodeA,
+          encounter_id: SEED_CLINICAL_IDS.clinicalEncounterA,
+          code: 'pain_score',
+          label: 'EVA Douleur Repos',
+          value_numeric: 4,
+          unit: '/10',
+          observed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      expect(error).toBeNull();
+      expect(inserted?.id).toBe(newMId);
     });
 
-    it('client A and staff A cannot read clinical measurements', async () => {
-      const { data: clientData } = await clientAClient.from('clinical_measurements').select('*');
-      expect(clientData).toHaveLength(0);
-
-      const { data: staffData } = await staffAClient.from('clinical_measurements').select('*');
-      expect(staffData).toHaveLength(0);
+    it('pro B reads own measurements (positive control)', async () => {
+      const { data } = await proBClient.from('clinical_measurements').select('*');
+      const foundB = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
+      expect(foundB).toBeDefined();
     });
 
-    it('pro A cannot insert measurement under pro B authority', async () => {
+    it('UPDATE on clinical_measurements is strictly forbidden for pro A (immutable measurements)', async () => {
+      const { error } = await proAClient
+        .from('clinical_measurements')
+        .update({ value_numeric: 10 })
+        .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementA);
+
+      expect(error).not.toBeNull();
+    });
+
+    it('pro A cannot insert measurement under pro B authority (cross-tenant)', async () => {
       const newMId = randomUUID();
       const { error } = await proAClient.from('clinical_measurements').insert({
         id: newMId,
@@ -345,7 +616,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   });
 
   // ==========================================
-  // 4. Storage Bucket RLS & Path Security
+  // 5. Storage Bucket RLS & Path Security
   // ==========================================
   describe('Storage Bucket Path Isolation & Security Proofs', () => {
     it(

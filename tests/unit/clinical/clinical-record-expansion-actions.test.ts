@@ -11,6 +11,7 @@ import {
 import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { clinicalRecordService } from '@/lib/services/clinical-record.service';
 import { clinicalStorageService } from '@/lib/services/clinical-storage.service';
+import { AppError } from '@/lib/errors';
 import { revalidatePath } from 'next/cache';
 
 vi.mock('@/lib/clinical/auth', () => ({
@@ -107,7 +108,7 @@ describe('Clinical Record Expansion Server Actions', () => {
       expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).not.toHaveBeenCalled();
     });
 
-    it('triggers internal storage rollback when DB metadata creation fails after upload', async () => {
+    it('triggers internal storage rollback when DB metadata creation fails after upload and rethrows DB error on success', async () => {
       const mockBlob = new Blob(['sample pdf content'], { type: 'application/pdf' });
       const formData = new FormData();
       formData.append('file', mockBlob, 'prescription.pdf');
@@ -130,6 +131,53 @@ describe('Clinical Record Expansion Server Actions', () => {
       expect(clinicalRecordService.createClinicalDocumentMetadata).toHaveBeenCalledTimes(1);
       expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledTimes(1);
       expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledWith(capturedStoragePath);
+    });
+
+    it('throws STORAGE_ROLLBACK_FAILED and emits non-sensitive log when both DB insert and storage cleanup fail', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const mockBlob = new Blob(['sample pdf content'], { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', mockBlob, 'confidential_report.pdf');
+      formData.append('title', 'Bilan neurologique confidentiel');
+      formData.append('category', 'report');
+
+      let capturedStoragePath = '';
+
+      vi.mocked(clinicalStorageService.uploadFile).mockImplementation(async (path) => {
+        capturedStoragePath = path;
+      });
+
+      const dbError = new AppError('DB constraint failed', 500, 'DB_ERROR');
+      const cleanupError = new AppError('Privileged storage removal failed', 500, 'STORAGE_CLEANUP_FAILED');
+
+      vi.mocked(clinicalRecordService.createClinicalDocumentMetadata).mockRejectedValue(dbError);
+      vi.mocked(clinicalStorageService.removeFileAfterFailedMetadataWrite).mockRejectedValue(cleanupError);
+
+      try {
+        await uploadClinicalDocumentAction('patient-sensitive-99', formData);
+        expect.fail('Expected uploadClinicalDocumentAction to throw');
+      } catch (err) {
+        expect(err).toBeInstanceOf(AppError);
+        if (err instanceof AppError) {
+          expect(err.code).toBe('STORAGE_ROLLBACK_FAILED');
+          expect(err.statusCode).toBe(500);
+          expect(err.message).not.toContain('confidential_report');
+          expect(err.message).not.toContain('patient-sensitive-99');
+          expect(err.message).not.toContain('Bilan neurologique');
+        }
+      }
+
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledTimes(1);
+      expect(clinicalStorageService.removeFileAfterFailedMetadataWrite).toHaveBeenCalledWith(capturedStoragePath);
+
+      // Verify non-sensitive logging
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[ClinicalStorageRollbackError] Orphan cleanup failed',
+        { code: 'STORAGE_CLEANUP_FAILED' },
+      );
+
+      consoleErrorSpy.mockRestore();
     });
 
     it('does not attempt DB metadata creation or storage rollback if initial storage upload fails', async () => {

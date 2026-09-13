@@ -6,19 +6,24 @@ import { AppError } from '@/lib/errors';
 export const CLINICAL_DOCUMENTS_BUCKET = 'clinical-documents';
 export const SIGNED_URL_TTL_SECONDS = 60;
 
-function getPrivilegedStorageClient() {
+function getRequiredPrivilegedStorageClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (url && serviceRoleKey) {
-    return createSupabaseAdminClient(url, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+  if (!url || !serviceRoleKey) {
+    throw new AppError(
+      'Configuration administrateur de stockage manquante pour l\'opération privilégiée',
+      500,
+      'STORAGE_ADMIN_CONFIGURATION_MISSING',
+    );
   }
-  return null;
+
+  return createSupabaseAdminClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }
 
 export const clinicalStorageService = {
@@ -67,19 +72,19 @@ export const clinicalStorageService = {
 
   /**
    * Opération interne de compensation serveur : supprime un fichier téléversé si l'insertion des métadonnées DB échoue.
+   * Utilise exclusivement le client privilégié service-role (fail-closed, aucun fallback utilisateur).
    * Ne doit JAMAIS être exposée directement aux utilisateurs comme fonctionnalité de suppression.
    */
   async removeFileAfterFailedMetadataWrite(storagePath: string): Promise<void> {
-    const privilegedClient = getPrivilegedStorageClient();
-    const storageClient = privilegedClient ? privilegedClient.storage : (await createClient()).storage;
+    const privilegedClient = getRequiredPrivilegedStorageClient();
 
-    const { error } = await storageClient
+    const { error } = await privilegedClient.storage
       .from(CLINICAL_DOCUMENTS_BUCKET)
       .remove([storagePath]);
 
     if (error) {
       throw new AppError(
-        `Échec du nettoyage du fichier orphelin : ${error.message}`,
+        'Échec du nettoyage du fichier orphelin',
         500,
         'STORAGE_CLEANUP_FAILED',
       );

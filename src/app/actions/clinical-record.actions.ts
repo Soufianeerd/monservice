@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { AppError } from '@/lib/errors';
+import { AppError, isAppError } from '@/lib/errors';
 import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { clinicalRecordService } from '@/lib/services/clinical-record.service';
 import { clinicalStorageService } from '@/lib/services/clinical-storage.service';
@@ -213,10 +213,19 @@ export async function uploadClinicalDocumentAction(patientId: string, formData: 
     try {
       await clinicalStorageService.removeFileAfterFailedMetadataWrite(storagePath);
     } catch (cleanupError) {
-      console.error('[ClinicalStorageRollbackError] Failed to remove orphan storage object after DB metadata failure', {
-        storagePath,
-        cleanupError: cleanupError instanceof Error ? cleanupError.message : 'Unknown storage error',
+      const cleanupErrorCode = isAppError(cleanupError)
+        ? cleanupError.code || 'STORAGE_CLEANUP_FAILED'
+        : 'STORAGE_CLEANUP_FAILED';
+
+      console.error('[ClinicalStorageRollbackError] Orphan cleanup failed', {
+        code: cleanupErrorCode,
       });
+
+      throw new AppError(
+        'Échec de l\'enregistrement des métadonnées et échec de la compensation du stockage',
+        500,
+        'STORAGE_ROLLBACK_FAILED',
+      );
     }
     throw dbError;
   }
