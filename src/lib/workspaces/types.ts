@@ -40,6 +40,7 @@ export interface GenericWorkspaceConfig extends BaseWorkspaceConfig {
 export interface ParamedicalWorkspaceConfig extends BaseWorkspaceConfig {
   type: 'paramedical';
   profession?: import('./paramedical/professions').ParamedicalProfessionCode;
+  professionPack?: import('./paramedical/profession-packs/types').ParamedicalProfessionPack;
 }
 
 export type WorkspaceConfig = GenericWorkspaceConfig | ParamedicalWorkspaceConfig;

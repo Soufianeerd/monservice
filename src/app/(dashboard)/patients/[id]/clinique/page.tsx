@@ -64,6 +64,7 @@ export default async function PatientClinicalPage(props: PatientClinicalPageProp
   return (
     <ClinicalRecordManager
       patient={detail.patient}
+      professionPack={context.professionPack}
       initialEpisodes={episodes}
       initialEncountersByEpisode={encountersByEpisode}
       initialEligibleAppointments={eligibleAppointments}

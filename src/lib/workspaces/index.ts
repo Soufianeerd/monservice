@@ -5,3 +5,4 @@ export * from './paramedical/config';
 export * from './paramedical/capabilities';
 export * from './paramedical/professions';
 export * from './paramedical/terminology';
+export * from './paramedical/profession-packs/registry';

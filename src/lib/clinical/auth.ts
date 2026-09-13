@@ -4,6 +4,8 @@ import { practicePractitioners, organizations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireProfessional } from '@/lib/auth/session';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
+import type { ParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
+import type { ParamedicalProfessionPack } from '@/lib/workspaces/paramedical/profession-packs/types';
 import { AppError } from '@/lib/errors';
 
 export interface ClinicalPractitionerContext {
@@ -11,6 +13,8 @@ export interface ClinicalPractitionerContext {
   organizationId: string;
   practitionerId: string;
   email: string | null;
+  profession?: ParamedicalProfessionCode;
+  professionPack?: ParamedicalProfessionPack;
 }
 
 export async function findActiveClinicalPractitioner(
@@ -77,5 +81,7 @@ export async function requireClinicalPractitionerContext(): Promise<ClinicalPrac
     organizationId: session.organizationId,
     practitionerId,
     email: session.email,
+    profession: workspace.profession,
+    professionPack: workspace.professionPack,
   };
 }

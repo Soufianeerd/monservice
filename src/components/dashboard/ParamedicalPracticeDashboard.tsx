@@ -68,7 +68,7 @@ export default function ParamedicalPracticeDashboard({
               {organization.name}
             </span>
             <span className="text-gray-300">&bull;</span>
-            <span className="capitalize">{professionLabel}</span>
+            <span className="font-medium text-gray-600">{professionLabel}</span>
           </div>
         </div>
         

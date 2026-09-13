@@ -25,6 +25,7 @@ import {
   finalizeClinicalFormResponseSchema,
   createClinicalMeasurementSchema,
 } from '@/lib/clinical/validation';
+import { validateFormTemplateSchema } from '@/lib/clinical/forms';
 
 export async function createCareEpisodeAction(patientId: string, rawInput: unknown) {
   const { organizationId, practitionerId } = await requireClinicalPractitionerContext();
@@ -311,6 +312,81 @@ export async function updateClinicalFormTemplateAction(templateId: string, rawIn
 export async function listClinicalFormTemplatesAction(activeOnly = false) {
   const { organizationId, practitionerId } = await requireClinicalPractitionerContext();
   return clinicalRecordService.listFormTemplates(organizationId, practitionerId, activeOnly);
+}
+
+export async function createClinicalFormTemplateFromPresetAction(
+  rawPresetId: unknown,
+  patientId?: string,
+) {
+  const { organizationId, practitionerId, professionPack } = await requireClinicalPractitionerContext();
+
+  if (!professionPack) {
+    throw new AppError(
+      'Aucun pack professionnel disponible pour cette organisation',
+      403,
+      'PROFESSION_PACK_REQUIRED',
+    );
+  }
+
+  const presetId = typeof rawPresetId === 'string' ? rawPresetId.trim() : '';
+  if (!presetId) {
+    throw new AppError('Identifiant de modèle prédéfini requis', 400, 'INVALID_PRESET_ID');
+  }
+
+  const preset = professionPack.formTemplatePresets.find((p) => p.id === presetId);
+  if (!preset) {
+    throw new AppError(
+      'Modèle prédéfini introuvable pour votre profession',
+      400,
+      'PRESET_NOT_FOUND',
+    );
+  }
+
+  const validatedSchema = validateFormTemplateSchema(preset.schema);
+
+  const existingTemplates = await clinicalRecordService.listFormTemplates(
+    organizationId,
+    practitionerId,
+    false,
+  );
+
+  const normalizedName = preset.name.trim().toLowerCase();
+  const existing = existingTemplates.find(
+    (t) => t.name.trim().toLowerCase() === normalizedName && t.kind === preset.kind,
+  );
+
+  if (existing) {
+    if (!existing.isActive) {
+      const reactivated = await clinicalRecordService.updateFormTemplate(
+        organizationId,
+        practitionerId,
+        existing.id,
+        { isActive: true },
+      );
+      if (patientId) {
+        revalidatePath(`/patients/${patientId}/clinique`);
+      }
+      return reactivated;
+    }
+    return existing;
+  }
+
+  const created = await clinicalRecordService.createFormTemplate(
+    organizationId,
+    practitionerId,
+    {
+      name: preset.name,
+      kind: preset.kind,
+      description: preset.description,
+      schemaJson: validatedSchema,
+    },
+  );
+
+  if (patientId) {
+    revalidatePath(`/patients/${patientId}/clinique`);
+  }
+
+  return created;
 }
 
 // ==========================================

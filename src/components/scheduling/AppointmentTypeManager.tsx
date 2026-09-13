@@ -6,18 +6,24 @@ import {
   createAppointmentTypeAction,
   updateAppointmentTypeAction,
   setAppointmentTypeActiveAction,
+  installParamedicalAppointmentTypePresetAction,
 } from '@/app/actions/scheduling.actions';
+import type { ParamedicalProfessionPack } from '@/lib/workspaces/paramedical/profession-packs/types';
+import { CheckCircle2, Plus } from 'lucide-react';
 
 interface Props {
   initialTypes: AppointmentTypeDTO[];
+  professionPack?: ParamedicalProfessionPack;
 }
 
-export function AppointmentTypeManager({ initialTypes }: Props) {
+export function AppointmentTypeManager({ initialTypes, professionPack }: Props) {
   const [types, setTypes] = useState<AppointmentTypeDTO[]>(initialTypes);
   const [isPending, startTransition] = useTransition();
+  const [installingPresetId, setInstallingPresetId] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<AppointmentTypeDTO | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -111,6 +117,31 @@ export function AppointmentTypeManager({ initialTypes }: Props) {
     });
   };
 
+  const handleInstallPreset = (presetId: string) => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setInstallingPresetId(presetId);
+    startTransition(async () => {
+      try {
+        const result = await installParamedicalAppointmentTypePresetAction(presetId);
+        setTypes((prev) => {
+          const exists = prev.some((t) => t.id === result.id);
+          if (exists) {
+            return prev.map((t) => (t.id === result.id ? result : t));
+          }
+          return [result, ...prev];
+        });
+        setSuccessMessage('Type de séance configuré avec succès');
+      } catch (err: unknown) {
+        setErrorMessage(
+          err instanceof Error ? err.message : 'Erreur lors de l’installation de la suggestion',
+        );
+      } finally {
+        setInstallingPresetId(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -131,6 +162,78 @@ export function AppointmentTypeManager({ initialTypes }: Props) {
       {errorMessage && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+          {successMessage}
+        </div>
+      )}
+
+      {/* Profession Presets Section */}
+      {professionPack && professionPack.appointmentTypePresets.length > 0 && (
+        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-blue-950">
+              Suggestions pour votre activité ({professionPack.label})
+            </h3>
+            <p className="text-xs text-blue-700 mt-0.5">
+              Modèles de séances types recommandés, configurables en un clic.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {professionPack.appointmentTypePresets.map((preset) => {
+              const isInstalled = types.some(
+                (t) =>
+                  t.name.trim().toLowerCase() === preset.name.trim().toLowerCase() &&
+                  t.durationMinutes === preset.durationMinutes,
+              );
+              const isInstalling = installingPresetId === preset.id;
+
+              return (
+                <div
+                  key={preset.id}
+                  className="bg-white border border-blue-200/80 rounded-xl p-4 shadow-xs flex flex-col justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold text-gray-900">{preset.name}</h4>
+                      <span className="text-xs font-semibold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                        {preset.durationMinutes} min
+                      </span>
+                    </div>
+                    {preset.description && (
+                      <p className="text-xs text-gray-500">{preset.description}</p>
+                    )}
+                    <div className="text-[11px] text-gray-400 pt-1">
+                      Buffers : +{preset.bufferBeforeMinutes}m av. / +{preset.bufferAfterMinutes}m ap. — Pas de {preset.slotStepMinutes}m
+                    </div>
+                  </div>
+
+                  <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-end">
+                    {isInstalled ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Type configuré
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleInstallPreset(preset.id)}
+                        disabled={isPending || isInstalling}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition disabled:opacity-50"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {isInstalling ? 'Ajout en cours...' : 'Ajouter ce type de séance'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -47,11 +47,13 @@ import {
   archiveClinicalDocumentAction,
   getClinicalDocumentDownloadUrlAction,
   createClinicalFormTemplateAction,
+  createClinicalFormTemplateFromPresetAction,
   createClinicalFormResponseAction,
   updateDraftClinicalFormResponseAction,
   finalizeClinicalFormResponseAction,
   createClinicalMeasurementAction,
 } from '@/app/actions/clinical-record.actions';
+import type { ParamedicalProfessionPack } from '@/lib/workspaces/paramedical/profession-packs/types';
 
 import ClinicalOverviewSection from './ClinicalOverviewSection';
 import ClinicalTimelineSection from './ClinicalTimelineSection';
@@ -80,6 +82,7 @@ interface ClinicalOverviewData {
 
 interface ClinicalRecordManagerProps {
   patient: PatientProfileDTO;
+  professionPack?: ParamedicalProfessionPack;
   initialEpisodes: CareEpisodeDTO[];
   initialEncountersByEpisode: Record<string, ClinicalEncounterWithNotesDTO[]>;
   initialEligibleAppointments: EligibleAppointmentDTO[];
@@ -101,6 +104,7 @@ export type ClinicalTabKey =
 
 export default function ClinicalRecordManager({
   patient,
+  professionPack,
   initialEpisodes,
   initialEncountersByEpisode,
   initialEligibleAppointments,
@@ -432,6 +436,18 @@ export default function ClinicalRecordManager({
     router.refresh();
   };
 
+  const handleInstallTemplatePreset = async (presetId: string) => {
+    const tpl = await createClinicalFormTemplateFromPresetAction(presetId, patient.id);
+    setFormTemplates((prev) => {
+      const exists = prev.some((t) => t.id === tpl.id);
+      if (exists) {
+        return prev.map((t) => (t.id === tpl.id ? tpl : t));
+      }
+      return [tpl, ...prev];
+    });
+    router.refresh();
+  };
+
   const handleCreateFormResponse = async (
     templateId: string,
     careEpisodeId: string | null,
@@ -517,7 +533,7 @@ export default function ClinicalRecordManager({
 
             <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-500">
               <span>Né(e) le : {formatDate(patient.birthDate)}</span>
-              <span>Dossier médical & clinique paramédical</span>
+              <span>{professionPack?.clinicalHeaderTitle || 'Dossier de suivi clinique paramédical'}</span>
             </div>
           </div>
 
@@ -1022,7 +1038,9 @@ export default function ClinicalRecordManager({
           templates={formTemplates}
           responses={formResponses}
           episodes={episodes}
+          professionPack={professionPack}
           onCreateTemplate={handleCreateTemplate}
+          onInstallTemplatePreset={handleInstallTemplatePreset}
           onCreateResponse={handleCreateFormResponse}
           onUpdateDraftResponse={handleUpdateDraftFormResponse}
           onFinalizeResponse={handleFinalizeFormResponse}
@@ -1034,6 +1052,7 @@ export default function ClinicalRecordManager({
         <ClinicalMeasurementsSection
           measurements={measurements}
           episodes={episodes}
+          professionPack={professionPack}
           onCreateMeasurement={handleCreateMeasurement}
         />
       )}

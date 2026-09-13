@@ -5,6 +5,7 @@ import { schedulingService } from '@/lib/services/scheduling.service';
 import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces';
 import { revalidatePath } from 'next/cache';
+import { AppError } from '@/lib/errors';
 import {
   appointmentTypeCreateSchema,
   appointmentTypeUpdateSchema,
@@ -27,11 +28,11 @@ import {
 async function requireParamedicalContext() {
   const context = await requireProfessional();
   if (!context.organizationId) {
-    throw new Error('Organization introuvable');
+    throw new AppError('Organization introuvable', 404, 'ORGANIZATION_NOT_FOUND');
   }
   const organization = await organizationService.getById(context.organizationId);
   if (!organization) {
-    throw new Error('Organization introuvable');
+    throw new AppError('Organization introuvable', 404, 'ORGANIZATION_NOT_FOUND');
   }
   const workspace = resolveWorkspace({
     sector: organization.sector,
@@ -39,9 +40,9 @@ async function requireParamedicalContext() {
     country: organization.country,
   });
   if (workspace.type !== 'paramedical') {
-    throw new Error('Cette action est réservée au workspace paramédical');
+    throw new AppError('Cette action est réservée au workspace paramédical', 403, 'PARAMEDICAL_ACCESS_FORBIDDEN');
   }
-  return { ...context, organizationId: context.organizationId, userId: context.userId, organization };
+  return { ...context, organizationId: context.organizationId, userId: context.userId, organization, workspace };
 }
 
 // ==========================================
@@ -90,6 +91,63 @@ export async function setAppointmentTypeActiveAction(id: string, isActive: boole
   revalidatePath('/agenda');
   revalidatePath('/agenda/types-seances');
   return result;
+}
+
+export async function installParamedicalAppointmentTypePresetAction(rawPresetId: unknown) {
+  const { organizationId, workspace } = await requireParamedicalContext();
+  const professionPack = workspace.professionPack;
+
+  if (!professionPack) {
+    throw new AppError(
+      'Aucun pack professionnel disponible pour cette organisation',
+      403,
+      'PROFESSION_PACK_REQUIRED',
+    );
+  }
+
+  const presetId = typeof rawPresetId === 'string' ? rawPresetId.trim() : '';
+  if (!presetId) {
+    throw new AppError('Identifiant de type de séance requis', 400, 'INVALID_PRESET_ID');
+  }
+
+  const preset = professionPack.appointmentTypePresets.find((p) => p.id === presetId);
+  if (!preset) {
+    throw new AppError(
+      'Type de séance prédéfini introuvable pour votre profession',
+      400,
+      'PRESET_NOT_FOUND',
+    );
+  }
+
+  const existingTypes = await schedulingService.listAppointmentTypes(organizationId);
+  const normalizedName = preset.name.trim().toLowerCase();
+  const existing = existingTypes.find(
+    (t) => t.name.trim().toLowerCase() === normalizedName && t.durationMinutes === preset.durationMinutes,
+  );
+
+  if (existing) {
+    if (!existing.isActive) {
+      const reactivated = await schedulingService.setAppointmentTypeActive(organizationId, existing.id, true);
+      revalidatePath('/agenda');
+      revalidatePath('/agenda/types-seances');
+      return reactivated;
+    }
+    return existing;
+  }
+
+  const validData = appointmentTypeCreateSchema.parse({
+    name: preset.name,
+    description: preset.description,
+    durationMinutes: preset.durationMinutes,
+    bufferBeforeMinutes: preset.bufferBeforeMinutes,
+    bufferAfterMinutes: preset.bufferAfterMinutes,
+    slotStepMinutes: preset.slotStepMinutes,
+  });
+
+  const created = await schedulingService.createAppointmentType(organizationId, validData);
+  revalidatePath('/agenda');
+  revalidatePath('/agenda/types-seances');
+  return created;
 }
 
 // ==========================================

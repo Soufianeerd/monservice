@@ -13,16 +13,30 @@ import type {
   CareEpisodeDTO,
   CreateClinicalMeasurementInput,
 } from '@/lib/clinical/types';
+import type {
+  ParamedicalProfessionPack,
+  ParamedicalMeasurementPreset,
+} from '@/lib/workspaces/paramedical/profession-packs/types';
 
 interface ClinicalMeasurementsSectionProps {
   measurements: ClinicalMeasurementDTO[];
   episodes: CareEpisodeDTO[];
+  professionPack?: ParamedicalProfessionPack;
   onCreateMeasurement: (input: CreateClinicalMeasurementInput) => Promise<void>;
 }
+
+const DEFAULT_PRESETS: readonly ParamedicalMeasurementPreset[] = [
+  { code: 'pain_score', label: 'Échelle visuelle de la douleur (EVA)', valueType: 'numeric', unit: '/10' },
+  { code: 'weight', label: 'Poids corporel', valueType: 'numeric', unit: 'kg' },
+  { code: 'height', label: 'Taille', valueType: 'numeric', unit: 'cm' },
+  { code: 'range_of_motion', label: 'Amplitude articulaire', valueType: 'numeric', unit: '°' },
+  { code: 'posture_observation', label: 'Observation posturale', valueType: 'text', unit: null },
+];
 
 export default function ClinicalMeasurementsSection({
   measurements,
   episodes,
+  professionPack,
   onCreateMeasurement,
 }: ClinicalMeasurementsSectionProps) {
   const [showNewModal, setShowNewModal] = useState(false);
@@ -43,20 +57,15 @@ export default function ClinicalMeasurementsSection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Quick preset buttons for common clinical measurements
-  const PRESETS = [
-    { code: 'pain_score', label: 'Échelle visuelle de la douleur (EVA)', type: 'numeric', unit: '/10' },
-    { code: 'weight', label: 'Poids corporel', type: 'numeric', unit: 'kg' },
-    { code: 'height', label: 'Taille', type: 'numeric', unit: 'cm' },
-    { code: 'range_of_motion', label: 'Amplitude articulaire', type: 'numeric', unit: '°' },
-    { code: 'posture_observation', label: 'Observation posturale', type: 'text', unit: '' },
-  ];
+  const activePresets = professionPack?.measurementPresets?.length
+    ? professionPack.measurementPresets
+    : DEFAULT_PRESETS;
 
-  const handleApplyPreset = (preset: (typeof PRESETS)[0]) => {
+  const handleApplyPreset = (preset: ParamedicalMeasurementPreset) => {
     setFormCode(preset.code);
     setFormLabel(preset.label);
-    setValueType(preset.type as 'numeric' | 'text');
-    setFormUnit(preset.unit);
+    setValueType(preset.valueType);
+    setFormUnit(preset.unit || '');
   };
 
   const distinctCodes = Array.from(new Set(measurements.map((m) => m.code)));
@@ -235,7 +244,7 @@ export default function ClinicalMeasurementsSection({
                 Modèles rapides :
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {PRESETS.map((p) => (
+                {activePresets.map((p) => (
                   <button
                     key={p.code}
                     type="button"

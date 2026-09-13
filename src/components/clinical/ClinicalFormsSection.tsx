@@ -18,25 +18,30 @@ import type {
   ClinicalFormFieldOption,
   ClinicalFormAnswers,
 } from '@/lib/clinical/types';
+import type { ParamedicalProfessionPack } from '@/lib/workspaces/paramedical/profession-packs/types';
 
 interface ClinicalFormsSectionProps {
   templates: ClinicalFormTemplateDTO[];
   responses: ClinicalFormResponseDTO[];
   episodes: CareEpisodeDTO[];
+  professionPack?: ParamedicalProfessionPack;
   onCreateResponse: (templateId: string, episodeId: string | null, answers: ClinicalFormAnswers) => Promise<void>;
   onUpdateDraftResponse: (responseId: string, answers: ClinicalFormAnswers) => Promise<void>;
   onFinalizeResponse: (responseId: string, answers?: ClinicalFormAnswers) => Promise<void>;
   onCreateTemplate: (input: { name: string; kind: ClinicalFormTemplateDTO['kind']; description?: string; schemaJson: Record<string, unknown> }) => Promise<void>;
+  onInstallTemplatePreset?: (presetId: string) => Promise<void>;
 }
 
 export default function ClinicalFormsSection({
   templates,
   responses,
   episodes,
+  professionPack,
   onCreateResponse,
   onUpdateDraftResponse,
   onFinalizeResponse,
   onCreateTemplate,
+  onInstallTemplatePreset,
 }: ClinicalFormsSectionProps) {
   const [activeSubTab, setActiveSubTab] = useState<'responses' | 'new_response' | 'templates'>('responses');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templates[0]?.id || '');
@@ -81,8 +86,28 @@ export default function ClinicalFormsSection({
   );
 
   const [isPending, startTransition] = useTransition();
+  const [installingPresetId, setInstallingPresetId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleInstallPreset = (presetId: string) => {
+    if (!onInstallTemplatePreset) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setInstallingPresetId(presetId);
+    startTransition(async () => {
+      try {
+        await onInstallTemplatePreset(presetId);
+        setSuccessMessage('Modèle installé avec succès dans votre espace');
+      } catch (err: unknown) {
+        setErrorMessage(
+          err instanceof Error ? err.message : 'Erreur lors de l’installation du modèle',
+        );
+      } finally {
+        setInstallingPresetId(null);
+      }
+    });
+  };
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
@@ -556,39 +581,151 @@ export default function ClinicalFormsSection({
 
       {/* Sub Tab: Templates List */}
       {activeSubTab === 'templates' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((tpl) => (
-            <div
-              key={tpl.id}
-              className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-full uppercase">
-                    {tpl.kind}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {tpl.schemaJson?.fields?.length || 0} champs
-                  </span>
+        <div className="space-y-8">
+          {/* 1. Modèles recommandés pour la profession */}
+          {professionPack && professionPack.formTemplatePresets.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Modèles recommandés pour votre activité ({professionPack.label})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Suggestions adaptées à votre pratique paramédicale, prêtes à être installées.
+                  </p>
                 </div>
-
-                <h4 className="text-sm font-bold text-slate-900 mb-1">{tpl.name}</h4>
-                {tpl.description && (
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-4">{tpl.description}</p>
-                )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => handleStartNewResponse(tpl.id)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Remplir ce formulaire
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {professionPack.formTemplatePresets.map((preset) => {
+                  const matchingTemplate = templates.find(
+                    (t) =>
+                      t.name.trim().toLowerCase() === preset.name.trim().toLowerCase() &&
+                      t.kind === preset.kind,
+                  );
+                  const isInstalled = Boolean(matchingTemplate);
+                  const isInstalling = installingPresetId === preset.id;
+
+                  return (
+                    <div
+                      key={preset.id}
+                      className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:border-slate-300 transition flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-full uppercase">
+                            {preset.kind}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {preset.schema.fields.length} champs
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-bold text-slate-900 mb-1">{preset.name}</h4>
+                        {preset.description && (
+                          <p className="text-xs text-slate-500 line-clamp-2 mb-4">
+                            {preset.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        {isInstalled ? (
+                          <div className="w-full flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Installé
+                            </span>
+                            {matchingTemplate && (
+                              <button
+                                type="button"
+                                onClick={() => handleStartNewResponse(matchingTemplate.id)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition"
+                              >
+                                Remplir
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleInstallPreset(preset.id)}
+                            disabled={isPending || isInstalling}
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition disabled:opacity-50"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            {isInstalling ? 'Installation...' : 'Installer ce modèle'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* 2. Modèles disponibles dans l'espace */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Mes modèles personnalisés</h3>
+                <p className="text-xs text-slate-500">
+                  Modèles créés ou installés dans votre compte pour ce cabinet.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewTemplateModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nouveau modèle
+              </button>
+            </div>
+
+            {templates.length === 0 ? (
+              <div className="p-8 bg-slate-50 border border-slate-200 rounded-xl text-center text-slate-500 text-xs">
+                Aucun modèle disponible. Installez un modèle recommandé ci-dessus ou créez un modèle personnalisé.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:border-slate-300 transition flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-full uppercase">
+                          {tpl.kind}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {tpl.schemaJson?.fields?.length || 0} champs
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-900 mb-1">{tpl.name}</h4>
+                      {tpl.description && (
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-4">{tpl.description}</p>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => handleStartNewResponse(tpl.id)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Remplir ce formulaire
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

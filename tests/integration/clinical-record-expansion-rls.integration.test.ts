@@ -108,7 +108,9 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       }
     }
 
-    await sql.end();
+    if (sql) {
+      await sql.end();
+    }
   });
 
   // ==========================================

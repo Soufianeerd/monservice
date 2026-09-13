@@ -30,7 +30,10 @@ export default async function TypesSeancesPage() {
 
   return (
     <div className="space-y-6">
-      <AppointmentTypeManager initialTypes={types} />
+      <AppointmentTypeManager
+        initialTypes={types}
+        professionPack={workspace.professionPack}
+      />
     </div>
   );
 }
