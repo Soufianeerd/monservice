@@ -8,10 +8,11 @@ L'audit GitHub post-CI de la Session 12 a identifié plusieurs écarts contractu
    - *Problème identifié* : L'action générait un UUID pour le chemin Storage (`storagePath`), puis le service de métadonnées générait un UUID distinct pour la clé primaire `clinical_documents.id`.
    - *Correction* : Un `documentId` unique est généré côté serveur au début de l'orchestration dans `uploadClinicalDocumentAction` et transmis explicitement à `createClinicalDocumentMetadata`. Le 4e segment du `storagePath` (`${orgId}/${practitionerId}/${patientId}/${documentId}/${filename}`) est rigoureusement identique à `clinical_documents.id`.
 
-2. **Compensation Transactionnelle Storage (Storage Orphan Rollback)** :
-   - *Problème identifié* : En cas d'échec de l'insertion DB des métadonnées après un upload Storage réussi, le fichier restait orphelin dans le bucket.
-   - *Correction* : Implémentation d'une compensation interne sécurisée (`removeFileAfterFailedMetadataWrite`). Si l'insertion DB échoue, l'objet uploadé est immédiatement supprimé via l'API Storage avec droits d'administration serveur.
-   - *Sécurité* : Aucune permission `DELETE` utilisateur n'est accordée sur Supabase Storage, aucun bouton de suppression n'est exposé, et aucune donnée clinique n'est loggée en cas d'erreur.
+2. **Compensation Transactionnelle Storage Fail-Closed & Sécurité des Logs** :
+   - *Problème identifié* : En cas d'échec de l'insertion DB des métadonnées après un upload Storage réussi, le fichier restait orphelin dans le bucket. De plus, un fallback vers le client utilisateur ou des logs de chemins sensibles constituaient une vulnérabilité.
+   - *Correction* : Implémentation d'une compensation interne strictement serveur et fail-closed (`removeFileAfterFailedMetadataWrite`). La résolution `getRequiredPrivilegedStorageClient()` exige `SUPABASE_SERVICE_ROLE_KEY` et `NEXT_PUBLIC_SUPABASE_URL` (lève `STORAGE_ADMIN_CONFIGURATION_MISSING` en cas d'absence). Aucun fallback vers un client utilisateur authentifié.
+   - *Contrat d'Erreur & Logs* : En cas d'échec de la compensation Storage après échec DB, l'action lève l'erreur stable `STORAGE_ROLLBACK_FAILED` et émet un log générique (`console.error('[ClinicalStorageRollbackError] Orphan cleanup failed', { code: cleanupErrorCode })`) garantissant l'absence totale de données sensibles (aucun `storagePath`, `patientId`, `practitionerId`, `organizationId`, nom de fichier ou titre).
+   - *Sécurité* : Aucune permission `DELETE` utilisateur n'est accordée sur Supabase Storage, aucun bouton de suppression n'est exposé, et aucun droit `DELETE` n'est accordé aux utilisateurs.
 
 3. **Cohérence Composite Care Episode / Encounter (DB & Service Levels)** :
    - *Problème identifié* : Lorsqu'un document, une réponse de formulaire ou une mesure référençait à la fois un `care_episode_id` et un `encounter_id`, rien ne garantissait au niveau base ou service que la séance appartienne effectivement à cet épisode de soin.
@@ -19,8 +20,9 @@ L'audit GitHub post-CI de la Session 12 a identifié plusieurs écarts contractu
    - *Correction Service* : Helper centralisé `validateClinicalContextLinks(...)` vérifiant la cohérence et levant `CLINICAL_CONTEXT_MISMATCH` (`AppError`) en cas de divergence.
 
 4. **Authentification Non-Vacueuse & Matrice RLS / Storage Exhaustive** :
-   - *Problème identifié* : Présence potentielle de chemins d'échappement silencieux dans les tests d'intégration RLS.
-   - *Correction* : Introduction du helper `signInOrThrow` validant obligatoirement les sessions de `pro_a`, `pro_b`, `client_a` et `staff_a`. Matrice d'isolation RLS et Storage testée exhaustivement sur les 4 tables et le bucket `clinical-documents` (upload positif, génération URL signée, téléchargement HTTP réel, isolation inter-praticiens, rejet total staff/client/anon).
+   - *Problème identifié* : Risque de chemins d'échappement silencieux dans les tests d'intégration RLS.
+   - *Correction* : Helper `signInOrThrow` validant obligatoirement les sessions de `pro_a`, `pro_b`, `client_a` et `staff_a`. Présence obligatoire de `SUPABASE_SERVICE_ROLE_KEY` dans `beforeAll` (fail-fast).
+   - Matrice d'isolation RLS et Storage testée exhaustivement sur les 4 tables et le bucket `clinical-documents` (upload positif, génération URL signée, téléchargement HTTP réel, isolation inter-praticiens, rejet total staff/client/anon, interdiction de l'UPDATE sur les mesures, interdiction du DELETE).
 
 5. **Migration Unique 0017 & Snapshot Drizzle** :
    - Aucun fichier `0018` créé.
@@ -60,11 +62,13 @@ REFERENCES "public"."clinical_encounters"("id", "organization_id", "care_episode
 ### 2.2. Service & Actions d'Extension Clinique
 
 - `src/lib/services/clinical-storage.service.ts` :
+  - `getRequiredPrivilegedStorageClient()` : résolution stricte serveur fail-closed, lève `STORAGE_ADMIN_CONFIGURATION_MISSING` si clé absente.
   - `removeFileAfterFailedMetadataWrite(storagePath)` : compensation interne via client admin `SUPABASE_SERVICE_ROLE_KEY`.
 - `src/lib/services/clinical-record.service.ts` :
   - `validateClinicalContextLinks(organizationId, patientId, practitionerId, careEpisodeId, encounterId)` : validation stricte de l'appartenance `encounter.careEpisodeId === careEpisodeId`.
 - `src/app/actions/clinical-record.actions.ts` :
-  - `uploadClinicalDocumentAction` : génération de `documentId = randomUUID()`, construction de `storagePath`, upload Storage, insertion DB `createClinicalDocumentMetadata({ id: documentId, ... })`, et bloc `catch` exécutant `removeFileAfterFailedMetadataWrite` avant re-throw.
+  - `uploadClinicalDocumentAction` : génération de `documentId = randomUUID()`, construction de `storagePath`, upload Storage, insertion DB `createClinicalDocumentMetadata({ id: documentId, ... })`.
+  - Bloc `catch` exécutant `removeFileAfterFailedMetadataWrite` et levant `STORAGE_ROLLBACK_FAILED` avec log non-sensible en cas d'échec de compensation.
 
 ---
 
@@ -83,13 +87,14 @@ REFERENCES "public"."clinical_encounters"("id", "organization_id", "care_episode
 
 ## 4. Matrice des Tests & Résultats
 
-- `npm run test:clinical` : **12/12 fichiers passés (93 tests)**
-  - Tests unitaires d'orchestration `uploadClinicalDocumentAction` (égalité documentId, rollback Storage).
+- `npm run test:clinical` : **13/13 fichiers passés (98 tests)**
+  - Tests unitaires d'orchestration `uploadClinicalDocumentAction` (égalité documentId, rollback Storage, logging non-sensible, code `STORAGE_ROLLBACK_FAILED`).
+  - Tests unitaires `clinicalStorageService` (fail-closed, `STORAGE_ADMIN_CONFIGURATION_MISSING`, `STORAGE_CLEANUP_FAILED`).
   - Tests unitaires du service clinique (`validateClinicalContextLinks`, erreur `CLINICAL_CONTEXT_MISMATCH`).
 - `npm run test:unit` : **13/13 fichiers passés (38 tests)**
 - `npm run test:security` : **5/5 fichiers passés (145 tests)**
 - `npm run test:db-constraints` : Invariants d'intégrité DB vérifiés (rejet SQLSTATE 23503 sur mismatch épisode/séance pour les 3 tables).
-- `npm run test:rls` : Matrice RLS non-vacueuse validée avec `signInOrThrow`.
+- `npm run test:rls` : Matrice RLS non-vacueuse validée avec `signInOrThrow` et fail-fast storage cleanup.
 - `npm run db:check-drift` : **0 drift**.
 - `npm run typecheck` : **0 erreur**.
 - `npm run lint` : **0 warning bloquant**.
@@ -99,13 +104,11 @@ REFERENCES "public"."clinical_encounters"("id", "organization_id", "care_episode
 
 ## 5. Traçabilité Git & CI
 
-- **HEAD initial Session 12B** : `d4d9d6b44541c47ba5618cd40425b0e24bad4624`
+- **HEAD initial Session 12B** : `20ce17ccd9181ff8b29c75543e572de4ed24b516`
 - **Commits Réalisés** :
-  - `c172782` : `fix(clinical): finalize record expansion integrity and storage atomicity`
-  - `8ee901f` : `fix(clinical): synchronize 0017 schema snapshot and eliminate drift`
-  - `1c57278` : `test(clinical): use storage api for cleanup in rls integration test`
-- **CI Run ID Code & Tests** : `34722540138`
-  - **Head SHA** : `1c57278`
+  - `44db2f2` : `fix(clinical): close Session 12B security contracts`
+- **CI Run ID Code & Tests** : `34753917532`
+  - **Head SHA** : `44db2f2`
   - **Status** : `completed`
   - **Conclusion** : `success`
 - **Statut Session 12B** : **TERMINÉE ET VALIDÉE**

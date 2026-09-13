@@ -16,8 +16,8 @@ La Session 12 étend le socle clinique paramédical de **MonService** (établi e
    - Génération d'URL signées éphémères (durée par défaut 60s) pour le téléchargement sécurisé sans exposition d'URL publiques directes.
 3. **Moteur de Questionnaires / Formulaires Structurés & Mesures Cliniques** :
    - Templates de formulaires (`clinical_form_templates`) avec schéma typé (`schema_json` en `jsonb`) supportant les champs dynamiques et archivage logique (`is_active = false`).
-   - Réponses aux formulaires (`clinical_form_responses`) avec données typées (`response_data` en `jsonb`), statut brouillon/complété (`draft` / `completed`) et verrouillage d'immuabilité une fois complété.
-   - Mesures structurées (`clinical_measurements`) avec support exclusif `value_numeric XOR value_text`, codes cliniques standards (ex: `pain_score`, `rom`, `weight`, etc.), unités et dates d'observation (`recorded_at`).
+   - Réponses aux formulaires (`clinical_form_responses`) avec données typées (`answers_json` en `jsonb`), statut brouillon/finalisé (`draft` / `finalized`) et verrouillage d'immuabilité une fois finalisé (`finalized_at`).
+   - Mesures structurées (`clinical_measurements`) avec support exclusif `value_numeric XOR value_text`, codes cliniques standards (ex: `pain_score`, `rom`, `weight`, etc.), unités et dates d'observation (`observed_at`).
 4. **Timeline Clinique Chronologique Unifiée** :
    - Agrégation déterministe et triée par date décroissante des 7 discriminants réels d'événements cliniques : `episode_opened`, `episode_closed`, `encounter`, `note`, `document`, `form_response`, `measurement`.
 5. **Autorisation Clinique Dédiée & Cloisonnement Praticien (Owner-Only RLS)** :
@@ -26,7 +26,7 @@ La Session 12 étend le socle clinique paramédical de **MonService** (établi e
    - Suppression dure strictement interdite (`REVOKE DELETE` sur toutes les tables d'extension clinique).
 6. **Machines à États et Invariants PostgreSQL Renforcés** :
    - Document : trigger `enforce_clinical_document_mutation()` bloquant toute mutation structurelle (`organization_id`, `patient_id`, `practitioner_id`, `care_episode_id`, `encounter_id`, `storage_path`, `file_name`, `mime_type`, `size_bytes`), tout en autorisant les métadonnées modifiables (`title`, `category`, `is_archived`).
-   - Réponse formulaire : trigger `enforce_clinical_form_response_transition()` bloquant la régression `completed -> draft` et toute modification d'une réponse complétée.
+   - Réponse formulaire : trigger `enforce_clinical_form_response_transition()` bloquant la régression `finalized -> draft` et toute modification d'une réponse finalisée.
    - Mesure clinique : trigger `enforce_clinical_measurement_insert()` vérifiant la contrainte d'exclusion `value_numeric XOR value_text` à l'insertion.
    - Clés étrangères composites strictes garantissant l'alignement `(organization_id, patient_id, practitioner_id)` entre toutes les tables.
 7. **Zero Lying Cast Policy** :
@@ -81,9 +81,9 @@ CREATE TABLE "clinical_form_responses" (
   "template_id" text NOT NULL,
   "care_episode_id" text,
   "encounter_id" text,
-  "response_data" jsonb NOT NULL,
+  "answers_json" jsonb NOT NULL,
   "status" text DEFAULT 'draft' NOT NULL,
-  "completed_at" timestamp with time zone,
+  "finalized_at" timestamp with time zone,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -101,7 +101,7 @@ CREATE TABLE "clinical_measurements" (
   "value_numeric" numeric(12, 4),
   "value_text" text,
   "unit" text,
-  "recorded_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "observed_at" timestamp with time zone DEFAULT now() NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 ```
@@ -137,7 +137,7 @@ USING (
 
 ## 3. Matrice des Vérifications et Résultats de Tests
 
-- `npm run test:clinical` : 12/12 fichiers passés (93 tests)
+- `npm run test:clinical` : 13/13 fichiers passés (98 tests)
 - `npm run test:unit` : 13/13 fichiers passés (38 tests)
 - `npm run test:security` : 5/5 fichiers passés (145 tests)
 - `npm run typecheck` : 0 erreur (`tsc --noEmit`)
