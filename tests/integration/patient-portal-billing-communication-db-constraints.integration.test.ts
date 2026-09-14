@@ -63,7 +63,7 @@ describe('Patient Portal, Billing Bridge & Communication Database Constraints (S
     await sql`INSERT INTO clinical_form_templates (id, organization_id, practitioner_id, name, kind, schema_json, is_active, created_at, updated_at) VALUES (${formTemplateA}, ${orgA}, ${pracA}, 'Bilan Initial', 'intake', '{"version":1,"fields":[]}', true, now(), now()) ON CONFLICT DO NOTHING`;
 
     // Setup Appointment
-    await sql`INSERT INTO appointments (id, organization_id, practitioner_id, patient_id, appointment_type_id, location_id, starts_at, ends_at, status, created_at, updated_at) VALUES (${appointmentA}, ${orgA}, ${pracA}, ${patientA}, ${typeA}, ${locA}, now() + interval '24 hours', now() + interval '25 hours', 'scheduled', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO appointments (id, organization_id, practitioner_id, patient_id, appointment_type_id, location_id, created_by_user_id, starts_at, ends_at, status, created_at, updated_at) VALUES (${appointmentA}, ${orgA}, ${pracA}, ${patientA}, ${typeA}, ${locA}, ${userProA}, now() + interval '24 hours', now() + interval '25 hours', 'scheduled', now(), now()) ON CONFLICT DO NOTHING`;
   });
 
   afterAll(async () => {
