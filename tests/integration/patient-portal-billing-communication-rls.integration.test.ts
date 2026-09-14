@@ -66,13 +66,11 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     }
 
     testPortalAccessId = randomUUID();
-    testAssignmentId = randomUUID();
-    testBillingLinkId = randomUUID();
 
     // Insert direct via SQL
     await sql`
       INSERT INTO patient_portal_access (id, organization_id, patient_id, user_id, status, invited_email, created_at, updated_at)
-      VALUES (${testPortalAccessId}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA1}, ${authClientA.user.id}, 'active', ${CLIENT_A_EMAIL}, now(), now())
+      VALUES (${testPortalAccessId}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${authClientA.user.id}, 'active', ${CLIENT_A_EMAIL}, now(), now())
       ON CONFLICT DO NOTHING
     `;
   });

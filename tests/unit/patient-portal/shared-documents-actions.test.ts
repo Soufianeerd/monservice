@@ -48,8 +48,9 @@ describe('Shared Documents Actions', () => {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
+    accessType: 'patient' as const,
+    representativeId: null,
     accessiblePatientIds: ['pat-1'],
-    accessId: 'access-1',
     email: 'patient@email.com',
   };
 
@@ -102,6 +103,8 @@ describe('Shared Documents Actions', () => {
       const mockDocs: PatientSharedDocumentDTO[] = [
         {
           id: 'doc-1',
+          organizationId: mockPatientCtx.organizationId,
+          patientId: mockPatientCtx.patientId,
           title: 'Compte-rendu bilan',
           category: 'report',
           fileName: 'bilan.pdf',

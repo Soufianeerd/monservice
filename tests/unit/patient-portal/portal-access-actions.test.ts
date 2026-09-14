@@ -43,8 +43,9 @@ describe('Patient Portal Access Actions', () => {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
+    accessType: 'patient' as const,
+    representativeId: null,
     accessiblePatientIds: ['pat-1'],
-    accessId: 'access-1',
     email: 'patient@email.com',
   };
 
@@ -60,10 +61,10 @@ describe('Patient Portal Access Actions', () => {
         organizationId: mockPractitionerCtx.organizationId,
         patientId: 'pat-1',
         userId: 'user-pat-1',
-        invitedEmail: 'patient@email.com',
+        accessType: 'patient',
         representativeId: null,
-        status: 'active',
-        lastLoginAt: null,
+        isActive: true,
+        createdByUserId: mockPractitionerCtx.userId,
         createdAt: '2026-09-14T20:00:00.000Z',
         updatedAt: '2026-09-14T20:00:00.000Z',
       };
@@ -82,7 +83,7 @@ describe('Patient Portal Access Actions', () => {
           representativeId: null,
         },
       );
-      expect(res.status).toBe('active');
+      expect(res.isActive).toBe(true);
     });
 
     it('rejects invalid email inputs', async () => {
@@ -99,10 +100,10 @@ describe('Patient Portal Access Actions', () => {
         organizationId: mockPractitionerCtx.organizationId,
         patientId: 'pat-1',
         userId: 'user-pat-1',
-        invitedEmail: 'patient@email.com',
+        accessType: 'patient',
         representativeId: null,
-        status: 'revoked',
-        lastLoginAt: null,
+        isActive: false,
+        createdByUserId: mockPractitionerCtx.userId,
         createdAt: '2026-09-14T20:00:00.000Z',
         updatedAt: '2026-09-14T20:00:00.000Z',
       };
@@ -114,7 +115,7 @@ describe('Patient Portal Access Actions', () => {
         mockPractitionerCtx.organizationId,
         'access-1',
       );
-      expect(res.status).toBe('revoked');
+      expect(res.isActive).toBe(false);
     });
   });
 
@@ -122,29 +123,13 @@ describe('Patient Portal Access Actions', () => {
     it('returns portal overview for authenticated patient', async () => {
       vi.mocked(requirePatientPortalAccess).mockResolvedValue(mockPatientCtx);
       const mockOverview: PatientPortalOverviewDTO = {
-        patient: {
-          id: 'pat-1',
-          usedFirstName: 'Jean',
-          firstBirthName: 'Jean',
-          usedName: 'Dupont',
-          birthName: null,
-          birthDate: '1990-01-01',
-          email: 'patient@email.com',
-          phone: '0600000000',
-        },
-        organization: {
-          id: 'org-health-1',
-          name: 'Cabinet Santé',
-          phone: null,
-          email: null,
-          address: null,
-          city: null,
-          postalCode: null,
-        },
-        upcomingAppointments: [],
+        patientId: 'pat-1',
+        organizationId: 'org-health-1',
+        upcomingAppointmentsCount: 0,
         pendingQuestionnairesCount: 1,
-        unreadMessagesCount: 0,
-        unpaidInvoicesCount: 1,
+        sharedDocumentsCount: 0,
+        recentMessagesCount: 0,
+        nextAppointment: null,
       };
       vi.mocked(patientPortalService.getPatientPortalOverview).mockResolvedValue(mockOverview);
 
@@ -166,13 +151,14 @@ describe('Patient Portal Access Actions', () => {
       const mockAppts: PatientPortalAppointmentDTO[] = [
         {
           id: 'apt-1',
+          organizationId: 'org-health-1',
+          patientId: 'pat-1',
           startsAt: '2026-09-20T10:00:00.000Z',
           endsAt: '2026-09-20T10:30:00.000Z',
+          timezone: 'Europe/Paris',
           status: 'scheduled',
           appointmentTypeName: 'Consultation Bilan',
-          practitionerName: 'Dr Martin',
           locationName: 'Cabinet Principal',
-          locationAddress: '10 Rue de la Paix',
           roomName: 'Salle 1',
         },
       ];
@@ -185,7 +171,7 @@ describe('Patient Portal Access Actions', () => {
         mockPatientCtx.patientId,
       );
       expect(res.length).toBe(1);
-      expect(res[0].practitionerName).toBe('Dr Martin');
+      expect(res[0].appointmentTypeName).toBe('Consultation Bilan');
     });
   });
 });
