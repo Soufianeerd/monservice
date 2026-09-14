@@ -1028,6 +1028,7 @@ export class ClinicalRecordService {
         mimeType: validated.mimeType,
         sizeBytes: input.sizeBytes,
         storagePath: input.storagePath,
+        patientVisible: input.patientVisible ?? false,
         isArchived: false,
       })
       .returning();
@@ -1049,6 +1050,7 @@ export class ClinicalRecordService {
       mimeType: created.mimeType,
       sizeBytes: created.sizeBytes,
       storagePath: created.storagePath,
+      patientVisible: created.patientVisible ?? false,
       isArchived: created.isArchived,
       createdAt: new Date(created.createdAt).toISOString(),
       updatedAt: new Date(created.updatedAt).toISOString(),
@@ -1056,7 +1058,7 @@ export class ClinicalRecordService {
   }
 
   /**
-   * Met à jour le titre, la catégorie ou l'état d'archivage d'un document clinique.
+   * Met à jour le titre, la catégorie, la visibilité patient ou l'état d'archivage d'un document clinique.
    */
   async updateClinicalDocument(
     organizationId: string,
@@ -1098,6 +1100,10 @@ export class ClinicalRecordService {
       updatePayload.category = input.category;
     }
 
+    if (input.patientVisible !== undefined) {
+      updatePayload.patientVisible = input.patientVisible;
+    }
+
     if (input.isArchived !== undefined) {
       updatePayload.isArchived = input.isArchived;
     }
@@ -1132,10 +1138,26 @@ export class ClinicalRecordService {
       mimeType: updated.mimeType,
       sizeBytes: updated.sizeBytes,
       storagePath: updated.storagePath,
+      patientVisible: updated.patientVisible ?? false,
       isArchived: updated.isArchived,
       createdAt: new Date(updated.createdAt).toISOString(),
       updatedAt: new Date(updated.updatedAt).toISOString(),
     };
+  }
+
+  /**
+   * Modifie la visibilité d'un document pour le portail patient.
+   */
+  async setDocumentPatientVisible(
+    organizationId: string,
+    patientId: string,
+    practitionerId: string,
+    documentId: string,
+    patientVisible: boolean,
+  ): Promise<ClinicalDocumentDTO> {
+    return this.updateClinicalDocument(organizationId, patientId, practitionerId, documentId, {
+      patientVisible,
+    });
   }
 
   /**
@@ -1189,6 +1211,7 @@ export class ClinicalRecordService {
       mimeType: row.mimeType,
       sizeBytes: row.sizeBytes,
       storagePath: row.storagePath,
+      patientVisible: row.patientVisible ?? false,
       isArchived: row.isArchived,
       createdAt: new Date(row.createdAt).toISOString(),
       updatedAt: new Date(row.updatedAt).toISOString(),
@@ -1239,6 +1262,7 @@ export class ClinicalRecordService {
       mimeType: row.mimeType,
       sizeBytes: row.sizeBytes,
       storagePath: row.storagePath,
+      patientVisible: row.patientVisible ?? false,
       isArchived: row.isArchived,
       createdAt: new Date(row.createdAt).toISOString(),
       updatedAt: new Date(row.updatedAt).toISOString(),

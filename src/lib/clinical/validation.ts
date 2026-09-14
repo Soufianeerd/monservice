@@ -88,7 +88,13 @@ export const updateClinicalDocumentSchema = z.object({
   documentId: z.string().min(1, 'Identifiant du document requis'),
   title: z.string().trim().min(1, 'Le titre ne peut pas être vide').max(200, 'Le titre ne peut pas dépasser 200 caractères').optional(),
   category: z.enum(CLINICAL_DOCUMENT_CATEGORIES).optional(),
+  patientVisible: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+});
+
+export const setClinicalDocumentPatientVisibleSchema = z.object({
+  documentId: z.string().min(1, 'Identifiant du document requis'),
+  patientVisible: z.boolean(),
 });
 
 export const archiveClinicalDocumentSchema = z.object({

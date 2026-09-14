@@ -68,6 +68,7 @@ describe('Unified Clinical Timeline Domain Builder', () => {
       mimeType: 'application/pdf',
       sizeBytes: 102400,
       storagePath: 'org-1/prac-1/pat-1/doc-1/ordo.pdf',
+      patientVisible: false,
       isArchived: false,
       createdAt: '2026-08-05T09:00:00.000Z',
       updatedAt: '2026-08-05T09:00:00.000Z',

@@ -130,7 +130,8 @@ export const clients = sqliteTable('clients', {
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   index('clients_organization_id_idx').on(t.organizationId),
-  index('clients_user_id_idx').on(t.userId)
+  index('clients_user_id_idx').on(t.userId),
+  uniqueIndex('clients_id_org_unique').on(t.id, t.organizationId)
 ]);
 
 // Contacts
@@ -306,13 +307,20 @@ export const messages = sqliteTable('messages', {
   content: text('content').notNull(),
   isRead: boolean('is_read').default(false),
   requestId: text('request_id'),
+  patientId: text('patient_id'),
   organizationId: text('organization_id').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   index('messages_sender_id_idx').on(t.senderId),
   index('messages_receiver_id_idx').on(t.receiverId),
-  index('messages_request_id_idx').on(t.requestId)
+  index('messages_request_id_idx').on(t.requestId),
+  index('messages_patient_id_idx').on(t.patientId),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'messages_patient_fk'
+  })
 ]);
 
 // Message Templates
@@ -1064,6 +1072,7 @@ export const clinicalDocuments = sqliteTable('clinical_documents', {
   sizeBytes: integer('size_bytes').notNull(),
   storagePath: text('storage_path').notNull(),
   isArchived: boolean('is_archived').notNull().default(false),
+  patientVisible: boolean('patient_visible').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -1236,5 +1245,140 @@ export const clinicalMeasurements = sqliteTable('clinical_measurements', {
     foreignColumns: [clinicalEncounters.id, clinicalEncounters.organizationId, clinicalEncounters.careEpisodeId, clinicalEncounters.patientId, clinicalEncounters.practitionerId],
     name: 'clinical_measurements_encounter_episode_fk'
   }),
+]);
+
+// ---------------------------------------------------------------------------
+// SESSION 14 : PATIENT PORTAL ACCESS, QUESTIONNAIRES, BILLING & REMINDERS
+// ---------------------------------------------------------------------------
+
+// Patient Portal Access
+export const patientPortalAccess = sqliteTable('patient_portal_access', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id),
+  accessType: text('access_type').notNull(), // 'patient' | 'representative'
+  representativeId: text('representative_id'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('patient_portal_access_user_idx').on(t.userId),
+  index('patient_portal_access_org_patient_idx').on(t.organizationId, t.patientId),
+  uniqueIndex('patient_portal_access_org_patient_user_unique').on(t.organizationId, t.patientId, t.userId),
+  check('patient_portal_access_type_check', sql`${t.accessType} IN ('patient', 'representative')`),
+  check('patient_portal_access_type_representative_check', sql`(${t.accessType} = 'patient' AND ${t.representativeId} IS NULL) OR (${t.accessType} = 'representative' AND ${t.representativeId} IS NOT NULL)`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'patient_portal_access_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.representativeId, t.organizationId],
+    foreignColumns: [patientRepresentatives.id, patientRepresentatives.organizationId],
+    name: 'patient_portal_access_representative_fk'
+  }),
+  foreignKey({
+    columns: [t.organizationId, t.patientId, t.representativeId],
+    foreignColumns: [patientRepresentativeLinks.organizationId, patientRepresentativeLinks.patientId, patientRepresentativeLinks.representativeId],
+    name: 'patient_portal_access_rep_link_fk'
+  })
+]);
+
+// Patient Questionnaire Assignments
+export const patientQuestionnaireAssignments = sqliteTable('patient_questionnaire_assignments', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  practitionerId: text('practitioner_id').notNull(),
+  templateId: text('template_id').notNull(),
+  careEpisodeId: text('care_episode_id'),
+  status: text('status').notNull().default('assigned'), // 'assigned' | 'submitted' | 'cancelled'
+  answersJson: jsonb('answers_json').notNull().default('{}').$type<ClinicalFormAnswers>(),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  clinicalResponseId: text('clinical_response_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('patient_questionnaires_org_patient_idx').on(t.organizationId, t.patientId),
+  index('patient_questionnaires_org_practitioner_idx').on(t.organizationId, t.practitionerId),
+  index('patient_questionnaires_org_status_idx').on(t.organizationId, t.status),
+  uniqueIndex('patient_questionnaires_org_id_unique').on(t.id, t.organizationId),
+  check('patient_questionnaires_status_check', sql`${t.status} IN ('assigned', 'submitted', 'cancelled')`),
+  check('patient_questionnaires_submission_check', sql`(${t.status} = 'submitted' AND ${t.submittedAt} IS NOT NULL AND ${t.clinicalResponseId} IS NOT NULL) OR (${t.status} != 'submitted')`),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'patient_questionnaires_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.practitionerId, t.organizationId],
+    foreignColumns: [practicePractitioners.id, practicePractitioners.organizationId],
+    name: 'patient_questionnaires_practitioner_fk'
+  }),
+  foreignKey({
+    columns: [t.templateId, t.organizationId, t.practitionerId],
+    foreignColumns: [clinicalFormTemplates.id, clinicalFormTemplates.organizationId, clinicalFormTemplates.practitionerId],
+    name: 'patient_questionnaires_template_fk'
+  }),
+  foreignKey({
+    columns: [t.careEpisodeId, t.organizationId, t.patientId, t.practitionerId],
+    foreignColumns: [careEpisodes.id, careEpisodes.organizationId, careEpisodes.patientId, careEpisodes.practitionerId],
+    name: 'patient_questionnaires_episode_fk'
+  }),
+  foreignKey({
+    columns: [t.clinicalResponseId, t.organizationId],
+    foreignColumns: [clinicalFormResponses.id, clinicalFormResponses.organizationId],
+    name: 'patient_questionnaires_response_fk'
+  })
+]);
+
+// Patient Billing Links
+export const patientBillingLinks = sqliteTable('patient_billing_links', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  patientId: text('patient_id').notNull(),
+  clientId: text('client_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('patient_billing_links_org_patient_unique').on(t.organizationId, t.patientId),
+  index('patient_billing_links_org_client_idx').on(t.organizationId, t.clientId),
+  foreignKey({
+    columns: [t.patientId, t.organizationId],
+    foreignColumns: [patientProfiles.id, patientProfiles.organizationId],
+    name: 'patient_billing_links_patient_fk'
+  }),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'patient_billing_links_client_fk'
+  })
+]);
+
+// Appointment Reminder Deliveries
+export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_deliveries', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  appointmentId: text('appointment_id').notNull(),
+  channel: text('channel').notNull().default('email'),
+  offsetMinutes: integer('offset_minutes').notNull(),
+  recipientEmailHash: text('recipient_email_hash'),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  status: text('status').notNull(), // 'sent' | 'failed'
+  providerMessageId: text('provider_message_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('appointment_reminders_delivery_unique').on(t.appointmentId, t.channel, t.offsetMinutes),
+  index('appointment_reminders_org_sent_idx').on(t.organizationId, t.sentAt),
+  check('appointment_reminders_channel_check', sql`${t.channel} = 'email'`),
+  check('appointment_reminders_status_check', sql`${t.status} IN ('sent', 'failed')`),
+  foreignKey({
+    columns: [t.appointmentId, t.organizationId],
+    foreignColumns: [appointments.id, appointments.organizationId],
+    name: 'appointment_reminders_appointment_fk'
+  })
 ]);
 

@@ -36,7 +36,10 @@ export async function POST(req: Request) {
     // Seuls l'émetteur (organisation) et le destinataire peuvent déclencher
     // un paiement pour cette facture.
     const isIssuer = ctx.organizationId && invoice.organizationId === ctx.organizationId;
-    const isRecipient = invoice.clientId === ctx.userId || invoice.professionalId === ctx.userId;
+    const isRecipient =
+      invoice.clientId === ctx.userId ||
+      invoice.recipientUserId === ctx.userId ||
+      invoice.professionalId === ctx.userId;
     if (!isIssuer && !isRecipient) {
       throw new AppError('Accès refusé à cette facture', 403, 'FORBIDDEN');
     }

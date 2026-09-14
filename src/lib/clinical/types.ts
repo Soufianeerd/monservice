@@ -134,6 +134,7 @@ export interface ClinicalDocumentDTO {
   mimeType: string;
   sizeBytes: number;
   storagePath: string;
+  patientVisible: boolean;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -338,11 +339,13 @@ export interface CreateClinicalDocumentMetadataInput {
   mimeType: string;
   sizeBytes: number;
   storagePath: string;
+  patientVisible?: boolean;
 }
 
 export interface UpdateClinicalDocumentInput {
   title?: string;
   category?: ClinicalDocumentCategory;
+  patientVisible?: boolean;
   isArchived?: boolean;
 }
 

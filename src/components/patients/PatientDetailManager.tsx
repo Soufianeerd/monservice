@@ -26,6 +26,7 @@ import {
 import { setPatientActiveAction } from '@/app/actions/patient-registry.actions';
 import PatientForm from './PatientForm';
 import RepresentativeManager from './RepresentativeManager';
+import PatientPortalAndBillingSection from './PatientPortalAndBillingSection';
 
 interface PatientDetailManagerProps {
   initialDetail: PatientDetailDTO;
@@ -331,6 +332,11 @@ export default function PatientDetailManager({
               onUpdate={() => router.refresh()}
             />
           </div>
+
+          {/* Session 14 : Patient Portal, Questionnaires & Billing Bridge */}
+          <PatientPortalAndBillingSection
+            patientDetail={detail}
+          />
         </div>
       )}
     </div>

@@ -107,6 +107,7 @@ describe('ClinicalRecordManager Tab Navigation & Expansion Sections', () => {
       mimeType: 'application/pdf',
       sizeBytes: 51200,
       storagePath: 'path/to/doc',
+      patientVisible: false,
       isArchived: false,
       createdAt: '2026-09-01T10:00:00.000Z',
       updatedAt: '2026-09-01T10:00:00.000Z',

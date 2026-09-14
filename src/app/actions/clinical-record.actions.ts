@@ -17,6 +17,7 @@ import {
   finalizeClinicalNoteSchema,
   uploadClinicalDocumentMetadataSchema,
   archiveClinicalDocumentSchema,
+  setClinicalDocumentPatientVisibleSchema,
   getClinicalDocumentDownloadUrlSchema,
   createClinicalFormTemplateSchema,
   updateClinicalFormTemplateSchema,
@@ -247,6 +248,23 @@ export async function archiveClinicalDocumentAction(patientId: string, rawInput:
     patientId,
     practitionerId,
     documentId,
+  );
+
+  revalidatePath(`/patients/${patientId}`);
+  revalidatePath(`/patients/${patientId}/clinique`);
+  return document;
+}
+
+export async function setClinicalDocumentPatientVisibleAction(patientId: string, rawInput: unknown) {
+  const { organizationId, practitionerId } = await requireClinicalPractitionerContext();
+  const { documentId, patientVisible } = setClinicalDocumentPatientVisibleSchema.parse(rawInput);
+
+  const document = await clinicalRecordService.setDocumentPatientVisible(
+    organizationId,
+    patientId,
+    practitionerId,
+    documentId,
+    patientVisible,
   );
 
   revalidatePath(`/patients/${patientId}`);

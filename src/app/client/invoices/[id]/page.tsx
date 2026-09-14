@@ -25,7 +25,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       try {
         const inv = await invoiceActions.getByIdAction(id);
         
-        if (inv && inv.clientId === user.id && inv.type === 'invoice') {
+        if (inv && (inv.clientId === user.id || inv.recipientUserId === user.id) && inv.type === 'invoice') {
           setInvoice(inv);
         }
       } catch (error) {
@@ -36,11 +36,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   }, [id, user]);
 
   const handleDownload = async () => {
-    if (invoice && user?.organizationId) {
+    if (invoice) {
       try {
-        const org = await getByIdAction(user.organizationId) || await getByIdAction(invoice.organizationId);
+        const orgId = user?.organizationId || invoice.organizationId;
+        const org = await getByIdAction(orgId);
         if (!org) return;
-        const client = { name: user.name || 'Client', email: user.email };
+        const client = { name: user?.name || 'Client', email: user?.email };
         const blob = await generateInvoicePDF(invoice, org, client);
         downloadPDF(blob, `Facture_${invoice.number}.pdf`);
       } catch (error) {

@@ -229,6 +229,7 @@ export default function ClinicalTimelineSection({
                           mimeType: 'application/octet-stream',
                           sizeBytes: item.sizeBytes || 0,
                           storagePath: '',
+                          patientVisible: false,
                           isArchived: false,
                           createdAt: item.timestamp,
                           updatedAt: item.timestamp,

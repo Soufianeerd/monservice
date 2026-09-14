@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { buildProfessionalNavigation, NavigationIconKey } from '@/lib/navigation/workspace-navigation';
@@ -32,6 +32,7 @@ type NavItem = {
 
 const clientNavItems: NavItem[] = [
   { id: 'dashboard', name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
+  { id: 'sante', name: 'Suivi Santé', href: '/client/sante', icon: HeartPulse },
   { id: 'requests', name: 'Mes demandes', href: '/client/requests', icon: FileText },
   { id: 'quotes', name: 'Devis reçus', href: '/client/quotes', icon: FileText },
   { id: 'invoices', name: 'Mes factures', href: '/client/invoices', icon: FileText },

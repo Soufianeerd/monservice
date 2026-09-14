@@ -13,6 +13,7 @@
     "test:patients": "vitest run tests/unit/patients",
     "test:scheduling": "vitest run tests/unit/scheduling",
     "test:clinical": "vitest run tests/unit/clinical",
+    "test:patient-portal": "vitest run tests/unit/patient-portal tests/unit/scheduling/appointment-reminders.test.ts tests/unit/billing/stripe-portal-payment.test.ts",
     "test:workspace": "vitest run __tests__/unit/workspaces",
     "test:dashboard": "vitest run tests/unit/dashboard",
     "test:compliance": "vitest run __tests__/compliance",
@@ -29,8 +30,8 @@
     "db:check-contract": "npx tsx scripts/check-schema-contract.ts",
     "db:check-custom-objects": "npx tsx scripts/check-custom-objects.ts",
     "seed:local": "npx tsx scripts/e2e/seed-local.ts",
-    "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts tests/integration/patient-registry-db-constraints.integration.test.ts tests/integration/scheduling-db-constraints.integration.test.ts tests/integration/appointment-lifecycle-db-constraints.integration.test.ts tests/integration/clinical-record-db-constraints.integration.test.ts tests/integration/clinical-record-expansion-db-constraints.integration.test.ts",
-    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts tests/integration/patient-registry-rls.integration.test.ts tests/integration/scheduling-rls.integration.test.ts tests/integration/waitlist-rls.integration.test.ts tests/integration/appointment-lifecycle-rls.integration.test.ts tests/integration/clinical-record-rls.integration.test.ts tests/integration/clinical-record-expansion-rls.integration.test.ts"
+    "test:db-constraints": "vitest run __tests__/integration/db-constraints.integration.test.ts tests/integration/patient-registry-db-constraints.integration.test.ts tests/integration/scheduling-db-constraints.integration.test.ts tests/integration/appointment-lifecycle-db-constraints.integration.test.ts tests/integration/clinical-record-db-constraints.integration.test.ts tests/integration/clinical-record-expansion-db-constraints.integration.test.ts tests/integration/patient-portal-billing-communication-db-constraints.integration.test.ts",
+    "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts tests/integration/patient-registry-rls.integration.test.ts tests/integration/scheduling-rls.integration.test.ts tests/integration/waitlist-rls.integration.test.ts tests/integration/appointment-lifecycle-rls.integration.test.ts tests/integration/clinical-record-rls.integration.test.ts tests/integration/clinical-record-expansion-rls.integration.test.ts tests/integration/patient-portal-billing-communication-rls.integration.test.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
