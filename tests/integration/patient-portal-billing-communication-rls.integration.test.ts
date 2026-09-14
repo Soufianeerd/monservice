@@ -69,8 +69,8 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
 
     // Insert direct via SQL
     await sql`
-      INSERT INTO patient_portal_access (id, organization_id, patient_id, user_id, status, invited_email, created_at, updated_at)
-      VALUES (${testPortalAccessId}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${authClientA.user.id}, 'active', ${CLIENT_A_EMAIL}, now(), now())
+      INSERT INTO patient_portal_access (id, organization_id, patient_id, user_id, access_type, created_by_user_id, is_active, created_at, updated_at)
+      VALUES (${testPortalAccessId}, ${SEED_PRACTICE_IDS.orgA}, ${SEED_PATIENT_IDS.patientA}, ${authClientA.user.id}, 'patient', ${authA.user.id}, true, now(), now())
       ON CONFLICT DO NOTHING
     `;
   });
