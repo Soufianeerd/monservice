@@ -43,11 +43,11 @@ La Session 13 transforme le workspace paramédical générique (stabilisé lors 
 | Profession Code | Libellé | Types de séance | Formulaires préconfigurés | Mesures rapides (Total : 23) |
 | :--- | :--- | :--- | :--- | :--- |
 | **`physiotherapist`** | Masseur-Kinésithérapeute | Bilan initial (45m), Suivi (30m) | Bilan initial kinésithérapique, Fiche de suivi de séance | `pain_score`, `range_of_motion`, `walking_distance`, `functional_score` (4) |
-| **`osteopath`** | Ostéopathe | Première consultation (60m), Suivi (45m) | Première consultation ostéopathique, Suivi ostéopathique | `pain_score`, `mobility_score`, `posture_index` (3) |
-| **`speech_therapist`** | Orthophoniste | Bilan orthophonique (60m), Suivi (30m) | Bilan orthophonique initial, Suivi d'objectifs et rééducation | `goal_progress`, `session_engagement`, `fluency_score` (3) |
-| **`podiatrist`** | Pédicure-Podologue | Bilan podologique (45m), Soin de pédicurie (30m) | Bilan podologique et postural initial, Suivi podologique et appareillage | `pain_score`, `mobility_score`, `ulcer_grade` (3) |
-| **`occupational_therapist`** | Ergothérapeute | Évaluation initiale (60m), Suivi (45m) | Évaluation ergothérapique initiale, Suivi fonctionnel et autonomie | `functional_score`, `goal_progress`, `independence_score` (3) |
-| **`psychomotor_therapist`** | Psychomotricien | Bilan psychomoteur (60m), Suivi (45m) | Bilan psychomoteur initial, Suivi de séance et médiation | `goal_progress`, `session_engagement`, `regulation_score` (3) |
+| **`osteopath`** | Ostéopathe | Première consultation (60m), Suivi (45m) | Première consultation ostéopathique, Suivi ostéopathique | `pain_score`, `mobility_score`, `posture_observation` (3) |
+| **`speech_therapist`** | Orthophoniste | Bilan orthophonique (60m), Suivi (30m) | Bilan orthophonique initial, Suivi d'objectifs et rééducation | `goal_progress`, `session_engagement`, `phoneme_accuracy` (3) |
+| **`podiatrist`** | Pédicure-Podologue | Bilan podologique (45m), Soin de pédicurie (30m) | Bilan podologique et postural initial, Suivi podologique et appareillage | `pain_score`, `mobility_score`, `comfort_rating` (3) |
+| **`occupational_therapist`** | Ergothérapeute | Évaluation initiale (60m), Suivi (45m) | Évaluation ergothérapique initiale, Suivi fonctionnel et autonomie | `functional_independence_score`, `goal_progress`, `autonomy_score` (3) |
+| **`psychomotor_therapist`** | Psychomotricien | Bilan psychomoteur (60m), Suivi (45m) | Bilan psychomoteur initial, Suivi de séance et médiation | `goal_progress`, `session_engagement`, `motor_score` (3) |
 | **`dietitian`** | Diététicien | Première consultation (60m), Suivi (30m) | Bilan nutritionnel initial, Suivi nutritionnel et habitudes | `weight`, `height`, `bmi`, `waist_circumference` (4) |
 
 ---
