@@ -52,6 +52,9 @@ describe('Patient Portal, Billing Bridge & Communication Database Constraints (S
     await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracA}, ${orgA}, ${userProA}, 'Dr S14 A', 'physiotherapist', now(), now()) ON CONFLICT DO NOTHING`;
     await sql`INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, created_at, updated_at) VALUES (${pracB}, ${orgB}, ${userProB}, 'Dr S14 B', 'osteopath', now(), now()) ON CONFLICT DO NOTHING`;
 
+    // Setup Practitioner Locations
+    await sql`INSERT INTO practitioner_locations (id, organization_id, practitioner_id, location_id, created_at, updated_at) VALUES (${randomUUID()}, ${orgA}, ${pracA}, ${locA}, now(), now()) ON CONFLICT DO NOTHING`;
+
     // Setup Appointment Types
     await sql`INSERT INTO appointment_types (id, organization_id, name, duration_minutes, created_at, updated_at) VALUES (${typeA}, ${orgA}, 'Bilan S14', 30, now(), now()) ON CONFLICT DO NOTHING`;
 
@@ -71,6 +74,7 @@ describe('Patient Portal, Billing Bridge & Communication Database Constraints (S
     await sql`DELETE FROM appointment_reminder_deliveries WHERE appointment_id = ${appointmentA}`;
     await sql`DELETE FROM appointments WHERE id = ${appointmentA}`;
     await sql`DELETE FROM appointment_types WHERE id = ${typeA}`;
+    await sql`DELETE FROM practitioner_locations WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM practice_locations WHERE id = ${locA}`;
     await sql`DELETE FROM messages WHERE organization_id IN (${orgA}, ${orgB})`;
     await sql`DELETE FROM patient_billing_links WHERE organization_id IN (${orgA}, ${orgB})`;
