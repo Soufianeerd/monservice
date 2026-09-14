@@ -82,7 +82,6 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
 
       const result = await createClinicalFormTemplateFromPresetAction(
         'physio.initial_assessment_form',
-        'patient-123',
       );
 
       expect(result).toEqual(mockCreated);
@@ -99,7 +98,7 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
       );
     });
 
-    it('rejects cross-profession preset installation (e.g. Kiné attempting to install Dietitian preset)', async () => {
+    it('rejects cross-profession preset installation with PRESET_NOT_FOUND (e.g. Kiné attempting to install Dietitian preset)', async () => {
       vi.mocked(requireClinicalPractitionerContext).mockResolvedValue(mockPhysioContext);
 
       await expect(
@@ -111,6 +110,42 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
       ).rejects.toMatchObject({
         code: 'PRESET_NOT_FOUND',
         statusCode: 400,
+      });
+
+      expect(clinicalRecordService.createFormTemplate).not.toHaveBeenCalled();
+    });
+
+    it('rejects hostile object payload attempting to inject client authority into form preset action', async () => {
+      vi.mocked(requireClinicalPractitionerContext).mockResolvedValue(mockPhysioContext);
+
+      const hostilePayload = {
+        presetId: 'physio.initial_assessment_form',
+        organizationId: 'org-hacked-victim',
+        practitionerId: 'practitioner-hacked-victim',
+        profession: 'dietitian',
+        schema: { fields: [{ id: 'injected', label: 'Malicious', type: 'text' }] },
+      };
+
+      await expect(
+        createClinicalFormTemplateFromPresetAction(hostilePayload),
+      ).rejects.toMatchObject({
+        code: 'INVALID_PRESET_ID',
+        statusCode: 400,
+      });
+
+      expect(clinicalRecordService.createFormTemplate).not.toHaveBeenCalled();
+    });
+
+    it('rejects execution and performs 0 write when user is not an active clinical practitioner', async () => {
+      vi.mocked(requireClinicalPractitionerContext).mockRejectedValue(
+        new AppError('Profil praticien actif requis', 403, 'CLINICAL_PRACTITIONER_REQUIRED'),
+      );
+
+      await expect(
+        createClinicalFormTemplateFromPresetAction('physio.initial_assessment_form'),
+      ).rejects.toMatchObject({
+        code: 'CLINICAL_PRACTITIONER_REQUIRED',
+        statusCode: 403,
       });
 
       expect(clinicalRecordService.createFormTemplate).not.toHaveBeenCalled();
@@ -213,7 +248,6 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
 
       const result = await createClinicalFormTemplateFromPresetAction(
         'physio.initial_assessment_form',
-        'patient-123',
       );
 
       expect(result).toEqual(reactivatedTemplate);
@@ -283,7 +317,7 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
       );
     });
 
-    it('rejects cross-profession appointment preset (Dietitian attempting to install Kiné preset)', async () => {
+    it('rejects cross-profession appointment preset with PRESET_NOT_FOUND (Dietitian attempting to install Kiné preset)', async () => {
       vi.mocked(requireProfessional).mockResolvedValue(mockDietitianSession);
       vi.mocked(organizationService.getById).mockResolvedValue(mockDietitianOrg);
 
@@ -292,6 +326,43 @@ describe('Clinical & Scheduling Profession Presets Server Actions', () => {
       ).rejects.toMatchObject({
         code: 'PRESET_NOT_FOUND',
         statusCode: 400,
+      });
+
+      expect(schedulingService.createAppointmentType).not.toHaveBeenCalled();
+    });
+
+    it('rejects hostile object payload attempting to inject client authority into appointment preset action', async () => {
+      vi.mocked(requireProfessional).mockResolvedValue(mockDietitianSession);
+      vi.mocked(organizationService.getById).mockResolvedValue(mockDietitianOrg);
+
+      const hostilePayload = {
+        presetId: 'diet.initial_consultation',
+        organizationId: 'org-hacked-victim',
+        profession: 'physiotherapist',
+        practitionerId: 'practitioner-hacked',
+        durationMinutes: 999,
+      };
+
+      await expect(
+        installParamedicalAppointmentTypePresetAction(hostilePayload),
+      ).rejects.toMatchObject({
+        code: 'INVALID_PRESET_ID',
+        statusCode: 400,
+      });
+
+      expect(schedulingService.createAppointmentType).not.toHaveBeenCalled();
+    });
+
+    it('rejects execution and performs 0 write when user is not an authenticated professional (e.g. client or anon)', async () => {
+      vi.mocked(requireProfessional).mockRejectedValue(
+        new AppError('Accès réservé aux professionnels', 403, 'PROFESSIONAL_REQUIRED'),
+      );
+
+      await expect(
+        installParamedicalAppointmentTypePresetAction('diet.initial_consultation'),
+      ).rejects.toMatchObject({
+        code: 'PROFESSIONAL_REQUIRED',
+        statusCode: 403,
       });
 
       expect(schedulingService.createAppointmentType).not.toHaveBeenCalled();

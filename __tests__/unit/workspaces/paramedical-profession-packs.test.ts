@@ -75,17 +75,20 @@ describe('Workspace Resolver with Profession Packs', () => {
         expect(workspace.professionPack).toBeDefined();
         expect(workspace.professionPack?.profession).toBe(code);
         expect(workspace.label).toBe(workspace.professionPack?.label);
+        expect(workspace.terminology).toEqual(workspace.professionPack?.terminology);
       }
     }
   });
 
-  it('falls back to generic paramedical workspace without pack for health sector with unknown or missing profession', () => {
+  it('falls back to generic paramedical workspace with PARAMEDICAL_TERMINOLOGY for health sector with unknown or missing profession', () => {
     const wsNoProf = resolveWorkspace({ sector: 'health' });
     expect(wsNoProf.type).toBe('paramedical');
     if (wsNoProf.type === 'paramedical') {
       expect(wsNoProf.profession).toBeUndefined();
       expect(wsNoProf.professionPack).toBeUndefined();
       expect(wsNoProf.label).toBe('Espace Paramédical');
+      expect(wsNoProf.terminology.servicePlural).toBe('Consultations');
+      expect(wsNoProf.terminology.customerPlural).toBe('Patients');
     }
 
     const wsUnknownProf = resolveWorkspace({ sector: 'health', profession: 'astrologer' });
@@ -94,6 +97,8 @@ describe('Workspace Resolver with Profession Packs', () => {
       expect(wsUnknownProf.profession).toBeUndefined();
       expect(wsUnknownProf.professionPack).toBeUndefined();
       expect(wsUnknownProf.label).toBe('Espace Paramédical');
+      expect(wsUnknownProf.terminology.servicePlural).toBe('Consultations');
+      expect(wsUnknownProf.terminology.customerPlural).toBe('Patients');
     }
   });
 
@@ -101,6 +106,16 @@ describe('Workspace Resolver with Profession Packs', () => {
     const wsArtisan = resolveWorkspace({ sector: 'artisan', profession: 'physiotherapist' });
     expect(wsArtisan.type).toBe('generic');
     expect('professionPack' in wsArtisan).toBe(false);
+  });
+});
+
+describe('Total Presets Aggregations Across 7 Packs', () => {
+  it('has exactly 23 total measurement presets across all 7 packs', () => {
+    const totalMeasurements = PARAMEDICAL_PROFESSION_CODES.reduce((acc, code) => {
+      return acc + PARAMEDICAL_PROFESSION_PACKS[code].measurementPresets.length;
+    }, 0);
+
+    expect(totalMeasurements).toBe(23);
   });
 });
 

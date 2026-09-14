@@ -78,9 +78,9 @@ describe('Workspace Navigation', () => {
     const cabinetItems = settings?.subItems?.filter(s => s.href === '/parametres/cabinet' && s.name === 'Cabinet') || [];
     expect(cabinetItems).toHaveLength(1);
 
-    // Produit le label à partir de servicePlural
+    // Produit le label à partir de servicePlural du Profession Pack
     const facturation = nav.find(n => n.id === 'billing');
-    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
+    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Séances de kinésithérapie');
 
     // Agenda subItems paramédical
     const agenda = nav.find(n => n.id === 'agenda');
@@ -93,7 +93,21 @@ describe('Workspace Navigation', () => {
     ]);
   });
 
-  it('gère le paramédical de base (health sans profession connue)', () => {
+  it('gère la terminologie des prestations pour différentes professions paramédicales', () => {
+    // Diététicien
+    const dietConfig = resolveWorkspace({ sector: 'health', profession: 'dietitian' });
+    const dietNav = buildProfessionalNavigation(dietConfig);
+    const dietBilling = dietNav.find(n => n.id === 'billing');
+    expect(dietBilling?.subItems?.map(sub => sub.name)).toContain('Consultations diététiques');
+
+    // Orthophoniste
+    const speechConfig = resolveWorkspace({ sector: 'health', profession: 'speech_therapist' });
+    const speechNav = buildProfessionalNavigation(speechConfig);
+    const speechBilling = speechNav.find(n => n.id === 'billing');
+    expect(speechBilling?.subItems?.map(sub => sub.name)).toContain('Séances d’orthophonie');
+  });
+
+  it('gère le paramédical de base (health sans profession connue) avec fallback vers la terminologie par défaut', () => {
     const config = resolveWorkspace({
       sector: 'health',
       profession: null,
@@ -125,7 +139,9 @@ describe('Workspace Navigation', () => {
     expect(hrefs.some(h => h.includes('care'))).toBe(false);
   });
   
-  it('valide l\'absence de collision d\'IDs sur toutes les professions', () => {
+  it('valide que les 7 professions conservent une navigation top-level stable sans route profession-specific', () => {
+    const expectedTopLevelIds = ['dashboard', 'patients', 'billing', 'agenda', 'settings'];
+
     PARAMEDICAL_PROFESSION_CODES.forEach(code => {
       const config = resolveWorkspace({
         sector: 'health',
@@ -134,9 +150,13 @@ describe('Workspace Navigation', () => {
       
       const nav = buildProfessionalNavigation(config);
       const ids = nav.map(n => n.id);
-      const uniqueIds = new Set(ids);
       
-      expect(uniqueIds.size).toBe(ids.length);
+      // Top-level IDs identiques et ordonnés pour les 7 professions
+      expect(ids).toEqual(expectedTopLevelIds);
+
+      // Aucune route personnalisée ou forkée de type /kine, /osteo, /diet
+      const allHrefs = nav.flatMap(n => [n.href, ...(n.subItems?.map(sub => sub.href) || [])]);
+      expect(allHrefs.some(h => /^\/(kine|osteo|diet|speech|podiatrist|psychomotor|occupational)/i.test(h))).toBe(false);
     });
   });
 });

@@ -314,10 +314,7 @@ export async function listClinicalFormTemplatesAction(activeOnly = false) {
   return clinicalRecordService.listFormTemplates(organizationId, practitionerId, activeOnly);
 }
 
-export async function createClinicalFormTemplateFromPresetAction(
-  rawPresetId: unknown,
-  patientId?: string,
-) {
+export async function createClinicalFormTemplateFromPresetAction(rawPresetId: unknown) {
   const { organizationId, practitionerId, professionPack } = await requireClinicalPractitionerContext();
 
   if (!professionPack) {
@@ -363,9 +360,6 @@ export async function createClinicalFormTemplateFromPresetAction(
         existing.id,
         { isActive: true },
       );
-      if (patientId) {
-        revalidatePath(`/patients/${patientId}/clinique`);
-      }
       return reactivated;
     }
     return existing;
@@ -381,10 +375,6 @@ export async function createClinicalFormTemplateFromPresetAction(
       schemaJson: validatedSchema,
     },
   );
-
-  if (patientId) {
-    revalidatePath(`/patients/${patientId}/clinique`);
-  }
 
   return created;
 }

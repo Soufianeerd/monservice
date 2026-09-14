@@ -112,4 +112,18 @@ describe('ParamedicalPracticeDashboard', () => {
     expect(screen.queryByText('Rendez-vous')).not.toBeInTheDocument();
     expect(screen.queryByText('Séances aujourd’hui')).not.toBeInTheDocument();
   });
+
+  it('renders dietitian dashboard correctly with specialized label and customerPlural terminology', () => {
+    const dietitianWs = getParamedicalWorkspaceConfig('dietitian');
+    render(
+      <ParamedicalPracticeDashboard 
+        workspace={dietitianWs} 
+        organization={mockOrganization} 
+        data={emptyData} 
+      />
+    );
+    
+    expect(screen.getByText('Diététicien')).toBeInTheDocument();
+    expect(screen.getByText(dietitianWs.terminology.customerPlural)).toBeInTheDocument();
+  });
 });

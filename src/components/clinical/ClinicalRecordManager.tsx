@@ -437,7 +437,7 @@ export default function ClinicalRecordManager({
   };
 
   const handleInstallTemplatePreset = async (presetId: string) => {
-    const tpl = await createClinicalFormTemplateFromPresetAction(presetId, patient.id);
+    const tpl = await createClinicalFormTemplateFromPresetAction(presetId);
     setFormTemplates((prev) => {
       const exists = prev.some((t) => t.id === tpl.id);
       if (exists) {

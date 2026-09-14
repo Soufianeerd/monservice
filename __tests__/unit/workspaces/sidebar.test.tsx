@@ -55,16 +55,27 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
     expect(screen.getByText('Paramètres')).toBeInTheDocument();
   });
 
-  it('affiche la terminologie adéquate dans Facturation pour le paramédical', () => {
+  it('affiche la terminologie adéquate dans Facturation pour le paramédical selon le pack', () => {
     vi.mocked(useRole).mockReturnValue('professional');
-    // On utilise psychomotor_therapist (qui a la terminologie 'Séances')
+    // On utilise psychomotor_therapist (qui a la terminologie 'Séances de psychomotricité')
     vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: 'psychomotor_therapist' }));
 
     vi.mocked(usePathname).mockReturnValueOnce('/facturation');
 
     render(<Sidebar />);
     
-    // Au lieu de "Produits", on doit voir "Consultations" dans le menu déroulant
+    // Au lieu de "Produits", on doit voir "Séances de psychomotricité" dans le menu déroulant
+    expect(screen.getByText('Séances de psychomotricité')).toBeInTheDocument();
+  });
+
+  it('affiche la terminologie par défaut Consultations pour un espace santé sans profession spécifique', () => {
+    vi.mocked(useRole).mockReturnValue('professional');
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'health', profession: null }));
+
+    vi.mocked(usePathname).mockReturnValueOnce('/facturation');
+
+    render(<Sidebar />);
+    
     expect(screen.getByText('Consultations')).toBeInTheDocument();
   });
 

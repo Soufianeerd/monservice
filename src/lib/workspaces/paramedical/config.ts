@@ -14,6 +14,6 @@ export function getParamedicalWorkspaceConfig(professionCode?: string | null): P
     profession: profession?.code,
     professionPack,
     capabilities: PARAMEDICAL_CAPABILITIES,
-    terminology: PARAMEDICAL_TERMINOLOGY,
+    terminology: professionPack?.terminology ?? PARAMEDICAL_TERMINOLOGY,
   };
 }
