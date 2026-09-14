@@ -56,8 +56,8 @@ describe('Patient Portal, Billing Bridge & Communication Database Constraints (S
     await sql`INSERT INTO appointment_types (id, organization_id, name, duration_minutes, created_at, updated_at) VALUES (${typeA}, ${orgA}, 'Bilan S14', 30, now(), now()) ON CONFLICT DO NOTHING`;
 
     // Setup Patients
-    await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, used_name, birth_date, email, phone, created_at, updated_at) VALUES (${patientA}, ${orgA}, 'Dupont', 'Jean', 'Dupont', '1990-01-01', 'patA@s14.test', '0600000001', now(), now()) ON CONFLICT DO NOTHING`;
-    await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, used_name, birth_date, email, phone, created_at, updated_at) VALUES (${patientB}, ${orgB}, 'Curie', 'Marie', 'Curie', '1992-02-02', 'patB@s14.test', '0600000002', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, used_name, birth_date, sex, email, phone, created_at, updated_at) VALUES (${patientA}, ${orgA}, 'Dupont', 'Jean', 'Dupont', '1990-01-01', 'male', 'patA@s14.test', '0600000001', now(), now()) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, used_name, birth_date, sex, email, phone, created_at, updated_at) VALUES (${patientB}, ${orgB}, 'Curie', 'Marie', 'Curie', '1992-02-02', 'female', 'patB@s14.test', '0600000002', now(), now()) ON CONFLICT DO NOTHING`;
 
     // Setup Form Template
     await sql`INSERT INTO clinical_form_templates (id, organization_id, practitioner_id, name, kind, schema_json, is_active, created_at, updated_at) VALUES (${formTemplateA}, ${orgA}, ${pracA}, 'Bilan Initial', 'intake', '{"version":1,"fields":[]}', true, now(), now()) ON CONFLICT DO NOTHING`;
