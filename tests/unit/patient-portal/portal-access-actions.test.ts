@@ -9,6 +9,7 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { requirePatientPortalAccess } from '@/lib/patient-portal/auth';
 import { patientPortalService } from '@/lib/services/patient-portal.service';
 import type { PatientPortalAccessDTO, PatientPortalOverviewDTO, PatientPortalAppointmentDTO } from '@/lib/patient-portal/types';
+import type { PatientPortalUserContext } from '@/lib/patient-portal/auth';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),
@@ -39,11 +40,11 @@ describe('Patient Portal Access Actions', () => {
     email: 'pro@cabinet.fr',
   };
 
-  const mockPatientCtx = {
+  const mockPatientCtx: PatientPortalUserContext = {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
-    accessType: 'patient' as const,
+    accessType: 'patient',
     representativeId: null,
     accessiblePatientIds: ['pat-1'],
     email: 'patient@email.com',

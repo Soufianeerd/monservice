@@ -8,6 +8,7 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { requirePatientPortalAccess } from '@/lib/patient-portal/auth';
 import { patientBillingService } from '@/lib/services/patient-billing.service';
 import type { PatientInvoiceDTO } from '@/lib/patient-billing/types';
+import type { PatientPortalUserContext } from '@/lib/patient-portal/auth';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),
@@ -37,12 +38,13 @@ describe('Patient Billing Bridge Actions', () => {
     email: 'pro@cabinet.fr',
   };
 
-  const mockPatientCtx = {
+  const mockPatientCtx: PatientPortalUserContext = {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
+    accessType: 'patient',
+    representativeId: null,
     accessiblePatientIds: ['pat-1'],
-    accessId: 'access-1',
     email: 'patient@email.com',
   };
 
@@ -63,10 +65,8 @@ describe('Patient Billing Bridge Actions', () => {
         totalHT: 50,
         totalTTC: 50,
         currency: 'EUR',
-        paymentMethod: null,
-        paidAt: null,
-        clientName: 'Jean Dupont',
-        clientEmail: 'patient@email.com',
+        recipientUserId: 'user-pat-1',
+        patientId: 'pat-1',
         lines: [
           {
             id: 'line-1',
@@ -79,7 +79,6 @@ describe('Patient Billing Bridge Actions', () => {
             totalTTC: 50,
           },
         ],
-        createdAt: '2026-09-14T20:00:00.000Z',
       };
       vi.mocked(patientBillingService.createPatientInvoice).mockResolvedValue(mockInvoice);
 

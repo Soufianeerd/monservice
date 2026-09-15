@@ -3,13 +3,21 @@ import { appointmentReminderService } from '@/lib/services/appointment-reminder.
 import { db } from '@/lib/db/server';
 import { sendEmail } from '@/lib/email';
 
-vi.mock('@/lib/db/server', () => ({
-  db: {
-    select: vi.fn(),
-    insert: vi.fn(),
-    update: vi.fn(),
-  },
-}));
+const mockReturning = vi.fn();
+const mockOnConflictDoNothing = vi.fn(() => ({ returning: mockReturning }));
+const mockValues = vi.fn(() => ({ onConflictDoNothing: mockOnConflictDoNothing }));
+const mockWhere = vi.fn();
+const mockSet = vi.fn(() => ({ where: mockWhere }));
+
+vi.mock('@/lib/db/server', () => {
+  return {
+    db: {
+      select: vi.fn(),
+      insert: vi.fn(() => ({ values: mockValues })),
+      update: vi.fn(() => ({ set: mockSet })),
+    },
+  };
+});
 
 vi.mock('@/lib/email', () => ({
   sendEmail: vi.fn(),
@@ -57,46 +65,32 @@ describe('Appointment Reminder Service', () => {
       },
     };
 
-    // Chainable select helper
-    const makeQueryBuilder = (result: unknown) => {
-      const qb = {
-        from: vi.fn().mockReturnThis(),
-        innerJoin: vi.fn().mockReturnThis(),
-        leftJoin: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue(result),
-      };
-      return qb;
-    };
-
     let selectCallCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
+    const mockSelect = vi.fn().mockImplementation(() => {
       selectCallCount++;
-      if (selectCallCount % 2 === 1) {
-        // Main query returning appointments
-        return makeQueryBuilder([mockApptRow]) as ReturnType<typeof db.select>;
-      } else {
-        // Delivery check returning empty (no existing delivery)
-        return makeQueryBuilder([]) as ReturnType<typeof db.select>;
-      }
+      return {
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnThis(),
+          leftJoin: vi.fn().mockReturnThis(),
+          where: vi.fn().mockImplementation(() => {
+            if (selectCallCount % 2 === 1) {
+              return Promise.resolve([mockApptRow]);
+            } else {
+              return Promise.resolve([]);
+            }
+          }),
+        }),
+      };
     });
 
-    // Mock insert chain with onConflictDoNothing
-    const onConflictDoNothing = vi.fn().mockReturnValue({
-      returning: vi.fn().mockResolvedValue([{ id: 'rem-del-1' }]),
-    });
-    const values = vi.fn().mockReturnValue({ onConflictDoNothing });
-    vi.mocked(db.insert).mockReturnValue({ values } as ReturnType<typeof db.insert>);
+    vi.mocked(db.select).mockImplementation(mockSelect);
+    mockReturning.mockResolvedValue([{ id: 'rem-del-1' }]);
+    mockWhere.mockResolvedValue([]);
 
-    // Mock sendEmail
     vi.mocked(sendEmail).mockResolvedValue({
       sent: true,
       id: 'msg-send-1',
     });
-
-    // Mock update chain
-    const updateWhere = vi.fn().mockResolvedValue([]);
-    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
-    vi.mocked(db.update).mockReturnValue({ set: updateSet } as ReturnType<typeof db.update>);
 
     const result = await appointmentReminderService.processAppointmentReminders({
       organizationId: 'org-1',

@@ -9,6 +9,7 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { requirePatientPortalAccess } from '@/lib/patient-portal/auth';
 import { patientPortalService } from '@/lib/services/patient-portal.service';
 import type { PatientQuestionnaireAssignmentDTO } from '@/lib/patient-portal/types';
+import type { PatientPortalUserContext } from '@/lib/patient-portal/auth';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),
@@ -39,12 +40,13 @@ describe('Patient Questionnaires Actions', () => {
     email: 'pro@cabinet.fr',
   };
 
-  const mockPatientCtx = {
+  const mockPatientCtx: PatientPortalUserContext = {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
+    accessType: 'patient',
+    representativeId: null,
     accessiblePatientIds: ['pat-1'],
-    accessId: 'access-1',
     email: 'patient@email.com',
   };
 
@@ -59,18 +61,16 @@ describe('Patient Questionnaires Actions', () => {
         id: 'assign-1',
         organizationId: mockPractitionerCtx.organizationId,
         patientId: 'pat-1',
+        practitionerId: mockPractitionerCtx.practitionerId,
         templateId: 'tpl-1',
-        templateTitle: 'Auto-évaluation douleur',
-        templateCategory: 'intake',
-        assignedByPractitionerId: mockPractitionerCtx.practitionerId,
-        assignedByPractitionerName: 'Dr Martin',
-        status: 'pending',
-        draftAnswers: null,
-        clinicalResponseId: null,
-        schemaDefinition: { version: 1, fields: [] },
+        careEpisodeId: null,
+        status: 'assigned',
+        answersJson: {},
         dueAt: null,
         submittedAt: null,
+        clinicalResponseId: null,
         createdAt: '2026-09-14T20:00:00.000Z',
+        updatedAt: '2026-09-14T20:00:00.000Z',
       };
       vi.mocked(patientPortalService.assignQuestionnaire).mockResolvedValue(mockResult);
 
@@ -88,7 +88,7 @@ describe('Patient Questionnaires Actions', () => {
           dueAt: null,
         },
       );
-      expect(res.status).toBe('pending');
+      expect(res.status).toBe('assigned');
     });
   });
 
@@ -99,18 +99,16 @@ describe('Patient Questionnaires Actions', () => {
         id: 'assign-1',
         organizationId: mockPatientCtx.organizationId,
         patientId: 'pat-1',
+        practitionerId: 'practitioner-1',
         templateId: 'tpl-1',
-        templateTitle: 'Auto-évaluation douleur',
-        templateCategory: 'intake',
-        assignedByPractitionerId: 'practitioner-1',
-        assignedByPractitionerName: 'Dr Martin',
-        status: 'in_progress',
-        draftAnswers: { eva_score: 5, notes: 'Douleur modérée' },
-        clinicalResponseId: null,
-        schemaDefinition: { version: 1, fields: [] },
+        careEpisodeId: null,
+        status: 'assigned',
+        answersJson: { eva_score: 5, notes: 'Douleur modérée' },
         dueAt: null,
         submittedAt: null,
+        clinicalResponseId: null,
         createdAt: '2026-09-14T20:00:00.000Z',
+        updatedAt: '2026-09-14T20:00:00.000Z',
       };
       vi.mocked(patientPortalService.saveQuestionnaireDraft).mockResolvedValue(mockResult);
 
@@ -134,18 +132,16 @@ describe('Patient Questionnaires Actions', () => {
         id: 'assign-1',
         organizationId: mockPatientCtx.organizationId,
         patientId: 'pat-1',
+        practitionerId: 'practitioner-1',
         templateId: 'tpl-1',
-        templateTitle: 'Auto-évaluation douleur',
-        templateCategory: 'intake',
-        assignedByPractitionerId: 'practitioner-1',
-        assignedByPractitionerName: 'Dr Martin',
-        status: 'completed',
-        draftAnswers: { eva_score: 5, location: 'Genou droit' },
-        clinicalResponseId: 'resp-1',
-        schemaDefinition: { version: 1, fields: [] },
+        careEpisodeId: null,
+        status: 'submitted',
+        answersJson: { eva_score: 5, location: 'Genou droit' },
         dueAt: null,
         submittedAt: '2026-09-14T20:10:00.000Z',
+        clinicalResponseId: 'resp-1',
         createdAt: '2026-09-14T20:00:00.000Z',
+        updatedAt: '2026-09-14T20:00:00.000Z',
       };
       vi.mocked(patientPortalService.submitQuestionnaire).mockResolvedValue(mockResult);
 

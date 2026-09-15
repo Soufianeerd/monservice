@@ -10,6 +10,7 @@ import { patientPortalService } from '@/lib/services/patient-portal.service';
 import { clinicalRecordService } from '@/lib/services/clinical-record.service';
 import type { PatientSharedDocumentDTO } from '@/lib/patient-portal/types';
 import type { ClinicalDocumentDTO } from '@/lib/clinical/types';
+import type { PatientPortalUserContext } from '@/lib/patient-portal/auth';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),
@@ -44,11 +45,11 @@ describe('Shared Documents Actions', () => {
     email: 'pro@cabinet.fr',
   };
 
-  const mockPatientCtx = {
+  const mockPatientCtx: PatientPortalUserContext = {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
-    accessType: 'patient' as const,
+    accessType: 'patient',
     representativeId: null,
     accessiblePatientIds: ['pat-1'],
     email: 'patient@email.com',

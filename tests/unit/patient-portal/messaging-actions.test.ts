@@ -9,6 +9,7 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { requirePatientPortalAccess } from '@/lib/patient-portal/auth';
 import { patientMessagingService } from '@/lib/services/patient-messaging.service';
 import type { PatientPortalMessageDTO } from '@/lib/patient-messaging/types';
+import type { PatientPortalUserContext } from '@/lib/patient-portal/auth';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),
@@ -40,12 +41,13 @@ describe('Patient Messaging Actions', () => {
     email: 'pro@cabinet.fr',
   };
 
-  const mockPatientCtx = {
+  const mockPatientCtx: PatientPortalUserContext = {
     userId: 'user-pat-1',
     organizationId: 'org-health-1',
     patientId: 'pat-1',
+    accessType: 'patient',
+    representativeId: null,
     accessiblePatientIds: ['pat-1'],
-    accessId: 'access-1',
     email: 'patient@email.com',
   };
 
@@ -61,12 +63,11 @@ describe('Patient Messaging Actions', () => {
         organizationId: mockPatientCtx.organizationId,
         patientId: mockPatientCtx.patientId,
         senderId: mockPatientCtx.userId,
-        senderType: 'patient',
+        receiverId: 'user-pro-1',
         senderName: 'Jean Dupont',
-        recipientId: 'user-pro-1',
+        senderRole: 'patient',
         content: 'Bonjour, dois-je continuer les exercices ?',
         isRead: false,
-        readAt: null,
         createdAt: '2026-09-14T20:00:00.000Z',
       };
       vi.mocked(patientMessagingService.sendPatientMessage).mockResolvedValue(mockMsg);
@@ -81,7 +82,7 @@ describe('Patient Messaging Actions', () => {
           content: 'Bonjour, dois-je continuer les exercices ?',
         },
       );
-      expect(res.senderType).toBe('patient');
+      expect(res.senderRole).toBe('patient');
     });
   });
 
@@ -93,12 +94,11 @@ describe('Patient Messaging Actions', () => {
         organizationId: mockPractitionerCtx.organizationId,
         patientId: 'pat-1',
         senderId: mockPractitionerCtx.userId,
-        senderType: 'practitioner',
+        receiverId: 'user-pat-1',
         senderName: 'Dr Martin',
-        recipientId: 'user-pat-1',
+        senderRole: 'practitioner',
         content: 'Oui, continuez à un rythme modéré.',
         isRead: false,
-        readAt: null,
         createdAt: '2026-09-14T20:05:00.000Z',
       };
       vi.mocked(patientMessagingService.sendPractitionerMessage).mockResolvedValue(mockMsg);
@@ -114,7 +114,7 @@ describe('Patient Messaging Actions', () => {
           content: 'Oui, continuez à un rythme modéré.',
         },
       );
-      expect(res.senderType).toBe('practitioner');
+      expect(res.senderRole).toBe('practitioner');
     });
   });
 
