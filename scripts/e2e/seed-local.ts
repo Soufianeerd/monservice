@@ -28,7 +28,10 @@ import {
   clinicalDocuments,
   clinicalFormTemplates,
   clinicalFormResponses,
-  clinicalMeasurements
+  clinicalMeasurements,
+  patientPortalAccess,
+  patientBillingLinks,
+  patientQuestionnaireAssignments
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -817,7 +820,48 @@ async function seed() {
     },
   ]).onConflictDoNothing();
 
-  console.log('Scheduling foundation, Waitlist & Clinical Expansion Records Org A & Org B seeded successfully!');
+  // 16. Patient Portal Access, Billing Links & Questionnaires (Session 14)
+  const portalAccessAId = 'b0000000-0000-4000-8000-000000000001';
+  await db.insert(patientPortalAccess).values([
+    {
+      id: portalAccessAId,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      userId: cliAId!,
+      accessType: 'patient',
+      isActive: true,
+      grantedAt: new Date().toISOString(),
+      grantedBy: proAId!,
+    },
+  ]).onConflictDoNothing();
+
+  const billingLinkAId = 'b0000000-0000-4000-8000-000000000002';
+  await db.insert(patientBillingLinks).values([
+    {
+      id: billingLinkAId,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      clientId: clientIdA,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ]).onConflictDoNothing();
+
+  const questionnaireA1Id = 'b0000000-0000-4000-8000-000000000003';
+  await db.insert(patientQuestionnaireAssignments).values([
+    {
+      id: questionnaireA1Id,
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      practitionerId: SEED_PRACTICE_IDS.practitionerA,
+      templateId: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
+      status: 'assigned',
+      assignedAt: new Date().toISOString(),
+      answersJson: {},
+    },
+  ]).onConflictDoNothing();
+
+  console.log('Scheduling foundation, Waitlist, Clinical Expansion & Patient Portal Records Org A & Org B seeded successfully!');
   await sql.end();
 }
 
