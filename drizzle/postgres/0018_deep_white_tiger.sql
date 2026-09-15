@@ -5,12 +5,13 @@ CREATE TABLE "appointment_reminder_deliveries" (
 	"channel" text DEFAULT 'email' NOT NULL,
 	"offset_minutes" integer NOT NULL,
 	"recipient_email_hash" text,
-	"sent_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone,
 	"status" text NOT NULL,
 	"provider_message_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "appointment_reminders_channel_check" CHECK ("appointment_reminder_deliveries"."channel" = 'email'),
-	CONSTRAINT "appointment_reminders_status_check" CHECK ("appointment_reminder_deliveries"."status" IN ('pending', 'sent', 'failed'))
+	CONSTRAINT "appointment_reminders_status_check" CHECK ("appointment_reminder_deliveries"."status" IN ('pending', 'sent', 'failed')),
+	CONSTRAINT "appointment_reminders_sent_at_check" CHECK (("appointment_reminder_deliveries"."status" = 'sent' AND "appointment_reminder_deliveries"."sent_at" IS NOT NULL) OR ("appointment_reminder_deliveries"."status" IN ('pending', 'failed') AND "appointment_reminder_deliveries"."sent_at" IS NULL))
 );
 --> statement-breakpoint
 CREATE TABLE "patient_billing_links" (
@@ -109,7 +110,15 @@ CREATE POLICY "patient_portal_access_user_select"
   ON "patient_portal_access"
   FOR SELECT
   TO authenticated
-  USING ("user_id" = auth.uid()::text AND "is_active" = true);--> statement-breakpoint
+  USING (
+    "user_id" = auth.uid()::text
+    AND "is_active" = true
+    AND EXISTS (
+      SELECT 1 FROM public.users caller
+      WHERE caller.id = auth.uid()::text
+        AND caller.profile_type = 'client'
+    )
+  );--> statement-breakpoint
 
 -- 2. patient_questionnaire_assignments
 ALTER TABLE "patient_questionnaire_assignments" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
@@ -127,10 +136,17 @@ CREATE POLICY "patient_questionnaires_user_select"
   ON "patient_questionnaire_assignments"
   FOR SELECT
   TO authenticated
-  USING ("patient_id" IN (
-    SELECT ppa.patient_id FROM public.patient_portal_access ppa
-    WHERE ppa.user_id = auth.uid()::text AND ppa.is_active = true
-  ));--> statement-breakpoint
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users caller
+      WHERE caller.id = auth.uid()::text
+        AND caller.profile_type = 'client'
+    )
+    AND "patient_id" IN (
+      SELECT ppa.patient_id FROM public.patient_portal_access ppa
+      WHERE ppa.user_id = auth.uid()::text AND ppa.is_active = true
+    )
+  );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "patient_questionnaires_user_update" ON "patient_questionnaire_assignments";--> statement-breakpoint
 
@@ -192,6 +208,37 @@ BEGIN
 END;
 $$;--> statement-breakpoint
 
+CREATE OR REPLACE FUNCTION public.enforce_patient_message_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF OLD.patient_id IS NOT NULL THEN
+    IF NEW.id <> OLD.id
+       OR NEW.organization_id <> OLD.organization_id
+       OR NEW.patient_id IS DISTINCT FROM OLD.patient_id
+       OR NEW.sender_id <> OLD.sender_id
+       OR NEW.receiver_id <> OLD.receiver_id
+       OR NEW.request_id IS DISTINCT FROM OLD.request_id
+       OR NEW.content <> OLD.content
+       OR NEW.created_at <> OLD.created_at THEN
+      RAISE EXCEPTION 'Structural mutation is not allowed on patient messages'
+        USING ERRCODE = '23514';
+    END IF;
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$$;--> statement-breakpoint
+
+DROP TRIGGER IF EXISTS messages_patient_mutation_guard ON public.messages;--> statement-breakpoint
+CREATE TRIGGER messages_patient_mutation_guard
+BEFORE UPDATE ON public.messages
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_patient_message_update();--> statement-breakpoint
+
 DROP POLICY IF EXISTS "messages_participants_only" ON "messages";--> statement-breakpoint
 DROP POLICY IF EXISTS "messages_select_policy" ON "messages";--> statement-breakpoint
 CREATE POLICY "messages_select_policy"
@@ -215,15 +262,23 @@ CREATE POLICY "messages_update_policy"
   ON "messages"
   FOR UPDATE
   TO authenticated
-  USING ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text)
-  WITH CHECK ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text);--> statement-breakpoint
+  USING (
+    ("patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text)
+    OR
+    ("patient_id" IS NULL AND ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text))
+  )
+  WITH CHECK (
+    ("patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text)
+    OR
+    ("patient_id" IS NULL AND ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text))
+  );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "messages_delete_policy" ON "messages";--> statement-breakpoint
 CREATE POLICY "messages_delete_policy"
   ON "messages"
   FOR DELETE
   TO authenticated
-  USING ("sender_id" = auth.uid()::text);--> statement-breakpoint
+  USING ("patient_id" IS NULL AND "sender_id" = auth.uid()::text);--> statement-breakpoint
 
 -- ==========================================
 -- PRIVILEGES & STRICT GRANTS
@@ -239,4 +294,6 @@ GRANT SELECT, INSERT, UPDATE ON TABLE "patient_questionnaire_assignments" TO aut
 GRANT SELECT, INSERT, UPDATE ON TABLE "patient_billing_links" TO authenticated;--> statement-breakpoint
 
 REVOKE ALL ON FUNCTION public.can_insert_patient_message(text, text, text) FROM PUBLIC, anon;--> statement-breakpoint
-GRANT EXECUTE ON FUNCTION public.can_insert_patient_message(text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_insert_patient_message(text, text, text) TO authenticated;--> statement-breakpoint
+
+REVOKE ALL ON FUNCTION public.enforce_patient_message_update() FROM PUBLIC, anon, authenticated;

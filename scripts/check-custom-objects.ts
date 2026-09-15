@@ -123,7 +123,8 @@ async function verifyCustomObjects() {
       'enforce_clinical_document_mutation',
       'enforce_clinical_form_response_transition',
       'enforce_clinical_measurement_insert',
-      'can_insert_patient_message'
+      'can_insert_patient_message',
+      'enforce_patient_message_update'
     );
   `;
 
@@ -140,6 +141,7 @@ async function verifyCustomObjects() {
     enforce_clinical_form_response_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_clinical_measurement_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     can_insert_patient_message: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_patient_message_update: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -164,6 +166,45 @@ async function verifyCustomObjects() {
     if (f.auth_exec !== expected.auth_exec) {
       console.error(`❌ ERROR: Function ${fname} auth_exec is ${f.auth_exec}, expected ${expected.auth_exec}`);
       errorCount++;
+    }
+  }
+
+  // Check function definition semantic contracts for can_insert_patient_message
+  const msgFunc = funcs.find(x => x.proname === 'can_insert_patient_message');
+  if (msgFunc?.funcdef) {
+    const normDef = msgFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'patient_portal_access',
+      'practice_practitioners',
+      'current_clinical_practitioner_id',
+      'is_active',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'can_insert_patient_message' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_patient_message_update
+  const msgUpdFunc = funcs.find(x => x.proname === 'enforce_patient_message_update');
+  if (msgUpdFunc?.funcdef) {
+    const normDef = msgUpdFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'patient_id',
+      '23514',
+      'organization_id',
+      'sender_id',
+      'receiver_id',
+      'content',
+      'created_at',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_patient_message_update' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
     }
   }
 
@@ -295,7 +336,8 @@ async function verifyCustomObjects() {
       'clinical_notes_transition_trigger',
       'clinical_documents_mutation_guard',
       'clinical_form_responses_transition_guard',
-      'clinical_measurements_insert_guard'
+      'clinical_measurements_insert_guard',
+      'messages_patient_mutation_guard'
     )
   `;
   
@@ -340,6 +382,11 @@ async function verifyCustomObjects() {
       name: 'clinical_measurements_insert_guard',
       table: 'clinical_measurements',
       requiredElements: ['before insert', 'for each row', 'enforce_clinical_measurement_insert'],
+    },
+    {
+      name: 'messages_patient_mutation_guard',
+      table: 'messages',
+      requiredElements: ['before update', 'for each row', 'enforce_patient_message_update'],
     },
   ];
 
@@ -673,7 +720,7 @@ async function verifyCustomObjects() {
       tableName: 'patient_portal_access',
       expectedRoles: ['authenticated'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['user_id', 'auth.uid', 'is_active'],
+      qualSemantics: ['user_id', 'auth.uid', 'is_active', 'client'],
       withCheckSemantics: [],
     },
     {
@@ -689,7 +736,7 @@ async function verifyCustomObjects() {
       tableName: 'patient_questionnaire_assignments',
       expectedRoles: ['authenticated'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['patient_id', 'patient_portal_access', 'user_id', 'auth.uid', 'is_active'],
+      qualSemantics: ['patient_id', 'patient_portal_access', 'user_id', 'auth.uid', 'is_active', 'client'],
       withCheckSemantics: [],
     },
     {
@@ -721,15 +768,15 @@ async function verifyCustomObjects() {
       tableName: 'messages',
       expectedRoles: ['authenticated'],
       expectedCmd: 'UPDATE',
-      qualSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
-      withCheckSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
+      qualSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid'],
+      withCheckSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid'],
     },
     {
       policyName: 'messages_delete_policy',
       tableName: 'messages',
       expectedRoles: ['authenticated'],
       expectedCmd: 'DELETE',
-      qualSemantics: ['sender_id', 'auth.uid'],
+      qualSemantics: ['patient_id', 'sender_id', 'auth.uid'],
       withCheckSemantics: [],
     },
   ];

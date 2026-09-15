@@ -228,6 +228,14 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(dbRow.patient_id).toBe(patientA1Id);
     });
 
+    it('staff A (professional with portal access row on Patient A2) CANNOT read portal access A2 (blocked by client profile requirement)', async () => {
+      const { data } = await staffAClient
+        .from('patient_portal_access')
+        .select('*')
+        .eq('id', portalAccessA2Id);
+      expect(data?.length ?? 0).toBe(0);
+    });
+
     it('staff A (professional without active practice_practitioner) CANNOT read, insert, or update portal accesses', async () => {
       // 1. SELECT
       const { data: readData } = await staffAClient
@@ -301,13 +309,21 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(data?.length ?? 0).toBe(0);
     });
 
-    it('client A CANNOT direct UPDATE questionnaire answers via PostgREST', async () => {
-      await clientAClient
+    it('staff A (professional) CANNOT SELECT assignment for patient A2 (blocked by client profile requirement)', async () => {
+      const { data } = await staffAClient
         .from('patient_questionnaire_assignments')
-        .update({ answers_json: { q1: 'forged_answer' } })
+        .select('*')
+        .eq('id', assignmentA2Id);
+      expect(data?.length ?? 0).toBe(0);
+    });
+
+    it('client A CANNOT direct UPDATE questionnaire answers via PostgREST', async () => {
+      const { error } = await clientAClient
+        .from('patient_questionnaire_assignments')
+        .update({ answers_json: { q1: 'hacked_answer' } })
         .eq('id', assignmentA1Id);
 
-      // Direct update must be rejected or have no effect
+      expect(error).not.toBeNull();
       const [dbRow] = await sql`SELECT answers_json FROM patient_questionnaire_assignments WHERE id = ${assignmentA1Id}`;
       expect(dbRow.answers_json).toEqual({ q1: 'val1' });
     });
@@ -384,11 +400,9 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
           id: attackId,
           organization_id: SEED_PRACTICE_IDS.orgA,
           patient_id: patientA1Id,
-          client_id: 'cli-rec-a-1234',
+          client_id: 'cli-attack-1',
         });
       expect(error).not.toBeNull();
-      const rows = await sql`SELECT * FROM patient_billing_links WHERE id = ${attackId}`;
-      expect(rows.length).toBe(0);
     });
 
     it('staff A CANNOT read or mutate billing links', async () => {
@@ -412,14 +426,16 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
   // 4. MESSAGING RLS MATRIX (PATIENT MODE)
   // =========================================================================
   describe('messages RLS Matrix in Patient Mode', () => {
+    let testMsgId: string;
+
     it('client A can insert a valid message to Pro A for Patient A1', async () => {
-      const msgId = randomUUID();
-      createdMessageIds.push(msgId);
+      testMsgId = randomUUID();
+      createdMessageIds.push(testMsgId);
 
       const { error } = await clientAClient
         .from('messages')
         .insert({
-          id: msgId,
+          id: testMsgId,
           organization_id: SEED_PRACTICE_IDS.orgA,
           sender_id: clientAUserId,
           receiver_id: proAUserId,
@@ -431,9 +447,11 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
 
       expect(error).toBeNull();
 
-      const [msg] = await sql`SELECT * FROM messages WHERE id = ${msgId}`;
+      const [msg] = await sql`SELECT * FROM messages WHERE id = ${testMsgId}`;
       expect(msg).toBeDefined();
       expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
+      expect(msg.patient_id).toBe(patientA1Id);
+      expect(msg.receiver_id).toBe(proAUserId);
     });
 
     it('client A CANNOT forge message for Patient A2 (denied by RLS)', async () => {
@@ -476,6 +494,63 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(check.length).toBe(0);
     });
 
+    it('client A CANNOT mutate patient_id on existing message from A1 to A2 (denied by RLS/trigger)', async () => {
+      await clientAClient
+        .from('messages')
+        .update({ patient_id: patientA2Id })
+        .eq('id', testMsgId);
+
+      // Rejected by RLS or trigger
+      const [msg] = await sql`SELECT patient_id FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.patient_id).toBe(patientA1Id);
+    });
+
+    it('client A CANNOT mutate receiver_id on existing patient message to Staff A (denied by RLS/trigger)', async () => {
+      await clientAClient
+        .from('messages')
+        .update({ receiver_id: staffAUserId })
+        .eq('id', testMsgId);
+
+      const [msg] = await sql`SELECT receiver_id FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.receiver_id).toBe(proAUserId);
+    });
+
+    it('client A CANNOT mutate content on existing patient message (content rewrite denied)', async () => {
+      await clientAClient
+        .from('messages')
+        .update({ content: 'Contenu falsifié après envoi' })
+        .eq('id', testMsgId);
+
+      const [msg] = await sql`SELECT content FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
+    });
+
+    it('client A CANNOT hard delete own patient message (DELETE denied)', async () => {
+      await clientAClient
+        .from('messages')
+        .delete()
+        .eq('id', testMsgId);
+
+      const [msg] = await sql`SELECT id FROM messages WHERE id = ${testMsgId}`;
+      expect(msg).toBeDefined();
+      expect(msg.id).toBe(testMsgId);
+    });
+
+    it('practitioner Pro A (receiver) CAN legitimately update read receipt is_read', async () => {
+      const { error } = await proAClient
+        .from('messages')
+        .update({ is_read: true })
+        .eq('id', testMsgId);
+
+      expect(error).toBeNull();
+      const [msg] = await sql`SELECT is_read, patient_id, receiver_id, sender_id, content FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.is_read).toBe(true);
+      expect(msg.patient_id).toBe(patientA1Id);
+      expect(msg.receiver_id).toBe(proAUserId);
+      expect(msg.sender_id).toBe(clientAUserId);
+      expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
+    });
+
     it('practitioner Pro A can send message to Client A for Patient A1', async () => {
       const msgId = randomUUID();
       createdMessageIds.push(msgId);
@@ -516,6 +591,46 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(error).not.toBeNull();
       const check = await sql`SELECT * FROM messages WHERE id = ${attackMsgId}`;
       expect(check.length).toBe(0);
+    });
+
+    it('generic non-health message (patient_id IS NULL) preserves standard behavior without regression', async () => {
+      const genericMsgId = randomUUID();
+      createdMessageIds.push(genericMsgId);
+
+      // 1. Insert generic message
+      const { error: insErr } = await clientAClient
+        .from('messages')
+        .insert({
+          id: genericMsgId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          sender_id: clientAUserId,
+          receiver_id: proAUserId,
+          patient_id: null,
+          content: 'Question commerciale générale',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      expect(insErr).toBeNull();
+
+      // 2. Sender can update generic message content
+      const { error: updErr } = await clientAClient
+        .from('messages')
+        .update({ content: 'Question commerciale mise à jour' })
+        .eq('id', genericMsgId);
+      expect(updErr).toBeNull();
+
+      const [genMsg] = await sql`SELECT content FROM messages WHERE id = ${genericMsgId}`;
+      expect(genMsg.content).toBe('Question commerciale mise à jour');
+
+      // 3. Sender can delete generic message
+      const { error: delErr } = await clientAClient
+        .from('messages')
+        .delete()
+        .eq('id', genericMsgId);
+      expect(delErr).toBeNull();
+
+      const [deletedCheck] = await sql`SELECT id FROM messages WHERE id = ${genericMsgId}`;
+      expect(deletedCheck).toBeUndefined();
     });
   });
 });

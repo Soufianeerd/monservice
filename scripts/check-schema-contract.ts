@@ -989,6 +989,11 @@ async function verifyContract() {
       table: 'appointment_reminder_deliveries',
       elements: ['status', 'pending', 'sent', 'failed'],
     },
+    {
+      name: 'appointment_reminders_sent_at_check',
+      table: 'appointment_reminder_deliveries',
+      elements: ['status', 'sent', 'sent_at', 'is not null', 'pending', 'failed', 'is null'],
+    },
   ];
 
   for (const chk of specificChecks) {

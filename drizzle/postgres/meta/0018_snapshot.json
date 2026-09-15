@@ -49,8 +49,7 @@
           "name": "sent_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+          "notNull": false
         },
         "status": {
           "name": "status",
@@ -163,6 +162,10 @@
         "appointment_reminders_status_check": {
           "name": "appointment_reminders_status_check",
           "value": "\"appointment_reminder_deliveries\".\"status\" IN ('pending', 'sent', 'failed')"
+        },
+        "appointment_reminders_sent_at_check": {
+          "name": "appointment_reminders_sent_at_check",
+          "value": "(\"appointment_reminder_deliveries\".\"status\" = 'sent' AND \"appointment_reminder_deliveries\".\"sent_at\" IS NOT NULL) OR (\"appointment_reminder_deliveries\".\"status\" IN ('pending', 'failed') AND \"appointment_reminder_deliveries\".\"sent_at\" IS NULL)"
         }
       },
       "isRLSEnabled": false

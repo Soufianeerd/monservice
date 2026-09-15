@@ -21,7 +21,7 @@ La **Session 14** a pour mission de fermer le cycle opérationnel complet entre 
   - `patient_portal_access` : contrôle d'accès patient avec `access_type IN ('patient', 'representative')`, `is_active boolean`, contrainte d'unicité `(organization_id, patient_id, user_id)`.
   - `patient_questionnaire_assignments` : suivi des questionnaires assignés, statuts `('assigned', 'submitted', 'cancelled')`, brouillons JSON et lien vers `clinical_form_responses`.
   - `patient_billing_links` : passerelle patient-client CRM avec unicité `(organization_id, patient_id)`.
-  - `appointment_reminder_deliveries` : journal d'envoi des rappels avec unicité `(appointment_id, channel, offset_minutes)`, statut `('pending', 'sent', 'failed')` (mécanisme atomique claim-before-send) et hash pseudonymisé de l'email destinataire.
+  - `appointment_reminder_deliveries` : journal d'envoi des rappels avec unicité `(appointment_id, channel, offset_minutes)`, statut `('pending', 'sent', 'failed')` (mécanisme atomique claim-before-send), `sent_at` nullable avec contrainte check `appointment_reminders_sent_at_check` (rempli uniquement à l'envoi effectif), et hash pseudonymisé de l'email destinataire.
 - Évolutions de schéma :
   - `clinical_documents.patient_visible` (boolean default false).
   - `invoices.recipient_user_id` (foreign key vers `users.id`).
@@ -32,15 +32,16 @@ La **Session 14** a pour mission de fermer le cycle opérationnel complet entre 
 ## 3. Sécurité & Conformité
 
 1. **Isolation Multi-Tenant & RLS** :
-   - `patient_portal_access` : Praticiens actifs de l'organisation (`ALL`), Patients actifs (`SELECT`).
-   - `patient_questionnaire_assignments` : Praticiens assigneurs de l'organisation (`ALL`), Patients actifs rattachés (`SELECT`). Mutations via Server Actions avec validation Zod.
+   - `patient_portal_access` : Praticiens actifs de l'organisation (`ALL`), Patients actifs avec `profile_type = 'client'` (`SELECT`). Les comptes professionnels/staff ne peuvent pas lire les données portail.
+   - `patient_questionnaire_assignments` : Praticiens assigneurs de l'organisation (`ALL`), Patients actifs rattachés avec `profile_type = 'client'` (`SELECT` only). Mutations directes PostgREST interdites.
    - `patient_billing_links` : Praticiens actifs de l'organisation (`ALL`), 0 accès direct client/staff.
    - `appointment_reminder_deliveries` : Réservé exclusivement au rôle `service_role` (0 accès direct PostgREST authenticated/anon).
-   - `messages` : Échanges bidirectionnels filtrés sur l'expéditeur/destinataire avec vérification de relation de soin active si `patient_id` renseigné.
+   - `messages` : Trigger `messages_patient_mutation_guard` (`enforce_patient_message_update`) garantissant l'immutabilité structurelle (`id`, `organization_id`, `patient_id`, `sender_id`, `receiver_id`, `request_id`, `content`, `created_at`). Seul le destinataire peut passer `is_read` à `true`. Hard delete interdit en mode santé (`patient_id IS NOT NULL`).
 2. **Autorisation Stripe** : Contrôle d'accès strict sur `POST /api/stripe/create-payment` autorisant uniquement l'émetteur professionnel de l'organisation (`ctx.profileType === 'professional' && ctx.organizationId === invoice.organizationId`) ou le destinataire effectif (`ctx.profileType === 'client' && ctx.userId === invoice.recipientUserId`).
 3. **Sécurisation Cron Rappels** : Endpoint `GET /api/reminders/appointments/check` protégé par `CRON_SECRET` non-vide, ou praticien professionnel restreint à sa propre organisation.
-4. **Politique Zéro Cast Menteur** : 0 `as any`, 0 `as unknown as`, 0 `as never`, 0 `: any`, 0 `@ts-ignore`.
-5. **Contrat Schema Drizzle** : 50 tables, 0 dérive (`npm run db:check-drift`).
+4. **Reprise sur Incident Rappels (Crash Recovery Note)** : En Session 14, un claim `pending` non finalisé (crash process avant sendEmail) réserve le créneau d'envoi. La reprise automatique des pending orphelins est une extension hors-périmètre Session 14 documentée comme limite opérationnelle connue.
+5. **Politique Zéro Cast Menteur** : 0 `as any`, 0 `as unknown as`, 0 `as never`, 0 `: any`, 0 `@ts-ignore`.
+6. **Contrat Schema Drizzle** : 50 tables, 0 dérive (`npm run db:check-drift`).
 
 ---
 

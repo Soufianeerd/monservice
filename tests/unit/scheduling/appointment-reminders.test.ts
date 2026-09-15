@@ -102,7 +102,8 @@ describe('Appointment Reminder Service', () => {
     expect(result.sent).toBeGreaterThan(0);
     expect(sendEmail).toHaveBeenCalled();
     expect(db.insert).toHaveBeenCalled();
-    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'sent' }));
+    expect(mockValues).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending', sentAt: null }));
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'sent', sentAt: expect.any(Date) }));
   });
 
   it('proves concurrent race condition safety (concurrent idempotency test)', async () => {
@@ -192,7 +193,42 @@ describe('Appointment Reminder Service', () => {
     expect(result.sent).toBe(0);
     expect(result.skipped).toBe(1);
 
-    // Status updated to failed, never sent
-    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+    // Status updated to failed with sentAt null, never sent
+    expect(mockValues).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending', sentAt: null }));
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', sentAt: null }));
+  });
+
+  it('handles provider sendEmail failure safely by marking status failed and sentAt null', async () => {
+    let selectCallCount = 0;
+    const mockSelect = vi.fn().mockImplementation(() => {
+      selectCallCount++;
+      return {
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnThis(),
+          leftJoin: vi.fn().mockReturnThis(),
+          where: vi.fn().mockImplementation(() => {
+            if (selectCallCount % 2 === 1) {
+              return Promise.resolve([mockApptRow]);
+            } else {
+              return Promise.resolve([]);
+            }
+          }),
+        }),
+      };
+    });
+
+    vi.mocked(db.select).mockImplementation(mockSelect);
+    mockReturning.mockResolvedValue([{ id: 'rem-del-fail' }]);
+    mockWhere.mockResolvedValue([]);
+    vi.mocked(sendEmail).mockRejectedValue(new Error('SMTP connection failure'));
+
+    const result = await appointmentReminderService.processAppointmentReminders({
+      organizationId: 'org-1',
+    });
+
+    expect(result.sent).toBe(0);
+    expect(result.errors).toBe(1);
+    expect(mockValues).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending', sentAt: null }));
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', sentAt: null }));
   });
 });

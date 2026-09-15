@@ -72,8 +72,12 @@ jobs:
         run: npm run test:scheduling
       - name: Run Clinical Records Unit Tests
         run: npm run test:clinical
+      - name: Run Patient Portal Unit Tests
+        run: npm run test:patient-portal
       - run: npm run test:compliance
       - run: npm run build
       
       - run: npx playwright install --with-deps
       - run: npm run test:e2e:compliance
+      - name: Run Patient Portal E2E Tests
+        run: npx playwright test e2e/patient-portal-journey.spec.ts

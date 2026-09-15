@@ -161,7 +161,7 @@ export class AppointmentReminderService {
             channel: 'email',
             offsetMinutes,
             recipientEmailHash: emailHash,
-            sentAt: new Date(),
+            sentAt: null,
             status: 'pending',
             providerMessageId: null,
           })
@@ -184,6 +184,7 @@ export class AppointmentReminderService {
             .update(appointmentReminderDeliveries)
             .set({
               status: 'failed',
+              sentAt: null,
               providerMessageId: 'email-not-configured',
             })
             .where(eq(appointmentReminderDeliveries.id, deliveryId));
@@ -249,7 +250,7 @@ export class AppointmentReminderService {
               .update(appointmentReminderDeliveries)
               .set({
                 status: 'failed',
-                sentAt: new Date(),
+                sentAt: null,
               })
               .where(eq(appointmentReminderDeliveries.id, deliveryId));
           } catch {

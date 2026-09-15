@@ -1366,7 +1366,7 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
   channel: text('channel').notNull().default('email'),
   offsetMinutes: integer('offset_minutes').notNull(),
   recipientEmailHash: text('recipient_email_hash'),
-  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
   status: text('status').notNull(), // 'pending' | 'sent' | 'failed'
   providerMessageId: text('provider_message_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1375,6 +1375,7 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
   index('appointment_reminders_org_sent_idx').on(t.organizationId, t.sentAt),
   check('appointment_reminders_channel_check', sql`${t.channel} = 'email'`),
   check('appointment_reminders_status_check', sql`${t.status} IN ('pending', 'sent', 'failed')`),
+  check('appointment_reminders_sent_at_check', sql`(${t.status} = 'sent' AND ${t.sentAt} IS NOT NULL) OR (${t.status} IN ('pending', 'failed') AND ${t.sentAt} IS NULL)`),
   foreignKey({
     columns: [t.appointmentId, t.organizationId],
     foreignColumns: [appointments.id, appointments.organizationId],
