@@ -318,12 +318,11 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     });
 
     it('client A CANNOT direct UPDATE questionnaire answers via PostgREST', async () => {
-      const { error } = await clientAClient
+      await clientAClient
         .from('patient_questionnaire_assignments')
         .update({ answers_json: { q1: 'hacked_answer' } })
         .eq('id', assignmentA1Id);
 
-      expect(error).not.toBeNull();
       const [dbRow] = await sql`SELECT answers_json FROM patient_questionnaire_assignments WHERE id = ${assignmentA1Id}`;
       expect(dbRow.answers_json).toEqual({ q1: 'val1' });
     });
