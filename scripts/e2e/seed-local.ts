@@ -830,8 +830,7 @@ async function seed() {
       userId: cliAId!,
       accessType: 'patient',
       isActive: true,
-      grantedAt: new Date().toISOString(),
-      grantedBy: proAId!,
+      createdByUserId: proAId!,
     },
   ]).onConflictDoNothing();
 
@@ -842,8 +841,6 @@ async function seed() {
       organizationId: SEED_PRACTICE_IDS.orgA,
       patientId: SEED_PATIENT_IDS.patientA,
       clientId: clientIdA,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
   ]).onConflictDoNothing();
 
@@ -856,7 +853,6 @@ async function seed() {
       practitionerId: SEED_PRACTICE_IDS.practitionerA,
       templateId: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
       status: 'assigned',
-      assignedAt: new Date().toISOString(),
       answersJson: {},
     },
   ]).onConflictDoNothing();
