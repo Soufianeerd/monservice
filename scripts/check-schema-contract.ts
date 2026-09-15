@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import { getTableConfig, PgTable, type PgColumn } from 'drizzle-orm/pg-core';
 import { is } from 'drizzle-orm';
 import * as schema from '../src/lib/db/schema';
@@ -597,6 +599,90 @@ async function verifyContract() {
       localCols: ['encounter_id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
       foreignCols: ['id', 'organization_id', 'care_episode_id', 'patient_id', 'practitioner_id'],
     },
+    {
+      constraintName: 'appointment_reminders_appointment_fk',
+      tableName: 'appointment_reminder_deliveries',
+      foreignTable: 'appointments',
+      localCols: ['appointment_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_billing_links_patient_fk',
+      tableName: 'patient_billing_links',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_billing_links_client_fk',
+      tableName: 'patient_billing_links',
+      foreignTable: 'clients',
+      localCols: ['client_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_portal_access_patient_fk',
+      tableName: 'patient_portal_access',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_portal_access_representative_fk',
+      tableName: 'patient_portal_access',
+      foreignTable: 'patient_representatives',
+      localCols: ['representative_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_portal_access_rep_link_fk',
+      tableName: 'patient_portal_access',
+      foreignTable: 'patient_representative_links',
+      localCols: ['organization_id', 'patient_id', 'representative_id'],
+      foreignCols: ['organization_id', 'patient_id', 'representative_id'],
+    },
+    {
+      constraintName: 'patient_questionnaires_patient_fk',
+      tableName: 'patient_questionnaire_assignments',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_questionnaires_practitioner_fk',
+      tableName: 'patient_questionnaire_assignments',
+      foreignTable: 'practice_practitioners',
+      localCols: ['practitioner_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'patient_questionnaires_template_fk',
+      tableName: 'patient_questionnaire_assignments',
+      foreignTable: 'clinical_form_templates',
+      localCols: ['template_id', 'organization_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'practitioner_id'],
+    },
+    {
+      constraintName: 'patient_questionnaires_episode_fk',
+      tableName: 'patient_questionnaire_assignments',
+      foreignTable: 'care_episodes',
+      localCols: ['care_episode_id', 'organization_id', 'patient_id', 'practitioner_id'],
+      foreignCols: ['id', 'organization_id', 'patient_id', 'practitioner_id'],
+    },
+    {
+      constraintName: 'patient_questionnaires_response_fk',
+      tableName: 'patient_questionnaire_assignments',
+      foreignTable: 'clinical_form_responses',
+      localCols: ['clinical_response_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'messages_patient_fk',
+      tableName: 'messages',
+      foreignTable: 'patient_profiles',
+      localCols: ['patient_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -690,6 +776,19 @@ async function verifyContract() {
     'clinical_measurements_org_patient_code_idx',
     'clinical_measurements_org_episode_idx',
     'clinical_measurements_org_encounter_idx',
+    'clients_id_org_unique',
+    'appointment_reminders_delivery_unique',
+    'appointment_reminders_org_sent_idx',
+    'patient_billing_links_org_patient_unique',
+    'patient_billing_links_org_client_idx',
+    'patient_portal_access_user_idx',
+    'patient_portal_access_org_patient_idx',
+    'patient_portal_access_org_patient_user_unique',
+    'patient_questionnaires_org_patient_idx',
+    'patient_questionnaires_org_practitioner_idx',
+    'patient_questionnaires_org_status_idx',
+    'patient_questionnaires_org_id_unique',
+    'messages_patient_id_idx',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -859,6 +958,36 @@ async function verifyContract() {
       name: 'clinical_measurements_label_check',
       table: 'clinical_measurements',
       elements: ['label', 'char_length', 'trim', '160'],
+    },
+    {
+      name: 'patient_portal_access_type_check',
+      table: 'patient_portal_access',
+      elements: ['access_type', 'patient', 'representative'],
+    },
+    {
+      name: 'patient_portal_access_type_representative_check',
+      table: 'patient_portal_access',
+      elements: ['access_type', 'patient', 'representative_id'],
+    },
+    {
+      name: 'patient_questionnaires_status_check',
+      table: 'patient_questionnaire_assignments',
+      elements: ['status', 'assigned', 'submitted', 'cancelled'],
+    },
+    {
+      name: 'patient_questionnaires_submission_check',
+      table: 'patient_questionnaire_assignments',
+      elements: ['status', 'submitted', 'submitted_at', 'clinical_response_id'],
+    },
+    {
+      name: 'appointment_reminders_channel_check',
+      table: 'appointment_reminder_deliveries',
+      elements: ['channel', 'email'],
+    },
+    {
+      name: 'appointment_reminders_status_check',
+      table: 'appointment_reminder_deliveries',
+      elements: ['status', 'pending', 'sent', 'failed'],
     },
   ];
 

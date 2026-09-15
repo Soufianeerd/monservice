@@ -33,13 +33,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
-    // Seuls l'émetteur (organisation) et le destinataire peuvent déclencher
-    // un paiement pour cette facture.
-    const isIssuer = ctx.organizationId && invoice.organizationId === ctx.organizationId;
+    // Seuls le professionnel émetteur de l'organisation ou le client destinataire
+    // (recipientUserId) peuvent déclencher un paiement pour cette facture.
+    const isIssuer =
+      ctx.profileType === 'professional' &&
+      Boolean(ctx.organizationId) &&
+      invoice.organizationId === ctx.organizationId;
     const isRecipient =
-      invoice.clientId === ctx.userId ||
-      invoice.recipientUserId === ctx.userId ||
-      invoice.professionalId === ctx.userId;
+      ctx.profileType === 'client' &&
+      invoice.recipientUserId === ctx.userId;
+
     if (!isIssuer && !isRecipient) {
       throw new AppError('Accès refusé à cette facture', 403, 'FORBIDDEN');
     }

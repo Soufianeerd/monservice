@@ -10,7 +10,7 @@ CREATE TABLE "appointment_reminder_deliveries" (
 	"provider_message_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "appointment_reminders_channel_check" CHECK ("appointment_reminder_deliveries"."channel" = 'email'),
-	CONSTRAINT "appointment_reminders_status_check" CHECK ("appointment_reminder_deliveries"."status" IN ('sent', 'failed'))
+	CONSTRAINT "appointment_reminders_status_check" CHECK ("appointment_reminder_deliveries"."status" IN ('pending', 'sent', 'failed'))
 );
 --> statement-breakpoint
 CREATE TABLE "patient_billing_links" (
@@ -101,8 +101,8 @@ CREATE POLICY "patient_portal_access_practitioner_all"
   ON "patient_portal_access"
   FOR ALL
   TO authenticated
-  USING ("organization_id" = public.current_organization_id())
-  WITH CHECK ("organization_id" = public.current_organization_id());--> statement-breakpoint
+  USING ("organization_id" = public.current_organization_id() AND public.current_clinical_practitioner_id() IS NOT NULL)
+  WITH CHECK ("organization_id" = public.current_organization_id() AND public.current_clinical_practitioner_id() IS NOT NULL);--> statement-breakpoint
 
 DROP POLICY IF EXISTS "patient_portal_access_user_select" ON "patient_portal_access";--> statement-breakpoint
 CREATE POLICY "patient_portal_access_user_select"
@@ -119,8 +119,8 @@ CREATE POLICY "patient_questionnaires_practitioner_all"
   ON "patient_questionnaire_assignments"
   FOR ALL
   TO authenticated
-  USING ("organization_id" = public.current_organization_id())
-  WITH CHECK ("organization_id" = public.current_organization_id());--> statement-breakpoint
+  USING ("organization_id" = public.current_organization_id() AND "practitioner_id" = public.current_clinical_practitioner_id())
+  WITH CHECK ("organization_id" = public.current_organization_id() AND "practitioner_id" = public.current_clinical_practitioner_id());--> statement-breakpoint
 
 DROP POLICY IF EXISTS "patient_questionnaires_user_select" ON "patient_questionnaire_assignments";--> statement-breakpoint
 CREATE POLICY "patient_questionnaires_user_select"
@@ -133,18 +133,6 @@ CREATE POLICY "patient_questionnaires_user_select"
   ));--> statement-breakpoint
 
 DROP POLICY IF EXISTS "patient_questionnaires_user_update" ON "patient_questionnaire_assignments";--> statement-breakpoint
-CREATE POLICY "patient_questionnaires_user_update"
-  ON "patient_questionnaire_assignments"
-  FOR UPDATE
-  TO authenticated
-  USING ("patient_id" IN (
-    SELECT ppa.patient_id FROM public.patient_portal_access ppa
-    WHERE ppa.user_id = auth.uid()::text AND ppa.is_active = true
-  ))
-  WITH CHECK ("patient_id" IN (
-    SELECT ppa.patient_id FROM public.patient_portal_access ppa
-    WHERE ppa.user_id = auth.uid()::text AND ppa.is_active = true
-  ));--> statement-breakpoint
 
 -- 3. patient_billing_links
 ALTER TABLE "patient_billing_links" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
@@ -154,11 +142,64 @@ CREATE POLICY "patient_billing_links_practitioner_all"
   ON "patient_billing_links"
   FOR ALL
   TO authenticated
-  USING ("organization_id" = public.current_organization_id())
-  WITH CHECK ("organization_id" = public.current_organization_id());--> statement-breakpoint
+  USING ("organization_id" = public.current_organization_id() AND public.current_clinical_practitioner_id() IS NOT NULL)
+  WITH CHECK ("organization_id" = public.current_organization_id() AND public.current_clinical_practitioner_id() IS NOT NULL);--> statement-breakpoint
 
 -- 4. appointment_reminder_deliveries (backend / service-role only)
 ALTER TABLE "appointment_reminder_deliveries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+
+-- 5. messages (hardened for patient mode)
+DROP POLICY IF EXISTS "messages_participants_only" ON "messages";--> statement-breakpoint
+DROP POLICY IF EXISTS "messages_select_policy" ON "messages";--> statement-breakpoint
+CREATE POLICY "messages_select_policy"
+  ON "messages"
+  FOR SELECT
+  TO authenticated
+  USING ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text);--> statement-breakpoint
+
+DROP POLICY IF EXISTS "messages_insert_policy" ON "messages";--> statement-breakpoint
+CREATE POLICY "messages_insert_policy"
+  ON "messages"
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    "sender_id" = auth.uid()::text AND (
+      "patient_id" IS NULL OR (
+        (EXISTS (
+          SELECT 1 FROM public.patient_portal_access ppa
+          JOIN public.practice_practitioners pp ON pp.organization_id = ppa.organization_id
+          WHERE ppa.patient_id = "messages"."patient_id"
+            AND ppa.user_id = auth.uid()::text
+            AND ppa.is_active = true
+            AND pp.user_id = "messages"."receiver_id"
+            AND pp.is_active = true
+        ))
+        OR
+        (public.current_clinical_practitioner_id() IS NOT NULL AND EXISTS (
+          SELECT 1 FROM public.patient_portal_access ppa
+          WHERE ppa.patient_id = "messages"."patient_id"
+            AND ppa.organization_id = public.current_organization_id()
+            AND ppa.user_id = "messages"."receiver_id"
+            AND ppa.is_active = true
+        ))
+      )
+    )
+  );--> statement-breakpoint
+
+DROP POLICY IF EXISTS "messages_update_policy" ON "messages";--> statement-breakpoint
+CREATE POLICY "messages_update_policy"
+  ON "messages"
+  FOR UPDATE
+  TO authenticated
+  USING ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text)
+  WITH CHECK ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text);--> statement-breakpoint
+
+DROP POLICY IF EXISTS "messages_delete_policy" ON "messages";--> statement-breakpoint
+CREATE POLICY "messages_delete_policy"
+  ON "messages"
+  FOR DELETE
+  TO authenticated
+  USING ("sender_id" = auth.uid()::text);--> statement-breakpoint
 
 -- ==========================================
 -- PRIVILEGES & STRICT GRANTS

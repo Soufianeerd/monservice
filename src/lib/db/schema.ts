@@ -1367,14 +1367,14 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
   offsetMinutes: integer('offset_minutes').notNull(),
   recipientEmailHash: text('recipient_email_hash'),
   sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
-  status: text('status').notNull(), // 'sent' | 'failed'
+  status: text('status').notNull(), // 'pending' | 'sent' | 'failed'
   providerMessageId: text('provider_message_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('appointment_reminders_delivery_unique').on(t.appointmentId, t.channel, t.offsetMinutes),
   index('appointment_reminders_org_sent_idx').on(t.organizationId, t.sentAt),
   check('appointment_reminders_channel_check', sql`${t.channel} = 'email'`),
-  check('appointment_reminders_status_check', sql`${t.status} IN ('sent', 'failed')`),
+  check('appointment_reminders_status_check', sql`${t.status} IN ('pending', 'sent', 'failed')`),
   foreignKey({
     columns: [t.appointmentId, t.organizationId],
     foreignColumns: [appointments.id, appointments.organizationId],

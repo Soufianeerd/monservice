@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import { createClient } from '@supabase/supabase-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -97,7 +99,7 @@ async function seed() {
     process.exit(1);
   }
   const dbHostname = new URL(dbUrl).hostname;
-  if (dbHostname !== 'localhost' && dbHostname !== '127.0.0.1') {
+  if (process.env.ALLOW_REMOTE_SEED !== 'true' && dbHostname !== 'localhost' && dbHostname !== '127.0.0.1') {
     console.error('ERROR: DATABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
     process.exit(1);
   }
@@ -107,7 +109,7 @@ async function seed() {
     process.exit(1);
   }
   const sbHostname = new URL(supabaseUrl).hostname;
-  if (sbHostname !== 'localhost' && sbHostname !== '127.0.0.1') {
+  if (process.env.ALLOW_REMOTE_SEED !== 'true' && sbHostname !== 'localhost' && sbHostname !== '127.0.0.1') {
     console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
     process.exit(1);
   }

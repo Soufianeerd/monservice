@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     const providedSecret = req.headers.get('x-cron-secret');
-    const isCron = Boolean(cronSecret) && providedSecret === cronSecret;
+    const isCron = Boolean(cronSecret && cronSecret.length > 0) && providedSecret === cronSecret;
 
     if (isCron) {
       const result = await appointmentReminderService.processAppointmentReminders();
@@ -19,8 +19,8 @@ export async function GET(req: Request) {
     }
 
     const ctx = await getSessionContext();
-    if (!ctx?.organizationId) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    if (!ctx || ctx.profileType !== 'professional' || !ctx.organizationId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
     const result = await appointmentReminderService.processAppointmentReminders({

@@ -162,7 +162,7 @@
         },
         "appointment_reminders_status_check": {
           "name": "appointment_reminders_status_check",
-          "value": "\"appointment_reminder_deliveries\".\"status\" IN ('sent', 'failed')"
+          "value": "\"appointment_reminder_deliveries\".\"status\" IN ('pending', 'sent', 'failed')"
         }
       },
       "isRLSEnabled": false

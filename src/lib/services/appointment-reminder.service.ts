@@ -108,24 +108,7 @@ export class AppointmentReminderService {
       for (const row of matchingAppointments) {
         result.processed++;
 
-        // 1. Check if delivery already exists for this appointment + channel + offset
-        const [existingDelivery] = await db
-          .select()
-          .from(appointmentReminderDeliveries)
-          .where(
-            and(
-              eq(appointmentReminderDeliveries.appointmentId, row.appointment.id),
-              eq(appointmentReminderDeliveries.channel, 'email'),
-              eq(appointmentReminderDeliveries.offsetMinutes, offsetMinutes),
-            ),
-          );
-
-        if (existingDelivery) {
-          result.skipped++;
-          continue;
-        }
-
-        // 2. Determine recipient email (patient or representative)
+        // 1. Determine recipient email (patient or representative)
         let recipientEmail = row.patient.email;
         let recipientName = `${row.patient.usedFirstName || row.patient.firstBirthName} ${row.patient.usedName || row.patient.birthName}`.trim();
 
@@ -164,8 +147,49 @@ export class AppointmentReminderService {
           continue;
         }
 
-        // 3. Compute pseudonymized email hash
+        // 2. Compute pseudonymized email hash
         const emailHash = createHash('sha256').update(recipientEmail.trim().toLowerCase()).digest('hex');
+
+        // 3. Atomic claim-before-send: reserve delivery slot as 'pending'
+        const deliveryId = randomUUID();
+        const [claimed] = await db
+          .insert(appointmentReminderDeliveries)
+          .values({
+            id: deliveryId,
+            organizationId: row.appointment.organizationId,
+            appointmentId: row.appointment.id,
+            channel: 'email',
+            offsetMinutes,
+            recipientEmailHash: emailHash,
+            sentAt: new Date(),
+            status: 'pending',
+            providerMessageId: null,
+          })
+          .onConflictDoNothing({
+            target: [
+              appointmentReminderDeliveries.appointmentId,
+              appointmentReminderDeliveries.channel,
+              appointmentReminderDeliveries.offsetMinutes,
+            ],
+          })
+          .returning({ id: appointmentReminderDeliveries.id });
+
+        if (!claimed) {
+          result.skipped++;
+          continue;
+        }
+
+        if (!isEmailConfigured()) {
+          await db
+            .update(appointmentReminderDeliveries)
+            .set({
+              status: 'failed',
+              providerMessageId: 'email-not-configured',
+            })
+            .where(eq(appointmentReminderDeliveries.id, deliveryId));
+          result.skipped++;
+          continue;
+        }
 
         // 4. Format appointment info
         const dateStr = new Intl.DateTimeFormat('fr-FR', {
@@ -199,48 +223,35 @@ export class AppointmentReminderService {
         const text = `Bonjour ${recipientName},\n\nNous vous rappelons votre rendez-vous prévu ${reminderLabel} le ${dateStr}.\nSoin : ${row.type.name}\nPraticien : ${row.practitioner.displayName}\nLieu : ${locationDetails}\n\nCordialement,\n${row.org.name}`;
 
         try {
-          let providerMessageId: string | undefined;
-
-          if (isEmailConfigured()) {
-            const sendResult = await sendEmail({
-              to: recipientEmail,
-              subject,
-              html,
-              text,
-            });
-            providerMessageId = sendResult.id;
-          }
-
-          // Insert delivery record to guarantee idempotency
-          await db.insert(appointmentReminderDeliveries).values({
-            id: randomUUID(),
-            organizationId: row.appointment.organizationId,
-            appointmentId: row.appointment.id,
-            channel: 'email',
-            offsetMinutes,
-            recipientEmailHash: emailHash,
-            sentAt: new Date(),
-            status: 'sent',
-            providerMessageId: providerMessageId || null,
+          const sendResult = await sendEmail({
+            to: recipientEmail,
+            subject,
+            html,
+            text,
           });
+
+          await db
+            .update(appointmentReminderDeliveries)
+            .set({
+              status: 'sent',
+              sentAt: new Date(),
+              providerMessageId: sendResult.id || null,
+            })
+            .where(eq(appointmentReminderDeliveries.id, deliveryId));
 
           result.sent++;
         } catch (err) {
           result.errors++;
-          console.error('[AppointmentReminderService] Error sending reminder:', err);
+          console.error('[AppointmentReminderService] Error sending reminder for appointment ID:', row.appointment.id);
 
           try {
-            await db.insert(appointmentReminderDeliveries).values({
-              id: randomUUID(),
-              organizationId: row.appointment.organizationId,
-              appointmentId: row.appointment.id,
-              channel: 'email',
-              offsetMinutes,
-              recipientEmailHash: emailHash,
-              sentAt: new Date(),
-              status: 'failed',
-              providerMessageId: null,
-            });
+            await db
+              .update(appointmentReminderDeliveries)
+              .set({
+                status: 'failed',
+                sentAt: new Date(),
+              })
+              .where(eq(appointmentReminderDeliveries.id, deliveryId));
           } catch {
             // Ignore insertion failure on failed attempts
           }

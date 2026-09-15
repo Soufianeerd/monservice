@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import postgres from 'postgres';
 
 interface ExpectedFunctionContract {
@@ -67,7 +69,11 @@ async function verifyCustomObjects() {
     clinical_documents: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     clinical_form_templates: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     clinical_form_responses: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_measurements: { anon: [], authenticated: ['SELECT', 'INSERT'] }
+    clinical_measurements: { anon: [], authenticated: ['SELECT', 'INSERT'] },
+    patient_portal_access: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_questionnaire_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_billing_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_reminder_deliveries: { anon: [], authenticated: [] }
   };
 
   const dbGrants = await sql`
@@ -651,6 +657,78 @@ async function verifyCustomObjects() {
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'patient_portal_access_practitioner_all',
+      tableName: 'patient_portal_access',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
+    },
+    {
+      policyName: 'patient_portal_access_user_select',
+      tableName: 'patient_portal_access',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['user_id', 'auth.uid', 'is_active'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'patient_questionnaires_practitioner_all',
+      tableName: 'patient_questionnaire_assignments',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
+    },
+    {
+      policyName: 'patient_questionnaires_user_select',
+      tableName: 'patient_questionnaire_assignments',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['patient_id', 'patient_portal_access', 'user_id', 'auth.uid', 'is_active'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'patient_billing_links_practitioner_all',
+      tableName: 'patient_billing_links',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
+      withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
+    },
+    {
+      policyName: 'messages_select_policy',
+      tableName: 'messages',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'messages_insert_policy',
+      tableName: 'messages',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['sender_id', 'auth.uid', 'patient_id', 'patient_portal_access', 'current_clinical_practitioner_id'],
+    },
+    {
+      policyName: 'messages_update_policy',
+      tableName: 'messages',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'UPDATE',
+      qualSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
+      withCheckSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
+    },
+    {
+      policyName: 'messages_delete_policy',
+      tableName: 'messages',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'DELETE',
+      qualSemantics: ['sender_id', 'auth.uid'],
+      withCheckSemantics: [],
     },
   ];
 
