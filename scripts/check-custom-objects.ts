@@ -122,7 +122,8 @@ async function verifyCustomObjects() {
       'enforce_clinical_note_transition',
       'enforce_clinical_document_mutation',
       'enforce_clinical_form_response_transition',
-      'enforce_clinical_measurement_insert'
+      'enforce_clinical_measurement_insert',
+      'can_insert_patient_message'
     );
   `;
 
@@ -137,7 +138,8 @@ async function verifyCustomObjects() {
     enforce_clinical_note_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_clinical_document_mutation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_clinical_form_response_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
-    enforce_clinical_measurement_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false }
+    enforce_clinical_measurement_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    can_insert_patient_message: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -712,7 +714,7 @@ async function verifyCustomObjects() {
       expectedRoles: ['authenticated'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
-      withCheckSemantics: ['sender_id', 'auth.uid', 'patient_id', 'patient_portal_access', 'current_clinical_practitioner_id'],
+      withCheckSemantics: ['sender_id', 'auth.uid', 'can_insert_patient_message'],
     },
     {
       policyName: 'messages_update_policy',

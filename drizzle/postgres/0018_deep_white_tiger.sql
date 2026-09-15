@@ -149,6 +149,49 @@ CREATE POLICY "patient_billing_links_practitioner_all"
 ALTER TABLE "appointment_reminder_deliveries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 
 -- 5. messages (hardened for patient mode)
+CREATE OR REPLACE FUNCTION public.can_insert_patient_message(
+  p_sender_id text,
+  p_receiver_id text,
+  p_patient_id text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF p_patient_id IS NULL THEN
+    RETURN true;
+  END IF;
+
+  -- Case 1: Sender is a patient/representative user with active portal access to this patient, sending to an active practitioner in the same org
+  IF EXISTS (
+    SELECT 1 FROM public.patient_portal_access ppa
+    JOIN public.practice_practitioners pp ON pp.organization_id = ppa.organization_id
+    WHERE ppa.patient_id = p_patient_id
+      AND ppa.user_id = p_sender_id
+      AND ppa.is_active = true
+      AND pp.user_id = p_receiver_id
+      AND pp.is_active = true
+  ) THEN
+    RETURN true;
+  END IF;
+
+  -- Case 2: Sender is an active clinical practitioner in the practice sending to a patient user with active portal access
+  IF public.current_clinical_practitioner_id() IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.patient_portal_access ppa
+    WHERE ppa.patient_id = p_patient_id
+      AND ppa.organization_id = public.current_organization_id()
+      AND ppa.user_id = p_receiver_id
+      AND ppa.is_active = true
+  ) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$$;--> statement-breakpoint
+
 DROP POLICY IF EXISTS "messages_participants_only" ON "messages";--> statement-breakpoint
 DROP POLICY IF EXISTS "messages_select_policy" ON "messages";--> statement-breakpoint
 CREATE POLICY "messages_select_policy"
@@ -163,27 +206,8 @@ CREATE POLICY "messages_insert_policy"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    "sender_id" = auth.uid()::text AND (
-      "patient_id" IS NULL OR (
-        (EXISTS (
-          SELECT 1 FROM public.patient_portal_access ppa
-          JOIN public.practice_practitioners pp ON pp.organization_id = ppa.organization_id
-          WHERE ppa.patient_id = "messages"."patient_id"
-            AND ppa.user_id = auth.uid()::text
-            AND ppa.is_active = true
-            AND pp.user_id = "messages"."receiver_id"
-            AND pp.is_active = true
-        ))
-        OR
-        (public.current_clinical_practitioner_id() IS NOT NULL AND EXISTS (
-          SELECT 1 FROM public.patient_portal_access ppa
-          WHERE ppa.patient_id = "messages"."patient_id"
-            AND ppa.organization_id = public.current_organization_id()
-            AND ppa.user_id = "messages"."receiver_id"
-            AND ppa.is_active = true
-        ))
-      )
-    )
+    "sender_id" = auth.uid()::text AND
+    public.can_insert_patient_message("sender_id", "receiver_id", "patient_id")
   );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "messages_update_policy" ON "messages";--> statement-breakpoint
@@ -212,4 +236,7 @@ REVOKE ALL PRIVILEGES ON TABLE "appointment_reminder_deliveries" FROM PUBLIC, an
 
 GRANT SELECT, INSERT, UPDATE ON TABLE "patient_portal_access" TO authenticated;--> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE ON TABLE "patient_questionnaire_assignments" TO authenticated;--> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE ON TABLE "patient_billing_links" TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE "patient_billing_links" TO authenticated;--> statement-breakpoint
+
+REVOKE ALL ON FUNCTION public.can_insert_patient_message(text, text, text) FROM PUBLIC, anon;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION public.can_insert_patient_message(text, text, text) TO authenticated;
