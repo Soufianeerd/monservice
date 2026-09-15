@@ -93,6 +93,12 @@ export const SEED_CLINICAL_EXPANSION_IDS = {
   clinicalMeasurementB: 'a0000000-0000-4000-8000-000000000004',
 };
 
+export const SEED_PATIENT_PORTAL_IDS = {
+  portalAccessA: 'b0000000-0000-4000-8000-000000000001',
+  billingLinkA: 'b0000000-0000-4000-8000-000000000002',
+  questionnaireA: 'b0000000-0000-4000-8000-000000000003',
+};
+
 async function seed() {
   const dbUrl = process.env.DATABASE_URL;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

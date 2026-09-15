@@ -4,6 +4,7 @@ import postgres from 'postgres';
 import {
   SEED_PRACTICE_IDS,
   SEED_PATIENT_IDS,
+  SEED_PATIENT_PORTAL_IDS,
 } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
@@ -31,12 +32,12 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
 
   const patientA1Id = SEED_PATIENT_IDS.patientA;
   const patientA2Id = '30000000-0000-4000-8000-000000000099';
-  const portalAccessA1Id = randomUUID();
-  const portalAccessA2Id = randomUUID();
+  const portalAccessA1Id = SEED_PATIENT_PORTAL_IDS.portalAccessA;
+  const portalAccessA2Id = 'b0000000-0000-4000-8000-000000000099';
   const templateAId = '90000000-0000-4000-8000-000000000002';
-  const assignmentA1Id = randomUUID();
-  const assignmentA2Id = randomUUID();
-  const billingLinkA1Id = randomUUID();
+  const assignmentA1Id = SEED_PATIENT_PORTAL_IDS.questionnaireA;
+  const assignmentA2Id = 'b0000000-0000-4000-8000-000000000098';
+  const billingLinkA1Id = SEED_PATIENT_PORTAL_IDS.billingLinkA;
 
   const createdMessageIds: string[] = [];
 
@@ -143,9 +144,8 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (createdMessageIds.length > 0) {
       await sql`DELETE FROM messages WHERE id = ANY(${createdMessageIds})`;
     }
-    await sql`DELETE FROM patient_billing_links WHERE id = ${billingLinkA1Id}`;
-    await sql`DELETE FROM patient_questionnaire_assignments WHERE id IN (${assignmentA1Id}, ${assignmentA2Id})`;
-    await sql`DELETE FROM patient_portal_access WHERE id IN (${portalAccessA1Id}, ${portalAccessA2Id})`;
+    await sql`DELETE FROM patient_questionnaire_assignments WHERE id = ${assignmentA2Id}`;
+    await sql`DELETE FROM patient_portal_access WHERE id = ${portalAccessA2Id}`;
     await sql`DELETE FROM patient_profiles WHERE id = ${patientA2Id}`;
     await sql.end();
   });
