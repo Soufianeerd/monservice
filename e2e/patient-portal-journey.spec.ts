@@ -21,10 +21,10 @@ test.describe('Patient Portal Journey E2E (Session 14)', () => {
     await expect(page.locator('h1')).toContainText('Suivi de vos soins');
     
     // Check navigation buttons to sub-sections
-    await expect(page.locator('text=Rendez-vous à venir')).toBeVisible();
-    await expect(page.locator('text=Documents partagés')).toBeVisible();
-    await expect(page.locator('text=Questionnaires à remplir')).toBeVisible();
-    await expect(page.locator('text=Messages reçus')).toBeVisible();
+    await expect(page.locator('a[href="/client/sante/rendez-vous"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/client/sante/documents"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/client/sante/questionnaires"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/client/sante/messages"]').first()).toBeVisible();
   });
 
   test('PATIENT_PORTAL_E2E_02: Patient can navigate to appointments projection', async ({ page }) => {
