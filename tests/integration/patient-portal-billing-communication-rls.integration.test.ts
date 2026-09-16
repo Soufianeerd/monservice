@@ -13,6 +13,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'd
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
 const PRO_A_EMAIL = 'pro_a@monservice.com';
+const PRO_A2_EMAIL = 'pro_a2@monservice.com';
 const PRO_B_EMAIL = 'pro_b@monservice.com';
 const CLIENT_A_EMAIL = 'client_a@monservice.com';
 const STAFF_A_EMAIL = 'staff_a@monservice.com';
@@ -22,14 +23,17 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
   let sql: postgres.Sql;
   let anonClient: SupabaseClient;
   let proAClient: SupabaseClient;
+  let proA2Client: SupabaseClient;
   let proBClient: SupabaseClient;
   let clientAClient: SupabaseClient;
   let staffAClient: SupabaseClient;
 
   let proAUserId: string;
+  let proA2UserId: string;
   let clientAUserId: string;
   let staffAUserId: string;
 
+  const practitionerA2Id = '10000000-0000-4000-8000-000000000099';
   const patientA1Id = SEED_PATIENT_IDS.patientA;
   const patientA2Id = '30000000-0000-4000-8000-000000000099';
   const portalAccessA1Id = SEED_PATIENT_PORTAL_IDS.portalAccessA;
@@ -99,14 +103,63 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     }
     staffAUserId = authStaffA.user.id;
 
-    // 5. Seed Patient A2 in Org A
+    // 5. Ensure and Authenticate Pro A2 (active practitioner in Org A, without care episode for Patient A1)
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+    if (serviceRoleKey) {
+      const adminClient = createClient(SUPABASE_URL, serviceRoleKey, { auth: { persistSession: false } });
+      const { data: usersData } = await adminClient.auth.admin.listUsers();
+      let existingA2 = usersData?.users.find(u => u.email === PRO_A2_EMAIL);
+      if (!existingA2) {
+        const { data: created } = await adminClient.auth.admin.createUser({
+          email: PRO_A2_EMAIL,
+          password: PASSWORD,
+          email_confirm: true,
+          user_metadata: { name: 'Dr. Second Pro', profileType: 'professional' },
+        });
+        if (created?.user) {
+          existingA2 = created.user;
+        }
+      }
+      if (existingA2) {
+        proA2UserId = existingA2.id;
+        await sql`UPDATE users SET organization_id = ${SEED_PRACTICE_IDS.orgA} WHERE id = ${proA2UserId}`;
+      }
+    }
+
+    proA2Client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false },
+    });
+    const { data: authA2, error: errA2 } = await proA2Client.auth.signInWithPassword({
+      email: PRO_A2_EMAIL,
+      password: PASSWORD,
+    });
+    if (errA2 || !authA2?.user) {
+      throw new Error(`Failed to authenticate Pro A2: ${errA2?.message || 'No user'}`);
+    }
+    proA2UserId = authA2.user.id;
+
+    // Seed Practice Practitioner for Pro A2 in Org A
+    await sql`
+      INSERT INTO practice_practitioners (id, organization_id, user_id, display_name, profession, email, is_active, created_at, updated_at)
+      VALUES (${practitionerA2Id}, ${SEED_PRACTICE_IDS.orgA}, ${proA2UserId}, 'Dr. Second Pro', 'physiotherapist', ${PRO_A2_EMAIL}, true, now(), now())
+      ON CONFLICT (id) DO UPDATE SET user_id = ${proA2UserId}, is_active = true
+    `;
+
+    // Ensure positive fixture: Patient A1 has active care episode owned by Pro A
+    await sql`
+      INSERT INTO care_episodes (id, organization_id, patient_id, practitioner_id, title, status, created_at, updated_at)
+      VALUES ('70000000-0000-4000-8000-000000000001', ${SEED_PRACTICE_IDS.orgA}, ${patientA1Id}, ${SEED_PRACTICE_IDS.practitionerA}, 'Épisode Rachis Lombaire', 'active', now(), now())
+      ON CONFLICT (id) DO UPDATE SET status = 'active', practitioner_id = ${SEED_PRACTICE_IDS.practitionerA}
+    `;
+
+    // 6. Seed Patient A2 in Org A
     await sql`
       INSERT INTO patient_profiles (id, organization_id, birth_name, first_birth_name, birth_date, sex, created_at, updated_at)
       VALUES (${patientA2Id}, ${SEED_PRACTICE_IDS.orgA}, 'BERNARD', 'Claire', '1995-03-15', 'female', now(), now())
       ON CONFLICT DO NOTHING
     `;
 
-    // 6. Seed Portal Access: Client A has access to Patient A1 only
+    // 7. Seed Portal Access: Client A has access to Patient A1 only
     await sql`
       INSERT INTO patient_portal_access (id, organization_id, patient_id, user_id, access_type, created_by_user_id, is_active, created_at, updated_at)
       VALUES (${portalAccessA1Id}, ${SEED_PRACTICE_IDS.orgA}, ${patientA1Id}, ${clientAUserId}, 'patient', ${proAUserId}, true, now(), now())
@@ -120,7 +173,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       ON CONFLICT DO NOTHING
     `;
 
-    // 7. Seed Questionnaire Assignments
+    // 8. Seed Questionnaire Assignments
     await sql`
       INSERT INTO patient_questionnaire_assignments (id, organization_id, patient_id, practitioner_id, template_id, status, answers_json, created_at, updated_at)
       VALUES (${assignmentA1Id}, ${SEED_PRACTICE_IDS.orgA}, ${patientA1Id}, ${SEED_PRACTICE_IDS.practitionerA}, ${templateAId}, 'assigned', '{"q1": "val1"}', now(), now())
@@ -132,7 +185,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       ON CONFLICT DO NOTHING
     `;
 
-    // 8. Seed Billing Link for Patient A1
+    // 9. Seed Billing Link for Patient A1
     await sql`
       INSERT INTO patient_billing_links (id, organization_id, patient_id, client_id, created_at, updated_at)
       VALUES (${billingLinkA1Id}, ${SEED_PRACTICE_IDS.orgA}, ${patientA1Id}, 'cli-rec-a-1234', now(), now())
@@ -427,7 +480,47 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
   describe('messages RLS Matrix in Patient Mode', () => {
     let testMsgId: string;
 
-    it('client A can insert a valid message to Pro A for Patient A1', async () => {
+    it('Staff A malformed portal row -> patient message INSERT denied', async () => {
+      const staffAttackId = randomUUID();
+      const { error } = await staffAClient
+        .from('messages')
+        .insert({
+          id: staffAttackId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          sender_id: staffAUserId,
+          receiver_id: proAUserId,
+          patient_id: patientA2Id,
+          content: 'Staff A tentative patient message',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      expect(error).not.toBeNull();
+      const check = await sql`SELECT * FROM messages WHERE id = ${staffAttackId}`;
+      expect(check.length).toBe(0);
+    });
+
+    it('Client A -> unrelated same-org Pro A2 denied (no care episode)', async () => {
+      const unrelatedMsgId = randomUUID();
+      const { error } = await clientAClient
+        .from('messages')
+        .insert({
+          id: unrelatedMsgId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          sender_id: clientAUserId,
+          receiver_id: proA2UserId,
+          patient_id: patientA1Id,
+          content: 'Message pour Pro A2 sans relation de soins',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      expect(error).not.toBeNull();
+      const check = await sql`SELECT * FROM messages WHERE id = ${unrelatedMsgId}`;
+      expect(check.length).toBe(0);
+    });
+
+    it('Client A -> Pro A with active care relationship allowed', async () => {
       testMsgId = randomUUID();
       createdMessageIds.push(testMsgId);
 
@@ -451,39 +544,20 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
       expect(msg.patient_id).toBe(patientA1Id);
       expect(msg.receiver_id).toBe(proAUserId);
+      expect(msg.is_read).toBe(false);
     });
 
-    it('client A CANNOT forge message for Patient A2 (denied by RLS)', async () => {
+    it('Pro A2 (unrelated practitioner) -> Client A / Patient A1 denied', async () => {
       const attackMsgId = randomUUID();
-      const { error } = await clientAClient
+      const { error } = await proA2Client
         .from('messages')
         .insert({
           id: attackMsgId,
           organization_id: SEED_PRACTICE_IDS.orgA,
-          sender_id: clientAUserId,
-          receiver_id: proAUserId,
-          patient_id: patientA2Id,
-          content: 'Message attaque sur patient A2',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-      expect(error).not.toBeNull();
-      const check = await sql`SELECT * FROM messages WHERE id = ${attackMsgId}`;
-      expect(check.length).toBe(0);
-    });
-
-    it('client A CANNOT send patient message to arbitrary receiver (non-practitioner)', async () => {
-      const attackMsgId = randomUUID();
-      const { error } = await clientAClient
-        .from('messages')
-        .insert({
-          id: attackMsgId,
-          organization_id: SEED_PRACTICE_IDS.orgA,
-          sender_id: clientAUserId,
-          receiver_id: staffAUserId, // staff A is not an active practice practitioner
+          sender_id: proA2UserId,
+          receiver_id: clientAUserId,
           patient_id: patientA1Id,
-          content: 'Message arbitraire non-praticien',
+          content: 'Message pro A2 illégitime',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
@@ -493,64 +567,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(check.length).toBe(0);
     });
 
-    it('client A CANNOT mutate patient_id on existing message from A1 to A2 (denied by RLS/trigger)', async () => {
-      await clientAClient
-        .from('messages')
-        .update({ patient_id: patientA2Id })
-        .eq('id', testMsgId);
-
-      // Rejected by RLS or trigger
-      const [msg] = await sql`SELECT patient_id FROM messages WHERE id = ${testMsgId}`;
-      expect(msg.patient_id).toBe(patientA1Id);
-    });
-
-    it('client A CANNOT mutate receiver_id on existing patient message to Staff A (denied by RLS/trigger)', async () => {
-      await clientAClient
-        .from('messages')
-        .update({ receiver_id: staffAUserId })
-        .eq('id', testMsgId);
-
-      const [msg] = await sql`SELECT receiver_id FROM messages WHERE id = ${testMsgId}`;
-      expect(msg.receiver_id).toBe(proAUserId);
-    });
-
-    it('client A CANNOT mutate content on existing patient message (content rewrite denied)', async () => {
-      await clientAClient
-        .from('messages')
-        .update({ content: 'Contenu falsifié après envoi' })
-        .eq('id', testMsgId);
-
-      const [msg] = await sql`SELECT content FROM messages WHERE id = ${testMsgId}`;
-      expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
-    });
-
-    it('client A CANNOT hard delete own patient message (DELETE denied)', async () => {
-      await clientAClient
-        .from('messages')
-        .delete()
-        .eq('id', testMsgId);
-
-      const [msg] = await sql`SELECT id FROM messages WHERE id = ${testMsgId}`;
-      expect(msg).toBeDefined();
-      expect(msg.id).toBe(testMsgId);
-    });
-
-    it('practitioner Pro A (receiver) CAN legitimately update read receipt is_read', async () => {
-      const { error } = await proAClient
-        .from('messages')
-        .update({ is_read: true })
-        .eq('id', testMsgId);
-
-      expect(error).toBeNull();
-      const [msg] = await sql`SELECT is_read, patient_id, receiver_id, sender_id, content FROM messages WHERE id = ${testMsgId}`;
-      expect(msg.is_read).toBe(true);
-      expect(msg.patient_id).toBe(patientA1Id);
-      expect(msg.receiver_id).toBe(proAUserId);
-      expect(msg.sender_id).toBe(clientAUserId);
-      expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
-    });
-
-    it('practitioner Pro A can send message to Client A for Patient A1', async () => {
+    it('Pro A -> Client A with active care relationship allowed', async () => {
       const msgId = randomUUID();
       createdMessageIds.push(msgId);
 
@@ -570,6 +587,107 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       expect(error).toBeNull();
       const [msg] = await sql`SELECT * FROM messages WHERE id = ${msgId}`;
       expect(msg).toBeDefined();
+    });
+
+    it('Pro A2 direct SELECT Patient A1 messages denied', async () => {
+      const { data } = await proA2Client
+        .from('messages')
+        .select('*')
+        .eq('id', testMsgId);
+
+      expect(data?.length ?? 0).toBe(0);
+    });
+
+    it('Client A after portal revocation direct SELECT denied', async () => {
+      // 1. Temporarily deactivate portal access
+      await sql`UPDATE patient_portal_access SET is_active = false WHERE id = ${portalAccessA1Id}`;
+
+      // 2. Direct PostgREST SELECT must return 0 rows
+      const { data: revokedSelect } = await clientAClient
+        .from('messages')
+        .select('*')
+        .eq('id', testMsgId);
+
+      expect(revokedSelect?.length ?? 0).toBe(0);
+
+      // 3. Reactivate portal access in cleanup
+      await sql`UPDATE patient_portal_access SET is_active = true WHERE id = ${portalAccessA1Id}`;
+    });
+
+    it('receiver read false -> true allowed', async () => {
+      const { error } = await proAClient
+        .from('messages')
+        .update({ is_read: true })
+        .eq('id', testMsgId);
+
+      expect(error).toBeNull();
+      const [msg] = await sql`SELECT is_read, patient_id, receiver_id, sender_id, content FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.is_read).toBe(true);
+      expect(msg.patient_id).toBe(patientA1Id);
+      expect(msg.receiver_id).toBe(proAUserId);
+      expect(msg.sender_id).toBe(clientAUserId);
+      expect(msg.content).toBe('Bonjour Dr, question sur mes exercices.');
+    });
+
+    it('receiver read true -> false denied (SQLSTATE 23514 / trigger & RLS rejection)', async () => {
+      const { error } = await proAClient
+        .from('messages')
+        .update({ is_read: false })
+        .eq('id', testMsgId);
+
+      expect(error).not.toBeNull();
+      const [msg] = await sql`SELECT is_read FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.is_read).toBe(true);
+    });
+
+    it('sender patient cannot modify is_read on patient message', async () => {
+      await clientAClient
+        .from('messages')
+        .update({ is_read: false })
+        .eq('id', testMsgId);
+
+      const [msg] = await sql`SELECT is_read FROM messages WHERE id = ${testMsgId}`;
+      expect(msg.is_read).toBe(true);
+    });
+
+    it('patient message structural mutation denied (patient_id, receiver_id, content)', async () => {
+      // 1. Mutation of patient_id
+      await clientAClient
+        .from('messages')
+        .update({ patient_id: patientA2Id })
+        .eq('id', testMsgId);
+
+      const [msgPat] = await sql`SELECT patient_id FROM messages WHERE id = ${testMsgId}`;
+      expect(msgPat.patient_id).toBe(patientA1Id);
+
+      // 2. Mutation of receiver_id
+      await clientAClient
+        .from('messages')
+        .update({ receiver_id: staffAUserId })
+        .eq('id', testMsgId);
+
+      const [msgRec] = await sql`SELECT receiver_id FROM messages WHERE id = ${testMsgId}`;
+      expect(msgRec.receiver_id).toBe(proAUserId);
+
+      // 3. Mutation of content
+      await clientAClient
+        .from('messages')
+        .update({ content: 'Contenu falsifié après envoi' })
+        .eq('id', testMsgId);
+
+      const [msgCnt] = await sql`SELECT content FROM messages WHERE id = ${testMsgId}`;
+      expect(msgCnt.content).toBe('Bonjour Dr, question sur mes exercices.');
+    });
+
+    it('patient message delete denied', async () => {
+      await clientAClient
+        .from('messages')
+        .delete()
+        .eq('id', testMsgId);
+
+      const [msg] = await sql`SELECT id FROM messages WHERE id = ${testMsgId}`;
+      expect(msg).toBeDefined();
+      expect(msg.id).toBe(testMsgId);
     });
 
     it('practitioner Pro A CANNOT send message with patient_id A2 to Client A (Client A has no access to A2)', async () => {

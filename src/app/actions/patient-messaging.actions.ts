@@ -32,7 +32,7 @@ export async function sendPractitionerPatientMessageAction(
   portalUserId: string,
   content: string,
 ): Promise<PatientPortalMessageDTO> {
-  const { organizationId, userId } = await requireClinicalPractitionerContext();
+  const { organizationId, practitionerId, userId } = await requireClinicalPractitionerContext();
   const input = sendPractitionerPatientMessageSchema.parse({
     patientId,
     portalUserId,
@@ -41,6 +41,7 @@ export async function sendPractitionerPatientMessageAction(
 
   const message = await patientMessagingService.sendPractitionerMessage(
     organizationId,
+    practitionerId,
     userId,
     input,
   );
@@ -63,8 +64,12 @@ export async function listPatientPortalMessagesAction(
 export async function listPractitionerPatientMessagesAction(
   patientId: string,
 ): Promise<PatientPortalMessageDTO[]> {
-  const { organizationId } = await requireClinicalPractitionerContext();
-  return patientMessagingService.listPatientMessagesForPractitioner(organizationId, patientId);
+  const { organizationId, practitionerId } = await requireClinicalPractitionerContext();
+  return patientMessagingService.listPatientMessagesForPractitioner(
+    organizationId,
+    practitionerId,
+    patientId,
+  );
 }
 
 export async function markPatientMessagesAsReadAction(

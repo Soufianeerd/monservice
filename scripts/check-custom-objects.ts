@@ -124,7 +124,8 @@ async function verifyCustomObjects() {
       'enforce_clinical_form_response_transition',
       'enforce_clinical_measurement_insert',
       'can_insert_patient_message',
-      'enforce_patient_message_update'
+      'enforce_patient_message_update',
+      'has_patient_practitioner_relationship'
     );
   `;
 
@@ -142,6 +143,7 @@ async function verifyCustomObjects() {
     enforce_clinical_measurement_insert: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     can_insert_patient_message: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_patient_message_update: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    has_patient_practitioner_relationship: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -169,15 +171,43 @@ async function verifyCustomObjects() {
     }
   }
 
+  // Check function definition semantic contracts for has_patient_practitioner_relationship
+  const relFunc = funcs.find(x => x.proname === 'has_patient_practitioner_relationship');
+  if (relFunc?.funcdef) {
+    const normDef = relFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'care_episodes',
+      'patient_id',
+      'practitioner_id',
+      'organization_id',
+      'status',
+      'active',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'has_patient_practitioner_relationship' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
   // Check function definition semantic contracts for can_insert_patient_message
   const msgFunc = funcs.find(x => x.proname === 'can_insert_patient_message');
   if (msgFunc?.funcdef) {
     const normDef = msgFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
     const requiredElements = [
       'patient_portal_access',
+      'users',
+      'profile_type',
+      'client',
       'practice_practitioners',
+      'care_episodes',
+      'patient_id',
+      'practitioner_id',
+      'organization_id',
       'current_clinical_practitioner_id',
       'is_active',
+      'active',
     ];
     for (const el of requiredElements) {
       if (!normDef.includes(el.toLowerCase())) {
@@ -199,6 +229,7 @@ async function verifyCustomObjects() {
       'receiver_id',
       'content',
       'created_at',
+      'is_read',
     ];
     for (const el of requiredElements) {
       if (!normDef.includes(el.toLowerCase())) {
@@ -752,7 +783,7 @@ async function verifyCustomObjects() {
       tableName: 'messages',
       expectedRoles: ['authenticated'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['sender_id', 'receiver_id', 'auth.uid'],
+      qualSemantics: ['patient_id', 'sender_id', 'receiver_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
       withCheckSemantics: [],
     },
     {
@@ -768,8 +799,8 @@ async function verifyCustomObjects() {
       tableName: 'messages',
       expectedRoles: ['authenticated'],
       expectedCmd: 'UPDATE',
-      qualSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid'],
-      withCheckSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid'],
+      qualSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
+      withCheckSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
     },
     {
       policyName: 'messages_delete_policy',

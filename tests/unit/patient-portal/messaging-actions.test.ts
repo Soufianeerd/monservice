@@ -3,6 +3,7 @@ import {
   sendPatientPortalMessageAction,
   sendPractitionerPatientMessageAction,
   listPatientPortalMessagesAction,
+  listPractitionerPatientMessagesAction,
   markPatientMessagesAsReadAction,
 } from '@/app/actions/patient-messaging.actions';
 import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
@@ -87,7 +88,7 @@ describe('Patient Messaging Actions', () => {
   });
 
   describe('sendPractitionerPatientMessageAction', () => {
-    it('practitioner replies to patient', async () => {
+    it('practitioner replies to patient with practitioner context', async () => {
       vi.mocked(requireClinicalPractitionerContext).mockResolvedValue(mockPractitionerCtx);
       const mockMsg: PatientPortalMessageDTO = {
         id: 'msg-2',
@@ -107,6 +108,7 @@ describe('Patient Messaging Actions', () => {
 
       expect(patientMessagingService.sendPractitionerMessage).toHaveBeenCalledWith(
         mockPractitionerCtx.organizationId,
+        mockPractitionerCtx.practitionerId,
         mockPractitionerCtx.userId,
         {
           patientId: 'pat-1',
@@ -128,6 +130,21 @@ describe('Patient Messaging Actions', () => {
       expect(patientMessagingService.listPatientMessagesForPortal).toHaveBeenCalledWith(
         mockPatientCtx.userId,
         mockPatientCtx.patientId,
+      );
+    });
+  });
+
+  describe('listPractitionerPatientMessagesAction', () => {
+    it('lists messages for practitioner with practitionerId context', async () => {
+      vi.mocked(requireClinicalPractitionerContext).mockResolvedValue(mockPractitionerCtx);
+      vi.mocked(patientMessagingService.listPatientMessagesForPractitioner).mockResolvedValue([]);
+
+      await listPractitionerPatientMessagesAction('pat-1');
+
+      expect(patientMessagingService.listPatientMessagesForPractitioner).toHaveBeenCalledWith(
+        mockPractitionerCtx.organizationId,
+        mockPractitionerCtx.practitionerId,
+        'pat-1',
       );
     });
   });

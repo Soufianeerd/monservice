@@ -1,5 +1,6 @@
 import { db } from '@/lib/db/server';
 import {
+  careEpisodes,
   messages,
   patientPortalAccess,
   patientProfiles,
@@ -71,7 +72,28 @@ export class PatientMessagingService {
       throw new AppError('Le praticien n’a pas de compte utilisateur lié pour la messagerie', 400, 'PRACTITIONER_NO_USER');
     }
 
-    // 3. Create message
+    // 3. Verify active care relationship
+    const [activeCareEpisode] = await db
+      .select({ id: careEpisodes.id })
+      .from(careEpisodes)
+      .where(
+        and(
+          eq(careEpisodes.organizationId, organizationId),
+          eq(careEpisodes.patientId, input.patientId),
+          eq(careEpisodes.practitionerId, input.practitionerId),
+          eq(careEpisodes.status, 'active'),
+        ),
+      );
+
+    if (!activeCareEpisode) {
+      throw new AppError(
+        'Relation de soins active requise pour échanger des messages avec ce praticien',
+        403,
+        'ACTIVE_CARE_RELATIONSHIP_REQUIRED',
+      );
+    }
+
+    // 4. Create message
     const now = new Date().toISOString();
     const messageId = randomUUID();
 
@@ -105,6 +127,7 @@ export class PatientMessagingService {
    */
   async sendPractitionerMessage(
     organizationId: string,
+    practitionerId: string,
     practitionerUserId: string,
     input: {
       patientId: string;
@@ -150,7 +173,28 @@ export class PatientMessagingService {
       throw new AppError('Destinataire portail non autorisé ou inactif', 403, 'FORBIDDEN');
     }
 
-    // 3. Create message
+    // 3. Verify active care relationship
+    const [activeCareEpisode] = await db
+      .select({ id: careEpisodes.id })
+      .from(careEpisodes)
+      .where(
+        and(
+          eq(careEpisodes.organizationId, organizationId),
+          eq(careEpisodes.patientId, input.patientId),
+          eq(careEpisodes.practitionerId, practitionerId),
+          eq(careEpisodes.status, 'active'),
+        ),
+      );
+
+    if (!activeCareEpisode) {
+      throw new AppError(
+        'Relation de soins active requise pour échanger des messages avec ce patient',
+        403,
+        'ACTIVE_CARE_RELATIONSHIP_REQUIRED',
+      );
+    }
+
+    // 4. Create message
     const now = new Date().toISOString();
     const messageId = randomUUID();
 
@@ -242,12 +286,33 @@ export class PatientMessagingService {
   }
 
   /**
-   * Récupère le fil de discussion pour les praticiens du cabinet.
+   * Récupère le fil de discussion pour les praticiens du cabinet avec vérification de relation clinique.
    */
   async listPatientMessagesForPractitioner(
     organizationId: string,
+    practitionerId: string,
     patientId: string,
   ): Promise<PatientPortalMessageDTO[]> {
+    // Verify care relationship (active or closed for historical consultation)
+    const [hasRelationship] = await db
+      .select({ id: careEpisodes.id })
+      .from(careEpisodes)
+      .where(
+        and(
+          eq(careEpisodes.organizationId, organizationId),
+          eq(careEpisodes.patientId, patientId),
+          eq(careEpisodes.practitionerId, practitionerId),
+        ),
+      );
+
+    if (!hasRelationship) {
+      throw new AppError(
+        'Accès non autorisé : aucune relation de soins établie avec ce patient',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
     const messageRows = await db
       .select()
       .from(messages)

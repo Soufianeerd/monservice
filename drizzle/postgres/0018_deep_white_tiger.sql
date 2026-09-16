@@ -165,10 +165,11 @@ CREATE POLICY "patient_billing_links_practitioner_all"
 ALTER TABLE "appointment_reminder_deliveries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 
 -- 5. messages (hardened for patient mode)
-CREATE OR REPLACE FUNCTION public.can_insert_patient_message(
-  p_sender_id text,
-  p_receiver_id text,
-  p_patient_id text
+CREATE OR REPLACE FUNCTION public.has_patient_practitioner_relationship(
+  p_organization_id text,
+  p_patient_id text,
+  p_practitioner_id text,
+  p_require_active boolean DEFAULT false
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -176,32 +177,103 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+  IF p_require_active THEN
+    RETURN EXISTS (
+      SELECT 1 FROM public.care_episodes ce
+      WHERE ce.organization_id = p_organization_id
+        AND ce.patient_id = p_patient_id
+        AND ce.practitioner_id = p_practitioner_id
+        AND ce.status = 'active'
+    );
+  ELSE
+    RETURN EXISTS (
+      SELECT 1 FROM public.care_episodes ce
+      WHERE ce.organization_id = p_organization_id
+        AND ce.patient_id = p_patient_id
+        AND ce.practitioner_id = p_practitioner_id
+    );
+  END IF;
+END;
+$$;--> statement-breakpoint
+
+DROP FUNCTION IF EXISTS public.can_insert_patient_message(text, text, text);--> statement-breakpoint
+CREATE OR REPLACE FUNCTION public.can_insert_patient_message(
+  p_sender_id text,
+  p_receiver_id text,
+  p_patient_id text,
+  p_organization_id text DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_practitioner_id text;
+  v_org_id text;
+BEGIN
   IF p_patient_id IS NULL THEN
     RETURN true;
   END IF;
 
-  -- Case 1: Sender is a patient/representative user with active portal access to this patient, sending to an active practitioner in the same org
+  -- Case 1: Sender is a patient client sending to an active practitioner with an active care episode
   IF EXISTS (
-    SELECT 1 FROM public.patient_portal_access ppa
-    JOIN public.practice_practitioners pp ON pp.organization_id = ppa.organization_id
-    WHERE ppa.patient_id = p_patient_id
-      AND ppa.user_id = p_sender_id
-      AND ppa.is_active = true
-      AND pp.user_id = p_receiver_id
-      AND pp.is_active = true
+    SELECT 1 FROM public.users u
+    WHERE u.id = p_sender_id AND u.profile_type = 'client'
   ) THEN
-    RETURN true;
+    RETURN EXISTS (
+      SELECT 1 
+      FROM public.patient_portal_access ppa
+      JOIN public.practice_practitioners pp 
+        ON pp.organization_id = ppa.organization_id 
+       AND pp.user_id = p_receiver_id 
+       AND pp.is_active = true
+      JOIN public.care_episodes ce 
+        ON ce.organization_id = ppa.organization_id 
+       AND ce.patient_id = ppa.patient_id 
+       AND ce.practitioner_id = pp.id 
+       AND ce.status = 'active'
+      WHERE ppa.user_id = p_sender_id
+        AND ppa.patient_id = p_patient_id
+        AND (p_organization_id IS NULL OR ppa.organization_id = p_organization_id)
+        AND ppa.is_active = true
+    );
   END IF;
 
-  -- Case 2: Sender is an active clinical practitioner in the practice sending to a patient user with active portal access
-  IF public.current_clinical_practitioner_id() IS NOT NULL AND EXISTS (
-    SELECT 1 FROM public.patient_portal_access ppa
-    WHERE ppa.patient_id = p_patient_id
-      AND ppa.organization_id = public.current_organization_id()
-      AND ppa.user_id = p_receiver_id
-      AND ppa.is_active = true
-  ) THEN
-    RETURN true;
+  -- Case 2: Sender is an active clinical practitioner in the practice sending to a client patient with active portal access and active care episode
+  v_practitioner_id := public.current_clinical_practitioner_id();
+  IF v_practitioner_id IS NOT NULL THEN
+    -- Verify sender user is the practitioner user
+    IF NOT EXISTS (
+      SELECT 1 FROM public.practice_practitioners pp
+      WHERE pp.id = v_practitioner_id AND pp.user_id = p_sender_id AND pp.is_active = true
+    ) THEN
+      RETURN false;
+    END IF;
+
+    -- Verify receiver is a client user
+    IF NOT EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = p_receiver_id AND u.profile_type = 'client'
+    ) THEN
+      RETURN false;
+    END IF;
+
+    v_org_id := COALESCE(p_organization_id, public.current_organization_id());
+
+    RETURN EXISTS (
+      SELECT 1 
+      FROM public.patient_portal_access ppa
+      JOIN public.care_episodes ce 
+        ON ce.organization_id = ppa.organization_id 
+       AND ce.patient_id = ppa.patient_id 
+       AND ce.practitioner_id = v_practitioner_id 
+       AND ce.status = 'active'
+      WHERE ppa.user_id = p_receiver_id
+        AND ppa.patient_id = p_patient_id
+        AND (v_org_id IS NULL OR ppa.organization_id = v_org_id)
+        AND ppa.is_active = true
+    );
   END IF;
 
   RETURN false;
@@ -227,6 +299,13 @@ BEGIN
       RAISE EXCEPTION 'Structural mutation is not allowed on patient messages'
         USING ERRCODE = '23514';
     END IF;
+
+    -- Read state machine: true -> false is forbidden
+    IF OLD.is_read = true AND NEW.is_read = false THEN
+      RAISE EXCEPTION 'Read state cannot transition from true to false on patient messages'
+        USING ERRCODE = '23514';
+    END IF;
+
     NEW.updated_at := now();
   END IF;
   RETURN NEW;
@@ -245,7 +324,46 @@ CREATE POLICY "messages_select_policy"
   ON "messages"
   FOR SELECT
   TO authenticated
-  USING ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text);--> statement-breakpoint
+  USING (
+    (
+      "patient_id" IS NULL AND (
+        "sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text
+      )
+    )
+    OR
+    (
+      "patient_id" IS NOT NULL AND (
+        -- Client participant branch
+        (
+          ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text)
+          AND EXISTS (
+            SELECT 1 FROM public.users u
+            JOIN public.patient_portal_access ppa 
+              ON ppa.user_id = u.id 
+             AND ppa.patient_id = "messages"."patient_id" 
+             AND ppa.organization_id = "messages"."organization_id"
+             AND ppa.is_active = true
+            WHERE u.id = auth.uid()::text AND u.profile_type = 'client'
+          )
+        )
+        OR
+        -- Practitioner participant branch
+        (
+          ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text)
+          AND EXISTS (
+            SELECT 1 FROM public.practice_practitioners pp
+            JOIN public.care_episodes ce 
+              ON ce.organization_id = "messages"."organization_id"
+             AND ce.patient_id = "messages"."patient_id"
+             AND ce.practitioner_id = pp.id
+            WHERE pp.user_id = auth.uid()::text
+              AND pp.id = public.current_clinical_practitioner_id()
+              AND pp.is_active = true
+          )
+        )
+      )
+    )
+  );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "messages_insert_policy" ON "messages";--> statement-breakpoint
 CREATE POLICY "messages_insert_policy"
@@ -254,7 +372,7 @@ CREATE POLICY "messages_insert_policy"
   TO authenticated
   WITH CHECK (
     "sender_id" = auth.uid()::text AND
-    public.can_insert_patient_message("sender_id", "receiver_id", "patient_id")
+    public.can_insert_patient_message("sender_id", "receiver_id", "patient_id", "organization_id")
   );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "messages_update_policy" ON "messages";--> statement-breakpoint
@@ -263,14 +381,72 @@ CREATE POLICY "messages_update_policy"
   FOR UPDATE
   TO authenticated
   USING (
-    ("patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text)
+    (
+      "patient_id" IS NULL AND (
+        "sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text
+      )
+    )
     OR
-    ("patient_id" IS NULL AND ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text))
+    (
+      "patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text AND (
+        -- Receiver client branch
+        EXISTS (
+          SELECT 1 FROM public.users u
+          JOIN public.patient_portal_access ppa 
+            ON ppa.user_id = u.id 
+           AND ppa.patient_id = "messages"."patient_id" 
+           AND ppa.organization_id = "messages"."organization_id"
+           AND ppa.is_active = true
+          WHERE u.id = auth.uid()::text AND u.profile_type = 'client'
+        )
+        OR
+        -- Receiver practitioner branch
+        EXISTS (
+          SELECT 1 FROM public.practice_practitioners pp
+          JOIN public.care_episodes ce 
+            ON ce.organization_id = "messages"."organization_id"
+           AND ce.patient_id = "messages"."patient_id"
+           AND ce.practitioner_id = pp.id
+          WHERE pp.user_id = auth.uid()::text
+            AND pp.id = public.current_clinical_practitioner_id()
+            AND pp.is_active = true
+        )
+      )
+    )
   )
   WITH CHECK (
-    ("patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text)
+    (
+      "patient_id" IS NULL AND (
+        "sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text
+      )
+    )
     OR
-    ("patient_id" IS NULL AND ("sender_id" = auth.uid()::text OR "receiver_id" = auth.uid()::text))
+    (
+      "patient_id" IS NOT NULL AND "receiver_id" = auth.uid()::text AND (
+        -- Receiver client branch
+        EXISTS (
+          SELECT 1 FROM public.users u
+          JOIN public.patient_portal_access ppa 
+            ON ppa.user_id = u.id 
+           AND ppa.patient_id = "messages"."patient_id" 
+           AND ppa.organization_id = "messages"."organization_id"
+           AND ppa.is_active = true
+          WHERE u.id = auth.uid()::text AND u.profile_type = 'client'
+        )
+        OR
+        -- Receiver practitioner branch
+        EXISTS (
+          SELECT 1 FROM public.practice_practitioners pp
+          JOIN public.care_episodes ce 
+            ON ce.organization_id = "messages"."organization_id"
+           AND ce.patient_id = "messages"."patient_id"
+           AND ce.practitioner_id = pp.id
+          WHERE pp.user_id = auth.uid()::text
+            AND pp.id = public.current_clinical_practitioner_id()
+            AND pp.is_active = true
+        )
+      )
+    )
   );--> statement-breakpoint
 
 DROP POLICY IF EXISTS "messages_delete_policy" ON "messages";--> statement-breakpoint
@@ -293,7 +469,10 @@ GRANT SELECT, INSERT, UPDATE ON TABLE "patient_portal_access" TO authenticated;-
 GRANT SELECT, INSERT, UPDATE ON TABLE "patient_questionnaire_assignments" TO authenticated;--> statement-breakpoint
 GRANT SELECT, INSERT, UPDATE ON TABLE "patient_billing_links" TO authenticated;--> statement-breakpoint
 
-REVOKE ALL ON FUNCTION public.can_insert_patient_message(text, text, text) FROM PUBLIC, anon;--> statement-breakpoint
-GRANT EXECUTE ON FUNCTION public.can_insert_patient_message(text, text, text) TO authenticated;--> statement-breakpoint
+REVOKE ALL ON FUNCTION public.has_patient_practitioner_relationship(text, text, text, boolean) FROM PUBLIC, anon;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION public.has_patient_practitioner_relationship(text, text, text, boolean) TO authenticated;--> statement-breakpoint
+
+REVOKE ALL ON FUNCTION public.can_insert_patient_message(text, text, text, text) FROM PUBLIC, anon;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION public.can_insert_patient_message(text, text, text, text) TO authenticated;--> statement-breakpoint
 
 REVOKE ALL ON FUNCTION public.enforce_patient_message_update() FROM PUBLIC, anon, authenticated;
