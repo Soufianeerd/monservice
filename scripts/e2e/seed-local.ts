@@ -850,7 +850,7 @@ async function seed() {
     },
   ]).onConflictDoNothing();
 
-  const questionnaireA1Id = 'b0000000-0000-4000-8000-000000000003';
+  const questionnaireA1Id = SEED_PATIENT_PORTAL_IDS.questionnaireA;
   await db.insert(patientQuestionnaireAssignments).values([
     {
       id: questionnaireA1Id,
@@ -859,7 +859,7 @@ async function seed() {
       practitionerId: SEED_PRACTICE_IDS.practitionerA,
       templateId: SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA,
       status: 'assigned',
-      answersJson: {},
+      answersJson: { q1: 'val1' },
     },
   ]).onConflictDoNothing();
 
