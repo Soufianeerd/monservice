@@ -154,7 +154,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       });
       expect(insertError).not.toBeNull();
 
-      const { error: updateError } = await clientAClient
+      await clientAClient
         .from('clinical_documents')
         .update({ title: 'Hacked Title' })
         .eq('id', SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);

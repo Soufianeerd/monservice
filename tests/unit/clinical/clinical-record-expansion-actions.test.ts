@@ -12,7 +12,6 @@ import { requireClinicalPractitionerContext } from '@/lib/clinical/auth';
 import { clinicalRecordService } from '@/lib/services/clinical-record.service';
 import { clinicalStorageService } from '@/lib/services/clinical-storage.service';
 import { AppError } from '@/lib/errors';
-import { revalidatePath } from 'next/cache';
 
 vi.mock('@/lib/clinical/auth', () => ({
   requireClinicalPractitionerContext: vi.fn(),

@@ -70,7 +70,7 @@ export class DeliveryService {
     };
   }
 
-  private determineChannel(invoice: Invoice): 'peppol' | 'pdp' | 'email' {
+  determineChannel(invoice: Pick<Invoice, 'customerCountry' | 'customerType'>): 'peppol' | 'pdp' | 'email' {
     const customerCountry = invoice.customerCountry?.toUpperCase() || '';
     
     // BE B2B → Peppol
