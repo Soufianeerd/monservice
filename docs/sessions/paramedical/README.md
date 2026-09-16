@@ -37,5 +37,5 @@ Ce répertoire contient la documentation des sessions de développement incréme
 | **12** | Clinical Record Expansion: Documents, Forms, Measurements & Timeline | 12 Septembre 2026 | Terminée | [Session 12](SESSION_12_CLINICAL_RECORD_EXPANSION.md) |
 | **12B** | Clinical Record Expansion Finalization | 12 Septembre 2026 | Terminée | [Session 12B](SESSION_12B_CLINICAL_RECORD_EXPANSION_FINALIZATION.md) |
 | **13** | Paramedical Profession Packs | 13 Septembre 2026 | Terminée | [Session 13](SESSION_13_PROFESSION_PACKS.md) |
-| **14** | Paramedical Patient Experience & Operational Loop | 14 Septembre 2026 | En cours | [Session 14](SESSION_14_PATIENT_PORTAL_BILLING_COMMUNICATION.md) |
+| **14** | Paramedical Patient Experience & Operational Loop | 14 Septembre 2026 | Terminée | [Session 14](SESSION_14_PATIENT_PORTAL_BILLING_COMMUNICATION.md) |
 
