@@ -80,4 +80,6 @@ jobs:
       - run: npx playwright install --with-deps
       - run: npm run test:e2e:compliance
       - name: Run Patient Portal E2E Tests
-        run: npx playwright test e2e/patient-portal-journey.spec.ts
+        run: npm run test:e2e:patient-portal
+      - name: Run Paramedical Practitioner E2E Tests
+        run: npm run test:e2e:paramedical

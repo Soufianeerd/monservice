@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/auth/session';
+import { requireProfessional } from '@/lib/auth/session';
 import { AuditService } from '@/lib/services/audit.service';
 import { RBACService } from '@/lib/services/rbac.service';
+import { toErrorResponse } from '@/lib/utils/api-response';
 
 export async function GET(req: Request) {
   try {
-    const session = await requireSession();
-    if (!session.organizationId || !session.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await requireProfessional();
+
+    const rbac = new RBACService();
+    await rbac.require(session.userId, session.organizationId, 'audit:view');
 
     const { searchParams } = new URL(req.url);
     const format = searchParams.get('format') === 'csv' ? 'csv' : 'json';
@@ -21,10 +22,10 @@ export async function GET(req: Request) {
       headers: {
         'Content-Type': format === 'csv' ? 'text/csv' : 'application/json',
         'Content-Disposition': `attachment; filename="audit-logs.${format}"`,
+        'Cache-Control': 'private, no-store',
       },
     });
-  } catch (error) {
-    console.error('Failed to export audit logs', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: unknown) {
+    return toErrorResponse(error, 'Erreur lors de l’export des journaux d’audit');
   }
 }

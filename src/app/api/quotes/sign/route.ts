@@ -45,10 +45,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Signature non autorisée par le plan du professionnel' }, { status: 403 });
     }
 
-    // Le client destinataire ou le professionnel propriétaire peut signer (cas de double signature si implémenté, 
-    // ou simplement validation client).
-    const isOwner = ctx.organizationId && quote.organizationId === ctx.organizationId;
-    const isRecipient = quote.clientId === ctx.userId || quote.recipientUserId === ctx.userId;
+    // Le client destinataire (recipientUserId) ou le professionnel émetteur peut signer
+    const isOwner =
+      ctx.profileType === 'professional' &&
+      Boolean(ctx.organizationId) &&
+      quote.organizationId === ctx.organizationId;
+    const isRecipient =
+      ctx.profileType === 'client' &&
+      quote.recipientUserId === ctx.userId;
 
     if (!isOwner && !isRecipient) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
@@ -71,7 +75,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, quote: updatedQuote });
-  } catch (error) {
+  } catch (error: unknown) {
     return toErrorResponse(error, 'Erreur lors de la sauvegarde de la signature');
   }
 }

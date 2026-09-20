@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceService } from '@/lib/services/invoice.service';
-
 import { requireSession } from '@/lib/auth/session';
+import { toErrorResponse } from '@/lib/utils/api-response';
 
 export async function GET(
   request: NextRequest, 
@@ -18,12 +18,26 @@ export async function GET(
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
-    const isIssuer = ctx.organizationId && invoice.organizationId === ctx.organizationId;
-    const isRecipient = invoice.clientId === ctx.userId || invoice.professionalId === ctx.userId;
+    const isIssuer =
+      ctx.profileType === 'professional' &&
+      Boolean(ctx.organizationId) &&
+      invoice.organizationId === ctx.organizationId;
+    const isRecipient =
+      ctx.profileType === 'client' &&
+      invoice.recipientUserId === ctx.userId;
+
     if (!isIssuer && !isRecipient) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
     
+    if (isRecipient) {
+      return NextResponse.json({
+        invoiceId: invoice.id,
+        deliveryStatus: invoice.deliveryStatus || 'pending',
+        deliverySentAt: invoice.deliverySentAt,
+      });
+    }
+
     return NextResponse.json({
       invoiceId: invoice.id,
       deliveryStatus: invoice.deliveryStatus || 'pending',
@@ -32,10 +46,8 @@ export async function GET(
       deliveryAttempts: invoice.deliveryAttempts || 0,
       deliverySentAt: invoice.deliverySentAt,
       deliveryLastAttemptAt: invoice.deliveryLastAttemptAt,
-      // optionally parse response if safe to expose
     });
-  } catch (error: any) {
-    console.error('Delivery status error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return toErrorResponse(error, 'Erreur lors de la récupération du statut de livraison');
   }
 }

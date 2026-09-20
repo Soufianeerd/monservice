@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSubscriptionCheckout } from '@/lib/stripe/billing';
 import { userService } from '@/lib/services/user.service';
 import { isStripeConfigured } from '@/lib/stripe';
-import { requireSession } from '@/lib/auth/session';
+import { requireProfessional } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/api-response';
 
 const PRICE_BY_TIER: Record<string, string | undefined> = {
@@ -12,11 +12,10 @@ const PRICE_BY_TIER: Record<string, string | undefined> = {
 };
 
 /**
- * Ouvre une session d'abonnement Stripe pour l'utilisateur connecté.
+ * Ouvre une session d'abonnement Stripe pour le professionnel connecté.
  *
- * L'ancienne version prenait `userId` et `organizationId` dans le corps de la
- * requête, sans authentification : il était possible d'ouvrir un abonnement au
- * nom d'un tiers (MS-002).
+ * L'abonnement MonSERVICE est strictement réservé aux professionnels / organisations.
+ * Les métadonnées d'attribution de droits proviennent exclusivement de la session serveur.
  */
 export async function POST(req: Request) {
   if (!isStripeConfigured()) {
@@ -24,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const ctx = await requireSession();
+    const ctx = await requireProfessional();
 
     const body = await req.json().catch(() => null);
     const tier = typeof body?.tier === 'string' ? body.tier : null;
@@ -53,11 +52,11 @@ export async function POST(req: Request) {
       `${baseUrl}/parametres/facturation`,
       // Les métadonnées proviennent de la session, jamais du client :
       // c'est sur elles que le webhook accorde les droits.
-      { userId: ctx.userId, organizationId: ctx.organizationId ?? '', tier },
+      { userId: ctx.userId, organizationId: ctx.organizationId, tier },
     );
 
     return NextResponse.json({ url });
-  } catch (error) {
+  } catch (error: unknown) {
     return toErrorResponse(error, 'Erreur lors de la création de la session');
   }
 }

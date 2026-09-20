@@ -47,10 +47,10 @@ const nextConfig: NextConfig = {
       // Les espaces authentifiés ne doivent jamais être indexés ni mis en cache
       // par un intermédiaire partagé.
       {
-        source: '/(dashboard|client|clients|deals|facturation|agenda|parametres|messages)/:path*',
+        source: '/(dashboard|client|clients|deals|facturation|agenda|parametres|messages|patients|api)/:path*',
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
-          { key: 'Cache-Control', value: 'no-store, max-age=0' },
+          { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
         ],
       },
     ];

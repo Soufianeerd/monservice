@@ -51,4 +51,12 @@ test.describe('Patient Portal Journey E2E (Session 14)', () => {
     await page.goto('/client/sante/messages');
     await expect(page.locator('h1')).toContainText('Messagerie');
   });
+
+  test('PATIENT_PORTAL_E2E_07: Mobile viewport smoke (390x844)', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/client/sante');
+    await expect(page.locator('h1')).toContainText('Suivi de vos soins');
+    await expect(page.locator('a[href="/client/sante/rendez-vous"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/client/sante/messages"]').first()).toBeVisible();
+  });
 });

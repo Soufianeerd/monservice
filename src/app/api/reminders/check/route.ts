@@ -9,18 +9,16 @@ import { toErrorResponse } from '@/lib/utils/api-response';
  * Deux modes d'appel, tous deux authentifiés :
  *  - une tâche planifiée, porteuse de l'en-tête `x-cron-secret` (toutes les
  *    organisations) ;
- *  - un utilisateur connecté, pour sa seule organisation.
+ *  - un professionnel connecté, pour sa seule organisation.
  *
  * L'ancienne version acceptait un `organizationId` en query string sans
- * aucune authentification : elle permettait de déclencher des envois pour
- * n'importe quelle organisation et d'énumérer les identifiants existants
- * (anomalie MS-013).
+ * aucune authentification (anomalie MS-013).
  */
 export async function GET(req: Request) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     const providedSecret = req.headers.get('x-cron-secret');
-    const isCron = Boolean(cronSecret) && providedSecret === cronSecret;
+    const isCron = Boolean(cronSecret && cronSecret.length > 0) && providedSecret === cronSecret;
 
     if (isCron) {
       const result = await reminderService.checkAndSendRemindersForAllOrganizations();
@@ -28,13 +26,17 @@ export async function GET(req: Request) {
     }
 
     const ctx = await getSessionContext();
-    if (!ctx?.organizationId) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    if (!ctx) {
+      return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
+    }
+
+    if (ctx.profileType !== 'professional' || !ctx.organizationId) {
+      return NextResponse.json({ error: 'Accès réservé aux professionnels' }, { status: 403 });
     }
 
     const result = await reminderService.checkAndSendReminders(ctx.organizationId);
     return NextResponse.json({ success: true, count: result?.sent ?? 0 });
-  } catch (error) {
+  } catch (error: unknown) {
     return toErrorResponse(error, 'Erreur lors de la vérification des relances');
   }
 }

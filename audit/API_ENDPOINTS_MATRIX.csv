@@ -1,10 +1,25 @@
-methode,chemin,fonction_metier,authentification,autorisation,locataire,validation_entree,pagination,rate_limit,idempotence,journalisation,tests,statut,anomalies
-POST,/api/auth/[...nextauth],Connexion NextAuth,n/a,n/a,n/a,partielle,n/a,AUCUN,n/a,console.log,aucun,VERIFIE,MS-017
-POST,/api/stripe/webhook,Evenements Stripe,Signature Stripe OK,n/a,via metadata,SDK Stripe,n/a,n/a,AUCUNE,console.log,aucun,VERIFIE,MS-014
-POST,/api/stripe/checkout,Creation abonnement,AUCUNE,AUCUNE,userId du body,AUCUNE,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-002 MS-019
-POST,/api/stripe/create-payment,Paiement facture,AUCUNE,AUCUNE,AUCUN,partielle,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,IDOR invoiceId MS-010
-POST,/api/stripe/connect/onboarding,Onboarding Connect,AUCUNE,AUCUNE,orgId du body,AUCUNE,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-012
-POST,/api/deals/sign,Signature deal,Supabase (toujours 401),via orgId DB,oui,partielle,n/a,AUCUN,partielle,console.log,aucun,VERIFIE,MS-008 MS-032
-POST,/api/quotes/sign,Signature devis,Supabase (toujours 401),AUCUNE,AUCUN,partielle,n/a,AUCUN,partielle,console.log,aucun,VERIFIE,MS-008 MS-007
-GET,/api/reminders/check,Declenchement relances,AUCUNE,AUCUNE,orgId en query,minimale,n/a,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-013 MS-018
-POST,server-action:*(~80),CRUD complet,AUCUNE,AUCUNE,parametre client,AUCUNE (any),AUCUNE,AUCUN,AUCUNE,console.log,aucun,VERIFIE,MS-002 MS-005 MS-033
+methode,chemin,fonction_metier,public_private,authentification,profil_requis,autorite_locataire,autorisation_ressource,validation_entree,validation_secret,rate_limit,fuite_erreur,journalisation_sensible,tests,statut
+POST,/api/stripe/webhook,Traitement webhooks Stripe,public,Signature Stripe,n/a,via metadata,SDK Stripe,SDK Stripe,STRIPE_WEBHOOK_SECRET,n/a,AUCUNE,AUCUNE,session14-unit,VERIFIE
+POST,/api/stripe/checkout,Ouverture session abonnement SaaS,private,requireProfessional,professional,serveur (session),n/a,Zod/Whitelist tier,process.env,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/stripe/connect/onboarding,Lien onboarding Stripe Connect,private,requireProfessional,professional,serveur (session),n/a,n/a,process.env,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/stripe/create-payment,Paiement facture en ligne,private,requireSession,professional/client,serveur (session),emetteur exact OU destinataire exact,Zod/UUID,process.env,n/a,AUCUNE,AUCUNE,session14-payment,VERIFIE
+POST,/api/invoices/[id]/send,Envoi facture via canal delivery,private,requireProfessional,professional,serveur (session),emetteur organisation exact,params id,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/invoices/[id]/download,Telechargement facture structuree,private,requireSession,professional/client,serveur (session),emetteur exact OU destinataire exact,format whitelist (xml/zip),n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/invoices/[id]/delivery-status,Statut de livraison facture,private,requireSession,professional/client,serveur (session),emetteur exact OU destinataire exact (data minimized),params id,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/reminders/check,Declenchement relances factures,private,CronSecret OU requireProfessional,professional,serveur (session) / global cron,organisation session,n/a,x-cron-secret,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/reminders/appointments/check,Declenchement rappels RDV,private,CronSecret OU requireProfessional,professional,serveur (session) / global cron,organisation session,n/a,x-cron-secret,n/a,AUCUNE,AUCUNE,session14-reminders,VERIFIE
+GET,/api/admin/audit,Consultation journaux audit,private,requireProfessional,professional,serveur (session),RBAC audit:view,n/a,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/admin/audit/export,Export journaux audit,private,requireProfessional,professional,serveur (session),RBAC audit:view,format whitelist (csv/json),n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/privacy/breach,Declaration violation donnees,private,requireProfessional,professional,serveur (session),organisation session,Zod/required fields,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+PUT,/api/privacy/breach,Mise a jour statut violation,private,requireProfessional,professional,serveur (session),verification tenant ID,Zod/required fields,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/privacy/dsar,Creation demande RGPD/DSAR,private,requireSession,client/professional,serveur (session),organisation session,Zod validation,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+PUT,/api/privacy/dsar,Traitement demande RGPD/DSAR,private,requireProfessional,professional,serveur (session),RBAC privacy:manage + tenant ID,Zod validation,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/privacy/consent,Enregistrement consentement,private,requireSession,client/professional,serveur (session),organisation session,type/boolean validation,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/privacy/consent,Historique des consentements,private,requireSession,client/professional,serveur (session),userId session,type query,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+GET,/api/retention/check,Controle retention documents,private,requireProfessional,professional,serveur (session),organisation session,n/a,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/retention/export,Export archive retention,private,requireProfessional,professional,serveur (session),organisation session,startDate/endDate ISO,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/auth/mfa,Generation secret MFA TOTP,private,requireSession,client/professional,serveur (session),userId session,n/a,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+DELETE,/api/auth/mfa,Desactivation MFA TOTP,private,requireSession,client/professional,serveur (session),userId session,n/a,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/auth/mfa/verify,Verification code MFA TOTP,private,requireSession,client/professional,serveur (session),userId session,Zod regex 6 chiffres,n/a,rateLimit IP,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/deals/sign,Signature electronique deal,private,requireOrganization,professional,serveur (session),verification tenant deal,dealId/signature,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE
+POST,/api/quotes/sign,Signature electronique devis,private,requireSession,professional/client,serveur (session),emetteur exact OU destinataire exact,quoteId/signature,n/a,n/a,AUCUNE,AUCUNE,session15-security,VERIFIE

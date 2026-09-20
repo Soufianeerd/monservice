@@ -1,36 +1,29 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/auth/session';
 import { mfaService } from '@/lib/services/mfa.service';
+import { toErrorResponse } from '@/lib/utils/api-response';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const session = await requireSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { secret, otpauthUrl } = await mfaService.generateSecret(session.userId);
     const qrCode = await mfaService.generateQRCode(otpauthUrl);
 
     return NextResponse.json({ secret, qrCode });
-  } catch (error) {
-    console.error('MFA activation error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: unknown) {
+    return toErrorResponse(error, 'Erreur lors de l’activation MFA');
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE() {
   try {
     const session = await requireSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     await mfaService.disableMFA(session.userId);
 
-    return NextResponse.json({ message: 'MFA disabled successfully' });
-  } catch (error) {
-    console.error('MFA deactivation error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ message: 'MFA désactivé avec succès' });
+  } catch (error: unknown) {
+    return toErrorResponse(error, 'Erreur lors de la désactivation MFA');
   }
 }

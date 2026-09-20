@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ success: true, ...result });
-  } catch (error) {
+  } catch (error: unknown) {
     return toErrorResponse(error, 'Erreur lors du traitement des rappels de rendez-vous');
   }
 }

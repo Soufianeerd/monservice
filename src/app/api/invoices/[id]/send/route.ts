@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DeliveryService } from '@/lib/services/delivery.service';
-
-import { requireSession } from '@/lib/auth/session';
+import { requireProfessional } from '@/lib/auth/session';
 import { invoiceService } from '@/lib/services/invoice.service';
+import { toErrorResponse } from '@/lib/utils/api-response';
 
 export async function POST(
   request: NextRequest, 
@@ -11,7 +11,7 @@ export async function POST(
   try {
     const { id } = await params;
     
-    const ctx = await requireSession();
+    const ctx = await requireProfessional();
     
     const invoice = await invoiceService.getById(id);
     if (!invoice || invoice.organizationId !== ctx.organizationId) {
@@ -22,8 +22,7 @@ export async function POST(
     const result = await deliveryService.sendInvoice(id);
     
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Invoice send error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return toErrorResponse(error, 'Erreur lors de l’envoi de la facture');
   }
 }
