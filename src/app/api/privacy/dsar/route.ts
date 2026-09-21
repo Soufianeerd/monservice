@@ -49,7 +49,6 @@ export async function PUT(request: NextRequest) {
     const rbac = new RBACService();
     const canManagePrivacy =
       (await rbac.can(session.userId, session.organizationId, 'privacy:manage')) ||
-      (await rbac.can(session.userId, session.organizationId, 'audit:view')) ||
       (await rbac.can(session.userId, session.organizationId, 'admin'));
 
     const userRoles = await rbac.getUserRoles(session.userId, session.organizationId);

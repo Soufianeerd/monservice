@@ -78,7 +78,7 @@ La **Session 15** constitue la session finale et de clôture définitive de la v
 
 La verticale **Paramédical V1** est formellement déclarée **GELÉE** et complète :
 - **50 tables PostgreSQL** stabilisées et verrouillées (0 migration 0019 requise).
-- **7 Profession Packs** opérationnels (Ostéopathe, Kinésithérapeute, Orthophoniste, Psychologue, Diététicien, Ergothérapeute, Podologue).
+- **7 Profession Packs** opérationnels (Ostéopathe, Kinésithérapeute, Orthophoniste, Psychomotricien, Diététicien, Ergothérapeute, Podologue).
 - **RLS & Storage** cliniques hermétiques et éprouvés.
 - **APIs Core** sécurisées contre les attaques IDOR, cross-tenant et élévation de privilèges.
 

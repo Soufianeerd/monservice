@@ -50,7 +50,10 @@ vi.mock('@/lib/services/rbac.service', () => ({
         throw new AppError('Permission denied', 403, 'FORBIDDEN');
       }
     });
-    can = vi.fn().mockImplementation(async (userId: string) => {
+    can = vi.fn().mockImplementation(async (userId: string, _orgId?: string, permission?: string) => {
+      if (userId === 'audit_only_user') {
+        return permission === 'audit:view';
+      }
       return userId === 'admin_user';
     });
     getUserRoles = vi.fn().mockImplementation(async (userId: string) => {
@@ -111,6 +114,8 @@ vi.mock('@/lib/services/mfa.service', () => ({
 import { requireSession, requireProfessional, getSessionContext } from '@/lib/auth/session';
 import { invoiceService } from '@/lib/services/invoice.service';
 import { storageService } from '@/lib/storage/storage.service';
+import { dsarService } from '@/lib/services/dsar.service';
+import { Invoice } from '@/lib/data/interfaces/invoice.interface';
 
 import { POST as sendInvoiceHandler } from '@/app/api/invoices/[id]/send/route';
 import { GET as downloadInvoiceHandler } from '@/app/api/invoices/[id]/download/route';
@@ -121,6 +126,26 @@ import { GET as adminAuditExportHandler } from '@/app/api/admin/audit/export/rou
 import { POST as createBreachHandler, PUT as updateBreachHandler } from '@/app/api/privacy/breach/route';
 import { POST as createDsarHandler, PUT as processDsarHandler } from '@/app/api/privacy/dsar/route';
 import { POST as verifyMfaHandler } from '@/app/api/auth/mfa/verify/route';
+
+function createMockInvoice(overrides: Partial<Invoice> = {}): Invoice {
+  return {
+    id: 'inv_1',
+    organizationId: 'org_a',
+    type: 'invoice',
+    number: 'INV-2026-001',
+    date: '2026-09-01',
+    clientId: 'client_a',
+    recipientUserId: 'client_a',
+    lines: [],
+    totalHT: 100,
+    taxAmount: 20,
+    totalTTC: 120,
+    status: 'sent',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
 
 describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
   beforeEach(() => {
@@ -135,11 +160,13 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'professional',
         email: 'pro@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/send', { method: 'POST' });
       const res = await sendInvoiceHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -167,11 +194,13 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'professional',
         email: 'pro@org-b.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/send', { method: 'POST' });
       const res = await sendInvoiceHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -188,12 +217,14 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'professional',
         email: 'pro@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-        structuredInvoicePath: 'invoices/org_a/inv_1.xml',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+          structuredInvoicePath: 'invoices/org_a/inv_1.xml',
+        })
+      );
       vi.mocked(storageService.getFileBuffer).mockResolvedValueOnce(Buffer.from('<xml>invoice</xml>'));
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/download?format=xml');
@@ -211,12 +242,14 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'client',
         email: 'client@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-        structuredInvoicePath: 'invoices/org_a/inv_1.xml',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+          structuredInvoicePath: 'invoices/org_a/inv_1.xml',
+        })
+      );
       vi.mocked(storageService.getFileBuffer).mockResolvedValueOnce(Buffer.from('<xml>invoice</xml>'));
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/download?format=xml');
@@ -232,12 +265,14 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'client',
         email: 'other@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-        structuredInvoicePath: 'invoices/org_a/inv_1.xml',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+          structuredInvoicePath: 'invoices/org_a/inv_1.xml',
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/download?format=xml');
       const res = await downloadInvoiceHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -261,16 +296,18 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'professional',
         email: 'pro@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-        deliveryStatus: 'delivered',
-        deliveryChannel: 'email',
-        deliveryTrackingId: 'track_sensitive_999',
-        deliveryAttempts: 1,
-        deliverySentAt: new Date('2026-09-01T10:00:00Z'),
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+          deliveryStatus: 'delivered',
+          deliveryChannel: 'email',
+          deliveryTrackingId: 'track_sensitive_999',
+          deliveryAttempts: 1,
+          deliverySentAt: new Date('2026-09-01T10:00:00Z'),
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/delivery-status');
       const res = await deliveryStatusHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -288,16 +325,18 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'client',
         email: 'client@org-a.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-        deliveryStatus: 'delivered',
-        deliveryChannel: 'email',
-        deliveryTrackingId: 'track_sensitive_999',
-        deliveryAttempts: 1,
-        deliverySentAt: new Date('2026-09-01T10:00:00Z'),
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+          deliveryStatus: 'delivered',
+          deliveryChannel: 'email',
+          deliveryTrackingId: 'track_sensitive_999',
+          deliveryAttempts: 1,
+          deliverySentAt: new Date('2026-09-01T10:00:00Z'),
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/delivery-status');
       const res = await deliveryStatusHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -317,11 +356,13 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
         profileType: 'professional',
         email: 'pro@org-b.com',
       });
-      vi.mocked(invoiceService.getById).mockResolvedValueOnce({
-        id: 'inv_1',
-        organizationId: 'org_a',
-        recipientUserId: 'client_a',
-      } as any);
+      vi.mocked(invoiceService.getById).mockResolvedValueOnce(
+        createMockInvoice({
+          id: 'inv_1',
+          organizationId: 'org_a',
+          recipientUserId: 'client_a',
+        })
+      );
 
       const req = new NextRequest('http://localhost/api/invoices/inv_1/delivery-status');
       const res = await deliveryStatusHandler(req, { params: Promise.resolve({ id: 'inv_1' }) });
@@ -457,7 +498,7 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('allows authorized actor to process DSAR request', async () => {
+    it('allows authorized actor to process DSAR request with privacy:manage / admin', async () => {
       vi.mocked(requireProfessional).mockResolvedValueOnce({
         userId: 'admin_user',
         organizationId: 'org_a',
@@ -471,6 +512,24 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
       });
       const res = await processDsarHandler(req);
       expect(res.status).toBe(200);
+      expect(dsarService.processRequest).toHaveBeenCalled();
+    });
+
+    it('rejects DSAR processing for professional with only audit:view permission (403)', async () => {
+      vi.mocked(requireProfessional).mockResolvedValueOnce({
+        userId: 'audit_only_user',
+        organizationId: 'org_a',
+        profileType: 'professional',
+        email: 'auditor@org-a.com',
+      });
+
+      const req = new NextRequest('http://localhost/api/privacy/dsar', {
+        method: 'PUT',
+        body: JSON.stringify({ requestId: 'dsar_orgA', status: 'COMPLETED', response: 'Done' }),
+      });
+      const res = await processDsarHandler(req);
+      expect(res.status).toBe(403);
+      expect(dsarService.processRequest).not.toHaveBeenCalled();
     });
 
     it('rejects DSAR processing for professional without permission (403)', async () => {
@@ -487,6 +546,7 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
       });
       const res = await processDsarHandler(req);
       expect(res.status).toBe(403);
+      expect(dsarService.processRequest).not.toHaveBeenCalled();
     });
   });
 
