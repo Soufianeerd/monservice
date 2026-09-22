@@ -7,6 +7,7 @@ import { Deal } from '@/lib/data/interfaces';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { getPracticeDashboardAction } from '@/app/actions/practice-dashboard.actions';
 import ParamedicalPracticeDashboard from '@/components/dashboard/ParamedicalPracticeDashboard';
+import FieldServiceDashboard from '@/components/dashboard/FieldServiceDashboard';
 
 export default async function DashboardPage() {
   const [{ user }, organization] = await Promise.all([
@@ -68,6 +69,17 @@ export default async function DashboardPage() {
     }).reduce((sum: number, deal: Deal) => sum + deal.value, 0);
 
     months.push({ month: monthStr, revenue: monthRevenue });
+  }
+
+  if (workspace.type === 'field_service') {
+    return (
+      <FieldServiceDashboard
+        workspace={workspace}
+        organization={organization}
+        stats={stats}
+        chartData={months}
+      />
+    );
   }
 
   return (

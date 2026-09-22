@@ -77,6 +77,9 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     if (workspace && workspace.type === 'paramedical') {
       return workspace.label || 'Espace Paramédical';
     }
+    if (workspace && workspace.type === 'field_service') {
+      return workspace.label || 'Espace Artisans & Services Techniques';
+    }
     return organization?.industry || 'CRM';
   };
 

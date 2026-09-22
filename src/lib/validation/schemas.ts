@@ -180,8 +180,16 @@ export const passwordSchema = z
   .regex(/[^a-zA-Z0-9]/, 'Le mot de passe doit contenir au moins un caractère spécial')
   .max(128, 'Le mot de passe est trop long');
 
-import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
+import { PARAMEDICAL_PROFESSION_CODES, isParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
+import { FIELD_SERVICE_PROFESSION_CODES, isFieldServiceProfessionCode } from '@/lib/workspaces/field-service/professions';
 import { REGISTRATION_SECTOR_CODES } from '@/lib/registration/options';
+
+export const ALL_REGISTRATION_PROFESSION_CODES = [
+  ...PARAMEDICAL_PROFESSION_CODES,
+  ...FIELD_SERVICE_PROFESSION_CODES,
+] as const;
+
+export type RegistrationProfessionCode = typeof ALL_REGISTRATION_PROFESSION_CODES[number];
 
 /** Inscription. */
 export const registerSchema = z
@@ -192,7 +200,7 @@ export const registerSchema = z
     orgName: z.string().min(1).max(200).optional(),
     profileType: z.enum(['client', 'professional']).default('client'),
     sector: z.enum(REGISTRATION_SECTOR_CODES).optional(),
-    profession: z.enum(PARAMEDICAL_PROFESSION_CODES).optional(),
+    profession: z.enum(ALL_REGISTRATION_PROFESSION_CODES).optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -241,11 +249,31 @@ export const registerSchema = z
             message: 'Veuillez sélectionner une profession',
             path: ['profession'],
           });
+        } else if (!isParamedicalProfessionCode(data.profession)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "La profession sélectionnée n'est pas valide pour le secteur santé",
+            path: ['profession'],
+          });
+        }
+      } else if (data.sector === 'field_services') {
+        if (!data.profession) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Veuillez sélectionner un métier',
+            path: ['profession'],
+          });
+        } else if (!isFieldServiceProfessionCode(data.profession)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Le métier sélectionné n'est pas valide pour le secteur BTP & services techniques",
+            path: ['profession'],
+          });
         }
       } else if (data.profession) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "La profession n'est gérée que pour les professionnels de santé",
+          message: "La profession n'est pas disponible pour ce secteur",
           path: ['profession'],
         });
       }

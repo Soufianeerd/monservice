@@ -22,7 +22,7 @@ describe('Database Integrity Constraints', () => {
     await sql.end();
   });
 
-  describe('organizations.profession constraint', () => {
+  describe('organizations.sector / profession constraint', () => {
     const insertOrg = async (sector: string | null, profession: string | null) => {
       const id = generateId();
       try {
@@ -58,8 +58,33 @@ describe('Database Integrity Constraints', () => {
       expect(result).toBe(true);
     });
 
-    it('ACCEPT: artisan + NULL', async () => {
+    it('ACCEPT: field_services + plumber', async () => {
+      const result = await insertOrg('field_services', 'plumber');
+      expect(result).toBe(true);
+    });
+
+    it('ACCEPT: field_services + electrician', async () => {
+      const result = await insertOrg('field_services', 'electrician');
+      expect(result).toBe(true);
+    });
+
+    it('ACCEPT: field_services + NULL', async () => {
+      const result = await insertOrg('field_services', null);
+      expect(result).toBe(true);
+    });
+
+    it('ACCEPT: legacy artisan + joiner', async () => {
+      const result = await insertOrg('artisan', 'joiner');
+      expect(result).toBe(true);
+    });
+
+    it('ACCEPT: legacy artisan + NULL', async () => {
       const result = await insertOrg('artisan', null);
+      expect(result).toBe(true);
+    });
+
+    it('ACCEPT: freelance + NULL', async () => {
+      const result = await insertOrg('freelance', null);
       expect(result).toBe(true);
     });
 
@@ -68,8 +93,18 @@ describe('Database Integrity Constraints', () => {
       expect(result).toBe(true);
     });
 
-    it('REJECT: artisan + physiotherapist', async () => {
-      const result = await insertOrg('artisan', 'physiotherapist');
+    it('REJECT: field_services + physiotherapist (cross-sector)', async () => {
+      const result = await insertOrg('field_services', 'physiotherapist');
+      expect(result).toBe(false);
+    });
+
+    it('REJECT: health + plumber (cross-sector)', async () => {
+      const result = await insertOrg('health', 'plumber');
+      expect(result).toBe(false);
+    });
+
+    it('REJECT: freelance + plumber (unsupported profession)', async () => {
+      const result = await insertOrg('freelance', 'plumber');
       expect(result).toBe(false);
     });
 
@@ -78,13 +113,18 @@ describe('Database Integrity Constraints', () => {
       expect(result).toBe(false);
     });
 
-    it('REJECT: health + doctor (not in list)', async () => {
-      const result = await insertOrg('health', 'doctor');
+    it('REJECT: NULL sector + plumber', async () => {
+      const result = await insertOrg(null, 'plumber');
       expect(result).toBe(false);
     });
 
-    it('REJECT: health + random', async () => {
-      const result = await insertOrg('health', 'random');
+    it('REJECT: field_services + unknown_job', async () => {
+      const result = await insertOrg('field_services', 'unknown_job');
+      expect(result).toBe(false);
+    });
+
+    it('REJECT: health + doctor (not in list)', async () => {
+      const result = await insertOrg('health', 'doctor');
       expect(result).toBe(false);
     });
 

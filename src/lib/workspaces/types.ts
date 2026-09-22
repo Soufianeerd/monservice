@@ -1,6 +1,17 @@
-export type WorkspaceType = 'generic' | 'paramedical';
+export type WorkspaceType = 'generic' | 'paramedical' | 'field_service';
 
 export const WORKSPACE_CAPABILITY_CODES = [
+  // Core & Shared CRM
+  'clients',
+  'deals',
+  'quotes',
+  'invoices',
+  'products',
+  'calendar',
+  'tasks',
+  'messaging',
+  'billing',
+  // Paramedical
   'patients',
   'clinicalRecords',
   'careEpisodes',
@@ -11,7 +22,6 @@ export const WORKSPACE_CAPABILITY_CODES = [
   'measurements',
   'nutritionJournal',
   'orthotics',
-  'billing',
   'patientPortal',
 ] as const;
 
@@ -24,6 +34,8 @@ export interface WorkspaceTerminology {
   appointmentPlural?: string;
   serviceSingular?: string;
   servicePlural?: string;
+  workSingular?: string;
+  workPlural?: string;
 }
 
 export interface BaseWorkspaceConfig {
@@ -43,10 +55,21 @@ export interface ParamedicalWorkspaceConfig extends BaseWorkspaceConfig {
   professionPack?: import('./paramedical/profession-packs/types').ParamedicalProfessionPack;
 }
 
-export type WorkspaceConfig = GenericWorkspaceConfig | ParamedicalWorkspaceConfig;
+export interface FieldServiceWorkspaceConfig extends BaseWorkspaceConfig {
+  type: 'field_service';
+  profession?: import('./field-service/professions').FieldServiceProfessionCode;
+  professionPack?: import('./field-service/profession-packs/types').FieldServiceProfessionPack;
+  businessFamily?: import('./field-service/families').FieldServiceBusinessFamilyCode;
+}
+
+export type WorkspaceConfig =
+  | GenericWorkspaceConfig
+  | ParamedicalWorkspaceConfig
+  | FieldServiceWorkspaceConfig;
 
 export interface OrganizationContext {
   sector?: string | null;
   profession?: string | null;
   country?: string | null;
 }
+

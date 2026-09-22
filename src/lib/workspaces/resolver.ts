@@ -1,6 +1,7 @@
 import { OrganizationContext, WorkspaceConfig } from './types';
 import { GENERIC_WORKSPACE_CONFIG } from './generic/config';
 import { getParamedicalWorkspaceConfig } from './paramedical/config';
+import { getFieldServiceWorkspaceConfig } from './field-service/config';
 
 export function resolveWorkspace(context?: OrganizationContext | null): WorkspaceConfig {
   if (!context) {
@@ -13,6 +14,11 @@ export function resolveWorkspace(context?: OrganizationContext | null): Workspac
     return getParamedicalWorkspaceConfig(profession);
   }
 
-  // Fallback for other sectors or empty sector
+  if (sector === 'field_services' || sector === 'artisan') {
+    return getFieldServiceWorkspaceConfig(profession);
+  }
+
+  // Fallback for other sectors (freelance, other) or empty/unknown sector
   return GENERIC_WORKSPACE_CONFIG;
 }
+

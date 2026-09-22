@@ -6,9 +6,10 @@ import { Eye, EyeOff } from 'lucide-react';
 interface PasswordFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  helperText?: string;
 }
 
-export default function PasswordField({ label = 'Mot de passe', error, className = '', id, ...props }: PasswordFieldProps) {
+export default function PasswordField({ label = 'Mot de passe', error, helperText, className = '', id, ...props }: PasswordFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -37,6 +38,7 @@ export default function PasswordField({ label = 'Mot de passe', error, className
         </button>
       </div>
       {error && <p className="mt-1.5 text-sm text-red-600 font-medium">{error}</p>}
+      {!error && helperText && <p className="mt-1 text-xs text-gray-500">{helperText}</p>}
     </div>
   );
 }

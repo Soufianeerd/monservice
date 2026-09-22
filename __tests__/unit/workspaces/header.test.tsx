@@ -49,14 +49,14 @@ describe('Header Workspace Dynamic', () => {
   });
 
   it('affiche la recherche globale et l\'industrie pour un professionnel générique', () => {
-    const org = { id: 'o1', name: 'Mon Entreprise', sector: 'artisan', industry: 'BTP' };
+    const org = { id: 'o1', name: 'Mon Entreprise', sector: 'freelance', industry: 'Conseil' };
     vi.mocked(useAuth).mockReturnValue(createMockAuth('professional', org));
-    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'artisan' }));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'freelance' }));
 
     render(<Header />);
     
     // Attendre que le composant soit monté (useEffect setMounted)
-    expect(screen.getByText('BTP')).toBeInTheDocument();
+    expect(screen.getByText('Conseil')).toBeInTheDocument();
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
     
     // Lien de profil
@@ -87,6 +87,16 @@ describe('Header Workspace Dynamic', () => {
     render(<Header />);
     
     expect(screen.getByText('Espace Paramédical')).toBeInTheDocument();
+  });
+
+  it('affiche le label du métier pour un professionnel field_service', () => {
+    const org = { id: 'o1', name: 'Mon Entreprise BTP', sector: 'field_services', profession: 'plumber' as const, industry: 'BTP' };
+    vi.mocked(useAuth).mockReturnValue(createMockAuth('professional', org));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'field_services', profession: 'plumber' }));
+
+    render(<Header />);
+
+    expect(screen.getByText('Plombier')).toBeInTheDocument();
   });
 
   it('masque la recherche globale pour un profil client', () => {

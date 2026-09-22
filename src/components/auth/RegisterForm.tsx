@@ -1,20 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserIcon, BriefcaseIcon, StethoscopeIcon, LaptopIcon, HammerIcon, MoreHorizontalIcon, ArrowLeftIcon, Loader2, CheckCircle2 } from 'lucide-react';
+import {
+  UserIcon,
+  BriefcaseIcon,
+  StethoscopeIcon,
+  LaptopIcon,
+  HammerIcon,
+  MoreHorizontalIcon,
+  ArrowLeftIcon,
+  Loader2,
+  CheckCircle2,
+  Search,
+} from 'lucide-react';
 import { ProfileType } from '@/lib/data/interfaces';
 import { passwordSchema } from '@/lib/validation/schemas';
 import { toast } from 'react-hot-toast';
 import { registerAction } from '@/app/actions/auth';
 import PasswordField from './PasswordField';
-import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS, ParamedicalProfessionCode, ParamedicalProfession } from '@/lib/workspaces/paramedical/professions';
-import { REGISTRATION_SECTOR_CODES, REGISTRATION_SECTORS, RegistrationSectorCode } from '@/lib/registration/options';
+import {
+  PARAMEDICAL_PROFESSION_CODES,
+  PARAMEDICAL_PROFESSIONS,
+  ParamedicalProfessionCode,
+  ParamedicalProfession,
+} from '@/lib/workspaces/paramedical/professions';
+import {
+  FIELD_SERVICE_PROFESSION_CODES,
+  FIELD_SERVICE_PROFESSIONS,
+  FieldServiceProfessionCode,
+  FieldServiceProfession,
+} from '@/lib/workspaces/field-service/professions';
+import {
+  FIELD_SERVICE_BUSINESS_FAMILY_CODES,
+  FIELD_SERVICE_BUSINESS_FAMILIES,
+  FieldServiceBusinessFamilyCode,
+} from '@/lib/workspaces/field-service/families';
+import {
+  REGISTRATION_SECTOR_CODES,
+  REGISTRATION_SECTORS,
+  RegistrationSectorCode,
+} from '@/lib/registration/options';
+
+type SelectedProfession = ParamedicalProfessionCode | FieldServiceProfessionCode | '';
 
 export default function RegisterForm() {
   const [step, setStep] = useState(1);
+  const [professionSearch, setProfessionSearch] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,13 +56,45 @@ export default function RegisterForm() {
     confirmPassword: '',
     profileType: '' as ProfileType | '',
     sector: '' as RegistrationSectorCode | '',
-    profession: '' as ParamedicalProfessionCode | '',
+    profession: '' as SelectedProfession,
     orgName: '',
     acceptedTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn } = useAuth();
   const router = useRouter();
+
+  // Filtrage et regroupement des professions Field Service par Business Family
+  const groupedFieldServiceProfessions = useMemo(() => {
+    const query = professionSearch.trim().toLowerCase();
+    const result: { familyCode: FieldServiceBusinessFamilyCode; familyLabel: string; professions: FieldServiceProfession[] }[] = [];
+
+    for (const familyCode of FIELD_SERVICE_BUSINESS_FAMILY_CODES) {
+      const family = FIELD_SERVICE_BUSINESS_FAMILIES[familyCode];
+      const matching = FIELD_SERVICE_PROFESSION_CODES
+        .map((code) => FIELD_SERVICE_PROFESSIONS[code])
+        .filter((prof) => prof.family === familyCode)
+        .filter((prof) => {
+          if (!query) return true;
+          return (
+            prof.label.toLowerCase().includes(query) ||
+            (prof.shortLabel && prof.shortLabel.toLowerCase().includes(query)) ||
+            prof.description.toLowerCase().includes(query) ||
+            family.label.toLowerCase().includes(query)
+          );
+        });
+
+      if (matching.length > 0) {
+        result.push({
+          familyCode,
+          familyLabel: family.label,
+          professions: matching,
+        });
+      }
+    }
+
+    return result;
+  }, [professionSearch]);
 
   const handleNext = () => {
     if (step === 1) {
@@ -67,6 +133,10 @@ export default function RegisterForm() {
         toast.error('Veuillez sélectionner votre profession.');
         return;
       }
+      if (formData.sector === 'field_services' && !formData.profession) {
+        toast.error('Veuillez sélectionner votre métier.');
+        return;
+      }
       setStep(4);
     }
   };
@@ -88,7 +158,8 @@ export default function RegisterForm() {
     }
 
     setIsSubmitting(true);
-    
+
+    const isProfessionSector = formData.sector === 'health' || formData.sector === 'field_services';
     const result = await registerAction({
       name: formData.name,
       email: formData.email,
@@ -96,7 +167,10 @@ export default function RegisterForm() {
       orgName: formData.profileType === 'professional' ? formData.orgName : undefined,
       profileType: formData.profileType as ProfileType,
       sector: formData.profileType === 'professional' ? formData.sector : undefined,
-      profession: formData.profileType === 'professional' && formData.sector === 'health' ? formData.profession : undefined,
+      profession:
+        formData.profileType === 'professional' && isProfessionSector
+          ? formData.profession || undefined
+          : undefined,
     });
 
     if (!result.success) {
@@ -126,111 +200,133 @@ export default function RegisterForm() {
 
   const sectorIcons: Record<RegistrationSectorCode, React.ReactNode> = {
     health: <StethoscopeIcon className="w-5 h-5" />,
+    field_services: <HammerIcon className="w-5 h-5" />,
     freelance: <LaptopIcon className="w-5 h-5" />,
-    artisan: <HammerIcon className="w-5 h-5" />,
     other: <MoreHorizontalIcon className="w-5 h-5" />,
   };
 
-  const sectors = REGISTRATION_SECTOR_CODES.map(code => ({
+  const sectors = REGISTRATION_SECTOR_CODES.map((code) => ({
     id: code,
     name: REGISTRATION_SECTORS[code].label,
     icon: sectorIcons[code],
   }));
 
-  const stepsLabels = ["Compte", "Profil", "Activité", "Terminé"];
+  const stepsLabels = ['Compte', 'Profil', 'Activité', 'Terminé'];
+
+  // Obtention du label affiché de la profession
+  const getSelectedProfessionLabel = (): string => {
+    if (!formData.profession) return '';
+    if (formData.sector === 'health' && formData.profession in PARAMEDICAL_PROFESSIONS) {
+      return PARAMEDICAL_PROFESSIONS[formData.profession as ParamedicalProfessionCode].label;
+    }
+    if (formData.sector === 'field_services' && formData.profession in FIELD_SERVICE_PROFESSIONS) {
+      return FIELD_SERVICE_PROFESSIONS[formData.profession as FieldServiceProfessionCode].label;
+    }
+    return formData.profession;
+  };
 
   return (
-    <div className="w-full">
-      {/* Stepper textuel horizontal */}
-      <div className="mb-10 mt-2">
-        <div className="flex items-center justify-between text-xs sm:text-sm font-medium">
-          {stepsLabels.map((label, index) => {
-            const stepNumber = index + 1;
-            const isActive = step === stepNumber;
-            const isCompleted = step > stepNumber;
-            
+    <div className="w-full max-w-2xl bg-white p-8 sm:p-10 rounded-2xl shadow-xl shadow-gray-100 border border-gray-100 transition-all">
+      <div className="mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-center">Créer un compte</h2>
+        <p className="text-sm text-gray-500 text-center mt-2">
+          Rejoignez la plateforme et pilotez votre activité en toute simplicité
+        </p>
+      </div>
+
+      {/* Stepper Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between relative">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-gray-100 w-full z-0" />
+          <div
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-primary-600 transition-all duration-300 z-0"
+            style={{ width: `${((step - 1) / (stepsLabels.length - 1)) * 100}%` }}
+          />
+          {stepsLabels.map((label, idx) => {
+            const stepNum = idx + 1;
+            const isCompleted = step > stepNum;
+            const isCurrent = step === stepNum;
             return (
-              <div key={label} className={`flex items-center ${isActive ? 'text-primary-600 font-bold' : isCompleted ? 'text-gray-900' : 'text-gray-400'}`}>
-                <span className="hidden sm:inline mr-1">{stepNumber}.</span>
-                <span>{label}</span>
-                {index < stepsLabels.length - 1 && (
-                  <span className="mx-2 text-gray-300">›</span>
-                )}
+              <div key={label} className="relative z-10 flex flex-col items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    isCompleted
+                      ? 'bg-primary-600 text-white'
+                      : isCurrent
+                      ? 'bg-primary-600 text-white ring-4 ring-primary-100'
+                      : 'bg-white border-2 border-gray-200 text-gray-400'
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : stepNum}
+                </div>
+                <span
+                  className={`text-xs mt-2 font-medium hidden sm:block ${
+                    isCurrent ? 'text-primary-600 font-bold' : 'text-gray-400'
+                  }`}
+                >
+                  {label}
+                </span>
               </div>
             );
           })}
         </div>
       </div>
 
-      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-        {/* STEP 1: Basic Info */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* STEP 1: Account info */}
         {step === 1 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">Votre nom complet *</label>
-              <div className="relative group">
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="block w-full appearance-none rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 sm:text-sm"
-                  placeholder="Jean Dupont"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5 transition-colors group-focus-within:text-primary-600">Adresse email *</label>
-              <div className="relative group">
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="block w-full appearance-none rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm transition-all focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/10 sm:text-sm"
-                  placeholder="jean@exemple.com"
-                />
-              </div>
-            </div>
-            <div>
-              <PasswordField
-                id="password"
-                name="password"
-                label="Mot de passe *"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
+              <input
+                type="text"
+                name="name"
                 required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Votre mot de passe"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
+                placeholder="Jean Dupont"
               />
             </div>
+
             <div>
-              <PasswordField
-                id="confirmPassword"
-                name="confirmPassword"
-                label="Confirmez le mot de passe *"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse email *</label>
+              <input
+                type="email"
+                name="email"
                 required
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                placeholder="Répétez votre mot de passe"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
+                placeholder="jean.dupont@exemple.fr"
               />
-              <div className="mt-3 text-xs text-gray-500 space-y-1">
-                <p className="font-medium text-gray-700 mb-1">Règles du mot de passe :</p>
-                <ul className="list-disc pl-4 space-y-0.5">
-                  <li>Minimum 8 caractères</li>
-                  <li>Une majuscule et une minuscule</li>
-                  <li>Un chiffre (0-9)</li>
-                  <li>Un symbole (!@#$%^&*)</li>
-                </ul>
-              </div>
             </div>
+
+            <PasswordField
+              label="Mot de passe *"
+              name="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="8 caractères min, 1 maj, 1 min, 1 chiffre, 1 spécial"
+              helperText="Min. 8 caractères dont 1 majuscule, 1 minuscule, 1 chiffre et 1 symbole."
+            />
+
+            <PasswordField
+              label="Confirmer le mot de passe *"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              placeholder="Confirmez votre mot de passe"
+            />
           </div>
         )}
 
-        {/* STEP 2: Profile Type */}
+        {/* STEP 2: Profile Selection */}
         {step === 2 && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <label className="block text-sm font-medium text-gray-700 text-center mb-4">
+              Sélectionnez votre type de profil *
+            </label>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 type="button"
@@ -243,7 +339,7 @@ export default function RegisterForm() {
                   <UserIcon className="w-6 h-6" />
                 </div>
                 <span className={`block text-sm font-bold ${formData.profileType === 'client' ? 'text-primary-900' : 'text-gray-900'}`}>Je suis un particulier</span>
-                <span className="block mt-2 text-xs text-gray-500 text-center">Je cherche un professionnel pour réaliser un projet</span>
+                <span className="block mt-2 text-xs text-gray-500 text-center">Je recherche des professionnels et souhaite suivre mes demandes</span>
               </button>
 
               <button
@@ -263,7 +359,7 @@ export default function RegisterForm() {
           </div>
         )}
 
-        {/* STEP 3: Sector (Professional only) */}
+        {/* STEP 3: Sector & Profession (Professional only) */}
         {step === 3 && formData.profileType === 'professional' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
@@ -286,7 +382,13 @@ export default function RegisterForm() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setFormData({ ...formData, sector: s.id, profession: s.id === 'health' ? formData.profession : '' })}
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        sector: s.id,
+                        profession: '',
+                      })
+                    }
                     className={`flex items-center p-4 border-2 rounded-xl focus:outline-none transition-all ${
                       formData.sector === s.id ? 'border-primary-600 bg-primary-50' : 'border-gray-200 hover:border-primary-200 bg-white'
                     }`}
@@ -302,6 +404,7 @@ export default function RegisterForm() {
               </div>
             </div>
 
+            {/* Sub-selector for Health professions */}
             {formData.sector === 'health' && (
               <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Votre profession paramédicale *</label>
@@ -323,6 +426,66 @@ export default function RegisterForm() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-selector for Field Services / BTP & Technical professions */}
+            {formData.sector === 'field_services' && (
+              <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <label className="block text-sm font-medium text-gray-700">Votre métier / activité technique *</label>
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      value={professionSearch}
+                      onChange={(e) => setProfessionSearch(e.target.value)}
+                      placeholder="Rechercher un métier..."
+                      className="w-full text-xs rounded-lg border border-gray-200 pl-8 pr-3 py-1.5 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-4 pr-1 border border-gray-100 rounded-xl p-3 bg-gray-50/50">
+                  {groupedFieldServiceProfessions.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-gray-400">
+                      Aucun métier ne correspond à votre recherche.
+                    </div>
+                  ) : (
+                    groupedFieldServiceProfessions.map((group) => (
+                      <div key={group.familyCode} className="space-y-2">
+                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">
+                          {group.familyLabel}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {group.professions.map((prof) => (
+                            <button
+                              key={prof.code}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, profession: prof.code })}
+                              className={`flex flex-col p-2.5 border-2 rounded-xl focus:outline-none transition-all text-left ${
+                                formData.profession === prof.code
+                                  ? 'border-primary-600 bg-primary-50 shadow-sm'
+                                  : 'border-gray-200 hover:border-primary-200 bg-white'
+                              }`}
+                            >
+                              <span
+                                className={`text-xs font-semibold ${
+                                  formData.profession === prof.code ? 'text-primary-900' : 'text-gray-900'
+                                }`}
+                              >
+                                {prof.shortLabel || prof.label}
+                              </span>
+                              <span className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">
+                                {prof.description}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -357,11 +520,11 @@ export default function RegisterForm() {
                       <span className="text-gray-500">Secteur</span>
                       <span className="font-medium text-gray-900">{sectors.find(s => s.id === formData.sector)?.name}</span>
                     </div>
-                    {formData.sector === 'health' && formData.profession !== '' && (
+                    {formData.profession !== '' && (
                       <div className="flex justify-between border-b border-gray-200 pb-2">
-                        <span className="text-gray-500">Profession</span>
+                        <span className="text-gray-500">Profession / Métier</span>
                         <span className="font-medium text-gray-900">
-                          {PARAMEDICAL_PROFESSIONS[formData.profession].label}
+                          {getSelectedProfessionLabel()}
                         </span>
                       </div>
                     )}
@@ -397,7 +560,7 @@ export default function RegisterForm() {
               <ArrowLeftIcon className="w-4 h-4 mr-2" /> Retour
             </button>
           )}
-          
+
           <button
             type="button"
             onClick={step < 4 ? handleNext : handleSubmit}

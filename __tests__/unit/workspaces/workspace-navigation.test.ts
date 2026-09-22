@@ -6,7 +6,7 @@ import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/profe
 describe('Workspace Navigation', () => {
   it('construit la navigation générique correcte', () => {
     const config = resolveWorkspace({
-      sector: 'artisan',
+      sector: 'freelance',
     });
 
     const nav = buildProfessionalNavigation(config);
@@ -38,6 +38,31 @@ describe('Workspace Navigation', () => {
     const settings = nav.find(n => n.id === 'settings');
     expect(settings?.subItems?.some(s => s.href === '/parametres/cabinet')).toBe(false);
     expect(settings?.subItems?.some(s => s.name === 'Cabinet')).toBe(false);
+  });
+
+  it('construit la navigation field_service sans routes fantômes', () => {
+    const config = resolveWorkspace({
+      sector: 'field_services',
+      profession: 'plumber',
+    });
+
+    const nav = buildProfessionalNavigation(config);
+    const navNames = nav.map(n => n.name);
+
+    expect(navNames).toContain('Tableau de bord');
+    expect(navNames).toContain('Clients');
+    expect(navNames).toContain('Commercial');
+    expect(navNames).toContain('Facturation');
+    expect(navNames).toContain('Planning');
+    expect(navNames).toContain('Messagerie');
+    expect(navNames).toContain('Paramètres');
+
+    // Assurer l'absence de fausses routes non implémentées
+    const hrefs = nav.flatMap(n => [n.href, ...(n.subItems?.map(sub => sub.href) || [])]);
+    expect(hrefs.some(h => h === '/chantiers')).toBe(false);
+    expect(hrefs.some(h => h === '/interventions')).toBe(false);
+    expect(hrefs.some(h => h === '/stock')).toBe(false);
+    expect(hrefs.some(h => h === '/equipements')).toBe(false);
   });
 
   it('construit la navigation paramédicale avec les modules adéquats', () => {

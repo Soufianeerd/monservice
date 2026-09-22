@@ -130,6 +130,57 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
     ];
   }
 
+  // Field Service Navigation (BTP, Artisans, Métiers techniques)
+  if (workspace.type === 'field_service') {
+    return [
+      { id: 'dashboard', name: 'Tableau de bord', href: '/dashboard', icon: 'dashboard' },
+      {
+        id: 'clients',
+        name: workspace.terminology.customerPlural || 'Clients',
+        href: '/clients',
+        icon: 'users',
+        dataTour: 'clients-nav',
+      },
+      { id: 'deals', name: 'Commercial', href: '/deals', icon: 'deals' },
+      {
+        id: 'billing',
+        name: 'Facturation',
+        href: '/facturation',
+        icon: 'billing',
+        subItems: [
+          { name: 'Devis', href: '/facturation/devis' },
+          { name: 'Factures', href: '/facturation/factures' },
+          { name: workspace.terminology.servicePlural || 'Catalogue', href: '/facturation/produits' },
+        ],
+      },
+      {
+        id: 'agenda',
+        name: 'Planning',
+        href: '/agenda',
+        icon: 'agenda',
+        subItems: [
+          { name: 'Calendrier', href: '/agenda/calendrier' },
+          { name: 'Tâches', href: '/agenda/taches' },
+        ],
+      },
+      { id: 'messages', name: 'Messagerie', href: '/messages', icon: 'messages' },
+      {
+        id: 'settings',
+        name: 'Paramètres',
+        href: '/parametres',
+        icon: 'settings',
+        dataTour: 'settings-nav',
+        subItems: [
+          { name: 'Profil', href: '/parametres/profil' },
+          { name: 'Organisation', href: '/parametres/organisation' },
+          { name: 'Facturation', href: '/parametres/facturation' },
+          { name: 'Conformité RGPD', href: '/parametres/privacy' },
+          { name: 'Notifications', href: '/parametres/notifications' },
+        ],
+      },
+    ];
+  }
+
   // Fallback sûr (ne devrait jamais être atteint si le resolver est robuste)
   return [
     { id: 'dashboard', name: 'Tableau de bord', href: '/dashboard', icon: 'dashboard' },

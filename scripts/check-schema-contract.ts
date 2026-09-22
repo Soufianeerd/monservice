@@ -153,13 +153,13 @@ async function verifyContract() {
     }
   }
 
-  // --- Specific Contract: organizations_profession_health_check ---
-  const orgCheck = constraints.find(c => c.table_name === 'organizations' && c.conname === 'organizations_profession_health_check');
+  // --- Specific Contract: organizations_sector_profession_check ---
+  const orgCheck = constraints.find(c => c.table_name === 'organizations' && (c.conname === 'organizations_sector_profession_check' || c.conname === 'organizations_profession_health_check'));
   if (!orgCheck) {
-    console.error(`❌ ERROR: Constraint 'organizations_profession_health_check' not found in database.`);
+    console.error(`❌ ERROR: Constraint 'organizations_sector_profession_check' not found in database.`);
     errorCount++;
   } else if (orgCheck.contype !== 'c') {
-    console.error(`❌ ERROR: 'organizations_profession_health_check' is not a CHECK constraint.`);
+    console.error(`❌ ERROR: 'organizations_sector_profession_check' is not a CHECK constraint.`);
     errorCount++;
   } else {
     const def = orgCheck.condef.toLowerCase().replace(/\s+/g, '');
@@ -167,7 +167,6 @@ async function verifyContract() {
       'profession',
       'isnull',
       'sector',
-      'isnotnull',
       'health',
       'physiotherapist',
       'osteopath',
@@ -175,11 +174,15 @@ async function verifyContract() {
       'podiatrist',
       'occupational_therapist',
       'psychomotor_therapist',
-      'dietitian'
+      'dietitian',
+      'field_services',
+      'mason',
+      'plumber',
+      'electrician',
     ];
     for (const el of expectedElements) {
       if (!def.includes(el.replace(/\s+/g, ''))) {
-         console.error(`❌ ERROR: 'organizations_profession_health_check' is missing semantic element: '${el}'`);
+         console.error(`❌ ERROR: '${orgCheck.conname}' is missing semantic element: '${el}'`);
          errorCount++;
       }
     }

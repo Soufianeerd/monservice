@@ -102,10 +102,13 @@ describe('Workspace Resolver with Profession Packs', () => {
     }
   });
 
-  it('resolves generic workspace for non-health sector even if profession parameter is provided', () => {
+  it('resolves generic workspace for freelance/other sectors and field_service for artisan/field_services', () => {
+    const wsFreelance = resolveWorkspace({ sector: 'freelance', profession: 'physiotherapist' });
+    expect(wsFreelance.type).toBe('generic');
+    expect('professionPack' in wsFreelance).toBe(false);
+
     const wsArtisan = resolveWorkspace({ sector: 'artisan', profession: 'physiotherapist' });
-    expect(wsArtisan.type).toBe('generic');
-    expect('professionPack' in wsArtisan).toBe(false);
+    expect(wsArtisan.type).toBe('field_service');
   });
 });
 

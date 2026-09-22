@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 describe('Sidebar Workspace Dynamic Navigation', () => {
   it('affiche la navigation générique complète pour un professionnel classique', () => {
     vi.mocked(useRole).mockReturnValue('professional');
-    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'artisan' }));
+    vi.mocked(useWorkspace).mockReturnValue(resolveWorkspace({ sector: 'freelance' }));
 
     render(<Sidebar />);
     

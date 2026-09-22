@@ -27,6 +27,8 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0016_fuzzy_silvermane.sql` | Drizzle Kit + Manuel | YES | Mixed | Care Episodes + Clinical Encounters + Clinical Notes + Clinical Authorization + State Machines | `0015_silly_whizzer.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0017_omniscient_spiral.sql` | Drizzle Kit + Manuel | YES | Mixed | Clinical Documents + Form Templates & Responses + Measurements + Secure Storage + State Machines | `0016_fuzzy_silvermane.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0018_deep_white_tiger.sql` | Drizzle Kit + Manuel | YES | Mixed | Session14 portal/billing/communication/reminders | `0017_omniscient_spiral.sql` | NOT_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0019_field_service_foundation.sql` | Manuel | YES | Manual | Session16 Field Service foundation & generalized sector/profession check constraint | `0018_deep_white_tiger.sql` | NOT_APPLIED | CANONICAL | Conserver |
+
 
 
 **Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).

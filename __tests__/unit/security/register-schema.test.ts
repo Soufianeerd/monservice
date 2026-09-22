@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { registerSchema } from '../../../src/lib/validation/schemas';
 import { PARAMEDICAL_PROFESSION_CODES } from '../../../src/lib/workspaces/paramedical/professions';
+import { FIELD_SERVICE_PROFESSION_CODES } from '../../../src/lib/workspaces/field-service/professions';
 import { REGISTRATION_SECTOR_CODES } from '../../../src/lib/registration/options';
 
 describe('Security: registerSchema validation', () => {
@@ -14,14 +15,14 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(true);
   });
 
-  it('2. professional artisan + orgName + sans profession accepté', () => {
+  it('2. professional freelance + orgName + sans profession accepté', () => {
     const result = registerSchema.safeParse({
       name: 'John Doe',
       email: 'john@example.com',
       password: 'Password123!',
       profileType: 'professional',
-      orgName: 'My Artisan Corp',
-      sector: 'artisan'
+      orgName: 'My Freelance Corp',
+      sector: 'freelance'
     });
     expect(result.success).toBe(true);
   });
@@ -52,7 +53,7 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(true);
   });
 
-  it('5. boucler sur les 7 codes officiels : chacun accepté', () => {
+  it('5. boucler sur les codes officiels health : chacun accepté', () => {
     PARAMEDICAL_PROFESSION_CODES.forEach((code) => {
       const result = registerSchema.safeParse({
         name: 'John Doe',
@@ -61,6 +62,21 @@ describe('Security: registerSchema validation', () => {
         profileType: 'professional',
         orgName: 'Health Corp',
         sector: 'health',
+        profession: code
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  it('5b. boucler sur les 36 codes officiels field_services : chacun accepté', () => {
+    FIELD_SERVICE_PROFESSION_CODES.forEach((code) => {
+      const result = registerSchema.safeParse({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'Password123!',
+        profileType: 'professional',
+        orgName: 'Field Service Corp',
+        sector: 'field_services',
         profession: code
       });
       expect(result.success).toBe(true);
@@ -79,6 +95,21 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe("Veuillez sélectionner une profession");
+    }
+  });
+
+  it('6b. professional field_services sans profession rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Artisan Corp',
+      sector: 'field_services'
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Veuillez sélectionner un métier");
     }
   });
 
@@ -121,20 +152,33 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(false);
   });
 
-  it('10. professional artisan + physiotherapist rejeté', () => {
+  it('10. professional field_services + health profession rejeté', () => {
     const result = registerSchema.safeParse({
       name: 'John Doe',
       email: 'john@example.com',
       password: 'Password123!',
       profileType: 'professional',
       orgName: 'Artisan Corp',
-      sector: 'artisan',
+      sector: 'field_services',
       profession: 'physiotherapist'
     });
     expect(result.success).toBe(false);
   });
 
-  it('11. professional freelance + osteopath rejeté', () => {
+  it('10b. professional health + field_services profession rejeté', () => {
+    const result = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Health Corp',
+      sector: 'health',
+      profession: 'plumber'
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('11. professional freelance + profession rejeté', () => {
     const result = registerSchema.safeParse({
       name: 'John Doe',
       email: 'john@example.com',
@@ -192,7 +236,7 @@ describe('Security: registerSchema validation', () => {
       email: 'john@example.com',
       password: 'Password123!',
       profileType: 'client',
-      isAdmin: true, // Champ inconnu
+      isAdmin: true,
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -222,13 +266,13 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(false);
   });
 
-  it('18. client + sector artisan rejeté', () => {
+  it('18. client + sector field_services rejeté', () => {
     const result = registerSchema.safeParse({
       name: 'John Doe',
       email: 'john@example.com',
       password: 'Password123!',
       profileType: 'client',
-      sector: 'artisan',
+      sector: 'field_services',
     });
     expect(result.success).toBe(false);
   });
@@ -283,6 +327,13 @@ describe('Security: registerSchema validation', () => {
 
   it('23. tous les REGISTRATION_SECTOR_CODES sont cohérents avec le contrat', () => {
     for (const sector of REGISTRATION_SECTOR_CODES) {
+      const profession =
+        sector === 'health'
+          ? 'physiotherapist'
+          : sector === 'field_services'
+          ? 'plumber'
+          : undefined;
+
       const result = registerSchema.safeParse({
         name: 'John Doe',
         email: 'john@example.com',
@@ -290,14 +341,14 @@ describe('Security: registerSchema validation', () => {
         profileType: 'professional',
         orgName: 'Corp',
         sector,
-        ...(sector === 'health' ? { profession: 'physiotherapist' } : {}),
+        ...(profession ? { profession } : {}),
       });
       expect(result.success).toBe(true);
     }
   });
 
-  it('24. profession non officielle reste rejetée', () => {
-    const result = registerSchema.safeParse({
+  it('24. profession non officielle reste rejetée pour health et field_services', () => {
+    const resultHealth = registerSchema.safeParse({
       name: 'John Doe',
       email: 'john@example.com',
       password: 'Password123!',
@@ -306,6 +357,17 @@ describe('Security: registerSchema validation', () => {
       sector: 'health',
       profession: 'medecin_generaliste',
     });
-    expect(result.success).toBe(false);
+    expect(resultHealth.success).toBe(false);
+
+    const resultField = registerSchema.safeParse({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'Password123!',
+      profileType: 'professional',
+      orgName: 'Corp',
+      sector: 'field_services',
+      profession: 'astronaute',
+    });
+    expect(resultField.success).toBe(false);
   });
 });

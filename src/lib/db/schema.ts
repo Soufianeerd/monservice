@@ -100,7 +100,24 @@ export const organizations = sqliteTable('organizations', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
-  check('organizations_profession_health_check', sql`${t.profession} IS NULL OR (${t.sector} IS NOT NULL AND ${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))`)
+  check('organizations_sector_profession_check', sql`(
+    (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))
+    OR
+    (${t.sector} IN ('field_services', 'artisan') AND ${t.profession} IN (
+      'mason', 'plumber', 'electrician', 'heating_technician', 'hvac_technician',
+      'roofer', 'carpenter', 'joiner', 'painter', 'plasterer', 'insulation_specialist',
+      'tiler', 'earthworks_contractor', 'facade_specialist', 'locksmith', 'glazier',
+      'sanitation_specialist', 'renovation_contractor', 'pool_specialist', 'architect',
+      'construction_project_manager', 'engineering_office', 'quantity_surveyor',
+      'maintenance_technician', 'technical_installer', 'auto_mechanic',
+      'auto_body_repairer', 'auto_service_center', 'phone_repairer',
+      'computer_repairer', 'appliance_repairer', 'electronics_repairer',
+      'landscaper', 'custom_manufacturer', 'artisan_retailer',
+      'technical_service_provider'
+    ))
+    OR
+    (${t.profession} IS NULL)
+  ) AND NOT (${t.sector} IS NULL AND ${t.profession} IS NOT NULL)`),
 ]);
 
 // Clients

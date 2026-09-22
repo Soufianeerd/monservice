@@ -22,9 +22,19 @@ describe('Workspace Resolver', () => {
     expect(config).toEqual(GENERIC_WORKSPACE_CONFIG);
   });
 
-  it('should resolve to generic config for non-health sector', () => {
+  it('should resolve to generic config for generic sectors (freelance, other)', () => {
+    expect(resolveWorkspace({ sector: 'freelance' })).toEqual(GENERIC_WORKSPACE_CONFIG);
+    expect(resolveWorkspace({ sector: 'other' })).toEqual(GENERIC_WORKSPACE_CONFIG);
+  });
+
+  it('should resolve to field_service config for field_services sector', () => {
+    const config = resolveWorkspace({ sector: 'field_services' });
+    expect(config.type).toBe('field_service');
+  });
+
+  it('should resolve to field_service config for legacy artisan sector', () => {
     const config = resolveWorkspace({ sector: 'artisan' });
-    expect(config).toEqual(GENERIC_WORKSPACE_CONFIG);
+    expect(config.type).toBe('field_service');
   });
 
   it('should resolve to paramedical config for health sector (no profession)', () => {
