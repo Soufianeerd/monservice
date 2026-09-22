@@ -159,6 +159,13 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
       ON CONFLICT DO NOTHING
     `;
 
+    // Ensure positive fixture: Patient A2 has active care episode owned by Pro A
+    await sql`
+      INSERT INTO care_episodes (id, organization_id, patient_id, practitioner_id, title, status, created_at, updated_at)
+      VALUES ('70000000-0000-4000-8000-000000000002', ${SEED_PRACTICE_IDS.orgA}, ${patientA2Id}, ${SEED_PRACTICE_IDS.practitionerA}, 'Épisode Membre Inférieur', 'active', now(), now())
+      ON CONFLICT (id) DO UPDATE SET status = 'active', practitioner_id = ${SEED_PRACTICE_IDS.practitionerA}
+    `;
+
     // 7. Seed Portal Access: Client A has access to Patient A1 only
     await sql`
       INSERT INTO patient_portal_access (id, organization_id, patient_id, user_id, access_type, created_by_user_id, is_active, created_at, updated_at)
@@ -497,6 +504,26 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
 
       expect(error).not.toBeNull();
       const check = await sql`SELECT * FROM messages WHERE id = ${staffAttackId}`;
+      expect(check.length).toBe(0);
+    });
+
+    it('Pro A -> Staff A (professional profile with malformed portal row) as patient receiver denied', async () => {
+      const attackId = randomUUID();
+      const { error } = await proAClient
+        .from('messages')
+        .insert({
+          id: attackId,
+          organization_id: SEED_PRACTICE_IDS.orgA,
+          sender_id: proAUserId,
+          receiver_id: staffAUserId,
+          patient_id: patientA2Id,
+          content: 'Pro A tentative message to Staff A as patient',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      expect(error).not.toBeNull();
+      const check = await sql`SELECT * FROM messages WHERE id = ${attackId}`;
       expect(check.length).toBe(0);
     });
 
