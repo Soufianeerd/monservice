@@ -204,6 +204,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (createdMessageIds.length > 0) {
       await sql`DELETE FROM messages WHERE id = ANY(${createdMessageIds})`;
     }
+    await sql`DELETE FROM care_episodes WHERE id = '70000000-0000-4000-8000-000000000002'`;
     await sql`DELETE FROM patient_questionnaire_assignments WHERE id = ${assignmentA2Id}`;
     await sql`DELETE FROM patient_portal_access WHERE id = ${portalAccessA2Id}`;
     await sql`DELETE FROM patient_profiles WHERE id = ${patientA2Id}`;
