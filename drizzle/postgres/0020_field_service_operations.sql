@@ -38,7 +38,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_sites" ADD CONSTRAINT "field_service_sites_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_sites" ADD CONSTRAINT "field_service_sites_client_fk" FOREIGN KEY ("client_id", "organization_id") REFERENCES "clients"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -96,13 +96,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_orders" ADD CONSTRAINT "field_service_work_orders_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_orders" ADD CONSTRAINT "field_service_work_orders_client_fk" FOREIGN KEY ("client_id", "organization_id") REFERENCES "clients"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_orders" ADD CONSTRAINT "field_service_work_orders_created_by_user_id_users_id_fk" FOREIGN KEY ("created_by_user_id") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_orders" ADD CONSTRAINT "field_service_work_orders_created_by_user_fk" FOREIGN KEY ("created_by_user_id", "organization_id") REFERENCES "users"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -126,8 +126,11 @@ CREATE TABLE IF NOT EXISTS "field_service_work_order_assignments" (
 	"removed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "field_service_assignments_role_check" CHECK ("role" IN ('lead', 'technician', 'assistant', 'observer'))
+	CONSTRAINT "field_service_assignments_role_check" CHECK ("role" IN ('lead', 'technician', 'assistant', 'observer')),
+	CONSTRAINT "field_service_assignments_active_removed_check" CHECK (("is_active" = true AND "removed_at" IS NULL) OR ("is_active" = false AND "removed_at" IS NOT NULL))
 );
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "field_service_assignments_active_user_unique" ON "field_service_work_order_assignments" ("work_order_id", "user_id") WHERE "is_active" = true;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "field_service_assignments_org_wo_idx" ON "field_service_work_order_assignments" ("organization_id", "work_order_id");
 --> statement-breakpoint
@@ -142,13 +145,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_order_assignments" ADD CONSTRAINT "field_service_work_order_assignments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_order_assignments" ADD CONSTRAINT "field_service_assignments_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_order_assignments" ADD CONSTRAINT "field_service_assignments_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_order_assignments" ADD CONSTRAINT "field_service_assignments_user_fk" FOREIGN KEY ("user_id", "organization_id") REFERENCES "users"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -187,13 +190,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_reports" ADD CONSTRAINT "field_service_work_reports_author_user_id_users_id_fk" FOREIGN KEY ("author_user_id") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_reports" ADD CONSTRAINT "field_service_reports_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_reports" ADD CONSTRAINT "field_service_reports_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_reports" ADD CONSTRAINT "field_service_reports_author_user_fk" FOREIGN KEY ("author_user_id", "organization_id") REFERENCES "users"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -222,13 +225,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_order_status_history" ADD CONSTRAINT "field_service_work_order_status_history_changed_by_user_id_users_id_fk" FOREIGN KEY ("changed_by_user_id") REFERENCES "users"("id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_order_status_history" ADD CONSTRAINT "field_service_status_history_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "field_service_work_order_status_history" ADD CONSTRAINT "field_service_status_history_work_order_fk" FOREIGN KEY ("work_order_id", "organization_id") REFERENCES "field_service_work_orders"("id", "organization_id") ON DELETE no action ON UPDATE no action;
+ ALTER TABLE "field_service_work_order_status_history" ADD CONSTRAINT "field_service_status_history_changed_by_user_fk" FOREIGN KEY ("changed_by_user_id", "organization_id") REFERENCES "users"("id", "organization_id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -265,7 +268,39 @@ REVOKE ALL ON FUNCTION public.is_current_field_service_professional(text) FROM P
 GRANT EXECUTE ON FUNCTION public.is_current_field_service_professional(text) TO authenticated;
 --> statement-breakpoint
 
--- 7. Trigger Function: enforce_field_service_work_order_transition
+-- 7. Trigger Function: enforce_field_service_site_immutability
+CREATE OR REPLACE FUNCTION public.enforce_field_service_site_immutability()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.id IS DISTINCT FROM NEW.id
+       OR OLD.organization_id IS DISTINCT FROM NEW.organization_id
+       OR OLD.client_id IS DISTINCT FROM NEW.client_id
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+      RAISE EXCEPTION 'Site core identity (id, organization_id, client_id, created_at) is immutable' USING ERRCODE = '23514';
+    END IF;
+    NEW.updated_at := now();
+    RETURN NEW;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+REVOKE ALL ON FUNCTION public.enforce_field_service_site_immutability() FROM PUBLIC, anon, authenticated;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS trg_field_service_site_immutability ON public.field_service_sites;
+--> statement-breakpoint
+CREATE TRIGGER trg_field_service_site_immutability
+BEFORE UPDATE ON public.field_service_sites
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_field_service_site_immutability();
+--> statement-breakpoint
+
+-- 8. Trigger Function: enforce_field_service_work_order_transition
 CREATE OR REPLACE FUNCTION public.enforce_field_service_work_order_transition()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -290,6 +325,16 @@ BEGIN
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
+    -- Structural immutability
+    IF OLD.id IS DISTINCT FROM NEW.id
+       OR OLD.organization_id IS DISTINCT FROM NEW.organization_id
+       OR OLD.client_id IS DISTINCT FROM NEW.client_id
+       OR OLD.created_by_user_id IS DISTINCT FROM NEW.created_by_user_id
+       OR OLD.reference IS DISTINCT FROM NEW.reference
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+      RAISE EXCEPTION 'Work order core identity (id, organization_id, client_id, created_by_user_id, reference, created_at) is immutable' USING ERRCODE = '23514';
+    END IF;
+
     IF OLD.status IS DISTINCT FROM NEW.status THEN
       IF OLD.status IN ('completed', 'cancelled') THEN
         RAISE EXCEPTION 'Cannot transition from terminal status %', OLD.status USING ERRCODE = '23514';
@@ -333,9 +378,20 @@ BEGIN
         END IF;
       END IF;
     ELSE
+      -- Disallow modifying business execution data on terminal work orders
       IF OLD.status IN ('completed', 'cancelled') THEN
-        IF OLD.status != NEW.status OR OLD.cancellation_reason_code IS DISTINCT FROM NEW.cancellation_reason_code OR OLD.actual_start IS DISTINCT FROM NEW.actual_start OR OLD.actual_end IS DISTINCT FROM NEW.actual_end THEN
-          RAISE EXCEPTION 'Cannot modify terminal work order execution details' USING ERRCODE = '23514';
+        IF OLD.site_id IS DISTINCT FROM NEW.site_id
+           OR OLD.title IS DISTINCT FROM NEW.title
+           OR OLD.description IS DISTINCT FROM NEW.description
+           OR OLD.work_type IS DISTINCT FROM NEW.work_type
+           OR OLD.priority IS DISTINCT FROM NEW.priority
+           OR OLD.scheduled_start IS DISTINCT FROM NEW.scheduled_start
+           OR OLD.scheduled_end IS DISTINCT FROM NEW.scheduled_end
+           OR OLD.cancellation_reason_code IS DISTINCT FROM NEW.cancellation_reason_code
+           OR OLD.cancellation_notes IS DISTINCT FROM NEW.cancellation_notes
+           OR OLD.actual_start IS DISTINCT FROM NEW.actual_start
+           OR OLD.actual_end IS DISTINCT FROM NEW.actual_end THEN
+          RAISE EXCEPTION 'Terminal work order cannot be modified' USING ERRCODE = '23514';
         END IF;
       END IF;
     END IF;
@@ -358,7 +414,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_field_service_work_order_transition();
 --> statement-breakpoint
 
--- 8. Trigger Function: record_field_service_work_order_status_history
+-- 9. Trigger Function: record_field_service_work_order_status_history
 CREATE OR REPLACE FUNCTION public.record_field_service_work_order_status_history()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -425,7 +481,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.record_field_service_work_order_status_history();
 --> statement-breakpoint
 
--- 9. Trigger Function: enforce_field_service_status_history_append_only
+-- 10. Trigger Function: enforce_field_service_status_history_append_only
 CREATE OR REPLACE FUNCTION public.enforce_field_service_status_history_append_only()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -447,7 +503,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_field_service_status_history_append_only();
 --> statement-breakpoint
 
--- 10. Trigger Function: enforce_field_service_assignment_invariants
+-- 11. Trigger Function: enforce_field_service_assignment_invariants
 CREATE OR REPLACE FUNCTION public.enforce_field_service_assignment_invariants()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -459,6 +515,17 @@ DECLARE
   v_profile_type text;
   v_wo_status text;
 BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.id IS DISTINCT FROM NEW.id
+       OR OLD.organization_id IS DISTINCT FROM NEW.organization_id
+       OR OLD.work_order_id IS DISTINCT FROM NEW.work_order_id
+       OR OLD.user_id IS DISTINCT FROM NEW.user_id
+       OR OLD.assigned_at IS DISTINCT FROM NEW.assigned_at
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+      RAISE EXCEPTION 'Work order assignment core attributes are immutable' USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
   SELECT u.organization_id, u.profile_type
   INTO v_user_org, v_profile_type
   FROM public.users u
@@ -476,6 +543,10 @@ BEGIN
     RAISE EXCEPTION 'Cannot assign technician to completed or cancelled work order' USING ERRCODE = '23514';
   END IF;
 
+  IF TG_OP = 'UPDATE' THEN
+    NEW.updated_at := now();
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -490,7 +561,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_field_service_assignment_invariants();
 --> statement-breakpoint
 
--- 11. Trigger Function: enforce_field_service_work_report_transition
+-- 12. Trigger Function: enforce_field_service_work_report_transition
 CREATE OR REPLACE FUNCTION public.enforce_field_service_work_report_transition()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -511,6 +582,15 @@ BEGIN
   END IF;
 
   IF TG_OP = 'UPDATE' THEN
+    -- Structural immutability of report identity
+    IF OLD.id IS DISTINCT FROM NEW.id
+       OR OLD.organization_id IS DISTINCT FROM NEW.organization_id
+       OR OLD.work_order_id IS DISTINCT FROM NEW.work_order_id
+       OR OLD.author_user_id IS DISTINCT FROM NEW.author_user_id
+       OR OLD.created_at IS DISTINCT FROM NEW.created_at THEN
+      RAISE EXCEPTION 'Report core attributes (id, organization_id, work_order_id, author_user_id, created_at) are immutable' USING ERRCODE = '23514';
+    END IF;
+
     IF OLD.status = 'finalized' THEN
       RAISE EXCEPTION 'Finalized work reports are immutable' USING ERRCODE = '23514';
     END IF;
@@ -537,7 +617,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_field_service_work_report_transition();
 --> statement-breakpoint
 
--- 12. Row Level Security (RLS)
+-- 13. Row Level Security (RLS)
 ALTER TABLE public.field_service_sites ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE public.field_service_work_orders ENABLE ROW LEVEL SECURITY;
@@ -593,7 +673,7 @@ TO authenticated
 USING (public.is_current_field_service_professional(organization_id));
 --> statement-breakpoint
 
--- 13. Grants
+-- 14. Grants
 REVOKE ALL ON TABLE public.field_service_sites FROM PUBLIC, anon, authenticated;
 --> statement-breakpoint
 REVOKE ALL ON TABLE public.field_service_work_orders FROM PUBLIC, anon, authenticated;

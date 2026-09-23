@@ -314,12 +314,223 @@ describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', (
         .delete()
         .eq('id', testWorkOrderIdA);
 
-      // Error code 42501 (insufficient_privilege) or RLS restriction
       expect(error).not.toBeNull();
 
-      // Verify row still exists in DB
       const [order] = await sql`SELECT id FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
       expect(order).toBeDefined();
+    });
+
+    it('Pro A cannot directly DELETE a site via PostgREST', async () => {
+      const { error } = await proAClient
+        .from('field_service_sites')
+        .delete()
+        .eq('id', testSiteIdA);
+
+      expect(error).not.toBeNull();
+      const [site] = await sql`SELECT id FROM field_service_sites WHERE id = ${testSiteIdA}`;
+      expect(site).toBeDefined();
+    });
+
+    it('Pro A cannot directly DELETE an assignment via PostgREST', async () => {
+      const { error } = await proAClient
+        .from('field_service_work_order_assignments')
+        .delete()
+        .eq('id', testAssignmentIdA);
+
+      expect(error).not.toBeNull();
+      const [assign] = await sql`SELECT id FROM field_service_work_order_assignments WHERE id = ${testAssignmentIdA}`;
+      expect(assign).toBeDefined();
+    });
+
+    it('Pro A cannot directly DELETE a report via PostgREST', async () => {
+      const { error } = await proAClient
+        .from('field_service_work_reports')
+        .delete()
+        .eq('id', testReportIdA);
+
+      expect(error).not.toBeNull();
+      const [rep] = await sql`SELECT id FROM field_service_work_reports WHERE id = ${testReportIdA}`;
+      expect(rep).toBeDefined();
+    });
+  });
+
+  // ==========================================================================
+  // 6. Adversarial Attack Tests (Tenant / Spoof / Structural Immutability)
+  // ==========================================================================
+  describe('Adversarial PostgREST & Tenant Invariant Tests', () => {
+    const clientIdB = 'cli-rec-b-5678';
+
+    it('Org A Pro A cannot forge creator_by_user_id = Pro B in Org A work order', async () => {
+      const fakeId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_orders')
+        .insert({
+          id: fakeId,
+          organization_id: orgA,
+          client_id: clientIdA,
+          site_id: testSiteIdA,
+          created_by_user_id: proBUserId,
+          reference: 'WO-SPOOF-CREATOR',
+          title: 'Spoofed Creator Order',
+          work_type: 'intervention',
+        });
+
+      expect(error).not.toBeNull();
+      const [row] = await sql`SELECT id FROM field_service_work_orders WHERE id = ${fakeId}`;
+      expect(row).toBeUndefined();
+    });
+
+    it('Org A Pro A cannot create site referencing Org B client (cross-tenant client site)', async () => {
+      const fakeSiteId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_sites')
+        .insert({
+          id: fakeSiteId,
+          organization_id: orgA,
+          client_id: clientIdB,
+          label: 'Cross Tenant Site',
+          address_line1: '99 Rue Illégitime',
+          postal_code: '75001',
+          city: 'Paris',
+          country: 'FR',
+        });
+
+      expect(error).not.toBeNull();
+      const [row] = await sql`SELECT id FROM field_service_sites WHERE id = ${fakeSiteId}`;
+      expect(row).toBeUndefined();
+    });
+
+    it('Org A Pro A cannot create work order without site referencing Org B client', async () => {
+      const fakeOrderId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_orders')
+        .insert({
+          id: fakeOrderId,
+          organization_id: orgA,
+          client_id: clientIdB,
+          created_by_user_id: proAUserId,
+          reference: 'WO-CROSS-CLIENT',
+          title: 'Cross Tenant Client Order',
+          work_type: 'intervention',
+        });
+
+      expect(error).not.toBeNull();
+      const [row] = await sql`SELECT id FROM field_service_work_orders WHERE id = ${fakeOrderId}`;
+      expect(row).toBeUndefined();
+    });
+
+    it('Org A Pro A cannot forge author_user_id = Pro B on Org A work report', async () => {
+      const fakeReportId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_reports')
+        .insert({
+          id: fakeReportId,
+          organization_id: orgA,
+          work_order_id: testWorkOrderIdA,
+          author_user_id: proBUserId,
+          status: 'draft',
+          summary: 'Spoofed Report Author',
+        });
+
+      expect(error).not.toBeNull();
+      const [row] = await sql`SELECT id FROM field_service_work_reports WHERE id = ${fakeReportId}`;
+      expect(row).toBeUndefined();
+    });
+
+    it('Org A Pro A cannot assign Pro B to Org A work order (cross-tenant assignment)', async () => {
+      const fakeAssignId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_order_assignments')
+        .insert({
+          id: fakeAssignId,
+          organization_id: orgA,
+          work_order_id: testWorkOrderIdA,
+          user_id: proBUserId,
+          role: 'technician',
+          is_active: true,
+        });
+
+      expect(error).not.toBeNull();
+      const [row] = await sql`SELECT id FROM field_service_work_order_assignments WHERE id = ${fakeAssignId}`;
+      expect(row).toBeUndefined();
+    });
+
+    it('blocks duplicate active worker assignments via partial unique index', async () => {
+      const secondAssignId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_order_assignments')
+        .insert({
+          id: secondAssignId,
+          organization_id: orgA,
+          work_order_id: testWorkOrderIdA,
+          user_id: proAUserId,
+          role: 'technician',
+          is_active: true,
+        });
+
+      expect(error).not.toBeNull();
+    });
+
+    it('blocks structural UPDATE on site (cannot change client_id or organization_id)', async () => {
+      const { error } = await proAClient
+        .from('field_service_sites')
+        .update({ client_id: clientIdB })
+        .eq('id', testSiteIdA);
+
+      expect(error).not.toBeNull();
+      const [site] = await sql`SELECT client_id FROM field_service_sites WHERE id = ${testSiteIdA}`;
+      expect(site?.client_id).toBe(clientIdA);
+    });
+
+    it('blocks structural UPDATE on work order (cannot change client_id, created_by_user_id, or reference)', async () => {
+      const { error } = await proAClient
+        .from('field_service_work_orders')
+        .update({
+          client_id: clientIdB,
+          created_by_user_id: proBUserId,
+          reference: 'WO-FORGED-REF',
+        })
+        .eq('id', testWorkOrderIdA);
+
+      expect(error).not.toBeNull();
+      const [order] = await sql`SELECT reference, client_id FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
+      expect(order?.reference).toBe('WO-RLS-TEST-A1');
+      expect(order?.client_id).toBe(clientIdA);
+    });
+
+    it('blocks structural UPDATE on assignment (cannot change user_id or work_order_id)', async () => {
+      const otherOrderId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_order_assignments')
+        .update({ work_order_id: otherOrderId })
+        .eq('id', testAssignmentIdA);
+
+      expect(error).not.toBeNull();
+    });
+
+    it('blocks structural UPDATE on draft report (cannot change work_order_id or author_user_id)', async () => {
+      const otherOrderId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_reports')
+        .update({ work_order_id: otherOrderId })
+        .eq('id', testReportIdA);
+
+      expect(error).not.toBeNull();
+    });
+
+    it('blocks direct authenticated INSERT into status history', async () => {
+      const fakeHistoryId = randomUUID();
+      const { error } = await proAClient
+        .from('field_service_work_order_status_history')
+        .insert({
+          id: fakeHistoryId,
+          organization_id: orgA,
+          work_order_id: testWorkOrderIdA,
+          from_status: 'draft',
+          to_status: 'in_progress',
+        });
+
+      expect(error).not.toBeNull();
     });
   });
 });

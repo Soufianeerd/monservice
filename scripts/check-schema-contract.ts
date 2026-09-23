@@ -687,6 +687,27 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id'],
     },
     {
+      constraintName: 'field_service_sites_client_fk',
+      tableName: 'field_service_sites',
+      foreignTable: 'clients',
+      localCols: ['client_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'field_service_work_orders_client_fk',
+      tableName: 'field_service_work_orders',
+      foreignTable: 'clients',
+      localCols: ['client_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'field_service_work_orders_created_by_user_fk',
+      tableName: 'field_service_work_orders',
+      foreignTable: 'users',
+      localCols: ['created_by_user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
       constraintName: 'field_service_work_orders_site_fk',
       tableName: 'field_service_work_orders',
       foreignTable: 'field_service_sites',
@@ -701,6 +722,13 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id'],
     },
     {
+      constraintName: 'field_service_assignments_user_fk',
+      tableName: 'field_service_work_order_assignments',
+      foreignTable: 'users',
+      localCols: ['user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
       constraintName: 'field_service_reports_work_order_fk',
       tableName: 'field_service_work_reports',
       foreignTable: 'field_service_work_orders',
@@ -708,10 +736,24 @@ async function verifyContract() {
       foreignCols: ['id', 'organization_id'],
     },
     {
+      constraintName: 'field_service_reports_author_user_fk',
+      tableName: 'field_service_work_reports',
+      foreignTable: 'users',
+      localCols: ['author_user_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
       constraintName: 'field_service_status_history_work_order_fk',
       tableName: 'field_service_work_order_status_history',
       foreignTable: 'field_service_work_orders',
       localCols: ['work_order_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'field_service_status_history_changed_by_user_fk',
+      tableName: 'field_service_work_order_status_history',
+      foreignTable: 'users',
+      localCols: ['changed_by_user_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
   ];
@@ -834,6 +876,7 @@ async function verifyContract() {
     'field_service_assignments_org_wo_idx',
     'field_service_assignments_org_user_idx',
     'field_service_assignments_wo_active_idx',
+    'field_service_assignments_active_user_unique',
     'field_service_reports_org_wo_idx',
     'field_service_reports_org_author_idx',
     'field_service_reports_wo_status_idx',
@@ -1107,6 +1150,11 @@ async function verifyContract() {
       name: 'field_service_assignments_role_check',
       table: 'field_service_work_order_assignments',
       elements: ['role', 'lead', 'technician', 'assistant', 'observer'],
+    },
+    {
+      name: 'field_service_assignments_active_removed_check',
+      table: 'field_service_work_order_assignments',
+      elements: ['is_active', 'removed_at', 'is null', 'is not null'],
     },
     {
       name: 'field_service_reports_summary_check',

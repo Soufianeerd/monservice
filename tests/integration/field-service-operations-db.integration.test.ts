@@ -448,73 +448,415 @@ describe('Field Service Operations Database Integrity & State Machines (Session 
   });
 
   // ==========================================================================
-  // 5. Work Reports State Machine & Immutability
+  // 5. Composite Foreign Keys & Tenant Adversarial Tests
   // ==========================================================================
-  describe('Work Reports State Machine & Finalized Immutability', () => {
-    it('allows drafting and then finalizing a report, but strictly blocks modifications once finalized', async () => {
+  describe('Composite Foreign Keys & Tenant Isolation Invariants', () => {
+    it('rejects creating Org A site with Org B client via composite FK (23503)', async () => {
+      let err: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_sites (
+            id, organization_id, client_id, label, address_line1, postal_code, city
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${clientB1}, 'Illicit Cross Tenant Site', '12 Rue Test', '75001', 'Paris'
+          )
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && err.code === '23503').toBe(true);
+    });
+
+    it('rejects creating Org A work order (without site) with Org B client via composite FK (23503)', async () => {
+      let err: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_orders (
+            id, organization_id, client_id, created_by_user_id, reference, title
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${clientB1}, ${userProA}, 'WO-CROSS-CLIENT-NOSITE', 'Cross Client No Site'
+          )
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && err.code === '23503').toBe(true);
+    });
+
+    it('rejects creating Org A work order with Pro B creator via composite FK (23503)', async () => {
+      let err: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_orders (
+            id, organization_id, client_id, created_by_user_id, reference, title
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${clientA1}, ${userProB}, 'WO-SPOOF-CREATOR', 'Spoof Creator Order'
+          )
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && err.code === '23503').toBe(true);
+    });
+
+    it('rejects creating Org A work report with Pro B author via composite FK (23503)', async () => {
       const orderId = randomUUID();
       await sql`
         INSERT INTO field_service_work_orders (
           id, organization_id, client_id, created_by_user_id, reference, title, status
         ) VALUES (
-          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-REPORT-TEST-1', 'Report Test', 'draft'
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-REPORT-AUTHOR-TEST', 'Report Test Order', 'draft'
         )
+      `;
+
+      let err: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_reports (
+            id, organization_id, work_order_id, author_user_id, status, summary
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${orderId}, ${userProB}, 'draft', 'Illicit author report'
+          )
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && err.code === '23503').toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // 6. Active Assignment Partial Unique Index & State Metadata Check
+  // ==========================================================================
+  describe('Active Assignment Uniqueness & State Metadata', () => {
+    it('enforces partial unique index for active worker on same work order (23505)', async () => {
+      const orderId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES (
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-DUP-ASSIGN-1', 'Duplicate Assign Order', 'draft'
+        )
+      `;
+
+      const assign1Id = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_order_assignments (
+          id, organization_id, work_order_id, user_id, role, is_active
+        ) VALUES (
+          ${assign1Id}, ${orgA}, ${orderId}, ${userStaffA}, 'technician', true
+        )
+      `;
+
+      // 2nd active assignment with same user and work order -> must fail with 23505
+      let err: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_order_assignments (
+            id, organization_id, work_order_id, user_id, role, is_active
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${orderId}, ${userStaffA}, 'assistant', true
+          )
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && err.code === '23505').toBe(true);
+
+      // Unassign 1st assignment
+      await sql`
+        UPDATE field_service_work_order_assignments
+        SET is_active = false, removed_at = now()
+        WHERE id = ${assign1Id}
+      `;
+
+      // Now inserting a new active assignment for the same user must succeed
+      const assign2Id = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_order_assignments (
+          id, organization_id, work_order_id, user_id, role, is_active
+        ) VALUES (
+          ${assign2Id}, ${orgA}, ${orderId}, ${userStaffA}, 'lead', true
+        )
+      `;
+      const [reassigned] = await sql`SELECT id, role, is_active FROM field_service_work_order_assignments WHERE id = ${assign2Id}`;
+      expect(reassigned.id).toBe(assign2Id);
+      expect(reassigned.role).toBe('lead');
+      expect(reassigned.is_active).toBe(true);
+    });
+
+    it('enforces active/removed_at state metadata consistency check (23514)', async () => {
+      const orderId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES (
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-ASSIGN-METADATA-CHK', 'Metadata Check Order', 'draft'
+        )
+      `;
+
+      // Active = true but removed_at IS NOT NULL -> must fail
+      let err1: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_order_assignments (
+            id, organization_id, work_order_id, user_id, role, is_active, removed_at
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${orderId}, ${userStaffA}, 'technician', true, now()
+          )
+        `;
+      } catch (e) {
+        err1 = e;
+      }
+      expect(err1).not.toBeNull();
+      expect(hasPostgresErrorCode(err1) && err1.code === '23514').toBe(true);
+
+      // Active = false but removed_at IS NULL -> must fail
+      let err2: unknown = null;
+      try {
+        await sql`
+          INSERT INTO field_service_work_order_assignments (
+            id, organization_id, work_order_id, user_id, role, is_active, removed_at
+          ) VALUES (
+            ${randomUUID()}, ${orgA}, ${orderId}, ${userStaffA}, 'technician', false, NULL
+          )
+        `;
+      } catch (e) {
+        err2 = e;
+      }
+      expect(err2).not.toBeNull();
+      expect(hasPostgresErrorCode(err2) && err2.code === '23514').toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // 7. Structural Immutability Triggers
+  // ==========================================================================
+  describe('Structural Immutability Triggers (Site, Order, Assignment, Report, History)', () => {
+    it('blocks mutating site core identity (client_id, organization_id) via trigger (23514)', async () => {
+      let err: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_sites
+          SET client_id = ${clientA2}
+          WHERE id = ${siteA1}
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && (err.code === '23514' || err.message.includes('Site core identity'))).toBe(true);
+    });
+
+    it('blocks mutating work order core identity (client_id, created_by_user_id, reference) via trigger (23514)', async () => {
+      const orderId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES (
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-STRUCT-IMMUT-1', 'Order Structural Immut', 'draft'
+        )
+      `;
+
+      // Try mutating client_id
+      let err1: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_orders
+          SET client_id = ${clientA2}
+          WHERE id = ${orderId}
+        `;
+      } catch (e) {
+        err1 = e;
+      }
+      expect(err1).not.toBeNull();
+      expect(hasPostgresErrorCode(err1) && err1.code === '23514').toBe(true);
+
+      // Try mutating reference
+      let err2: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_orders
+          SET reference = 'FORGED-REF'
+          WHERE id = ${orderId}
+        `;
+      } catch (e) {
+        err2 = e;
+      }
+      expect(err2).not.toBeNull();
+      expect(hasPostgresErrorCode(err2) && err2.code === '23514').toBe(true);
+    });
+
+    it('blocks mutating business execution fields on terminal (completed/cancelled) work order (23514)', async () => {
+      const orderId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status, scheduled_start, scheduled_end
+        ) VALUES (
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-TERM-MUTATE-1', 'Terminal Mutate Test', 'scheduled', '2026-10-10 10:00:00+00', '2026-10-10 12:00:00+00'
+        )
+      `;
+      await sql`UPDATE field_service_work_orders SET status = 'in_progress' WHERE id = ${orderId}`;
+      await sql`UPDATE field_service_work_orders SET status = 'completed' WHERE id = ${orderId}`;
+
+      let err: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_orders
+          SET title = 'Illicit Title Mutation on Completed Order'
+          WHERE id = ${orderId}
+        `;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).not.toBeNull();
+      expect(hasPostgresErrorCode(err) && (err.code === '23514' || err.message.includes('Terminal work order cannot be modified'))).toBe(true);
+    });
+
+    it('blocks mutating assignment core attributes (user_id, work_order_id) via trigger (23514)', async () => {
+      const order1Id = randomUUID();
+      const order2Id = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES 
+          (${order1Id}, ${orgA}, ${clientA1}, ${userProA}, 'WO-ASSIGN-MUT-1', 'Order 1', 'draft'),
+          (${order2Id}, ${orgA}, ${clientA1}, ${userProA}, 'WO-ASSIGN-MUT-2', 'Order 2', 'draft')
+      `;
+
+      const assignId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_order_assignments (
+          id, organization_id, work_order_id, user_id, role, is_active
+        ) VALUES (
+          ${assignId}, ${orgA}, ${order1Id}, ${userProA}, 'technician', true
+        )
+      `;
+
+      // Try moving assignment to another user
+      let errUser: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_order_assignments
+          SET user_id = ${userStaffA}
+          WHERE id = ${assignId}
+        `;
+      } catch (e) {
+        errUser = e;
+      }
+      expect(errUser).not.toBeNull();
+      expect(hasPostgresErrorCode(errUser) && (errUser.code === '23514' || errUser.message.includes('assignment core attributes are immutable'))).toBe(true);
+
+      // Try moving assignment to another work order
+      let errOrder: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_order_assignments
+          SET work_order_id = ${order2Id}
+          WHERE id = ${assignId}
+        `;
+      } catch (e) {
+        errOrder = e;
+      }
+      expect(errOrder).not.toBeNull();
+      expect(hasPostgresErrorCode(errOrder) && (errOrder.code === '23514' || errOrder.message.includes('assignment core attributes are immutable'))).toBe(true);
+    });
+
+    it('blocks mutating draft report core attributes (work_order_id, author_user_id) via trigger (23514)', async () => {
+      const order1Id = randomUUID();
+      const order2Id = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES 
+          (${order1Id}, ${orgA}, ${clientA1}, ${userProA}, 'WO-REP-MUT-1', 'Order 1', 'draft'),
+          (${order2Id}, ${orgA}, ${clientA1}, ${userProA}, 'WO-REP-MUT-2', 'Order 2', 'draft')
       `;
 
       const reportId = randomUUID();
       await sql`
         INSERT INTO field_service_work_reports (
-          id, organization_id, work_order_id, author_user_id, status, summary, work_performed
+          id, organization_id, work_order_id, author_user_id, status, summary
         ) VALUES (
-          ${reportId}, ${orgA}, ${orderId}, ${userProA}, 'draft', 'Initial inspection', 'Replaced valve'
+          ${reportId}, ${orgA}, ${order1Id}, ${userProA}, 'draft', 'Initial Summary'
         )
       `;
 
-      // Update draft report -> must succeed
-      await sql`
-        UPDATE field_service_work_reports
-        SET summary = 'Updated inspection summary', work_performed = 'Replaced valve and pipe section'
-        WHERE id = ${reportId}
-      `;
-
-      // Finalize report -> must succeed
-      await sql`
-        UPDATE field_service_work_reports
-        SET status = 'finalized', finalized_at = now()
-        WHERE id = ${reportId}
-      `;
-
-      const [finalized] = await sql`SELECT status, summary, finalized_at FROM field_service_work_reports WHERE id = ${reportId}`;
-      expect(finalized.status).toBe('finalized');
-      expect(finalized.summary).toBe('Updated inspection summary');
-      expect(finalized.finalized_at).not.toBeNull();
-
-      // Try updating finalized report -> must be rejected by trigger
-      let errUpdate: unknown = null;
+      // Try moving report to another work order
+      let errOrder: unknown = null;
       try {
         await sql`
           UPDATE field_service_work_reports
-          SET summary = 'Attempted illicit modification'
+          SET work_order_id = ${order2Id}
           WHERE id = ${reportId}
+        `;
+      } catch (e) {
+        errOrder = e;
+      }
+      expect(errOrder).not.toBeNull();
+      expect(hasPostgresErrorCode(errOrder) && (errOrder.code === '23514' || errOrder.message.includes('Report core attributes'))).toBe(true);
+
+      // Try changing author
+      let errAuthor: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_reports
+          SET author_user_id = ${userStaffA}
+          WHERE id = ${reportId}
+        `;
+      } catch (e) {
+        errAuthor = e;
+      }
+      expect(errAuthor).not.toBeNull();
+      expect(hasPostgresErrorCode(errAuthor) && (errAuthor.code === '23514' || errAuthor.message.includes('Report core attributes'))).toBe(true);
+    });
+
+    it('enforces append-only trigger on field_service_work_order_status_history (23514)', async () => {
+      const orderId = randomUUID();
+      await sql`
+        INSERT INTO field_service_work_orders (
+          id, organization_id, client_id, created_by_user_id, reference, title, status
+        ) VALUES (
+          ${orderId}, ${orgA}, ${clientA1}, ${userProA}, 'WO-HIST-IMMUT-1', 'Hist Immut Test', 'draft'
+        )
+      `;
+
+      const [histEntry] = await sql`
+        SELECT id FROM field_service_work_order_status_history WHERE work_order_id = ${orderId} LIMIT 1
+      `;
+      expect(histEntry).toBeDefined();
+
+      // Try update history entry -> must fail
+      let errUpdate: unknown = null;
+      try {
+        await sql`
+          UPDATE field_service_work_order_status_history
+          SET reason = 'Tampered Reason'
+          WHERE id = ${histEntry.id}
         `;
       } catch (e) {
         errUpdate = e;
       }
       expect(errUpdate).not.toBeNull();
-      expect((errUpdate as { message: string }).message).toContain('Finalized work reports are immutable');
+      expect(hasPostgresErrorCode(errUpdate) && (errUpdate.code === '23514' || errUpdate.message.includes('append-only'))).toBe(true);
 
-      // Try deleting finalized report -> must be rejected by trigger
+      // Try delete history entry -> must fail
       let errDelete: unknown = null;
       try {
         await sql`
-          DELETE FROM field_service_work_reports
-          WHERE id = ${reportId}
+          DELETE FROM field_service_work_order_status_history
+          WHERE id = ${histEntry.id}
         `;
       } catch (e) {
         errDelete = e;
       }
       expect(errDelete).not.toBeNull();
-      expect((errDelete as { message: string }).message).toContain('Work reports cannot be deleted');
+      expect(hasPostgresErrorCode(errDelete) && (errDelete.code === '23514' || errDelete.message.includes('append-only'))).toBe(true);
     });
   });
 });

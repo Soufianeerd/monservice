@@ -1,5 +1,5 @@
 {
-  "id": "36736004-5069-46f1-9467-cdf4d1832577",
+  "id": "6fd5c17d-cefd-4d90-93ff-07df3416625f",
   "prevId": "be599c55-4f5f-4c59-ba1a-8674cb0e5889",
   "version": "7",
   "dialect": "postgresql",
@@ -4554,15 +4554,17 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_sites_client_id_clients_id_fk": {
-          "name": "field_service_sites_client_id_clients_id_fk",
+        "field_service_sites_client_fk": {
+          "name": "field_service_sites_client_fk",
           "tableFrom": "field_service_sites",
           "tableTo": "clients",
           "columnsFrom": [
-            "client_id"
+            "client_id",
+            "organization_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "organization_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -4662,6 +4664,28 @@
         }
       },
       "indexes": {
+        "field_service_assignments_active_user_unique": {
+          "name": "field_service_assignments_active_user_unique",
+          "columns": [
+            {
+              "expression": "work_order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"field_service_work_order_assignments\".\"is_active\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "field_service_assignments_org_wo_idx": {
           "name": "field_service_assignments_org_wo_idx",
           "columns": [
@@ -4740,25 +4764,27 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_work_order_assignments_user_id_users_id_fk": {
-          "name": "field_service_work_order_assignments_user_id_users_id_fk",
-          "tableFrom": "field_service_work_order_assignments",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "field_service_assignments_work_order_fk": {
           "name": "field_service_assignments_work_order_fk",
           "tableFrom": "field_service_work_order_assignments",
           "tableTo": "field_service_work_orders",
           "columnsFrom": [
             "work_order_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "field_service_assignments_user_fk": {
+          "name": "field_service_assignments_user_fk",
+          "tableFrom": "field_service_work_order_assignments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id",
             "organization_id"
           ],
           "columnsTo": [
@@ -4776,6 +4802,10 @@
         "field_service_assignments_role_check": {
           "name": "field_service_assignments_role_check",
           "value": "\"field_service_work_order_assignments\".\"role\" IN ('lead', 'technician', 'assistant', 'observer')"
+        },
+        "field_service_assignments_active_removed_check": {
+          "name": "field_service_assignments_active_removed_check",
+          "value": "(\"field_service_work_order_assignments\".\"is_active\" = true AND \"field_service_work_order_assignments\".\"removed_at\" IS NULL) OR (\"field_service_work_order_assignments\".\"is_active\" = false AND \"field_service_work_order_assignments\".\"removed_at\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -4877,25 +4907,27 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_work_order_status_history_changed_by_user_id_users_id_fk": {
-          "name": "field_service_work_order_status_history_changed_by_user_id_users_id_fk",
-          "tableFrom": "field_service_work_order_status_history",
-          "tableTo": "users",
-          "columnsFrom": [
-            "changed_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "field_service_status_history_work_order_fk": {
           "name": "field_service_status_history_work_order_fk",
           "tableFrom": "field_service_work_order_status_history",
           "tableTo": "field_service_work_orders",
           "columnsFrom": [
             "work_order_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "field_service_status_history_changed_by_user_fk": {
+          "name": "field_service_status_history_changed_by_user_fk",
+          "tableFrom": "field_service_work_order_status_history",
+          "tableTo": "users",
+          "columnsFrom": [
+            "changed_by_user_id",
             "organization_id"
           ],
           "columnsTo": [
@@ -5208,28 +5240,32 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_work_orders_client_id_clients_id_fk": {
-          "name": "field_service_work_orders_client_id_clients_id_fk",
+        "field_service_work_orders_client_fk": {
+          "name": "field_service_work_orders_client_fk",
           "tableFrom": "field_service_work_orders",
           "tableTo": "clients",
           "columnsFrom": [
-            "client_id"
+            "client_id",
+            "organization_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "organization_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_work_orders_created_by_user_id_users_id_fk": {
-          "name": "field_service_work_orders_created_by_user_id_users_id_fk",
+        "field_service_work_orders_created_by_user_fk": {
+          "name": "field_service_work_orders_created_by_user_fk",
           "tableFrom": "field_service_work_orders",
           "tableTo": "users",
           "columnsFrom": [
-            "created_by_user_id"
+            "created_by_user_id",
+            "organization_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "organization_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -5456,25 +5492,27 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "field_service_work_reports_author_user_id_users_id_fk": {
-          "name": "field_service_work_reports_author_user_id_users_id_fk",
-          "tableFrom": "field_service_work_reports",
-          "tableTo": "users",
-          "columnsFrom": [
-            "author_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "field_service_reports_work_order_fk": {
           "name": "field_service_reports_work_order_fk",
           "tableFrom": "field_service_work_reports",
           "tableTo": "field_service_work_orders",
           "columnsFrom": [
             "work_order_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "field_service_reports_author_user_fk": {
+          "name": "field_service_reports_author_user_fk",
+          "tableFrom": "field_service_work_reports",
+          "tableTo": "users",
+          "columnsFrom": [
+            "author_user_id",
             "organization_id"
           ],
           "columnsTo": [

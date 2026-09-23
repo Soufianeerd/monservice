@@ -1409,7 +1409,7 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
 export const fieldServiceSites = sqliteTable('field_service_sites', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
-  clientId: text('client_id').notNull().references(() => clients.id),
+  clientId: text('client_id').notNull(),
   label: text('label').notNull(),
   addressLine1: text('address_line1').notNull(),
   addressLine2: text('address_line2'),
@@ -1431,15 +1431,20 @@ export const fieldServiceSites = sqliteTable('field_service_sites', {
   check('field_service_sites_latitude_check', sql`${t.latitude} IS NULL OR (${t.latitude} >= -90 AND ${t.latitude} <= 90)`),
   check('field_service_sites_longitude_check', sql`${t.longitude} IS NULL OR (${t.longitude} >= -180 AND ${t.longitude} <= 180)`),
   check('field_service_sites_country_check', sql`${t.country} = UPPER(${t.country}) AND char_length(${t.country}) = 2`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_sites_client_fk'
+  })
 ]);
 
 // 2. Field Service Work Orders
 export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
-  clientId: text('client_id').notNull().references(() => clients.id),
+  clientId: text('client_id').notNull(),
   siteId: text('site_id'),
-  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdByUserId: text('created_by_user_id').notNull(),
   reference: text('reference').notNull(),
   title: text('title').notNull(),
   description: text('description'),
@@ -1471,6 +1476,16 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
   check('field_service_work_orders_schedule_dates_check', sql`${t.scheduledStart} IS NULL OR ${t.scheduledEnd} IS NULL OR ${t.scheduledEnd} > ${t.scheduledStart}`),
   check('field_service_work_orders_actual_dates_check', sql`${t.actualEnd} IS NULL OR (${t.actualStart} IS NOT NULL AND ${t.actualEnd} >= ${t.actualStart})`),
   foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_work_orders_client_fk'
+  }),
+  foreignKey({
+    columns: [t.createdByUserId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'field_service_work_orders_created_by_user_fk'
+  }),
+  foreignKey({
     columns: [t.siteId, t.organizationId, t.clientId],
     foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
     name: 'field_service_work_orders_site_fk'
@@ -1482,7 +1497,7 @@ export const fieldServiceWorkOrderAssignments = sqliteTable('field_service_work_
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
   workOrderId: text('work_order_id').notNull(),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').notNull(),
   role: text('role').notNull().default('technician'),
   isActive: boolean('is_active').notNull().default(true),
   assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1490,14 +1505,23 @@ export const fieldServiceWorkOrderAssignments = sqliteTable('field_service_work_
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  uniqueIndex('field_service_assignments_active_user_unique')
+    .on(t.workOrderId, t.userId)
+    .where(sql`${t.isActive} = true`),
   index('field_service_assignments_org_wo_idx').on(t.organizationId, t.workOrderId),
   index('field_service_assignments_org_user_idx').on(t.organizationId, t.userId),
   index('field_service_assignments_wo_active_idx').on(t.workOrderId, t.isActive),
   check('field_service_assignments_role_check', sql`${t.role} IN ('lead', 'technician', 'assistant', 'observer')`),
+  check('field_service_assignments_active_removed_check', sql`(${t.isActive} = true AND ${t.removedAt} IS NULL) OR (${t.isActive} = false AND ${t.removedAt} IS NOT NULL)`),
   foreignKey({
     columns: [t.workOrderId, t.organizationId],
     foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
     name: 'field_service_assignments_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.userId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'field_service_assignments_user_fk'
   })
 ]);
 
@@ -1506,7 +1530,7 @@ export const fieldServiceWorkReports = sqliteTable('field_service_work_reports',
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
   workOrderId: text('work_order_id').notNull(),
-  authorUserId: text('author_user_id').notNull().references(() => users.id),
+  authorUserId: text('author_user_id').notNull(),
   status: text('status').notNull().default('draft'),
   summary: text('summary').notNull(),
   workPerformed: text('work_performed'),
@@ -1527,6 +1551,11 @@ export const fieldServiceWorkReports = sqliteTable('field_service_work_reports',
     columns: [t.workOrderId, t.organizationId],
     foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
     name: 'field_service_reports_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.authorUserId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'field_service_reports_author_user_fk'
   })
 ]);
 
@@ -1537,7 +1566,7 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
   workOrderId: text('work_order_id').notNull(),
   fromStatus: text('from_status'),
   toStatus: text('to_status').notNull(),
-  changedByUserId: text('changed_by_user_id').references(() => users.id),
+  changedByUserId: text('changed_by_user_id'),
   reason: text('reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -1548,6 +1577,11 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
     columns: [t.workOrderId, t.organizationId],
     foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
     name: 'field_service_status_history_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.changedByUserId, t.organizationId],
+    foreignColumns: [users.id, users.organizationId],
+    name: 'field_service_status_history_changed_by_user_fk'
   })
 ]);
 

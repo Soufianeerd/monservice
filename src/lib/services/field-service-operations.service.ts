@@ -640,22 +640,48 @@ export async function assignFieldServiceWorker(
     throw new AppError('L’utilisateur assigné doit être un professionnel actif de l’organisation', 400, 'INVALID_ASSIGNED_USER');
   }
 
+  // 3. Check for existing active assignment
+  const [existingActive] = await db
+    .select({ id: fieldServiceWorkOrderAssignments.id })
+    .from(fieldServiceWorkOrderAssignments)
+    .where(
+      and(
+        eq(fieldServiceWorkOrderAssignments.organizationId, organizationId),
+        eq(fieldServiceWorkOrderAssignments.workOrderId, workOrderId),
+        eq(fieldServiceWorkOrderAssignments.userId, userId),
+        eq(fieldServiceWorkOrderAssignments.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (existingActive) {
+    throw new AppError('Ce professionnel est déjà assigné à cette opération', 409, 'WORKER_ALREADY_ASSIGNED');
+  }
+
   const assignmentId = crypto.randomUUID();
 
-  const [assignment] = await db
-    .insert(fieldServiceWorkOrderAssignments)
-    .values({
-      id: assignmentId,
-      organizationId,
-      workOrderId,
-      userId,
-      role,
-      isActive: true,
-      assignedAt: new Date(),
-    })
-    .returning();
+  try {
+    const [assignment] = await db
+      .insert(fieldServiceWorkOrderAssignments)
+      .values({
+        id: assignmentId,
+        organizationId,
+        workOrderId,
+        userId,
+        role,
+        isActive: true,
+        assignedAt: new Date(),
+      })
+      .returning();
 
-  return assignment;
+    return assignment;
+  } catch (err: unknown) {
+    const error = err as { code?: string };
+    if (error?.code === '23505') {
+      throw new AppError('Ce professionnel est déjà assigné à cette opération', 409, 'WORKER_ALREADY_ASSIGNED');
+    }
+    throw err;
+  }
 }
 
 export async function unassignFieldServiceWorker(
