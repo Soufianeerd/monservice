@@ -6,6 +6,7 @@ import { findAllAction as getDealsAction } from '@/app/actions/deal.actions';
 import { Deal } from '@/lib/data/interfaces';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { getPracticeDashboardAction } from '@/app/actions/practice-dashboard.actions';
+import { getFieldServiceDashboardMetrics } from '@/lib/services/field-service-operations.service';
 import ParamedicalPracticeDashboard from '@/components/dashboard/ParamedicalPracticeDashboard';
 import FieldServiceDashboard from '@/components/dashboard/FieldServiceDashboard';
 
@@ -41,8 +42,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const dashboardStats = await getProfessionalStatsAction(user.organizationId);
-  const deals = await getDealsAction(user.organizationId);
+  const [dashboardStats, deals, operationsMetrics] = await Promise.all([
+    getProfessionalStatsAction(user.organizationId),
+    getDealsAction(user.organizationId),
+    workspace.type === 'field_service'
+      ? getFieldServiceDashboardMetrics(user.organizationId)
+      : Promise.resolve(undefined),
+  ]);
   
   const stats = {
     clients: dashboardStats.clients,
@@ -77,6 +83,7 @@ export default async function DashboardPage() {
         workspace={workspace}
         organization={organization}
         stats={stats}
+        operationsMetrics={operationsMetrics}
         chartData={months}
       />
     );

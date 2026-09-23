@@ -13,15 +13,18 @@ export const FIELD_SERVICE_IMPLEMENTED_CAPABILITIES = [
   'tasks',
   'messaging',
   'billing',
+  'workOrders',
+  'sites',
+  'assignments',
+  'workReports',
 ] as const satisfies readonly WorkspaceCapability[];
 
 /**
- * Capacités planifiées (Roadmap Sessions 17+) — Ne doivent PAS apparaître en UI active Session 16.
+ * Capacités planifiées (Roadmap Sessions 18+) — Ne doivent PAS apparaître en UI active Session 17.
  */
 export const FIELD_SERVICE_PLANNED_CAPABILITIES = [
   'jobs',
   'interventions',
-  'workOrders',
   'repairCases',
   'customerAssets',
   'jobPhases',

@@ -74,6 +74,8 @@ jobs:
         run: npm run test:clinical
       - name: Run Patient Portal Unit Tests
         run: npm run test:patient-portal
+      - name: Run Field Service Unit Tests
+        run: npm run test:field-service
       - run: npm run test:compliance
       - run: npm run build
       
@@ -83,3 +85,5 @@ jobs:
         run: npm run test:e2e:patient-portal
       - name: Run Paramedical Practitioner E2E Tests
         run: npm run test:e2e:paramedical
+      - name: Run Field Service Operations E2E Tests
+        run: npm run test:e2e:field-service

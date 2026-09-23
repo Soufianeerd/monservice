@@ -23,6 +23,11 @@ export const WORKSPACE_CAPABILITY_CODES = [
   'nutritionJournal',
   'orthotics',
   'patientPortal',
+  // Field Services (Session 17)
+  'workOrders',
+  'sites',
+  'assignments',
+  'workReports',
 ] as const;
 
 export type WorkspaceCapability = typeof WORKSPACE_CAPABILITY_CODES[number];
@@ -36,6 +41,10 @@ export interface WorkspaceTerminology {
   servicePlural?: string;
   workSingular?: string;
   workPlural?: string;
+  operationSingular?: string;
+  operationPlural?: string;
+  siteSingular?: string;
+  sitePlural?: string;
 }
 
 export interface BaseWorkspaceConfig {

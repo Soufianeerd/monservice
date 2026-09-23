@@ -3,6 +3,7 @@ import {
   text,
   integer,
   real,
+  doublePrecision,
   numeric,
   boolean,
   index,
@@ -1399,4 +1400,155 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
     name: 'appointment_reminders_appointment_fk'
   })
 ]);
+
+// ============================================================================
+// Field Service Operations Tables (Session 17)
+// ============================================================================
+
+// 1. Field Service Sites
+export const fieldServiceSites = sqliteTable('field_service_sites', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull().references(() => clients.id),
+  label: text('label').notNull(),
+  addressLine1: text('address_line1').notNull(),
+  addressLine2: text('address_line2'),
+  postalCode: text('postal_code').notNull(),
+  city: text('city').notNull(),
+  country: text('country').notNull().default('FR'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  accessInstructions: text('access_instructions'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_sites_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  index('field_service_sites_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_sites_org_active_idx').on(t.organizationId, t.isActive),
+  index('field_service_sites_org_city_idx').on(t.organizationId, t.city),
+  check('field_service_sites_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
+  check('field_service_sites_latitude_check', sql`${t.latitude} IS NULL OR (${t.latitude} >= -90 AND ${t.latitude} <= 90)`),
+  check('field_service_sites_longitude_check', sql`${t.longitude} IS NULL OR (${t.longitude} >= -180 AND ${t.longitude} <= 180)`),
+  check('field_service_sites_country_check', sql`${t.country} = UPPER(${t.country}) AND char_length(${t.country}) = 2`),
+]);
+
+// 2. Field Service Work Orders
+export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull().references(() => clients.id),
+  siteId: text('site_id'),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  reference: text('reference').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  workType: text('work_type').notNull().default('intervention'),
+  status: text('status').notNull().default('draft'),
+  priority: text('priority').notNull().default('medium'),
+  scheduledStart: timestamp('scheduled_start', { withTimezone: true }),
+  scheduledEnd: timestamp('scheduled_end', { withTimezone: true }),
+  actualStart: timestamp('actual_start', { withTimezone: true }),
+  actualEnd: timestamp('actual_end', { withTimezone: true }),
+  cancellationReasonCode: text('cancellation_reason_code'),
+  cancellationNotes: text('cancellation_notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_work_orders_org_ref_unique').on(t.organizationId, t.reference),
+  uniqueIndex('field_service_work_orders_id_org_unique').on(t.id, t.organizationId),
+  index('field_service_work_orders_org_status_idx').on(t.organizationId, t.status),
+  index('field_service_work_orders_org_sched_start_idx').on(t.organizationId, t.scheduledStart),
+  index('field_service_work_orders_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_work_orders_org_site_idx').on(t.organizationId, t.siteId),
+  index('field_service_work_orders_org_priority_idx').on(t.organizationId, t.priority),
+  check('field_service_work_orders_reference_check', sql`char_length(trim(${t.reference})) >= 1 AND char_length(trim(${t.reference})) <= 64`),
+  check('field_service_work_orders_title_check', sql`char_length(trim(${t.title})) >= 1 AND char_length(trim(${t.title})) <= 200`),
+  check('field_service_work_orders_work_type_check', sql`${t.workType} IN ('job', 'intervention', 'installation', 'maintenance', 'repair', 'inspection', 'project', 'other')`),
+  check('field_service_work_orders_status_check', sql`${t.status} IN ('draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled')`),
+  check('field_service_work_orders_priority_check', sql`${t.priority} IN ('low', 'medium', 'high', 'urgent')`),
+  check('field_service_work_orders_cancellation_reason_check', sql`(${t.status} != 'cancelled' AND ${t.cancellationReasonCode} IS NULL) OR (${t.status} = 'cancelled' AND ${t.cancellationReasonCode} IN ('customer_request', 'unavailable', 'duplicate', 'quote_not_accepted', 'scheduling_issue', 'technical_impossibility', 'other'))`),
+  check('field_service_work_orders_schedule_dates_check', sql`${t.scheduledStart} IS NULL OR ${t.scheduledEnd} IS NULL OR ${t.scheduledEnd} > ${t.scheduledStart}`),
+  check('field_service_work_orders_actual_dates_check', sql`${t.actualEnd} IS NULL OR (${t.actualStart} IS NOT NULL AND ${t.actualEnd} >= ${t.actualStart})`),
+  foreignKey({
+    columns: [t.siteId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
+    name: 'field_service_work_orders_site_fk'
+  })
+]);
+
+// 3. Field Service Work Order Assignments
+export const fieldServiceWorkOrderAssignments = sqliteTable('field_service_work_order_assignments', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workOrderId: text('work_order_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id),
+  role: text('role').notNull().default('technician'),
+  isActive: boolean('is_active').notNull().default(true),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp('removed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('field_service_assignments_org_wo_idx').on(t.organizationId, t.workOrderId),
+  index('field_service_assignments_org_user_idx').on(t.organizationId, t.userId),
+  index('field_service_assignments_wo_active_idx').on(t.workOrderId, t.isActive),
+  check('field_service_assignments_role_check', sql`${t.role} IN ('lead', 'technician', 'assistant', 'observer')`),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
+    name: 'field_service_assignments_work_order_fk'
+  })
+]);
+
+// 4. Field Service Work Reports
+export const fieldServiceWorkReports = sqliteTable('field_service_work_reports', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workOrderId: text('work_order_id').notNull(),
+  authorUserId: text('author_user_id').notNull().references(() => users.id),
+  status: text('status').notNull().default('draft'),
+  summary: text('summary').notNull(),
+  workPerformed: text('work_performed'),
+  issuesFound: text('issues_found'),
+  recommendations: text('recommendations'),
+  customerNotes: text('customer_notes'),
+  finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('field_service_reports_org_wo_idx').on(t.organizationId, t.workOrderId),
+  index('field_service_reports_org_author_idx').on(t.organizationId, t.authorUserId),
+  index('field_service_reports_wo_status_idx').on(t.workOrderId, t.status),
+  check('field_service_reports_summary_check', sql`char_length(trim(${t.summary})) >= 1 AND char_length(trim(${t.summary})) <= 2000`),
+  check('field_service_reports_status_check', sql`${t.status} IN ('draft', 'finalized')`),
+  check('field_service_reports_status_metadata_check', sql`(${t.status} = 'draft' AND ${t.finalizedAt} IS NULL) OR (${t.status} = 'finalized' AND ${t.finalizedAt} IS NOT NULL)`),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
+    name: 'field_service_reports_work_order_fk'
+  })
+]);
+
+// 5. Field Service Work Order Status History
+export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_work_order_status_history', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workOrderId: text('work_order_id').notNull(),
+  fromStatus: text('from_status'),
+  toStatus: text('to_status').notNull(),
+  changedByUserId: text('changed_by_user_id').references(() => users.id),
+  reason: text('reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('field_service_status_history_org_wo_created_idx').on(t.organizationId, t.workOrderId, t.createdAt),
+  check('field_service_status_history_to_status_check', sql`${t.toStatus} IN ('draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled')`),
+  check('field_service_status_history_from_status_check', sql`${t.fromStatus} IS NULL OR ${t.fromStatus} IN ('draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled')`),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId],
+    name: 'field_service_status_history_work_order_fk'
+  })
+]);
+
 

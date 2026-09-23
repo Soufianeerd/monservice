@@ -37,7 +37,7 @@ L'ensemble des exigences de la session ont été respectées de manière stricte
 #### C. Base de Données & Migration Supabase
 - Migration : `drizzle/postgres/0019_field_service_foundation.sql`
 - Contrainte SQL : `organizations_sector_profession_check` vérifiant que :
-  - `sector = 'health'` $\rightarrow$ profession parmi les 17 professions médicales/paramédicales autorisées ou NULL.
+  - `sector = 'health'` $\rightarrow$ profession parmi les 7 professions paramédicales canoniques autorisées (`physiotherapist`, `osteopath`, `speech_therapist`, `podiatrist`, `occupational_therapist`, `psychomotor_therapist`, `dietitian`) ou NULL.
   - `sector IN ('field_services', 'artisan')` $\rightarrow$ profession parmi les 36 professions field service autorisées ou NULL.
   - Autres secteurs $\rightarrow$ profession doit être NULL.
 
@@ -47,7 +47,7 @@ L'ensemble des exigences de la session ont été respectées de manière stricte
 - `src/components/auth/RegisterForm.tsx` : Dropdown de sélection des métiers groupé par famille métier.
 
 #### E. Navigation & Dashboard
-- `src/lib/navigation/workspace-navigation.ts` : Navigation adaptée pour `field_service` pointant exclusivement vers les routes de production existantes (`/dashboard`, `/contacts`, `/quotes`, `/invoices`, `/settings`).
+- `src/lib/navigation/workspace-navigation.ts` : Navigation adaptée pour `field_service` pointant exclusivement vers les routes de production existantes (`/dashboard`, `/clients`, `/deals`, `/facturation`, `/agenda`, `/messages`, `/parametres`).
 - `src/components/dashboard/FieldServiceDashboard.tsx` : Dashboard exploitant la terminologie du métier de l'organisation et affichant les métriques CRM/Facturation réelles.
 
 ---

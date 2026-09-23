@@ -28,6 +28,7 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0017_omniscient_spiral.sql` | Drizzle Kit + Manuel | YES | Mixed | Clinical Documents + Form Templates & Responses + Measurements + Secure Storage + State Machines | `0016_fuzzy_silvermane.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0018_deep_white_tiger.sql` | Drizzle Kit + Manuel | YES | Mixed | Session14 portal/billing/communication/reminders | `0017_omniscient_spiral.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0019_field_service_foundation.sql` | Manuel | YES | Manual | Session16 Field Service foundation & generalized sector/profession check constraint | `0018_deep_white_tiger.sql` | NOT_APPLIED | CANONICAL | Conserver |
+| `drizzle/postgres/0020_field_service_operations.sql` | Drizzle Kit + Manuel | YES | Mixed | Session17 Field Service Operations (Sites, Work Orders, Assignments, Reports, Status History) + State Machines + RLS | `0019_field_service_foundation.sql` | NOT_APPLIED | CANONICAL | Conserver |
 
 
 

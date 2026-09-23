@@ -4,6 +4,7 @@ export type NavigationIconKey =
   | 'dashboard'
   | 'users'
   | 'deals'
+  | 'operations'
   | 'billing'
   | 'agenda'
   | 'marketplace'
@@ -134,6 +135,13 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
   if (workspace.type === 'field_service') {
     return [
       { id: 'dashboard', name: 'Tableau de bord', href: '/dashboard', icon: 'dashboard' },
+      {
+        id: 'operations',
+        name: workspace.terminology.workPlural || 'Opérations',
+        href: '/operations',
+        icon: 'operations',
+        dataTour: 'operations-nav',
+      },
       {
         id: 'clients',
         name: workspace.terminology.customerPlural || 'Clients',

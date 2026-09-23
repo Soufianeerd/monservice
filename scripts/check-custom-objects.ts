@@ -73,7 +73,12 @@ async function verifyCustomObjects() {
     patient_portal_access: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     patient_questionnaire_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     patient_billing_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointment_reminder_deliveries: { anon: [], authenticated: [] }
+    appointment_reminder_deliveries: { anon: [], authenticated: [] },
+    field_service_sites: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_orders: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_reports: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_status_history: { anon: [], authenticated: ['SELECT'] }
   };
 
   const dbGrants = await sql`
@@ -125,7 +130,13 @@ async function verifyCustomObjects() {
       'enforce_clinical_measurement_insert',
       'can_insert_patient_message',
       'enforce_patient_message_update',
-      'has_patient_practitioner_relationship'
+      'has_patient_practitioner_relationship',
+      'is_current_field_service_professional',
+      'enforce_field_service_work_order_transition',
+      'record_field_service_work_order_status_history',
+      'enforce_field_service_status_history_append_only',
+      'enforce_field_service_assignment_invariants',
+      'enforce_field_service_work_report_transition'
     );
   `;
 
@@ -144,6 +155,12 @@ async function verifyCustomObjects() {
     can_insert_patient_message: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_patient_message_update: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     has_patient_practitioner_relationship: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    is_current_field_service_professional: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_field_service_work_order_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    record_field_service_work_order_status_history: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_status_history_append_only: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_assignment_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -342,6 +359,69 @@ async function verifyCustomObjects() {
     }
   }
 
+  // Check function definition semantic contracts for is_current_field_service_professional
+  const fsProfFunc = funcs.find(x => x.proname === 'is_current_field_service_professional');
+  if (fsProfFunc?.funcdef) {
+    const normDef = fsProfFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'users',
+      'profile_type',
+      'professional',
+      'organizations',
+      'sector',
+      'field_services',
+      'artisan',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'is_current_field_service_professional' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_field_service_work_order_transition
+  const woTransFunc = funcs.find(x => x.proname === 'enforce_field_service_work_order_transition');
+  if (woTransFunc?.funcdef) {
+    const normDef = woTransFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'draft',
+      'scheduled',
+      'in_progress',
+      'paused',
+      'completed',
+      'cancelled',
+      'actual_start',
+      'actual_end',
+      'cancellation_reason_code',
+      '23514',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_field_service_work_order_transition' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
+  // Check function definition semantic contracts for enforce_field_service_work_report_transition
+  const wrTransFunc = funcs.find(x => x.proname === 'enforce_field_service_work_report_transition');
+  if (wrTransFunc?.funcdef) {
+    const normDef = wrTransFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
+    const requiredElements = [
+      'draft',
+      'finalized',
+      'finalized_at',
+      '23514',
+    ];
+    for (const el of requiredElements) {
+      if (!normDef.includes(el.toLowerCase())) {
+        console.error(`❌ ERROR: Function 'enforce_field_service_work_report_transition' missing semantic invariant: '${el}'`);
+        errorCount++;
+      }
+    }
+  }
+
   // 3. Verify triggers
   const rlsTables = await sql`
     SELECT relname FROM pg_class 
@@ -368,7 +448,12 @@ async function verifyCustomObjects() {
       'clinical_documents_mutation_guard',
       'clinical_form_responses_transition_guard',
       'clinical_measurements_insert_guard',
-      'messages_patient_mutation_guard'
+      'messages_patient_mutation_guard',
+      'trg_field_service_work_order_transition',
+      'trg_field_service_work_order_status_history',
+      'trg_field_service_status_history_append_only',
+      'trg_field_service_assignment_invariants',
+      'trg_field_service_work_report_transition'
     )
   `;
   
@@ -419,6 +504,31 @@ async function verifyCustomObjects() {
       table: 'messages',
       requiredElements: ['before update', 'for each row', 'enforce_patient_message_update'],
     },
+    {
+      name: 'trg_field_service_work_order_transition',
+      table: 'field_service_work_orders',
+      requiredElements: ['before insert or update', 'for each row', 'enforce_field_service_work_order_transition'],
+    },
+    {
+      name: 'trg_field_service_work_order_status_history',
+      table: 'field_service_work_orders',
+      requiredElements: ['after insert or update', 'for each row', 'record_field_service_work_order_status_history'],
+    },
+    {
+      name: 'trg_field_service_status_history_append_only',
+      table: 'field_service_work_order_status_history',
+      requiredElements: ['before', 'delete', 'update', 'for each row', 'enforce_field_service_status_history_append_only'],
+    },
+    {
+      name: 'trg_field_service_assignment_invariants',
+      table: 'field_service_work_order_assignments',
+      requiredElements: ['before', 'insert', 'update', 'for each row', 'enforce_field_service_assignment_invariants'],
+    },
+    {
+      name: 'trg_field_service_work_report_transition',
+      table: 'field_service_work_reports',
+      requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_field_service_work_report_transition'],
+    },
   ];
 
   for (const rt of requiredTriggers) {
@@ -451,7 +561,12 @@ async function verifyCustomObjects() {
     'clinical_documents',
     'clinical_form_templates',
     'clinical_form_responses',
-    'clinical_measurements'
+    'clinical_measurements',
+    'field_service_sites',
+    'field_service_work_orders',
+    'field_service_work_order_assignments',
+    'field_service_work_reports',
+    'field_service_work_order_status_history'
   ];
 
   for (const table of expectedRlsTables) {
@@ -808,6 +923,46 @@ async function verifyCustomObjects() {
       expectedRoles: ['authenticated'],
       expectedCmd: 'DELETE',
       qualSemantics: ['patient_id', 'sender_id', 'auth.uid'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_sites_professional_policy',
+      tableName: 'field_service_sites',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_work_orders_professional_policy',
+      tableName: 'field_service_work_orders',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_assignments_professional_policy',
+      tableName: 'field_service_work_order_assignments',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_reports_professional_policy',
+      tableName: 'field_service_work_reports',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_status_history_professional_policy',
+      tableName: 'field_service_work_order_status_history',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: [],
     },
   ];

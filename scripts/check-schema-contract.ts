@@ -686,6 +686,34 @@ async function verifyContract() {
       localCols: ['patient_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
+    {
+      constraintName: 'field_service_work_orders_site_fk',
+      tableName: 'field_service_work_orders',
+      foreignTable: 'field_service_sites',
+      localCols: ['site_id', 'organization_id', 'client_id'],
+      foreignCols: ['id', 'organization_id', 'client_id'],
+    },
+    {
+      constraintName: 'field_service_assignments_work_order_fk',
+      tableName: 'field_service_work_order_assignments',
+      foreignTable: 'field_service_work_orders',
+      localCols: ['work_order_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'field_service_reports_work_order_fk',
+      tableName: 'field_service_work_reports',
+      foreignTable: 'field_service_work_orders',
+      localCols: ['work_order_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'field_service_status_history_work_order_fk',
+      tableName: 'field_service_work_order_status_history',
+      foreignTable: 'field_service_work_orders',
+      localCols: ['work_order_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -792,6 +820,24 @@ async function verifyContract() {
     'patient_questionnaires_org_status_idx',
     'patient_questionnaires_org_id_unique',
     'messages_patient_id_idx',
+    'field_service_sites_id_org_client_unique',
+    'field_service_sites_org_client_idx',
+    'field_service_sites_org_active_idx',
+    'field_service_sites_org_city_idx',
+    'field_service_work_orders_org_ref_unique',
+    'field_service_work_orders_id_org_unique',
+    'field_service_work_orders_org_status_idx',
+    'field_service_work_orders_org_sched_start_idx',
+    'field_service_work_orders_org_client_idx',
+    'field_service_work_orders_org_site_idx',
+    'field_service_work_orders_org_priority_idx',
+    'field_service_assignments_org_wo_idx',
+    'field_service_assignments_org_user_idx',
+    'field_service_assignments_wo_active_idx',
+    'field_service_reports_org_wo_idx',
+    'field_service_reports_org_author_idx',
+    'field_service_reports_wo_status_idx',
+    'field_service_status_history_org_wo_created_idx',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -996,6 +1042,96 @@ async function verifyContract() {
       name: 'appointment_reminders_sent_at_check',
       table: 'appointment_reminder_deliveries',
       elements: ['status', 'sent', 'sent_at', 'is not null', 'pending', 'failed', 'is null'],
+    },
+    {
+      name: 'field_service_sites_label_check',
+      table: 'field_service_sites',
+      elements: ['label', 'char_length', 'trim', '160'],
+    },
+    {
+      name: 'field_service_sites_latitude_check',
+      table: 'field_service_sites',
+      elements: ['latitude', '-90', '90'],
+    },
+    {
+      name: 'field_service_sites_longitude_check',
+      table: 'field_service_sites',
+      elements: ['longitude', '-180', '180'],
+    },
+    {
+      name: 'field_service_sites_country_check',
+      table: 'field_service_sites',
+      elements: ['country', 'upper', 'char_length', '2'],
+    },
+    {
+      name: 'field_service_work_orders_reference_check',
+      table: 'field_service_work_orders',
+      elements: ['reference', 'char_length', 'trim', '64'],
+    },
+    {
+      name: 'field_service_work_orders_title_check',
+      table: 'field_service_work_orders',
+      elements: ['title', 'char_length', 'trim', '200'],
+    },
+    {
+      name: 'field_service_work_orders_work_type_check',
+      table: 'field_service_work_orders',
+      elements: ['work_type', 'job', 'intervention', 'installation', 'maintenance', 'repair', 'inspection', 'project', 'other'],
+    },
+    {
+      name: 'field_service_work_orders_status_check',
+      table: 'field_service_work_orders',
+      elements: ['status', 'draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled'],
+    },
+    {
+      name: 'field_service_work_orders_priority_check',
+      table: 'field_service_work_orders',
+      elements: ['priority', 'low', 'medium', 'high', 'urgent'],
+    },
+    {
+      name: 'field_service_work_orders_cancellation_reason_check',
+      table: 'field_service_work_orders',
+      elements: ['status', 'cancelled', 'cancellation_reason_code', 'customer_request', 'unavailable', 'duplicate', 'quote_not_accepted', 'scheduling_issue', 'technical_impossibility', 'other'],
+    },
+    {
+      name: 'field_service_work_orders_schedule_dates_check',
+      table: 'field_service_work_orders',
+      elements: ['scheduled_start', 'scheduled_end'],
+    },
+    {
+      name: 'field_service_work_orders_actual_dates_check',
+      table: 'field_service_work_orders',
+      elements: ['actual_start', 'actual_end'],
+    },
+    {
+      name: 'field_service_assignments_role_check',
+      table: 'field_service_work_order_assignments',
+      elements: ['role', 'lead', 'technician', 'assistant', 'observer'],
+    },
+    {
+      name: 'field_service_reports_summary_check',
+      table: 'field_service_work_reports',
+      elements: ['summary', 'char_length', 'trim', '2000'],
+    },
+    {
+      name: 'field_service_reports_status_check',
+      table: 'field_service_work_reports',
+      elements: ['status', 'draft', 'finalized'],
+    },
+    {
+      name: 'field_service_reports_status_metadata_check',
+      table: 'field_service_work_reports',
+      elements: ['status', 'draft', 'finalized_at', 'finalized'],
+    },
+    {
+      name: 'field_service_status_history_to_status_check',
+      table: 'field_service_work_order_status_history',
+      elements: ['to_status', 'draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled'],
+    },
+    {
+      name: 'field_service_status_history_from_status_check',
+      table: 'field_service_work_order_status_history',
+      elements: ['from_status', 'draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled'],
     },
   ];
 

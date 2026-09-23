@@ -30,7 +30,7 @@ describe('Surface des server actions', () => {
       expect(content).toContain('registerSchema');
       return;
     }
-    expect(content).toMatch(/require(Session|Organization|Professional|ClinicalPractitionerContext)|getSessionContext/);
+    expect(content).toMatch(/require(Session|Organization|Professional|ClinicalPractitionerContext|FieldServiceContext)|getSessionContext/);
   });
 
   it.each(files)('%s n’utilise plus NextAuth (migration Supabase Auth)', (file) => {

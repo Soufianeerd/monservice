@@ -141,6 +141,13 @@
       "when": 1790060875877,
       "tag": "0019_field_service_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790120371153,
+      "tag": "0020_field_service_operations",
+      "breakpoints": true
     }
   ]
 }
