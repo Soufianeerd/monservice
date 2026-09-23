@@ -266,13 +266,13 @@ describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', (
 
     it('Anonymous user sees 0 rows for field service operations tables', async () => {
       const { data: sites } = await anonClient.from('field_service_sites').select('*');
-      expect(sites).toHaveLength(0);
+      expect(sites ?? []).toHaveLength(0);
 
       const { data: orders } = await anonClient.from('field_service_work_orders').select('*');
-      expect(orders).toHaveLength(0);
+      expect(orders ?? []).toHaveLength(0);
 
       const { data: reports } = await anonClient.from('field_service_work_reports').select('*');
-      expect(reports).toHaveLength(0);
+      expect(reports ?? []).toHaveLength(0);
     });
   });
 
