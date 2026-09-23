@@ -87,24 +87,35 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
 
     // 7. Assign a Worker
     await dismissSetupGuideIfPresent(page);
-    await page.click('[data-testid="assign-worker-button"]', { force: true });
+    await page.click('[data-testid="assign-worker-button"]');
     await expect(page.locator('text=Assigner un collaborateur')).toBeVisible();
-    await page.click('[data-testid="submit-assign-worker-button"]', { force: true });
+    const submitAssignBtn = page.locator('[data-testid="submit-assign-worker-button"]');
+    await expect(submitAssignBtn).toBeEnabled();
+    await submitAssignBtn.click();
     await expect(page.locator('text=Assigner un collaborateur')).not.toBeVisible();
 
     // 8. Transition: Scheduled -> In Progress
-    await page.click('[data-testid="start-operation-button"]', { force: true });
+    await dismissSetupGuideIfPresent(page);
+    const startBtn = page.locator('[data-testid="start-operation-button"]');
+    await expect(startBtn).toBeVisible();
+    await expect(startBtn).toBeEnabled();
+    await startBtn.click();
     await expect(page.locator('[data-testid="operation-status-badge"]')).toContainText('En cours');
 
     // 9. Create Draft Report
     await dismissSetupGuideIfPresent(page);
-    await page.click('[data-testid="create-report-button"]', { force: true });
+    const createReportBtn = page.locator('[data-testid="create-report-button"]');
+    await expect(createReportBtn).toBeVisible();
+    await expect(createReportBtn).toBeEnabled();
+    await createReportBtn.click();
     await expect(page.locator('text=Nouveau compte-rendu')).toBeVisible();
     await page.fill('input[placeholder="Ex: Remplacement vanne générale effectué avec succès"]', uniqueReportSummary);
     await page.fill('textarea[placeholder="Détails des opérations techniques menées..."]', 'Travaux réalisés avec succès selon devis.');
     await page.fill('textarea[placeholder="Points de blocage, vétusté, imprévus..."]', 'Aucun blocage constaté.');
     await page.fill('textarea[placeholder="Préconisations d\'entretien futur, travaux à prévoir..."]', 'Contrôle annuel recommandé.');
-    await page.click('[data-testid="submit-report-button"]', { force: true });
+    const submitReportBtn = page.locator('[data-testid="submit-report-button"]');
+    await expect(submitReportBtn).toBeEnabled();
+    await submitReportBtn.click();
 
     await expect(page.locator('text=Nouveau compte-rendu')).not.toBeVisible();
     await expect(page.locator('text=' + uniqueReportSummary)).toBeVisible();
@@ -114,11 +125,18 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     page.on('dialog', async (dialog) => {
       await dialog.accept();
     });
-    await page.click('[data-testid="finalize-report-button"]', { force: true });
+    const finalizeBtn = page.locator('[data-testid="finalize-report-button"]');
+    await expect(finalizeBtn).toBeVisible();
+    await expect(finalizeBtn).toBeEnabled();
+    await finalizeBtn.click();
     await expect(page.locator('text=Finalisé (Immuable)')).toBeVisible();
 
     // 11. Complete Work Order: In Progress -> Completed
-    await page.click('[data-testid="complete-operation-button"]', { force: true });
+    await dismissSetupGuideIfPresent(page);
+    const completeBtn = page.locator('[data-testid="complete-operation-button"]');
+    await expect(completeBtn).toBeVisible();
+    await expect(completeBtn).toBeEnabled();
+    await completeBtn.click();
     await expect(page.locator('[data-testid="operation-status-badge"]')).toContainText('Terminé');
 
     // 12. Verify Timeline History entries
