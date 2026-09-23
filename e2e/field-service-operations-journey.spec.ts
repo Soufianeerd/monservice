@@ -89,7 +89,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await dismissSetupGuideIfPresent(page);
     await page.click('[data-testid="assign-worker-button"]', { force: true });
     await expect(page.locator('text=Assigner un collaborateur')).toBeVisible();
-    await page.click('button:has-text("Assigner")');
+    await page.click('[data-testid="submit-assign-worker-button"]', { force: true });
     await expect(page.locator('text=Assigner un collaborateur')).not.toBeVisible();
 
     // 8. Transition: Scheduled -> In Progress
@@ -104,7 +104,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await page.fill('textarea[placeholder="Détails des opérations techniques menées..."]', 'Travaux réalisés avec succès selon devis.');
     await page.fill('textarea[placeholder="Points de blocage, vétusté, imprévus..."]', 'Aucun blocage constaté.');
     await page.fill('textarea[placeholder="Préconisations d\'entretien futur, travaux à prévoir..."]', 'Contrôle annuel recommandé.');
-    await page.click('button:has-text("Enregistrer le brouillon")');
+    await page.click('[data-testid="submit-report-button"]', { force: true });
 
     await expect(page.locator('text=Nouveau compte-rendu')).not.toBeVisible();
     await expect(page.locator('text=' + uniqueReportSummary)).toBeVisible();

@@ -988,6 +988,7 @@ export default function OperationDetailClient({
                 </button>
                 <button
                   type="submit"
+                  data-testid="submit-assign-worker-button"
                   disabled={isPending}
                   className="inline-flex items-center px-4 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
                 >
@@ -1081,6 +1082,7 @@ export default function OperationDetailClient({
                 </button>
                 <button
                   type="submit"
+                  data-testid="submit-report-button"
                   disabled={isPending}
                   className="inline-flex items-center px-4 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
                 >
