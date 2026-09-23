@@ -1,4 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function dismissSetupGuideIfPresent(page: Page) {
+  try {
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    if (await closeBtn.isVisible({ timeout: 1500 })) {
+      await closeBtn.click({ force: true });
+    }
+  } catch {
+    // Popover not present or already minimized
+  }
+}
 
 test.describe('Field Service Operations Journey E2E (Session 17)', () => {
   const proEmail = 'pro_a@monservice.com';
@@ -11,6 +22,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL((url) => !url.pathname.includes('/login'));
+    await dismissSetupGuideIfPresent(page);
   });
 
   test('FIELD_SERVICE_E2E_01: Complete Persistent Field Service Lifecycle (Desktop 1440x900)', async ({ page }) => {
@@ -23,19 +35,23 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
 
     // 1. Check Dashboard
     await page.goto('/dashboard');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
 
     // 2. Navigate to Operations List
     await page.goto('/operations');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
 
     // 3. Navigate to New Operation Form
     await page.goto('/operations/nouveau');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
     await expect(page.locator('input[name="title"]')).toBeVisible();
 
     // 4. Create New Site via Modal
-    await page.click('[data-testid="new-site-button"]');
+    await dismissSetupGuideIfPresent(page);
+    await page.click('[data-testid="new-site-button"]', { force: true });
     await expect(page.locator('text=Ajouter un nouveau site')).toBeVisible();
     await page.fill('input[placeholder="Ex: Résidence Principale, Chantier Bat A..."]', uniqueSiteLabel);
     await page.fill('input[placeholder="12 rue des Artisans"]', '25 Avenue de la République');
@@ -56,10 +72,11 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await page.fill('[data-testid="scheduled-end-input"]', '2026-11-15T17:00');
     await page.fill('[data-testid="description-input"]', 'Remplacement complet des canalisations principales et test de pression.');
 
-    await page.click('[data-testid="submit-operation-button"]');
+    await page.click('[data-testid="submit-operation-button"]', { force: true });
 
     // 6. Verify Redirection to Operation Detail & Persistent Data
     await page.waitForURL(/\/operations\/[0-9a-fA-F-]+/);
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('[data-testid="operation-detail"]')).toBeVisible();
 
     // Assert initial planned state & metadata
@@ -69,17 +86,19 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await expect(page.locator('text=' + uniqueSiteLabel)).toBeVisible();
 
     // 7. Assign a Worker
-    await page.click('[data-testid="assign-worker-button"]');
+    await dismissSetupGuideIfPresent(page);
+    await page.click('[data-testid="assign-worker-button"]', { force: true });
     await expect(page.locator('text=Assigner un collaborateur')).toBeVisible();
     await page.click('button:has-text("Assigner")');
     await expect(page.locator('text=Assigner un collaborateur')).not.toBeVisible();
 
     // 8. Transition: Scheduled -> In Progress
-    await page.click('[data-testid="start-operation-button"]');
+    await page.click('[data-testid="start-operation-button"]', { force: true });
     await expect(page.locator('[data-testid="operation-status-badge"]')).toContainText('En cours');
 
     // 9. Create Draft Report
-    await page.click('[data-testid="create-report-button"]');
+    await dismissSetupGuideIfPresent(page);
+    await page.click('[data-testid="create-report-button"]', { force: true });
     await expect(page.locator('text=Nouveau compte-rendu')).toBeVisible();
     await page.fill('input[placeholder="Ex: Remplacement vanne générale effectué avec succès"]', uniqueReportSummary);
     await page.fill('textarea[placeholder="Détails des opérations techniques menées..."]', 'Travaux réalisés avec succès selon devis.');
@@ -95,11 +114,11 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     page.on('dialog', async (dialog) => {
       await dialog.accept();
     });
-    await page.click('[data-testid="finalize-report-button"]');
+    await page.click('[data-testid="finalize-report-button"]', { force: true });
     await expect(page.locator('text=Finalisé (Immuable)')).toBeVisible();
 
     // 11. Complete Work Order: In Progress -> Completed
-    await page.click('[data-testid="complete-operation-button"]');
+    await page.click('[data-testid="complete-operation-button"]', { force: true });
     await expect(page.locator('[data-testid="operation-status-badge"]')).toContainText('Terminé');
 
     // 12. Verify Timeline History entries
@@ -109,6 +128,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
 
     // 13. Reload Browser and Verify DB/UI Persistence
     await page.reload();
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1')).toContainText(uniqueTitle);
     await expect(page.locator('[data-testid="operation-status-badge"]')).toContainText('Terminé');
     await expect(page.locator('text=' + uniqueSiteLabel)).toBeVisible();
@@ -122,15 +142,18 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
 
     // 1. Check Dashboard on Mobile
     await page.goto('/dashboard');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
 
     // 2. Check Operations on Mobile
     await page.goto('/operations');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
     await expect(page.locator('body')).toContainText(/Opérations|Interventions|Chantiers/i);
 
     // 3. Check New Operation on Mobile
     await page.goto('/operations/nouveau');
+    await dismissSetupGuideIfPresent(page);
     await expect(page.locator('h1').first()).toBeVisible();
     await expect(page.locator('[data-testid="title-input"]')).toBeVisible();
   });
