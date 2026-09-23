@@ -132,6 +132,17 @@ describe('Field Service Operations Zod Validation Schemas (Session 17)', () => {
       ).toThrow();
     });
 
+    it('validates update work order payload', () => {
+      const validUpdate = updateFieldServiceWorkOrderSchema.parse({
+        id: 'wo-123',
+        title: 'Updated title',
+        priority: 'urgent',
+        description: 'Updated scope',
+      });
+      expect(validUpdate.id).toBe('wo-123');
+      expect(validUpdate.priority).toBe('urgent');
+    });
+
     it('validates schedule work order payload', () => {
       const valid = scheduleFieldServiceWorkOrderSchema.parse({
         id: 'wo-123',

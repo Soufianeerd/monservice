@@ -192,6 +192,7 @@ export default function NewOperationForm({
               </label>
               <select
                 id="clientSelect"
+                name="clientId"
                 data-testid="client-select"
                 value={clientId}
                 onChange={e => {
@@ -229,6 +230,7 @@ export default function NewOperationForm({
               </div>
               <select
                 id="siteSelect"
+                name="siteId"
                 data-testid="site-select"
                 value={siteId}
                 onChange={e => setSiteId(e.target.value)}
@@ -253,6 +255,7 @@ export default function NewOperationForm({
               <input
                 type="text"
                 id="titleInput"
+                name="title"
                 data-testid="title-input"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
@@ -268,6 +271,7 @@ export default function NewOperationForm({
               </label>
               <select
                 id="workTypeSelect"
+                name="workType"
                 data-testid="work-type-select"
                 value={workType}
                 onChange={e => setWorkType(e.target.value)}
@@ -293,6 +297,7 @@ export default function NewOperationForm({
               </label>
               <select
                 id="prioritySelect"
+                name="priority"
                 data-testid="priority-select"
                 value={priority}
                 onChange={e => setPriority(e.target.value)}
@@ -312,6 +317,7 @@ export default function NewOperationForm({
               <input
                 type="datetime-local"
                 id="scheduledStartInput"
+                name="scheduledStart"
                 data-testid="scheduled-start-input"
                 value={scheduledStart}
                 onChange={e => setScheduledStart(e.target.value)}
@@ -326,6 +332,7 @@ export default function NewOperationForm({
               <input
                 type="datetime-local"
                 id="scheduledEndInput"
+                name="scheduledEnd"
                 data-testid="scheduled-end-input"
                 value={scheduledEnd}
                 onChange={e => setScheduledEnd(e.target.value)}
@@ -341,6 +348,7 @@ export default function NewOperationForm({
             </label>
             <textarea
               id="descriptionInput"
+              name="description"
               data-testid="description-input"
               rows={4}
               value={description}
