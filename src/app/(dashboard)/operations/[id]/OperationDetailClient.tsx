@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -144,6 +144,10 @@ export default function OperationDetailClient({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setOperation(initialOperation);
+  }, [initialOperation]);
+
   // Cancellation Modal
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState<string>('customer_request');
@@ -233,11 +237,28 @@ export default function OperationDetailClient({
 
     startTransition(async () => {
       try {
-        await assignFieldServiceWorkerAction({
+        const newAssignment = await assignFieldServiceWorkerAction({
           workOrderId: operation.id,
           userId: assignUserId,
           role: assignRole,
         });
+        const assignedUser = orgProfessionals.find(p => p.id === assignUserId);
+        setOperation(prev => ({
+          ...prev,
+          assignments: [
+            ...prev.assignments,
+            {
+              id: newAssignment.id,
+              userId: assignUserId,
+              role: assignRole,
+              isActive: true,
+              assignedAt: typeof newAssignment.assignedAt === 'string' ? newAssignment.assignedAt : newAssignment.assignedAt.toISOString(),
+              removedAt: null,
+              userName: assignedUser?.name || 'Collaborateur',
+              userEmail: assignedUser?.email || null,
+            },
+          ],
+        }));
         setIsAssignModalOpen(false);
         router.refresh();
       } catch (err: unknown) {
@@ -251,6 +272,10 @@ export default function OperationDetailClient({
     startTransition(async () => {
       try {
         await unassignFieldServiceWorkerAction({ assignmentId });
+        setOperation(prev => ({
+          ...prev,
+          assignments: prev.assignments.filter(a => a.id !== assignmentId),
+        }));
         router.refresh();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Erreur lors de la désassignation');
@@ -288,7 +313,7 @@ export default function OperationDetailClient({
     startTransition(async () => {
       try {
         if (editingReportId) {
-          await updateFieldServiceWorkReportAction({
+          const updated = await updateFieldServiceWorkReportAction({
             id: editingReportId,
             summary: reportSummary.trim(),
             workPerformed: reportWorkPerformed.trim() || null,
@@ -296,8 +321,20 @@ export default function OperationDetailClient({
             recommendations: reportRecommendations.trim() || null,
             customerNotes: reportCustomerNotes.trim() || null,
           });
+          setOperation(prev => ({
+            ...prev,
+            reports: prev.reports.map(r => r.id === updated.id ? {
+              ...r,
+              summary: updated.summary,
+              workPerformed: updated.workPerformed,
+              issuesFound: updated.issuesFound,
+              recommendations: updated.recommendations,
+              customerNotes: updated.customerNotes,
+              updatedAt: typeof updated.updatedAt === 'string' ? updated.updatedAt : updated.updatedAt.toISOString(),
+            } : r),
+          }));
         } else {
-          await createFieldServiceWorkReportAction({
+          const created = await createFieldServiceWorkReportAction({
             workOrderId: operation.id,
             summary: reportSummary.trim(),
             workPerformed: reportWorkPerformed.trim() || null,
@@ -305,6 +342,27 @@ export default function OperationDetailClient({
             recommendations: reportRecommendations.trim() || null,
             customerNotes: reportCustomerNotes.trim() || null,
           });
+          const currentAuthor = orgProfessionals.find(p => p.id === created.authorUserId);
+          setOperation(prev => ({
+            ...prev,
+            reports: [
+              {
+                id: created.id,
+                authorUserId: created.authorUserId,
+                status: created.status,
+                summary: created.summary,
+                workPerformed: created.workPerformed,
+                issuesFound: created.issuesFound,
+                recommendations: created.recommendations,
+                customerNotes: created.customerNotes,
+                finalizedAt: null,
+                createdAt: typeof created.createdAt === 'string' ? created.createdAt : created.createdAt.toISOString(),
+                updatedAt: typeof created.updatedAt === 'string' ? created.updatedAt : created.updatedAt.toISOString(),
+                authorName: currentAuthor?.name || 'Collaborateur',
+              },
+              ...prev.reports,
+            ],
+          }));
         }
         setIsReportModalOpen(false);
         router.refresh();
@@ -322,7 +380,15 @@ export default function OperationDetailClient({
     setError(null);
     startTransition(async () => {
       try {
-        await finalizeFieldServiceWorkReportAction({ id: reportId });
+        const finalized = await finalizeFieldServiceWorkReportAction({ id: reportId });
+        setOperation(prev => ({
+          ...prev,
+          reports: prev.reports.map(r => r.id === finalized.id ? {
+            ...r,
+            status: 'finalized',
+            finalizedAt: typeof finalized.finalizedAt === 'string' ? finalized.finalizedAt : finalized.finalizedAt?.toISOString() || null,
+          } : r),
+        }));
         router.refresh();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Erreur lors de la finalisation du rapport');
