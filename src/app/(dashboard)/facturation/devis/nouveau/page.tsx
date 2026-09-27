@@ -350,6 +350,7 @@ export default function NewQuotePage() {
                 Client <span className="text-red-500">*</span>
               </label>
               <select
+                data-testid="quote-client-select"
                 value={clientId}
                 onChange={(e) => {
                   setClientId(e.target.value);
@@ -422,6 +423,7 @@ export default function NewQuotePage() {
                 Titre du projet / Objet du devis
               </label>
               <input
+                data-testid="quote-title-input"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -453,6 +455,7 @@ export default function NewQuotePage() {
             Ajouter un groupe :
           </span>
           <button
+            data-testid="add-section-button"
             type="button"
             onClick={() => addSection('lot')}
             className="inline-flex items-center px-3 py-1.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-xs font-medium"
@@ -637,6 +640,7 @@ export default function NewQuotePage() {
               <div className="pt-2 flex items-center space-x-3">
                 <label className="text-xs text-gray-600">Taux (%) :</label>
                 <input
+                  data-testid="deposit-rate-input"
                   type="number"
                   min="0"
                   max="100"
@@ -668,12 +672,13 @@ export default function NewQuotePage() {
         </Card>
 
         {/* Totals & VAT Breakdown */}
-        <Card>
-          <CardBody className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-900 text-sm flex items-center">
-              <Calculator className="w-4 h-4 mr-1.5 text-blue-600" />
-              Récapitulatif Financier
-            </h3>
+        <div data-testid="quote-totals-summary">
+          <Card>
+            <CardBody className="p-5 space-y-3">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center">
+                <Calculator className="w-4 h-4 mr-1.5 text-blue-600" />
+                Récapitulatif Financier
+              </h3>
 
             {/* Multi-TVA summary table */}
             <div className="bg-gray-50 p-2.5 rounded text-xs space-y-1">
@@ -718,6 +723,7 @@ export default function NewQuotePage() {
             </div>
           </CardBody>
         </Card>
+        </div>
       </div>
     </form>
   );
