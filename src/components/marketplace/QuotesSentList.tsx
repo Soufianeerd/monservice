@@ -9,8 +9,11 @@ export default function QuotesSentList({ quotes }: { quotes: Invoice[] }) {
       case 'sent':
       case 'viewed':
         return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">En attente</span>;
-      case 'paid':
+      case 'accepted':
         return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Accepté</span>;
+      case 'paid':
+        return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Acompte réglé</span>;
+      case 'rejected':
       case 'cancelled':
         return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Refusé</span>;
       default:
@@ -33,7 +36,7 @@ export default function QuotesSentList({ quotes }: { quotes: Invoice[] }) {
               Vous n'avez envoyé aucun devis pour le moment.
             </p>
             <Link
-              href="/facturation/factures/new?type=quote"
+              href="/facturation/devis/nouveau"
               className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
               Créer un devis
@@ -42,7 +45,7 @@ export default function QuotesSentList({ quotes }: { quotes: Invoice[] }) {
         ) : (
           quotes.map((quote) => (
             <li key={quote.id}>
-              <Link href={`/quotes/${quote.id}`} className="block hover:bg-gray-50 transition-colors">
+              <Link href={`/facturation/devis/${quote.id}`} className="block hover:bg-gray-50 transition-colors">
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-indigo-600 truncate">

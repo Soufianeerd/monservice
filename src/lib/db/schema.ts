@@ -13,10 +13,18 @@ import {
   time,
   check,
   jsonb,
+  foreignKey,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { foreignKey } from 'drizzle-orm/pg-core';
 import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
+import type {
+  InvoiceLineType,
+  InvoiceUnitCode,
+  InvoiceSectionKind,
+  InvoiceSubtype,
+  DepositMode,
+  InvoiceStatus,
+} from '@/lib/data/interfaces';
 
 /**
  * Schéma PostgreSQL unique.
@@ -36,6 +44,18 @@ import { customType } from 'drizzle-orm/pg-core';
 export const moneyNumeric = customType<{ data: number; driverData: string }>({
   dataType() {
     return 'numeric(14,2)';
+  },
+  fromDriver(value: string): number {
+    return Number(value);
+  },
+  toDriver(value: number): string {
+    return value.toString();
+  },
+});
+
+export const quantityNumeric = customType<{ data: number; driverData: string }>({
+  dataType() {
+    return 'numeric(14,3)';
   },
   fromDriver(value: string): number {
     return Number(value);
@@ -186,7 +206,8 @@ export const deals = sqliteTable('deals', {
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   index('deals_organization_id_idx').on(t.organizationId),
-  index('deals_client_id_idx').on(t.clientId)
+  index('deals_client_id_idx').on(t.clientId),
+  uniqueIndex('deals_id_org_unique').on(t.id, t.organizationId),
 ]);
 
 // Products
@@ -204,10 +225,43 @@ export const products = sqliteTable('products', {
   index('products_organization_id_idx').on(t.organizationId)
 ]);
 
+// Field Service Sites (moved before invoices to allow composite FK referencing)
+export const fieldServiceSites = sqliteTable('field_service_sites', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  label: text('label').notNull(),
+  addressLine1: text('address_line1').notNull(),
+  addressLine2: text('address_line2'),
+  postalCode: text('postal_code').notNull(),
+  city: text('city').notNull(),
+  country: text('country').notNull().default('FR'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  accessInstructions: text('access_instructions'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_sites_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  index('field_service_sites_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_sites_org_active_idx').on(t.organizationId, t.isActive),
+  index('field_service_sites_org_city_idx').on(t.organizationId, t.city),
+  check('field_service_sites_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
+  check('field_service_sites_latitude_check', sql`${t.latitude} IS NULL OR (${t.latitude} >= -90 AND ${t.latitude} <= 90)`),
+  check('field_service_sites_longitude_check', sql`${t.longitude} IS NULL OR (${t.longitude} >= -180 AND ${t.longitude} <= 180)`),
+  check('field_service_sites_country_check', sql`${t.country} = UPPER(${t.country}) AND char_length(${t.country}) = 2`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_sites_client_fk'
+  })
+]);
+
 // Invoices (Quotes & Invoices)
 export const invoices = sqliteTable('invoices', {
   id: text('id').primaryKey(),
-  organizationId: text('organization_id').notNull(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
   clientId: text('client_id').notNull(), // Pointers to CRM clients.id
   recipientUserId: text('recipient_user_id'), // Pointers to users.id for marketplace access
   type: text('type').notNull(), // 'invoice' | 'quote'
@@ -221,7 +275,7 @@ export const invoices = sqliteTable('invoices', {
   requestId: text('request_id'),
   professionalId: text('professional_id'),
   message: text('message'),
-  status: text('status').notNull(), // 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled'
+  status: text('status').$type<InvoiceStatus>().notNull(),
   totalHT: moneyNumeric('total_ht').notNull(),
   taxAmount: moneyNumeric('tax_amount').notNull(),
   totalTTC: moneyNumeric('total_ttc').notNull(),
@@ -258,28 +312,168 @@ export const invoices = sqliteTable('invoices', {
   deliverySentAt: timestamp('delivery_sent_at'),
   deliveryLastAttemptAt: timestamp('delivery_last_attempt_at'),
   legalRuleVersion: text('legal_rule_version'),
+
+  // Session 18 additions
+  createdByUserId: text('created_by_user_id'),
+  dealId: text('deal_id'),
+  siteId: text('site_id'),
+  workOrderId: text('work_order_id'),
+  sourceQuoteId: text('source_quote_id'),
+  title: text('title'),
+  validUntil: text('valid_until'),
+  acceptedAt: text('accepted_at'),
+  acceptedByUserId: text('accepted_by_user_id'),
+  rejectedAt: text('rejected_at'),
+  rejectedByUserId: text('rejected_by_user_id'),
+  revisionNumber: integer('revision_number').notNull().default(1),
+  supersedesDocumentId: text('supersedes_document_id'),
+  invoiceSubtype: text('invoice_subtype').$type<InvoiceSubtype>().notNull().default('standard'),
+  depositMode: text('deposit_mode').$type<DepositMode>().notNull().default('none'),
+  depositRate: moneyNumeric('deposit_rate'),
+  depositFixedAmount: moneyNumeric('deposit_fixed_amount'),
+  depositAmount: moneyNumeric('deposit_amount').notNull().default(0),
+  prepaidAmount: moneyNumeric('prepaid_amount').notNull().default(0),
+  amountDue: moneyNumeric('amount_due').notNull().default(0),
+
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   index('invoices_organization_id_idx').on(t.organizationId),
   index('invoices_client_id_idx').on(t.clientId),
   index('invoices_recipient_user_id_idx').on(t.recipientUserId),
-  uniqueIndex('invoices_org_number_unique').on(t.organizationId, t.number)
+  index('invoices_deal_id_idx').on(t.dealId),
+  index('invoices_site_id_idx').on(t.siteId),
+  index('invoices_work_order_id_idx').on(t.workOrderId),
+  index('invoices_source_quote_id_idx').on(t.sourceQuoteId),
+  index('invoices_status_idx').on(t.organizationId, t.status),
+  uniqueIndex('invoices_org_number_unique').on(t.organizationId, t.number),
+  uniqueIndex('invoices_id_org_unique').on(t.id, t.organizationId),
+  uniqueIndex('invoices_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  check('invoices_subtype_check', sql`${t.invoiceSubtype} IN ('standard', 'deposit', 'final')`),
+  check('invoices_deposit_mode_check', sql`${t.depositMode} IN ('none', 'percentage', 'fixed')`),
+  check('invoices_deposit_rate_check', sql`${t.depositRate} IS NULL OR (${t.depositRate} >= 0 AND ${t.depositRate} <= 100)`),
+  check('invoices_deposit_fixed_amount_check', sql`${t.depositFixedAmount} IS NULL OR ${t.depositFixedAmount} >= 0`),
+  check('invoices_deposit_amount_check', sql`${t.depositAmount} >= 0`),
+  check('invoices_prepaid_amount_check', sql`${t.prepaidAmount} >= 0`),
+  check('invoices_amount_due_check', sql`${t.amountDue} >= 0`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'invoices_client_fk',
+  }),
+  foreignKey({
+    columns: [t.dealId, t.organizationId],
+    foreignColumns: [deals.id, deals.organizationId],
+    name: 'invoices_deal_fk',
+  }),
+  foreignKey({
+    columns: [t.siteId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
+    name: 'invoices_site_fk',
+  }),
+  foreignKey({
+    columns: [t.sourceQuoteId, t.organizationId],
+    foreignColumns: [t.id, t.organizationId],
+    name: 'invoices_source_quote_fk',
+  }),
+  foreignKey({
+    columns: [t.supersedesDocumentId, t.organizationId],
+    foreignColumns: [t.id, t.organizationId],
+    name: 'invoices_supersedes_fk',
+  }),
+]);
+
+// Invoice Sections (Lots, Tranches, Sections, Options, Variants)
+export const invoiceSections = sqliteTable('invoice_sections', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  invoiceId: text('invoice_id').notNull(),
+  parentSectionId: text('parent_section_id'),
+  kind: text('kind').$type<InvoiceSectionKind>().notNull().default('section'), // 'lot' | 'tranche' | 'section' | 'option' | 'variant'
+  title: text('title').notNull(),
+  description: text('description'),
+  position: integer('position').notNull().default(0),
+  isOptional: boolean('is_optional').notNull().default(false),
+  optionGroupKey: text('option_group_key'),
+  isSelected: boolean('is_selected').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('invoice_sections_id_org_unique').on(t.id, t.organizationId),
+  uniqueIndex('invoice_sections_id_org_inv_unique').on(t.id, t.organizationId, t.invoiceId),
+  index('invoice_sections_org_inv_idx').on(t.organizationId, t.invoiceId),
+  index('invoice_sections_org_pos_idx').on(t.organizationId, t.position),
+  check('invoice_sections_kind_check', sql`${t.kind} IN ('lot', 'tranche', 'section', 'option', 'variant')`),
+  foreignKey({
+    columns: [t.invoiceId, t.organizationId],
+    foreignColumns: [invoices.id, invoices.organizationId],
+    name: 'invoice_sections_invoice_fk'
+  }).onDelete('cascade'),
+  foreignKey({
+    columns: [t.parentSectionId, t.organizationId, t.invoiceId],
+    foreignColumns: [t.id, t.organizationId, t.invoiceId],
+    name: 'invoice_sections_parent_fk'
+  }).onDelete('cascade'),
 ]);
 
 // Invoice Lines
 export const invoiceLines = sqliteTable('invoice_lines', {
   id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
   invoiceId: text('invoice_id').notNull(),
+  sectionId: text('section_id'),
+  sourceLineId: text('source_line_id'),
   productId: text('product_id'),
   description: text('description').notNull(),
-  quantity: moneyNumeric('quantity').notNull(),
+  lineType: text('line_type').$type<InvoiceLineType>().notNull().default('service'), // 'service' | 'labor' | 'material' | 'equipment' | 'travel' | 'subcontracting' | 'other'
+  unitCode: text('unit_code').$type<InvoiceUnitCode>().notNull().default('unit'), // 'unit' | 'hour' | 'day' | 'meter' | 'linear_meter' | 'square_meter' | 'cubic_meter' | 'kilogram' | 'liter' | 'package' | 'fixed_price'
+  position: integer('position').notNull().default(0),
+  quantity: quantityNumeric('quantity').notNull(),
   unitPrice: moneyNumeric('unit_price').notNull(),
+  discountRate: moneyNumeric('discount_rate').notNull().default(0),
+  unitCost: moneyNumeric('unit_cost'),
   taxRate: moneyNumeric('tax_rate').notNull(),
+  taxAmount: moneyNumeric('tax_amount').notNull().default(0),
   totalHT: moneyNumeric('total_ht').notNull(),
   totalTTC: moneyNumeric('total_ttc').notNull(),
 }, (t) => [
-  index('invoice_lines_invoice_id_idx').on(t.invoiceId)
+  uniqueIndex('invoice_lines_id_org_unique').on(t.id, t.organizationId),
+  index('invoice_lines_invoice_id_idx').on(t.invoiceId),
+  index('invoice_lines_org_inv_idx').on(t.organizationId, t.invoiceId),
+  index('invoice_lines_org_section_idx').on(t.organizationId, t.sectionId),
+  check('invoice_lines_quantity_check', sql`${t.quantity} > 0`),
+  check('invoice_lines_unit_price_check', sql`${t.unitPrice} >= 0`),
+  check('invoice_lines_tax_rate_check', sql`${t.taxRate} >= 0 AND ${t.taxRate} <= 100`),
+  check('invoice_lines_discount_rate_check', sql`${t.discountRate} >= 0 AND ${t.discountRate} <= 100`),
+  check('invoice_lines_line_type_check', sql`${t.lineType} IN ('service', 'labor', 'material', 'equipment', 'travel', 'subcontracting', 'other')`),
+  foreignKey({
+    columns: [t.invoiceId, t.organizationId],
+    foreignColumns: [invoices.id, invoices.organizationId],
+    name: 'invoice_lines_invoice_fk'
+  }).onDelete('cascade'),
+  foreignKey({
+    columns: [t.sectionId, t.organizationId, t.invoiceId],
+    foreignColumns: [invoiceSections.id, invoiceSections.organizationId, invoiceSections.invoiceId],
+    name: 'invoice_lines_section_fk'
+  }).onDelete('set null'),
+  foreignKey({
+    columns: [t.sourceLineId, t.organizationId],
+    foreignColumns: [t.id, t.organizationId],
+    name: 'invoice_lines_source_line_fk'
+  }),
+]);
+
+// Billing Document Sequences (Atomic sequential numbering per organization, type, and year)
+export const billingDocumentSequences = sqliteTable('billing_document_sequences', {
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  documentType: text('document_type').notNull(), // 'invoice' | 'quote'
+  year: integer('year').notNull(),
+  lastSequence: integer('last_sequence').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('billing_sequences_pk').on(t.organizationId, t.documentType, t.year),
+  check('billing_document_sequences_type_check', sql`${t.documentType} IN ('invoice', 'quote')`),
+  check('billing_document_sequences_seq_check', sql`${t.lastSequence} >= 0`),
 ]);
 
 // Tasks
@@ -1402,48 +1596,16 @@ export const appointmentReminderDeliveries = sqliteTable('appointment_reminder_d
 ]);
 
 // ============================================================================
-// Field Service Operations Tables (Session 17)
+// Field Service Operations Tables (Session 17 & Session 18)
 // ============================================================================
 
-// 1. Field Service Sites
-export const fieldServiceSites = sqliteTable('field_service_sites', {
-  id: text('id').primaryKey(),
-  organizationId: text('organization_id').notNull().references(() => organizations.id),
-  clientId: text('client_id').notNull(),
-  label: text('label').notNull(),
-  addressLine1: text('address_line1').notNull(),
-  addressLine2: text('address_line2'),
-  postalCode: text('postal_code').notNull(),
-  city: text('city').notNull(),
-  country: text('country').notNull().default('FR'),
-  latitude: doublePrecision('latitude'),
-  longitude: doublePrecision('longitude'),
-  accessInstructions: text('access_instructions'),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex('field_service_sites_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
-  index('field_service_sites_org_client_idx').on(t.organizationId, t.clientId),
-  index('field_service_sites_org_active_idx').on(t.organizationId, t.isActive),
-  index('field_service_sites_org_city_idx').on(t.organizationId, t.city),
-  check('field_service_sites_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
-  check('field_service_sites_latitude_check', sql`${t.latitude} IS NULL OR (${t.latitude} >= -90 AND ${t.latitude} <= 90)`),
-  check('field_service_sites_longitude_check', sql`${t.longitude} IS NULL OR (${t.longitude} >= -180 AND ${t.longitude} <= 180)`),
-  check('field_service_sites_country_check', sql`${t.country} = UPPER(${t.country}) AND char_length(${t.country}) = 2`),
-  foreignKey({
-    columns: [t.clientId, t.organizationId],
-    foreignColumns: [clients.id, clients.organizationId],
-    name: 'field_service_sites_client_fk'
-  })
-]);
-
-// 2. Field Service Work Orders
+// 1. Field Service Work Orders
 export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
   clientId: text('client_id').notNull(),
   siteId: text('site_id'),
+  sourceQuoteId: text('source_quote_id'),
   createdByUserId: text('created_by_user_id').notNull(),
   reference: text('reference').notNull(),
   title: text('title').notNull(),
@@ -1466,6 +1628,7 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
   index('field_service_work_orders_org_sched_start_idx').on(t.organizationId, t.scheduledStart),
   index('field_service_work_orders_org_client_idx').on(t.organizationId, t.clientId),
   index('field_service_work_orders_org_site_idx').on(t.organizationId, t.siteId),
+  index('field_service_work_orders_org_source_quote_idx').on(t.organizationId, t.sourceQuoteId),
   index('field_service_work_orders_org_priority_idx').on(t.organizationId, t.priority),
   check('field_service_work_orders_reference_check', sql`char_length(trim(${t.reference})) >= 1 AND char_length(trim(${t.reference})) <= 64`),
   check('field_service_work_orders_title_check', sql`char_length(trim(${t.title})) >= 1 AND char_length(trim(${t.title})) <= 200`),
@@ -1489,6 +1652,11 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
     columns: [t.siteId, t.organizationId, t.clientId],
     foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
     name: 'field_service_work_orders_site_fk'
+  }),
+  foreignKey({
+    columns: [t.sourceQuoteId, t.organizationId],
+    foreignColumns: [invoices.id, invoices.organizationId],
+    name: 'field_service_work_orders_source_quote_fk'
   })
 ]);
 

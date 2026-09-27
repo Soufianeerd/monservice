@@ -234,23 +234,35 @@ export class PatientBillingService {
 
       await db.insert(invoiceLines).values({
         id: lineId,
+        organizationId,
         invoiceId,
         description: line.description,
+        lineType: 'service',
+        unitCode: 'unit',
+        position: insertedLines.length,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
+        discountRate: 0,
         taxRate: line.vatRate,
+        taxAmount: lineTax,
         totalHT: lineHT,
         totalTTC: lineTTC,
       });
 
       insertedLines.push({
         id: lineId,
+        organizationId,
         invoiceId,
         productId: undefined,
         description: line.description,
+        lineType: 'service',
+        unitCode: 'unit',
+        position: insertedLines.length,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
+        discountRate: 0,
         taxRate: line.vatRate,
+        taxAmount: lineTax,
         totalHT: lineHT,
         totalTTC: lineTTC,
       });

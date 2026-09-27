@@ -1,6 +1,31 @@
 import { InvoiceLine } from './invoice-line.interface';
+import { InvoiceSection } from './invoice-section.interface';
 
-export type InvoiceStatus = 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled';
+export type QuoteStatus =
+  | 'draft'
+  | 'sent'
+  | 'viewed'
+  | 'accepted'
+  | 'rejected'
+  | 'superseded'
+  | 'cancelled';
+
+export type InvoiceStatus =
+  | 'draft'
+  | 'sent'
+  | 'viewed'
+  | 'partially_paid'
+  | 'paid'
+  | 'overdue'
+  | 'cancelled'
+  | 'accepted' // backward compatibility
+  | 'rejected'
+  | 'superseded'
+  | 'pending'
+  | 'unpaid';
+
+export type InvoiceSubtype = 'standard' | 'deposit' | 'final';
+export type DepositMode = 'none' | 'percentage' | 'fixed';
 
 export interface Invoice {
   id: string;
@@ -19,10 +44,50 @@ export interface Invoice {
   professionalId?: string | null;
   message?: string | null;
   lines: InvoiceLine[];
+  sections?: InvoiceSection[];
+  client?: {
+    id?: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  site?: {
+    id?: string;
+    name?: string;
+    address?: string;
+    city?: string;
+    zipCode?: string;
+  };
   totalHT: number;
   taxAmount: number;
   totalTTC: number;
   status: InvoiceStatus;
+
+  // Session 18 Fields
+  createdByUserId?: string | null;
+  dealId?: string | null;
+  siteId?: string | null;
+  workOrderId?: string | null;
+  sourceQuoteId?: string | null;
+  title?: string | null;
+  validUntil?: string | null;
+  acceptedAt?: string | null;
+  acceptedByUserId?: string | null;
+  rejectedAt?: string | null;
+  rejectedByUserId?: string | null;
+  revisionNumber?: number;
+  supersedesDocumentId?: string | null;
+  invoiceSubtype?: InvoiceSubtype;
+  depositMode?: DepositMode;
+  depositRate?: number | null;
+  depositFixedAmount?: number | null;
+  depositAmount?: number;
+  prepaidAmount?: number;
+  amountDue?: number;
   
   // Signature
   signature?: string | null;

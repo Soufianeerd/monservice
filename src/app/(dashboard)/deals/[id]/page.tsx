@@ -6,7 +6,7 @@ import { getByIdAction, updateAction } from '@/app/actions/organization.actions'
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Edit, ArrowLeft, Trash2 } from 'lucide-react';
+import { Edit, ArrowLeft, Trash2, FileText } from 'lucide-react';
 import * as dealActions from '@/app/actions/deal.actions';
 import * as clientActions from '@/app/actions/client.actions';
 import { Deal, Client } from '@/lib/data/interfaces';
@@ -74,31 +74,19 @@ export default function DealDetailPage(props: { params: Promise<{ id: string }> 
             Supprimer
           </button>
           
-          <button 
-            onClick={async () => {
-              try {
-                const { generateQuotePDF, downloadPDF } = await import('@/lib/utils/pdf-generator');
-                const org = await import('@/app/actions/organization.actions').then(m => m.getByIdAction(deal.organizationId));
-                if (!org) throw new Error('Organization not found');
-                const blob = await generateQuotePDF(deal, org, client as any);
-                downloadPDF(blob, `Devis_${deal.name}.pdf`);
-              } catch (err) {
-                console.error(err);
-                alert('Erreur lors de la génération du PDF');
-              }
-            }}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+          <Link
+            href={`/facturation/devis/nouveau?dealId=${deal.id}${deal.clientId ? `&clientId=${deal.clientId}` : ''}`}
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
           >
-            Télécharger PDF
-          </button>
+            <FileText className="h-4 w-4 mr-2" />
+            Créer un devis
+          </Link>
 
           <button 
             onClick={async () => {
               try {
                 const { sendDealByEmailAction } = await import('@/app/actions/email.actions');
                 const result = await sendDealByEmailAction(deal.id);
-                // Le retour reflète l'envoi réel : plus de faux succès affiché
-                // alors qu'aucun e-mail ne partait (anomalie MS-015).
                 if (result.sent) toast.success(result.message);
                 else toast.error(result.message);
               } catch (err) {
@@ -162,11 +150,11 @@ export default function DealDetailPage(props: { params: Promise<{ id: string }> 
         </div>
       </div>
 
-      {/* Signature Section */}
-      {deal.signature ? (
+      {/* Historical Signature Display if present */}
+      {deal.signature && (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Signature</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Signature archivée (Historique Deal)</h3>
           </div>
           <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
             <p className="text-sm text-gray-500 mb-2">Signé le {new Date(deal.signedAt || '').toLocaleString('fr-FR')}</p>
@@ -174,52 +162,7 @@ export default function DealDetailPage(props: { params: Promise<{ id: string }> 
             <img src={deal.signature} alt="Signature" className="max-w-[400px] border border-gray-200 rounded" />
           </div>
         </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Signer le devis</h3>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-            <div className="max-w-[400px]">
-              <SignaturePadWrapper dealId={deal.id} onSignSuccess={(updatedDeal) => setDeal(updatedDeal)} />
-            </div>
-          </div>
-        </div>
       )}
     </div>
-  );
-}
-
-function SignaturePadWrapper({ dealId, onSignSuccess }: { dealId: string, onSignSuccess: (deal: Deal) => void }) {
-  const [SignaturePad, setSignaturePad] = useState<any>(null);
-  
-  useEffect(() => {
-    import('@/components/crm/SignaturePad').then(mod => setSignaturePad(() => mod.default));
-  }, []);
-
-  if (!SignaturePad) return <div>Chargement...</div>;
-
-  return (
-    <SignaturePad 
-      onSave={async (signatureData: string) => {
-        try {
-          const res = await fetch('/api/deals/sign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dealId, signatureData })
-          });
-          const data = await res.json();
-          if (res.ok) {
-            onSignSuccess(data.deal);
-            alert('Devis signé avec succès !');
-          } else {
-            alert(data.error || 'Erreur lors de la signature');
-          }
-        } catch (e) {
-          console.error(e);
-          alert('Erreur réseau');
-        }
-      }}
-    />
   );
 }

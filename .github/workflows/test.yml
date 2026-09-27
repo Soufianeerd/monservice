@@ -87,3 +87,5 @@ jobs:
         run: npm run test:e2e:paramedical
       - name: Run Field Service Operations E2E Tests
         run: npm run test:e2e:field-service
+      - name: Run Field Service Quote-to-Cash E2E Tests
+        run: npm run test:e2e:quote-to-cash

@@ -38,6 +38,11 @@ export async function updateFieldServiceSiteAction(rawInput: unknown) {
   return site;
 }
 
+export async function listFieldServiceSitesAction(options?: { clientId?: string; isActive?: boolean }) {
+  const ctx = await requireFieldServiceContext();
+  return operationsService.listFieldServiceSites(ctx.organizationId, options);
+}
+
 // ============================================================================
 // Work Order Actions
 // ============================================================================

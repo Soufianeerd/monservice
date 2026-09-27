@@ -756,6 +756,83 @@ async function verifyContract() {
       localCols: ['changed_by_user_id', 'organization_id'],
       foreignCols: ['id', 'organization_id'],
     },
+    {
+      constraintName: 'invoices_client_fk',
+      tableName: 'invoices',
+      foreignTable: 'clients',
+      localCols: ['client_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoices_deal_fk',
+      tableName: 'invoices',
+      foreignTable: 'deals',
+      localCols: ['deal_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoices_site_fk',
+      tableName: 'invoices',
+      foreignTable: 'field_service_sites',
+      localCols: ['site_id', 'organization_id', 'client_id'],
+      foreignCols: ['id', 'organization_id', 'client_id'],
+    },
+    {
+      constraintName: 'invoices_source_quote_fk',
+      tableName: 'invoices',
+      foreignTable: 'invoices',
+      localCols: ['source_quote_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoices_supersedes_fk',
+      tableName: 'invoices',
+      foreignTable: 'invoices',
+      localCols: ['supersedes_document_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoice_sections_invoice_fk',
+      tableName: 'invoice_sections',
+      foreignTable: 'invoices',
+      localCols: ['invoice_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoice_sections_parent_fk',
+      tableName: 'invoice_sections',
+      foreignTable: 'invoice_sections',
+      localCols: ['parent_section_id', 'organization_id', 'invoice_id'],
+      foreignCols: ['id', 'organization_id', 'invoice_id'],
+    },
+    {
+      constraintName: 'field_service_work_orders_source_quote_fk',
+      tableName: 'field_service_work_orders',
+      foreignTable: 'invoices',
+      localCols: ['source_quote_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoice_lines_invoice_fk',
+      tableName: 'invoice_lines',
+      foreignTable: 'invoices',
+      localCols: ['invoice_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
+    {
+      constraintName: 'invoice_lines_section_fk',
+      tableName: 'invoice_lines',
+      foreignTable: 'invoice_sections',
+      localCols: ['section_id', 'organization_id', 'invoice_id'],
+      foreignCols: ['id', 'organization_id', 'invoice_id'],
+    },
+    {
+      constraintName: 'invoice_lines_source_line_fk',
+      tableName: 'invoice_lines',
+      foreignTable: 'invoice_lines',
+      localCols: ['source_line_id', 'organization_id'],
+      foreignCols: ['id', 'organization_id'],
+    },
   ];
 
   for (const fk of exactFkContracts) {
@@ -881,6 +958,13 @@ async function verifyContract() {
     'field_service_reports_org_author_idx',
     'field_service_reports_wo_status_idx',
     'field_service_status_history_org_wo_created_idx',
+    'deals_id_org_unique',
+    'invoices_id_org_unique',
+    'invoices_id_org_client_unique',
+    'invoice_sections_id_org_unique',
+    'invoice_sections_id_org_inv_unique',
+    'invoice_lines_id_org_unique',
+    'billing_sequences_pk',
   ];
 
   for (const idxName of criticalIndexes) {
@@ -1180,6 +1264,46 @@ async function verifyContract() {
       name: 'field_service_status_history_from_status_check',
       table: 'field_service_work_order_status_history',
       elements: ['from_status', 'draft', 'scheduled', 'in_progress', 'paused', 'completed', 'cancelled'],
+    },
+    {
+      name: 'invoice_lines_quantity_check',
+      table: 'invoice_lines',
+      elements: ['quantity', '0'],
+    },
+    {
+      name: 'invoice_lines_tax_rate_check',
+      table: 'invoice_lines',
+      elements: ['tax_rate', '0', '100'],
+    },
+    {
+      name: 'invoice_lines_discount_rate_check',
+      table: 'invoice_lines',
+      elements: ['discount_rate', '0', '100'],
+    },
+    {
+      name: 'invoice_lines_line_type_check',
+      table: 'invoice_lines',
+      elements: ['line_type', 'service', 'labor', 'material', 'equipment', 'travel', 'subcontracting', 'other'],
+    },
+    {
+      name: 'invoices_subtype_check',
+      table: 'invoices',
+      elements: ['invoice_subtype', 'standard', 'deposit', 'final'],
+    },
+    {
+      name: 'invoices_deposit_mode_check',
+      table: 'invoices',
+      elements: ['deposit_mode', 'none', 'percentage', 'fixed'],
+    },
+    {
+      name: 'invoice_sections_kind_check',
+      table: 'invoice_sections',
+      elements: ['kind', 'lot', 'tranche', 'section', 'option', 'variant'],
+    },
+    {
+      name: 'billing_document_sequences_type_check',
+      table: 'billing_document_sequences',
+      elements: ['document_type', 'invoice', 'quote'],
     },
   ];
 

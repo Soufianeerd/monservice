@@ -33,15 +33,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
+    if (invoice.type === 'quote') {
+      return NextResponse.json(
+        { error: 'Un devis ne peut pas être payé directement. Une facture d’acompte ou de solde doit être émise.' },
+        { status: 400 },
+      );
+    }
+
     // Seuls le professionnel émetteur de l'organisation ou le client destinataire
-    // (recipientUserId) peuvent déclencher un paiement pour cette facture.
+    // (recipientUserId ou clients.userId) peuvent déclencher un paiement pour cette facture.
     const isIssuer =
       ctx.profileType === 'professional' &&
       Boolean(ctx.organizationId) &&
       invoice.organizationId === ctx.organizationId;
-    const isRecipient =
+    
+    let isRecipient =
       ctx.profileType === 'client' &&
       invoice.recipientUserId === ctx.userId;
+
+    if (!isRecipient && ctx.profileType === 'client' && invoice.clientId) {
+      const { clientService } = await import('@/lib/services/client.service');
+      const client = await clientService.findById(invoice.clientId, invoice.organizationId);
+      if (client?.userId === ctx.userId) {
+        isRecipient = true;
+      }
+    }
 
     if (!isIssuer && !isRecipient) {
       throw new AppError('Accès refusé à cette facture', 403, 'FORBIDDEN');
@@ -49,6 +65,14 @@ export async function POST(req: Request) {
 
     if (invoice.status === 'paid') {
       return NextResponse.json({ error: 'Facture déjà payée' }, { status: 409 });
+    }
+
+    const payableAmount = typeof invoice.amountDue === 'number' && invoice.amountDue > 0
+      ? invoice.amountDue
+      : invoice.totalTTC;
+
+    if (payableAmount <= 0) {
+      return NextResponse.json({ error: 'Aucun montant restant dû sur cette facture' }, { status: 400 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

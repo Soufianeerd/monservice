@@ -11,12 +11,14 @@ import * as clientActions from '@/app/actions/client.actions';
 import * as productActions from '@/app/actions/product.actions';
 
 import { invoiceSchema, invoiceLineSchema } from '@/lib/validation/schemas';
+import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
 
 const invoiceFormSchema = invoiceSchema.extend({
   lines: z.array(invoiceLineSchema).min(1, "Au moins une ligne est requise")
 });
 
-export type InvoiceFormData = z.infer<typeof invoiceFormSchema>;
+export type InvoiceFormInput = z.input<typeof invoiceFormSchema>;
+export type InvoiceFormData = z.output<typeof invoiceFormSchema>;
 
 interface InvoiceFormProps {
   initialData?: Invoice;
@@ -37,18 +39,22 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
     }
   }, [organizationId]);
   
-  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormData>({
-    resolver: zodResolver(invoiceFormSchema) as any,
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormInput, unknown, InvoiceFormData>({
+    resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
+      organizationId: initialData?.organizationId || organizationId || '',
       type: initialData?.type || 'invoice',
       status: initialData?.status || 'draft',
       clientId: initialData?.clientId || '',
       date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
       lines: initialData?.lines.length ? initialData.lines.map(line => ({
-        ...line,
+        description: line.description,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        taxRate: line.taxRate,
+        discount: line.discountRate ?? line.discount ?? 0,
         productId: line.productId || undefined,
-        discount: line.discount || 0
       })) : [{
         productId: undefined, description: '', quantity: 1, unitPrice: 0, taxRate: 20, discount: 0
       }],
@@ -65,28 +71,23 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   
   const [totals, setTotals] = useState({ totalHT: 0, taxAmount: 0, totalTTC: 0 });
 
-  // Calcul des totaux dynamique
+  // Calcul des totaux dynamique avec le moteur pur partagé
   useEffect(() => {
-    let ht = 0;
-    let tax = 0;
-
-    watchLines.forEach((line) => {
-      const q = Number(line.quantity) || 0;
-      const up = Number(line.unitPrice) || 0;
-      const d = Number(line.discount) || 0;
-      const t = Number(line.taxRate) || 0;
-
-      const lineHT = q * up * (1 - d / 100);
-      const lineTax = lineHT * (t / 100);
-
-      ht += lineHT;
-      tax += lineTax;
-    });
+    const docTotals = calculateDocumentTotals(
+      (watchLines || []).map((l) => ({
+        description: l?.description || '',
+        quantity: Number(l?.quantity) || 0,
+        unitPrice: Number(l?.unitPrice) || 0,
+        discountRate: Number(l?.discount ?? l?.discountRate) || 0,
+        taxRate: Number(l?.taxRate) || 0,
+        isSelected: true,
+      }))
+    );
 
     setTotals({
-      totalHT: ht,
-      taxAmount: tax,
-      totalTTC: ht + tax
+      totalHT: docTotals.totalHT,
+      taxAmount: docTotals.taxAmount,
+      totalTTC: docTotals.totalTTC,
     });
   }, [watchLines]);
 
@@ -109,7 +110,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   };
 
   return (
-    <form onSubmit={handleSubmit(data => onSubmit({ ...data, ...totals } as any))} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
       {/* Informations Générales */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

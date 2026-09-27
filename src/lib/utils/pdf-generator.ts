@@ -1,24 +1,26 @@
 import React from 'react';
-import { pdf, DocumentProps } from '@react-pdf/renderer';
-import { InvoicePDF } from '@/components/crm/InvoicePDF';
-import { QuotePDF } from '@/components/crm/QuotePDF';
-import { Invoice, Deal, Organization } from '@/lib/data/interfaces';
+import { pdf, type DocumentProps } from '@react-pdf/renderer';
+import { InvoicePDF, type InvoicePDFProps } from '@/components/crm/InvoicePDF';
+import { QuotePDF, type QuotePDFProps } from '@/components/crm/QuotePDF';
+import type { Invoice, Organization } from '@/lib/data/interfaces';
 
 export async function generateInvoicePDF(
   invoice: Invoice,
   organization: Organization,
-  client: { name: string; email?: string; address?: string; country?: string }
+  client: InvoicePDFProps['client'],
+  site?: InvoicePDFProps['site']
 ): Promise<Blob> {
-  const doc = await InvoicePDF({ invoice, organization, client });
+  const doc = await InvoicePDF({ invoice, organization, client, site });
   return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 
 export async function generateQuotePDF(
-  deal: Deal,
+  quote: QuotePDFProps['quote'],
   organization: Organization,
-  client: { name: string; email?: string; address?: string; country?: string }
+  client: QuotePDFProps['client'],
+  site?: QuotePDFProps['site']
 ): Promise<Blob> {
-  const doc = await QuotePDF({ deal, organization, client });
+  const doc = await QuotePDF({ quote, organization, client, site });
   return await pdf(doc as React.ReactElement<DocumentProps>).toBlob();
 }
 

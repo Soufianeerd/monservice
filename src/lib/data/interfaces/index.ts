@@ -10,6 +10,7 @@ export * from './request.interface';
 export * from './message.interface';
 export * from './invoice.interface';
 export * from './invoice-line.interface';
+export * from './invoice-section.interface';
 export * from './message-template.interface';
 export * from './notification.interface';
 export * from './activity-log.interface';

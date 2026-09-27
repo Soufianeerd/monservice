@@ -14,9 +14,15 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: 'Brouillon',
   sent: 'Envoyée',
   viewed: 'Consultée',
+  partially_paid: 'Partiellement payée',
   paid: 'Payée',
   overdue: 'En retard',
   cancelled: 'Annulée',
+  accepted: 'Accepté',
+  rejected: 'Refusé',
+  superseded: 'Remplacé',
+  pending: 'En attente',
+  unpaid: 'Non payée',
 };
 
 export const INVOICE_TYPE_LABELS: Record<Invoice['type'], string> = {

@@ -57,10 +57,14 @@ export const productSchema = z.object({
 export const invoiceLineSchema = z.object({
   productId: z.string().optional(),
   description: z.string().min(1, "La description est requise"),
-  quantity: z.number().min(1, "La quantité doit être d'au moins 1"),
+  quantity: z.number().positive("La quantité doit être supérieure à 0"),
   unitPrice: z.number().min(0, "Le prix unitaire doit être positif"),
   taxRate: z.number().min(0).max(100).default(20),
-  discount: z.number().optional()
+  discount: z.number().min(0).max(100).optional(),
+  discountRate: z.number().min(0).max(100).optional(),
+  unitCode: z.string().optional(),
+  lineType: z.string().optional(),
+  unitCost: z.number().optional(),
 });
 
 // Invoice Schema
@@ -68,7 +72,7 @@ export const invoiceSchema = z.object({
   clientId: z.string().min(1, "Client ID requis"),
   type: z.enum(['invoice', 'quote']),
   number: z.string().optional(), // generated usually
-  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled', 'pending', 'accepted', 'rejected', 'unpaid', 'viewed']).default('draft'),
+  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled', 'pending', 'accepted', 'rejected', 'unpaid', 'viewed', 'partially_paid', 'superseded']).default('draft'),
   date: z.string(),
   dueDate: z.string().optional(),
   message: z.string().optional(),

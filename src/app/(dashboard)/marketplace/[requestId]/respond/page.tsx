@@ -50,9 +50,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         quantity: 1,
         unitPrice: data.amount,
         taxRate: 20,
-        discount: 0,
-        amountHT: data.amount,
-        amountTTC: data.amount * 1.2
+        discountRate: 0,
       }];
 
       await invoiceActions.createQuoteFromRequestAction({
@@ -67,12 +65,11 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         totalTTC: data.amount * 1.2,
         message: data.message,
         requestId: request.id,
-        requestTitle: request.title, // pass this so deal can use it
-      }, lines as any);
+        requestTitle: request.title,
+      }, lines);
       
-      // In a real app, notify client here
       alert("Devis envoyé avec succès au client !");
-      router.push('/quotes');
+      router.push('/facturation/devis');
     } catch (err) {
       console.error(err);
       setError("Une erreur est survenue.");

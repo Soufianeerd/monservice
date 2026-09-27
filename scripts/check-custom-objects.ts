@@ -78,7 +78,9 @@ async function verifyCustomObjects() {
     field_service_work_orders: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     field_service_work_order_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
     field_service_work_reports: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    field_service_work_order_status_history: { anon: [], authenticated: ['SELECT'] }
+    field_service_work_order_status_history: { anon: [], authenticated: ['SELECT'] },
+    billing_document_sequences: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
+    invoice_sections: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
   };
 
   const dbGrants = await sql`
@@ -137,7 +139,10 @@ async function verifyCustomObjects() {
       'record_field_service_work_order_status_history',
       'enforce_field_service_status_history_append_only',
       'enforce_field_service_assignment_invariants',
-      'enforce_field_service_work_report_transition'
+      'enforce_field_service_work_report_transition',
+      'allocate_billing_document_number',
+      'enforce_invoice_invariants',
+      'enforce_invoice_child_immutability'
     );
   `;
 
@@ -163,6 +168,9 @@ async function verifyCustomObjects() {
     enforce_field_service_status_history_append_only: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_assignment_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_invoice_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_invoice_child_immutability: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
   };
 
   for (const [fname, expected] of Object.entries(expectedFuncs)) {
@@ -455,7 +463,10 @@ async function verifyCustomObjects() {
       'trg_field_service_work_order_status_history',
       'trg_field_service_status_history_append_only',
       'trg_field_service_assignment_invariants',
-      'trg_field_service_work_report_transition'
+      'trg_field_service_work_report_transition',
+      'trg_enforce_invoice_invariants',
+      'trg_enforce_invoice_lines_immutability',
+      'trg_enforce_invoice_sections_immutability'
     )
   `;
   
@@ -531,6 +542,21 @@ async function verifyCustomObjects() {
       table: 'field_service_work_reports',
       requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_field_service_work_report_transition'],
     },
+    {
+      name: 'trg_enforce_invoice_invariants',
+      table: 'invoices',
+      requiredElements: ['before', 'update', 'delete', 'for each row', 'enforce_invoice_invariants'],
+    },
+    {
+      name: 'trg_enforce_invoice_lines_immutability',
+      table: 'invoice_lines',
+      requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_invoice_child_immutability'],
+    },
+    {
+      name: 'trg_enforce_invoice_sections_immutability',
+      table: 'invoice_sections',
+      requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_invoice_child_immutability'],
+    },
   ];
 
   for (const rt of requiredTriggers) {
@@ -568,7 +594,9 @@ async function verifyCustomObjects() {
     'field_service_work_orders',
     'field_service_work_order_assignments',
     'field_service_work_reports',
-    'field_service_work_order_status_history'
+    'field_service_work_order_status_history',
+    'billing_document_sequences',
+    'invoice_sections'
   ];
 
   for (const table of expectedRlsTables) {
@@ -965,6 +993,30 @@ async function verifyCustomObjects() {
       expectedRoles: ['authenticated'],
       expectedCmd: 'SELECT',
       qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'billing_sequences_tenant_isolation',
+      tableName: 'billing_document_sequences',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['organization_id', 'current_organization_id'],
+      withCheckSemantics: ['organization_id', 'current_organization_id'],
+    },
+    {
+      policyName: 'invoice_sections_tenant_isolation',
+      tableName: 'invoice_sections',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['organization_id', 'current_organization_id'],
+      withCheckSemantics: ['organization_id', 'current_organization_id'],
+    },
+    {
+      policyName: 'invoice_sections_client_recipient_select',
+      tableName: 'invoice_sections',
+      expectedRoles: ['authenticated'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['invoices', 'recipient_user_id', 'clients'],
       withCheckSemantics: [],
     },
   ];

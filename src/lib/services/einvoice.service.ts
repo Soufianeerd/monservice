@@ -92,9 +92,6 @@ export class EinvoiceService {
 
     return {
       ...result,
-      type: result.type as any,
-      status: result.status as any,
-      lines: result.lines as any,
       supplier: {
         name: org.name,
         vatId: result.supplierVatId,

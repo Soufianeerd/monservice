@@ -51,8 +51,9 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la signature';
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -74,7 +75,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
     );
   }
 
-  if (success || quote.status === 'paid' || quote.signature) {
+  if (success || quote.status === 'accepted' || quote.signature) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">

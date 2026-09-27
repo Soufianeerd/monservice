@@ -4,6 +4,7 @@ import { invoiceService } from '@/lib/services/invoice.service';
 import { requireProfessional, requireSession } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
 import { assertQuota } from '@/lib/billing/quota';
+import type { Invoice, InvoiceLine, InvoiceStatus } from '@/lib/data/interfaces';
 
 /**
  * Server actions — devis et factures.
@@ -11,51 +12,53 @@ import { assertQuota } from '@/lib/billing/quota';
  * Les paramètres préfixés par `_` sont conservés pour la compatibilité des
  * appelants, mais leur valeur est ignorée : l'organisation provient de la
  * session serveur (MS-002, MS-005, MS-006).
- *
- * Deux actions ont été RETIRÉES de la surface publique (MS-007) :
- *  - `markAsPaidAction` : le statut « payée » est désormais piloté
- *    exclusivement par le webhook Stripe, après vérification de signature.
- *  - `updateSignatureAction` : la signature passe par `/api/quotes/sign`,
- *    qui vérifie l'organisation et enregistre IP, horodatage et auteur.
  */
 
-export async function findAllAction(_legacyOrganizationId?: unknown) {
+export async function findAllAction(_legacyOrganizationId?: unknown): Promise<Invoice[]> {
   const { organizationId } = await requireProfessional();
   return invoiceService.findAll(organizationId);
 }
 
-export async function findByIdAction(id: string, _legacyOrganizationId?: unknown) {
+export async function findByIdAction(id: string, _legacyOrganizationId?: unknown): Promise<Invoice | null> {
   const { organizationId } = await requireProfessional();
   return invoiceService.findById(id, organizationId);
 }
 
 /**
  * Documents adressés au client connecté.
- * L'ancienne version acceptait un `clientId` arbitraire (IDOR).
  */
-export async function findByClientAction(_legacyClientId?: unknown) {
+export async function findByClientAction(_legacyClientId?: unknown): Promise<Invoice[]> {
   const { userId } = await requireSession();
   return invoiceService.findByClient(userId);
 }
 
-export async function findByProfessionalAction(_legacyProfessionalId?: unknown) {
-  const { userId } = await requireSession();
-  return invoiceService.findByProfessional(userId);
+/**
+ * Factures / devis de l'organisation professionnelle.
+ */
+export async function findByProfessionalAction(_legacyProfessionalId?: unknown): Promise<Invoice[]> {
+  const { organizationId } = await requireProfessional();
+  return invoiceService.findByProfessional(organizationId);
 }
 
 /**
- * Accès à un document par identifiant, sans filtre d'organisation.
- *
- * Réservé aux cas où le demandeur est le destinataire du document
- * (espace client). Le contrôle d'appartenance est fait ici.
+ * Accès à un document par identifiant.
+ * Réservé au professionnel émetteur ou au client destinataire légitime.
  */
-export async function getByIdAction(id: string) {
+export async function getByIdAction(id: string): Promise<Invoice | null> {
   const ctx = await requireSession();
   const invoice = await invoiceService.getById(id);
   if (!invoice) return null;
 
-  const isOwner = ctx.organizationId && invoice.organizationId === ctx.organizationId;
-  const isRecipient = invoice.clientId === ctx.userId || invoice.recipientUserId === ctx.userId || invoice.professionalId === ctx.userId;
+  const isOwner = Boolean(ctx.organizationId && invoice.organizationId === ctx.organizationId);
+  let isRecipient = invoice.recipientUserId === ctx.userId || invoice.professionalId === ctx.userId;
+
+  if (!isRecipient && ctx.profileType === 'client' && invoice.clientId) {
+    const { clientService } = await import('@/lib/services/client.service');
+    const client = await clientService.findById(invoice.clientId, invoice.organizationId);
+    if (client?.userId === ctx.userId) {
+      isRecipient = true;
+    }
+  }
 
   if (!isOwner && !isRecipient) {
     throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
@@ -64,7 +67,7 @@ export async function getByIdAction(id: string) {
   return invoice;
 }
 
-export async function generateNumberAction(type: 'invoice' | 'quote', _legacyOrganizationId?: unknown) {
+export async function generateNumberAction(type: 'invoice' | 'quote', _legacyOrganizationId?: unknown): Promise<string> {
   const { organizationId } = await requireProfessional();
   return invoiceService.generateNumber(type, organizationId);
 }
@@ -72,7 +75,7 @@ export async function generateNumberAction(type: 'invoice' | 'quote', _legacyOrg
 export async function getNextInvoiceNumberAction(
   _legacyOrganizationId?: unknown,
   type: 'invoice' | 'quote' = 'invoice',
-) {
+): Promise<string> {
   const { organizationId } = await requireProfessional();
   return invoiceService.getNextInvoiceNumber(organizationId, type);
 }
@@ -83,17 +86,16 @@ export async function calculateTotalsAction(invoiceId: string, _legacyOrganizati
 }
 
 export async function createAction(
-  data: Record<string, unknown>,
-  lines: unknown[],
+  data: Partial<Invoice> & { clientId: string },
+  lines: (Omit<InvoiceLine, 'id' | 'invoiceId' | 'organizationId' | 'totalHT' | 'totalTTC'> & Partial<InvoiceLine>)[],
   _legacyUserId?: unknown,
-) {
+): Promise<Invoice> {
   const ctx = await requireProfessional();
   const { organizationId, userId } = ctx;
 
-  // Devis et factures ont des compteurs mensuels distincts (MS-019).
   await assertQuota(ctx, data.type === 'quote' ? 'quotesPerMonth' : 'invoicesPerMonth');
 
-  return invoiceService.create({ ...data, organizationId } as never, lines as never, userId);
+  return invoiceService.create({ ...data, organizationId, clientId: data.clientId }, lines, userId);
 }
 
 /**
@@ -101,16 +103,15 @@ export async function createAction(
  * Cela génère automatiquement le Client CRM et le Deal si nécessaire.
  */
 export async function createQuoteFromRequestAction(
-  data: Record<string, unknown>,
-  lines: unknown[]
-) {
+  data: Partial<Invoice> & { requestTitle?: string },
+  lines: (Omit<InvoiceLine, 'id' | 'invoiceId' | 'organizationId' | 'totalHT' | 'totalTTC'> & Partial<InvoiceLine>)[]
+): Promise<Invoice> {
   const ctx = await requireProfessional();
   const { organizationId, userId } = ctx;
 
   await assertQuota(ctx, 'quotesPerMonth');
 
-  // data.clientId here is the User ID of the marketplace client
-  const requestUserId = data.clientId as string;
+  const requestUserId = data.clientId;
   if (!requestUserId) throw new AppError('Client ID is required', 400);
 
   const { clientService } = await import('@/lib/services/client.service');
@@ -150,40 +151,44 @@ export async function createQuoteFromRequestAction(
   await dealService.create({
     organizationId,
     clientId: crmClientId,
-    name: (data as any).requestTitle || 'Demande Marketplace',
-    value: (data as any).totalHT || 0,
+    name: data.requestTitle || 'Demande Marketplace',
+    value: data.totalHT || 0,
     status: 'proposal',
     probability: 50,
     expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   }, userId);
 
   // Now create the invoice linked to the CRM client, but also save recipientUserId
-  const invoiceData = {
+  const invoiceData: Partial<Invoice> & { organizationId: string; clientId: string } = {
     ...data,
     organizationId,
     clientId: crmClientId,
-    recipientUserId: requestUserId, // Save for marketplace access
+    recipientUserId: requestUserId,
+    type: 'quote',
   };
 
-  return invoiceService.create(invoiceData as never, lines as never, userId);
+  return invoiceService.create(invoiceData, lines, userId);
 }
 
 export async function updateAction(
   id: string,
   _legacyOrganizationId: unknown,
-  data: Record<string, unknown>,
+  data: Partial<Invoice>,
   _legacyUserId?: unknown,
-) {
+): Promise<Invoice> {
   const { organizationId, userId } = await requireProfessional();
-  return invoiceService.update(id, organizationId, data as never, userId);
+  return invoiceService.update(id, organizationId, data, userId);
 }
 
-export async function deleteAction(id: string, _legacyOrganizationId?: unknown, _legacyUserId?: unknown) {
+export async function deleteAction(id: string, _legacyOrganizationId?: unknown, _legacyUserId?: unknown): Promise<void> {
   const { organizationId, userId } = await requireProfessional();
   return invoiceService.delete(id, organizationId, userId);
 }
 
-export async function clientUpdateStatusAction(id: string, status: string) {
+/**
+ * @deprecated Use specific quote actions (markQuoteViewedAction, acceptQuoteAction, rejectQuoteAction) instead.
+ */
+export async function clientUpdateStatusAction(id: string, status: InvoiceStatus): Promise<void> {
   const { userId } = await requireSession();
   await invoiceService.updateStatusAsClient(id, userId, status);
 }

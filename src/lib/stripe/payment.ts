@@ -18,8 +18,13 @@ export async function createInvoicePaymentSession(
             description: `Paiement de la facture ${invoice.number}`,
           },
           // Le montant est calculé côté serveur à partir de la facture en base :
-          // il n'est jamais transmis par le client.
-          unit_amount: Math.round(invoice.totalTTC * 100),
+          // il n'est jamais transmis par le client. Si un acompte a été déduit,
+          // on facture le montant restant dû (amountDue).
+          unit_amount: Math.round(
+            (typeof invoice.amountDue === 'number' && invoice.amountDue > 0
+              ? invoice.amountDue
+              : invoice.totalTTC) * 100
+          ),
         },
         quantity: 1,
       },
