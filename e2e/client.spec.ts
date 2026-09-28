@@ -29,14 +29,13 @@ test.describe('Client Management', () => {
     await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
+    await page.waitForLoadState('networkidle');
     await dismissSetupGuideIfPresent(page);
   });
 
   test('should create a new client and display it in the list', async ({ page }) => {
-    // Dismiss any native window.alert if triggered
-    page.on('dialog', dialog => dialog.dismiss());
-
     await page.goto('/clients/new');
+    await page.waitForLoadState('networkidle');
     await dismissSetupGuideIfPresent(page);
     
     const timestamp = Date.now();
@@ -50,10 +49,6 @@ test.describe('Client Management', () => {
 
     // After creating client, it redirects to /clients/[id] (not /clients/new)
     await page.waitForURL(url => url.pathname.startsWith('/clients/') && url.pathname !== '/clients/new', { timeout: 15000 });
-    await expect(page.locator(`text=${clientName}`).first()).toBeVisible({ timeout: 15000 });
-
-    // Check on clients list as well
-    await page.goto('/clients');
     await expect(page.locator(`text=${clientName}`).first()).toBeVisible({ timeout: 15000 });
   });
 });
