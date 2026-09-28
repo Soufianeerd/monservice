@@ -113,6 +113,7 @@ export const SEED_CLINICAL_EXPANSION_IDS = {
 
 export const SEED_PATIENT_PORTAL_IDS = {
   portalAccessA: 'b0000000-0000-4000-8000-000000000001',
+  portalAccessHealthA: 'b0000000-0000-4000-8000-000000000010',
   billingLinkA: 'b0000000-0000-4000-8000-000000000002',
   questionnaireA: 'b0000000-0000-4000-8000-000000000003',
 };
@@ -919,7 +920,7 @@ async function seed() {
       createdByUserId: proAId!,
     },
     {
-      id: 'b0000000-0000-4000-8000-000000000099',
+      id: SEED_PATIENT_PORTAL_IDS.portalAccessHealthA,
       organizationId: SEED_PRACTICE_IDS.orgA,
       patientId: SEED_PATIENT_IDS.patientA,
       userId: patientHealthAId!,
