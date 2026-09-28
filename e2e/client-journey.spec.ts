@@ -1,4 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function dismissSetupGuideIfPresent(page: Page) {
+  try {
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    if (await closeBtn.isVisible({ timeout: 1000 })) {
+      await closeBtn.click({ force: true });
+    }
+    const dismissBtn = page.locator('button:has-text("Ne plus afficher ce guide")');
+    if (await dismissBtn.isVisible({ timeout: 1000 })) {
+      await dismissBtn.click({ force: true });
+    }
+  } catch {
+    // Popover not present
+  }
+}
 
 test.describe('Client Journey E2E', () => {
   const testEmail = 'client_generic_a@monservice.com';
@@ -11,6 +26,7 @@ test.describe('Client Journey E2E', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/client/dashboard');
+    await dismissSetupGuideIfPresent(page);
   });
 
   test('CLIENT_E2E_01: Client A can access client dashboard and create a request', async ({ page }) => {
@@ -19,6 +35,7 @@ test.describe('Client Journey E2E', () => {
 
     // 2. Create a Request
     await page.goto('/client/requests/new');
+    await dismissSetupGuideIfPresent(page);
     
     await expect(page.locator('input[name="title"]')).toBeVisible();
 
@@ -28,7 +45,8 @@ test.describe('Client Journey E2E', () => {
     await page.fill('input[name="location"]', 'Lyon');
     await page.fill('input[name="budget"]', '500');
     
-    await page.click('button[type="submit"]');
+    await dismissSetupGuideIfPresent(page);
+    await page.click('[data-testid="publish-request-btn"]');
     
     // Wait for redirect to client requests list
     await page.waitForURL('**/client/requests*');

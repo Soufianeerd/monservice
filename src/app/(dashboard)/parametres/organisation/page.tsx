@@ -33,14 +33,28 @@ export default function OrganizationSettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      const updatedOrg = {
+      const updatePayload: Record<string, unknown> = {
+        name: data.name,
+        industry: data.industry === 'other' && data.customIndustry ? data.customIndustry : data.industry || undefined,
+        country: data.country || undefined,
+        address: data.address || undefined,
+        city: data.city || undefined,
+        postalCode: data.zipCode || undefined,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        currency: data.currency || undefined,
+        logo: logo || currentOrg.logo || undefined,
+      };
+      for (const k of Object.keys(updatePayload)) {
+        if (updatePayload[k] === undefined) delete updatePayload[k];
+      }
+      await updateAction(currentOrg.id, updatePayload);
+      setCurrentOrg({
         ...currentOrg,
         ...data,
         logo: logo || currentOrg.logo,
         updatedAt: new Date().toISOString(),
-      };
-      await updateAction(currentOrg.id, updatedOrg);
-      setCurrentOrg(updatedOrg);
+      });
       
       const companyStep = onboardingState?.steps.find(s => s.action === 'complete_company_profile');
       if (companyStep && !companyStep.completed) {

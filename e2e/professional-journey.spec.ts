@@ -1,4 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function dismissSetupGuideIfPresent(page: Page) {
+  try {
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    if (await closeBtn.isVisible({ timeout: 1000 })) {
+      await closeBtn.click({ force: true });
+    }
+    const dismissBtn = page.locator('button:has-text("Ne plus afficher ce guide")');
+    if (await dismissBtn.isVisible({ timeout: 1000 })) {
+      await dismissBtn.click({ force: true });
+    }
+  } catch {
+    // Popover not present
+  }
+}
 
 test.describe('Professional Journey E2E', () => {
   const testEmail = 'pro_generic_a@monservice.com';
@@ -11,6 +26,7 @@ test.describe('Professional Journey E2E', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
+    await dismissSetupGuideIfPresent(page);
   });
 
   test('PRO_E2E_01: Professional A can access dashboard and update profile', async ({ page }) => {
@@ -19,29 +35,26 @@ test.describe('Professional Journey E2E', () => {
 
     // 2. Update Company Profile
     await page.goto('/parametres/organisation');
+    await dismissSetupGuideIfPresent(page);
     
     // We expect the form to be visible since we are authenticated
     await expect(page.locator('input[name="name"]')).toBeVisible();
 
     await page.fill('input[name="name"]', 'Organization A - Updated');
-    await page.locator('select[name="industry"]').selectOption('artisan');
+    await page.locator('select[name="industry"]').selectOption({ index: 1 });
     await page.click('button:has-text("Enregistrer")');
+    await expect(page.locator('text=Profil mis à jour avec succès.')).toBeVisible();
   });
 
   test('TENANT_E2E_01 / TENANT_E2E_02: Professional A cannot access or modify Organization B resources', async ({ page }) => {
     // Attempting to visit another organization's settings directly via URL
-    // (Assuming the routing uses ?id= or it relies on server-side context)
-    const responseOrg = await page.goto('/parametres/organisation?id=org-generic-b-5678');
+    // Server enforces session organizationId, ignoring URL tampering
+    await page.goto('/parametres/organisation?id=org-generic-b-5678');
+    await dismissSetupGuideIfPresent(page);
     
-    // Determine deterministic failure (either 404, 403, or the inputs don't show Org B)
-    // If the page still loads but forces the context to their OWN organization:
     const nameInput = page.locator('input[name="name"]');
-    if (await nameInput.isVisible()) {
-      await expect(nameInput).not.toHaveValue(/Organization B/i);
-    } else {
-      // Otherwise we expect a 404 or redirect
-      expect(responseOrg?.status() === 404 || responseOrg?.status() === 403 || page.url().includes('/dashboard')).toBeTruthy();
-    }
+    await expect(nameInput).toBeVisible();
+    await expect(nameInput).not.toHaveValue(/Organization Generic B|Organization B/i);
 
     // Attempt to view a client that belongs to Org B
     const responseClient = await page.goto('/clients/cli-generic-b-5678');

@@ -1,4 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+async function dismissSetupGuideIfPresent(page: Page) {
+  try {
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    if (await closeBtn.isVisible({ timeout: 1000 })) {
+      await closeBtn.click({ force: true });
+    }
+    const dismissBtn = page.locator('button:has-text("Ne plus afficher ce guide")');
+    if (await dismissBtn.isVisible({ timeout: 1000 })) {
+      await dismissBtn.click({ force: true });
+    }
+  } catch {
+    // Popover not present
+  }
+}
 
 test.describe('Marketplace Workflow & Location Persistence', () => {
   const proEmail = 'pro_generic_a@monservice.com';
@@ -12,9 +27,11 @@ test.describe('Marketplace Workflow & Location Persistence', () => {
     await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
+    await dismissSetupGuideIfPresent(page);
 
     // Go to marketplace
     await page.goto('/marketplace');
+    await dismissSetupGuideIfPresent(page);
     
     // Wait for the list to load
     await expect(page.locator('h1', { hasText: 'Marketplace' })).toBeVisible();
@@ -41,13 +58,16 @@ test.describe('Marketplace Workflow & Location Persistence', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/client/dashboard');
+    await dismissSetupGuideIfPresent(page);
 
     await page.goto('/client/requests/new');
+    await dismissSetupGuideIfPresent(page);
     await page.fill('[data-testid="request-title-input"]', title);
     await page.fill('[data-testid="request-description-input"]', 'Rénovation totale de plomberie et raccordements.');
     await page.selectOption('[data-testid="request-category-select"]', 'field_services');
     await page.fill('[data-testid="request-location-input"]', specificLocation);
     await page.fill('[data-testid="request-budget-input"]', '1200');
+    await dismissSetupGuideIfPresent(page);
     await page.click('[data-testid="publish-request-btn"]');
 
     await page.waitForURL('**/client/requests*');

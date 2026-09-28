@@ -207,6 +207,7 @@ async function seed() {
           organizationId: orgId,
           subscriptionTier: profileType === 'professional' ? 'pro' : 'free',
           subscriptionStatus: profileType === 'professional' ? 'active' : 'inactive',
+          onboardingCompleted: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -217,6 +218,7 @@ async function seed() {
             profileType,
             subscriptionTier: profileType === 'professional' ? 'pro' : 'free',
             subscriptionStatus: profileType === 'professional' ? 'active' : 'inactive',
+            onboardingCompleted: true,
             updatedAt: new Date().toISOString(),
           },
         });
