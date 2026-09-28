@@ -531,7 +531,12 @@ export const quoteService = {
       const [orgOwner] = await tx
         .select({ id: users.id })
         .from(users)
-        .where(eq(users.organizationId, quote.organizationId))
+        .where(
+          and(
+            eq(users.organizationId, quote.organizationId),
+            eq(users.profileType, 'professional'),
+          ),
+        )
         .limit(1);
 
       if (orgOwner) {
