@@ -132,7 +132,7 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       expect(Number(savedQuote.total_ttc)).toBeGreaterThan(0);
 
       // Verify sections and lines in DB
-      const sectionsInDb = await sql`SELECT * FROM quote_sections WHERE quote_id = ${quoteId} ORDER BY position ASC`;
+      const sectionsInDb = await sql`SELECT * FROM invoice_sections WHERE invoice_id = ${quoteId} ORDER BY position ASC`;
       expect(sectionsInDb.length).toBeGreaterThanOrEqual(2);
 
       const linesInDb = await sql`SELECT * FROM invoice_lines WHERE invoice_id = ${quoteId}`;
