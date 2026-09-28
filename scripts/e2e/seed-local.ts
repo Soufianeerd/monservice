@@ -280,8 +280,9 @@ async function seed() {
 
   // 6. Create Marketplace Requests
   await db.insert(requests).values([
-    { id: randomUUID(), clientId: SEED_GENERIC_IDS.clientA, title: 'Need IT Consulting', description: 'Looking for a network upgrade.', category: 'freelance', location: 'Paris', budget: '2500', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: randomUUID(), clientId: SEED_FIELD_SERVICE_IDS.clientA, title: 'Besoin de plomberie urgente', description: 'Fuite importante sous évier cuisine.', category: 'field_services', location: 'Lyon', budget: '450', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: randomUUID(), clientId: clientIdA, title: 'Besoin assistance Paramédicale', description: 'Recherche kinésithérapeute pour rééducation.', category: 'health', location: 'Paris', budget: '150', status: 'published', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: randomUUID(), clientId: SEED_GENERIC_IDS.clientA, title: 'Need IT Consulting', description: 'Looking for a network upgrade.', category: 'freelance', location: 'Paris', budget: '2500', status: 'published', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: randomUUID(), clientId: SEED_FIELD_SERVICE_IDS.clientA, title: 'Besoin de plomberie urgente', description: 'Fuite importante sous évier cuisine.', category: 'field_services', location: 'Lyon', budget: '450', status: 'published', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   console.log('Base Seed completed successfully!');
