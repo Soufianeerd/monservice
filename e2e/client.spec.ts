@@ -50,10 +50,10 @@ test.describe('Client Management', () => {
 
     // After creating client, it redirects to /clients/[id]
     await page.waitForURL('**/clients/**');
-    await expect(page.locator(`text=${clientName}`)).toBeVisible();
+    await expect(page.locator(`text=${clientName}`).first()).toBeVisible();
 
     // Check on clients list as well
     await page.goto('/clients');
-    await expect(page.locator(`text=${clientName}`)).toBeVisible();
+    await expect(page.locator(`text=${clientName}`).first()).toBeVisible();
   });
 });
