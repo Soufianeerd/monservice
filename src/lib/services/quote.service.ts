@@ -789,7 +789,7 @@ export const quoteService = {
         .limit(1);
 
       if (existingDeposits.length > 0) {
-        return (await invoiceService.findById(existingDeposits[0].id, organizationId))!;
+        return (await invoiceService.findById(existingDeposits[0].id, organizationId, tx))!;
       }
 
       const quoteTotals = calculateDocumentTotals(quote.lines, {
@@ -856,7 +856,7 @@ export const quoteService = {
         });
       }
 
-      return (await invoiceService.findById(invoiceId, organizationId))!;
+      return (await invoiceService.findById(invoiceId, organizationId, tx))!;
     });
   },
 
@@ -890,7 +890,7 @@ export const quoteService = {
         .limit(1);
 
       if (existingFinal.length > 0) {
-        return (await invoiceService.findById(existingFinal[0].id, organizationId))!;
+        return (await invoiceService.findById(existingFinal[0].id, organizationId, tx))!;
       }
 
       // Calcul des acomptes payés pour déduction
@@ -991,7 +991,7 @@ export const quoteService = {
         }
       }
 
-      return (await invoiceService.findById(invoiceId, organizationId))!;
+      return (await invoiceService.findById(invoiceId, organizationId, tx))!;
     });
   },
 

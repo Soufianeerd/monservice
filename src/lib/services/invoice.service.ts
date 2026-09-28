@@ -11,6 +11,8 @@ import { InvoiceTaxData } from './tax.types';
 import { calculateDocumentTotals, calculateLine } from './billing-calculator';
 import { allocateBillingNumber } from './quote.service';
 
+type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 function mapDbInvoice(inv: typeof invoices.$inferSelect, lines: InvoiceLine[], sections: InvoiceSection[] = []): Invoice {
   return {
     ...inv,
@@ -69,15 +71,15 @@ export const invoiceService = {
     return this.findAll(organizationId);
   },
 
-  async findById(id: string, organizationId: string): Promise<Invoice | null> {
-    const result = await db.select().from(invoices).where(
+  async findById(id: string, organizationId: string, customDb: DbTx | typeof db = db): Promise<Invoice | null> {
+    const result = await customDb.select().from(invoices).where(
       and(eq(invoices.id, id), eq(invoices.organizationId, organizationId))
     );
     if (!result.length) return null;
     const inv = result[0];
     
-    const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-    const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
+    const lines = await customDb.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
+    const sections = await customDb.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
     return mapDbInvoice(inv, lines, sections.map(s => ({
       ...s,
       createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
@@ -85,13 +87,13 @@ export const invoiceService = {
     })));
   },
 
-  async getById(id: string): Promise<Invoice | null> {
-    const result = await db.select().from(invoices).where(eq(invoices.id, id));
+  async getById(id: string, customDb: DbTx | typeof db = db): Promise<Invoice | null> {
+    const result = await customDb.select().from(invoices).where(eq(invoices.id, id));
     if (!result.length) return null;
     const inv = result[0];
     
-    const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-    const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
+    const lines = await customDb.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
+    const sections = await customDb.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
     return mapDbInvoice(inv, lines, sections.map(s => ({
       ...s,
       createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),

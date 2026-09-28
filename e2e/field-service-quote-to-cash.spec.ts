@@ -230,7 +230,7 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       await depositBtn.click();
 
       // Wait for redirection to created deposit invoice
-      await page.waitForURL(/\/facturation\/factures\/[0-9a-fA-F-]+/);
+      await page.waitForURL(/\/facturation\/factures\/[0-9a-fA-F-]+/, { timeout: 15000 });
       const depositInvoiceUrl = page.url();
       const depositInvoiceIdMatch = depositInvoiceUrl.match(/\/facturation\/factures\/([0-9a-fA-F-]+)/);
       expect(depositInvoiceIdMatch).toBeTruthy();
@@ -271,7 +271,7 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       await createWorkOrderBtn.click();
 
       // Wait for redirection to /operations/[id]
-      await page.waitForURL(/\/operations\/[0-9a-fA-F-]+/);
+      await page.waitForURL(/\/operations\/[0-9a-fA-F-]+/, { timeout: 15000 });
       const woUrl = page.url();
       const woIdMatch = woUrl.match(/\/operations\/([0-9a-fA-F-]+)/);
       expect(woIdMatch).toBeTruthy();
@@ -294,7 +294,7 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       await finalInvoiceBtn.click();
 
       // Redirects to /facturation/factures/[finalInvoiceId]
-      await page.waitForURL(/\/facturation\/factures\/[0-9a-fA-F-]+/);
+      await page.waitForURL(/\/facturation\/factures\/[0-9a-fA-F-]+/, { timeout: 15000 });
       const finalInvUrl = page.url();
       const finalInvIdMatch = finalInvUrl.match(/\/facturation\/factures\/([0-9a-fA-F-]+)/);
       expect(finalInvIdMatch).toBeTruthy();
