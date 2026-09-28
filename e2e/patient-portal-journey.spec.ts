@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Patient Portal Journey E2E (Session 14)', () => {
-  const testEmail = 'client_a@monservice.com';
+  const testEmail = 'patient_health_a@monservice.com';
   const password = 'password123';
 
   test.beforeEach(async ({ page }) => {

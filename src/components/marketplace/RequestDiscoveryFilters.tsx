@@ -12,10 +12,10 @@ export interface DiscoveryFilters {
 export default function RequestDiscoveryFilters({ onFilterChange }: { onFilterChange: (filters: DiscoveryFilters) => void }) {
   const [filters, setFilters] = useState<DiscoveryFilters>({});
 
-  const handleChange = (key: keyof DiscoveryFilters, value: any) => {
+  const handleChange = (key: keyof DiscoveryFilters, value: string | number | undefined) => {
     const newFilters = { ...filters, [key]: value };
     // Remove empty strings or undefined
-    if (newFilters[key] === '' || newFilters[key] === undefined || Number.isNaN(newFilters[key])) {
+    if (newFilters[key] === '' || newFilters[key] === undefined || (typeof newFilters[key] === 'number' && Number.isNaN(newFilters[key]))) {
       delete newFilters[key];
     }
     setFilters(newFilters);
@@ -32,6 +32,7 @@ export default function RequestDiscoveryFilters({ onFilterChange }: { onFilterCh
           onChange={(e) => handleChange('category', e.target.value)}
         >
           <option value="">Toutes les catégories</option>
+          <option value="field_services">Artisanat, BTP & Services de terrain</option>
           <option value="artisan">Artisanat & Bâtiment</option>
           <option value="health">Santé & Bien-être</option>
           <option value="freelance">Consultant & Informatique</option>

@@ -1,13 +1,9 @@
 [build]
   command = "npm run build"
-  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
-# La redirection `/* -> /index.html` a été supprimée : c'est une règle de type
-# SPA, incompatible avec le rendu serveur de Next.js. Le routage est géré par
-# @netlify/plugin-nextjs (anomalie MS-023).
+# Netlify Next Runtime v5 is installed as a direct dependency in package.json (@netlify/plugin-nextjs: ^5.15.13).
+# Netlify automatically detects and configures the runtime from dependencies for Next.js App Router/SSR.
+# Note: Explicit SPA rewrites (/* -> /index.html) must NEVER be added, as App Router handles SSR and API routes natively.

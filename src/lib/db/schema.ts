@@ -501,6 +501,7 @@ export const requests = sqliteTable('requests', {
   title: text('title').notNull(),
   description: text('description').notNull(),
   category: text('category').notNull(),
+  location: text('location'),
   budget: text('budget'),
   deadline: text('deadline'),
   status: text('status').default('open'), // 'open' | 'in_progress' | 'completed' | 'cancelled'

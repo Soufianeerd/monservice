@@ -150,7 +150,7 @@ export default function ProfessionalQuoteDetailPage({
         quoteId: quote.id,
       });
       setSuccessMsg(`Intervention / Chantier créé : ${wo.title} !`);
-      router.push(`/field-service/interventions/${wo.id}`);
+      router.push(`/operations/${wo.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur création ordre de travail");
       setActionLoading(false);
@@ -218,6 +218,7 @@ export default function ProfessionalQuoteDetailPage({
               </span>
             )}
             <span
+              data-testid="quote-status-badge"
               className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                 isAccepted
                   ? 'bg-green-100 text-green-800'
@@ -250,6 +251,7 @@ export default function ProfessionalQuoteDetailPage({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleDownloadPDF}
+            data-testid="download-pdf-button"
             className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
           >
             <Download className="w-4 h-4 mr-1.5" />
@@ -261,6 +263,7 @@ export default function ProfessionalQuoteDetailPage({
               <button
                 onClick={handleSend}
                 disabled={actionLoading}
+                data-testid="send-quote-button"
                 className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
               >
                 <Send className="w-4 h-4 mr-1.5" />
@@ -269,6 +272,7 @@ export default function ProfessionalQuoteDetailPage({
               <button
                 onClick={handleDelete}
                 disabled={actionLoading}
+                data-testid="delete-quote-button"
                 className="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4 mr-1.5" />
@@ -281,6 +285,7 @@ export default function ProfessionalQuoteDetailPage({
             <button
               onClick={handleRevise}
               disabled={actionLoading}
+              data-testid="revise-quote-button"
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none disabled:opacity-50"
             >
               <Copy className="w-4 h-4 mr-1.5" />
@@ -294,6 +299,7 @@ export default function ProfessionalQuoteDetailPage({
                 <button
                   onClick={handleCreateDeposit}
                   disabled={actionLoading}
+                  data-testid="create-deposit-invoice-button"
                   className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none disabled:opacity-50"
                 >
                   <Receipt className="w-4 h-4 mr-1.5" />
@@ -304,6 +310,7 @@ export default function ProfessionalQuoteDetailPage({
               <button
                 onClick={handleCreateWorkOrder}
                 disabled={actionLoading}
+                data-testid="create-work-order-button"
                 className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none disabled:opacity-50"
               >
                 <Wrench className="w-4 h-4 mr-1.5" />
@@ -313,6 +320,7 @@ export default function ProfessionalQuoteDetailPage({
               <button
                 onClick={handleConvertToFinalInvoice}
                 disabled={actionLoading}
+                data-testid="create-final-invoice-button"
                 className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
               >
                 <FileText className="w-4 h-4 mr-1.5" />

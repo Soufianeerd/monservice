@@ -13,6 +13,7 @@ const UPDATABLE_FIELDS = [
   'name',
   'slug',
   'sector',
+  'industry',
   'isPublic',
   'description',
   'logo',
@@ -21,6 +22,8 @@ const UPDATABLE_FIELDS = [
   'postalCode',
   'country',
   'phone',
+  'email',
+  'currency',
   'legalNotice',
   'paymentTerms',
   'bankDetails',
@@ -36,13 +39,34 @@ export const organizationService = {
   async create(data: Partial<Organization>): Promise<Organization> {
     const id = generateId();
     const now = new Date().toISOString();
+    const orgName = data.name || 'Mon Entreprise';
+    const slug = data.slug || `${orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${id.slice(0, 8)}`;
 
     await db.insert(organizations).values({
       id,
-      ...data,
+      name: orgName,
+      slug,
+      sector: data.sector,
+      profession: data.profession,
+      profileType: data.profileType,
+      isPublic: data.isPublic,
+      description: data.description,
+      logo: data.logo,
+      address: data.address,
+      city: data.city,
+      postalCode: data.postalCode || data.zipCode,
+      country: data.country,
+      phone: data.phone,
+      email: data.email,
+      currency: data.currency,
+      industry: data.industry,
+      secondarySkills: data.secondarySkills,
+      legalNotice: data.legalNotice,
+      paymentTerms: data.paymentTerms,
+      bankDetails: data.bankDetails,
       createdAt: now,
       updatedAt: now,
-    } as never);
+    });
 
     return this.getById(id) as Promise<Organization>;
   },
@@ -88,7 +112,7 @@ export const organizationService = {
         stripeAccountId,
         stripeAccountStatus,
         updatedAt: new Date().toISOString(),
-      } as never)
+      })
       .where(eq(organizations.id, id));
   },
 };

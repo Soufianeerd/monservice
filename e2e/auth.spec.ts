@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Authentication - E2E Auth', () => {
-  const proEmail = 'pro_a@monservice.com';
-  const clientEmail = 'client_a@monservice.com';
+  const proEmail = 'pro_generic_a@monservice.com';
+  const clientEmail = 'client_generic_a@monservice.com';
   const password = 'password123';
 
   test('AUTH_E2E_01: should login successfully with Professional A', async ({ page }) => {

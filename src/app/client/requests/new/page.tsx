@@ -17,15 +17,15 @@ export default function NewRequestPage() {
     
     try {
       await requestActions.createAction({
-        title: data.title!,
-        description: data.description!,
-        category: data.category!,
+        title: data.title || '',
+        description: data.description || '',
+        category: data.category || 'other',
         budget: data.budget,
-        location: data.location!,
+        location: data.location || '',
         preferredDate: data.preferredDate,
         status: data.status || 'draft',
         clientId: user.id
-      }, user.id);
+      });
       
       router.push('/client/requests');
     } catch (error) {

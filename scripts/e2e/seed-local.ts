@@ -31,10 +31,28 @@ import {
   clinicalMeasurements,
   patientPortalAccess,
   patientBillingLinks,
-  patientQuestionnaireAssignments
+  patientQuestionnaireAssignments,
+  deals,
+  fieldServiceSites
 } from '../../src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+
+export const SEED_GENERIC_IDS = {
+  orgA: 'org-generic-a-1234',
+  orgB: 'org-generic-b-5678',
+  clientA: 'cli-generic-a-1234',
+  clientB: 'cli-generic-b-5678',
+};
+
+export const SEED_FIELD_SERVICE_IDS = {
+  orgA: 'org-fs-a-1234',
+  orgB: 'org-fs-b-5678',
+  clientA: 'cli-fs-a-1234',
+  clientB: 'cli-fs-b-5678',
+  siteA: 'site-fs-a-1234',
+  dealA: 'deal-fs-a-1234',
+};
 
 export const SEED_PRACTICE_IDS = {
   orgA: 'org-a-1234',
@@ -142,14 +160,21 @@ async function seed() {
 
   console.log('Seeding local database...');
 
-  // 1. Create Organizations (keeping generic sectors)
+  // 1. Create Organizations (distinct, deterministic per vertical)
   await db.insert(organizations).values([
-    { id: SEED_PRACTICE_IDS.orgA, name: 'Organization A', slug: 'org-a', sector: 'IT', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: SEED_PRACTICE_IDS.orgB, name: 'Organization B', slug: 'org-b', sector: 'Consulting', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    // Generic
+    { id: SEED_GENERIC_IDS.orgA, name: 'Entreprise Générique A', slug: 'org-generic-a', sector: 'IT', profession: null, profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_GENERIC_IDS.orgB, name: 'Entreprise Générique B', slug: 'org-generic-b', sector: 'Consulting', profession: null, profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    // Paramedical
+    { id: SEED_PRACTICE_IDS.orgA, name: 'Cabinet Paramédical Santé A', slug: 'org-health-a', sector: 'health', profession: 'physiotherapist', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_PRACTICE_IDS.orgB, name: 'Cabinet Ostéopathie B', slug: 'org-health-b', sector: 'health', profession: 'osteopath', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    // Field Service
+    { id: SEED_FIELD_SERVICE_IDS.orgA, name: 'Plomberie Chauffage Service', slug: 'org-fs-a', sector: 'field_services', profession: 'plumber', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_FIELD_SERVICE_IDS.orgB, name: 'Électricité Générale B', slug: 'org-fs-b', sector: 'field_services', profession: 'electrician', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string) => {
-    const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
+    const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (listError) {
       console.error('Error listing users:', listError);
       throw listError;
@@ -177,11 +202,25 @@ async function seed() {
   };
 
   // 2. Create Users
+  // Generic
+  const proGenericAId = await createAuthUser('pro_generic_a@monservice.com', 'Professional Generic A', 'professional', SEED_GENERIC_IDS.orgA);
+  const cliGenericAId = await createAuthUser('client_generic_a@monservice.com', 'Client Generic A', 'client', SEED_GENERIC_IDS.orgA);
+  await createAuthUser('pro_generic_b@monservice.com', 'Professional Generic B', 'professional', SEED_GENERIC_IDS.orgB);
+  await createAuthUser('client_generic_b@monservice.com', 'Client Generic B', 'client', SEED_GENERIC_IDS.orgB);
+
+  // Paramedical
+  await createAuthUser('pro_health_a@monservice.com', 'Dr. Jane Doe', 'professional', SEED_PRACTICE_IDS.orgA);
+  const patientHealthAId = await createAuthUser('patient_health_a@monservice.com', 'Alice Dupont', 'client', SEED_PRACTICE_IDS.orgA);
   const proAId = await createAuthUser('pro_a@monservice.com', 'Professional A', 'professional', SEED_PRACTICE_IDS.orgA);
   const cliAId = await createAuthUser('client_a@monservice.com', 'Client A', 'client', SEED_PRACTICE_IDS.orgA);
-  const staffAId = await createAuthUser('staff_a@monservice.com', 'Staff A', 'professional', SEED_PRACTICE_IDS.orgA);
+  await createAuthUser('staff_a@monservice.com', 'Staff A', 'professional', SEED_PRACTICE_IDS.orgA);
   const proBId = await createAuthUser('pro_b@monservice.com', 'Professional B', 'professional', SEED_PRACTICE_IDS.orgB);
   const cliBId = await createAuthUser('client_b@monservice.com', 'Client B', 'client', SEED_PRACTICE_IDS.orgB);
+
+  // Field Service
+  await createAuthUser('pro_fs_a@monservice.com', 'Artisan Plombier A', 'professional', SEED_FIELD_SERVICE_IDS.orgA);
+  const cliFsAId = await createAuthUser('client_fs_a@monservice.com', 'Client Field Service A', 'client', SEED_FIELD_SERVICE_IDS.orgA);
+  await createAuthUser('pro_fs_b@monservice.com', 'Artisan Électricien B', 'professional', SEED_FIELD_SERVICE_IDS.orgB);
 
   console.log('Users seeded successfully');
   
@@ -190,19 +229,59 @@ async function seed() {
   const clientIdB = 'cli-rec-b-5678';
 
   await db.insert(clients).values([
+    // Generic
+    { id: SEED_GENERIC_IDS.clientA, organizationId: SEED_GENERIC_IDS.orgA, userId: cliGenericAId!, name: 'Client Generic A Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_GENERIC_IDS.clientB, organizationId: SEED_GENERIC_IDS.orgB, name: 'Client Generic B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    // Paramedical
     { id: clientIdA, organizationId: SEED_PRACTICE_IDS.orgA, userId: cliAId!, name: 'Client A Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: clientIdB, organizationId: SEED_PRACTICE_IDS.orgB, userId: cliBId!, name: 'Client B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: clientIdB, organizationId: SEED_PRACTICE_IDS.orgB, userId: cliBId!, name: 'Client B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    // Field Service
+    { id: SEED_FIELD_SERVICE_IDS.clientA, organizationId: SEED_FIELD_SERVICE_IDS.orgA, userId: cliFsAId!, name: 'Client Field Service A', email: 'client_fs_a@monservice.com', address: '15 Avenue des Artisans', city: 'Lyon', zipCode: '69001', country: 'France', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_FIELD_SERVICE_IDS.clientB, organizationId: SEED_FIELD_SERVICE_IDS.orgB, name: 'Client Field Service B', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   // 4. Create Invoices
   await db.insert(invoices).values([
+    { id: randomUUID(), organizationId: SEED_GENERIC_IDS.orgA, clientId: SEED_GENERIC_IDS.clientA, type: 'invoice', number: 'INV-GEN-A-001', date: new Date().toISOString(), status: 'sent', totalHT: 100, taxAmount: 20, totalTTC: 120, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: randomUUID(), organizationId: SEED_GENERIC_IDS.orgB, clientId: SEED_GENERIC_IDS.clientB, type: 'invoice', number: 'INV-GEN-B-001', date: new Date().toISOString(), status: 'sent', totalHT: 200, taxAmount: 40, totalTTC: 240, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: randomUUID(), organizationId: SEED_PRACTICE_IDS.orgA, clientId: clientIdA, type: 'invoice', number: 'INV-A-001', date: new Date().toISOString(), status: 'sent', totalHT: 100, taxAmount: 20, totalTTC: 120, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: randomUUID(), organizationId: SEED_PRACTICE_IDS.orgB, clientId: clientIdB, type: 'invoice', number: 'INV-B-001', date: new Date().toISOString(), status: 'sent', totalHT: 200, taxAmount: 40, totalTTC: 240, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
-  // 5. Create Marketplace Request
+  // 5. Create Field Service Site & Deal
+  await db.insert(fieldServiceSites).values([
+    {
+      id: SEED_FIELD_SERVICE_IDS.siteA,
+      organizationId: SEED_FIELD_SERVICE_IDS.orgA,
+      clientId: SEED_FIELD_SERVICE_IDS.clientA,
+      label: 'Chantier Résidence Bellecour',
+      addressLine1: '12 Rue de la République',
+      city: 'Lyon',
+      postalCode: '69002',
+      country: 'FR',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  ]).onConflictDoNothing();
+
+  await db.insert(deals).values([
+    {
+      id: SEED_FIELD_SERVICE_IDS.dealA,
+      organizationId: SEED_FIELD_SERVICE_IDS.orgA,
+      clientId: SEED_FIELD_SERVICE_IDS.clientA,
+      name: 'Rénovation Plomberie & Chauffage',
+      value: 3500,
+      status: 'proposal',
+      expectedCloseDate: '2026-12-31',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+  ]).onConflictDoNothing();
+
+  // 6. Create Marketplace Requests
   await db.insert(requests).values([
-    { id: randomUUID(), clientId: clientIdA, title: 'Need IT Consulting', description: 'Looking for a network upgrade.', category: 'IT', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    { id: randomUUID(), clientId: SEED_GENERIC_IDS.clientA, title: 'Need IT Consulting', description: 'Looking for a network upgrade.', category: 'freelance', location: 'Paris', budget: '2500', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: randomUUID(), clientId: SEED_FIELD_SERVICE_IDS.clientA, title: 'Besoin de plomberie urgente', description: 'Fuite importante sous évier cuisine.', category: 'field_services', location: 'Lyon', budget: '450', status: 'open', visibility: 'public', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
   console.log('Base Seed completed successfully!');
@@ -834,6 +913,15 @@ async function seed() {
       organizationId: SEED_PRACTICE_IDS.orgA,
       patientId: SEED_PATIENT_IDS.patientA,
       userId: cliAId!,
+      accessType: 'patient',
+      isActive: true,
+      createdByUserId: proAId!,
+    },
+    {
+      id: 'b0000000-0000-4000-8000-000000000099',
+      organizationId: SEED_PRACTICE_IDS.orgA,
+      patientId: SEED_PATIENT_IDS.patientA,
+      userId: patientHealthAId!,
       accessType: 'patient',
       isActive: true,
       createdByUserId: proAId!,

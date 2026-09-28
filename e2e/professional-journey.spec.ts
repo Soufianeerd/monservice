@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Professional Journey E2E', () => {
-  const testEmail = 'pro_a@monservice.com';
+  const testEmail = 'pro_generic_a@monservice.com';
   const password = 'password123';
 
   test.beforeEach(async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe('Professional Journey E2E', () => {
   test('TENANT_E2E_01 / TENANT_E2E_02: Professional A cannot access or modify Organization B resources', async ({ page }) => {
     // Attempting to visit another organization's settings directly via URL
     // (Assuming the routing uses ?id= or it relies on server-side context)
-    const responseOrg = await page.goto('/parametres/organisation?id=org-b-5678');
+    const responseOrg = await page.goto('/parametres/organisation?id=org-generic-b-5678');
     
     // Determine deterministic failure (either 404, 403, or the inputs don't show Org B)
     // If the page still loads but forces the context to their OWN organization:
@@ -44,7 +44,7 @@ test.describe('Professional Journey E2E', () => {
     }
 
     // Attempt to view a client that belongs to Org B
-    const responseClient = await page.goto('/clients/cli-rec-b-5678');
+    const responseClient = await page.goto('/clients/cli-generic-b-5678');
     // If it's isolated properly by RLS, the database returns 0 rows, triggering a 404
     if (responseClient?.status() === 200) {
       await expect(page.locator('body')).toContainText(/404|Introuvable|Non trouvé|Not Found/i);

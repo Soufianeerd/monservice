@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { MapPinIcon, CalendarIcon, CoinsIcon, BriefcaseIcon } from 'lucide-react';
 import * as requestActions from '@/app/actions/request.actions';
+import { getMarketplaceCategoryLabel } from '@/lib/marketplace/categories';
 
 export default function RequestMarketplaceDetailPage({ params }: { params: Promise<{ requestId: string }> }) {
   const resolvedParams = use(params);
@@ -49,11 +50,11 @@ export default function RequestMarketplaceDetailPage({ params }: { params: Promi
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 pb-6 border-b border-gray-100">
             <div className="flex items-center text-sm text-gray-700">
               <BriefcaseIcon className="w-5 h-5 mr-2 text-gray-400" />
-              {request.category}
+              {getMarketplaceCategoryLabel(request.category)}
             </div>
             <div className="flex items-center text-sm text-gray-700">
               <MapPinIcon className="w-5 h-5 mr-2 text-gray-400" />
-              {request.location}
+              {request.location || 'Non renseignée'}
             </div>
             <div className="flex items-center text-sm text-gray-700">
               <CoinsIcon className="w-5 h-5 mr-2 text-gray-400" />

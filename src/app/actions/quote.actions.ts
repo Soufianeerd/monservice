@@ -2,6 +2,7 @@
 
 import { quoteService } from '@/lib/services/quote.service';
 import { requireProfessional, requireSession } from '@/lib/auth/session';
+import { requireFieldServiceContext } from '@/lib/workspaces/field-service/context';
 import { assertQuota } from '@/lib/billing/quota';
 import { revalidatePath } from 'next/cache';
 import {
@@ -186,17 +187,17 @@ export async function convertQuoteToInvoiceAction(input: ConvertQuoteToInvoiceIn
 }
 
 export async function createWorkOrderFromQuoteAction(input: CreateWorkOrderFromQuoteInput) {
-  const { organizationId, userId } = await requireProfessional();
+  const ctx = await requireFieldServiceContext();
   const validated = createWorkOrderFromQuoteSchema.parse(input);
 
   const workOrder = await quoteService.createWorkOrderFromAcceptedQuote(
-    organizationId,
-    userId,
+    ctx.organizationId,
+    ctx.userId,
     validated
   );
 
-  revalidatePath('/field-service/interventions');
-  revalidatePath(`/field-service/interventions/${workOrder.id}`);
+  revalidatePath('/operations');
+  revalidatePath(`/operations/${workOrder.id}`);
   revalidatePath(`/facturation/devis/${validated.quoteId}`);
   return workOrder;
 }

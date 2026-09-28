@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Paramedical Practitioner Journey E2E (Session 15)', () => {
-  const proEmail = 'pro_a@monservice.com';
+  const proEmail = 'pro_health_a@monservice.com';
   const password = 'password123';
 
   test.beforeEach(async ({ page }) => {

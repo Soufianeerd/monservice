@@ -12,7 +12,7 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Field Service Operations Journey E2E (Session 17)', () => {
-  const proEmail = 'pro_a@monservice.com';
+  const proEmail = 'pro_fs_a@monservice.com';
   const password = 'password123';
 
   test.beforeEach(async ({ page }) => {

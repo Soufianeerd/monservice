@@ -30,7 +30,7 @@ Ce fichier inventorie toutes les migrations versionnées dans le dépôt, avec l
 | `drizzle/postgres/0019_field_service_foundation.sql` | Manuel | YES | Manual | Session16 Field Service foundation & generalized sector/profession check constraint | `0018_deep_white_tiger.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0020_field_service_operations.sql` | Drizzle Kit + Manuel | YES | Mixed | Session17 Field Service Operations (Sites, Work Orders, Assignments, Reports, Status History) + State Machines + RLS | `0019_field_service_foundation.sql` | NOT_APPLIED | CANONICAL | Conserver |
 | `drizzle/postgres/0021_field_service_estimates_quotes.sql` | Drizzle Kit + Manuel | YES | Mixed | Session 18 Field Service Estimates, Quotes & Lead-to-Cash (Sequences, Sections, Lots, Tranches, Line Enrichments, Multi-VAT, Deposits, Immutability Triggers, RLS) | `0020_field_service_operations.sql` | LOCAL_TESTED_CI_READY_NOT_APPLIED_PROD | CANONICAL | Conserver |
-
-
+| `drizzle/postgres/0022_marketplace_request_location.sql` | Drizzle Kit | YES | Generated | Marketplace Requests Location persistence fix (Session 18B) | `0021_field_service_estimates_quotes.sql` | LOCAL_TESTED_CI_READY_NOT_APPLIED_PROD | CANONICAL | Conserver |
 
 **Attention :** Les fichiers tagués `MANUAL_REVIEW_REQUIRED` (non répertoriés dans `_journal.json`) vont être déplacés dans `drizzle/manual_untracked/` afin de ne pas casser `drizzle-kit migrate` qui s'attend à une intégrité stricte entre le dossier et le journal. La stratégie pour ces fichiers sur Supabase sera décidée ultérieurement (PROMPT 03).
+

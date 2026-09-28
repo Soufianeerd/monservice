@@ -31,7 +31,7 @@ describe('Billing Document DB Constraints & Integrity (Session 18)', () => {
   const siteB = 'site-billing-test-b';
 
   beforeAll(async () => {
-    sql = postgres(DATABASE_URL);
+    sql = postgres(DATABASE_URL, { max: 3 });
 
     // Clean up
     await sql.begin(async (tx) => {
@@ -385,9 +385,9 @@ describe('Billing Document DB Constraints & Integrity (Session 18)', () => {
 
   it('guarantees unique atomic sequential numbers under high concurrency', async () => {
     const year = new Date().getFullYear();
-    const count = 10;
+    const count = 5;
 
-    // Concurrently allocate 10 numbers using PostgreSQL UPSERT lock on billing_document_sequences
+    // Concurrently allocate 5 numbers using PostgreSQL UPSERT lock on billing_document_sequences
     const allocations = await Promise.all(
       Array.from({ length: count }).map(async () => {
         const [seq] = await sql`

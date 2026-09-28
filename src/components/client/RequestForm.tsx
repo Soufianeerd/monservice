@@ -34,9 +34,12 @@ export default function RequestForm({
   return (
     <form onSubmit={handlePublish} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Titre de la demande *</label>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700">Titre de la demande *</label>
         <input 
           type="text" 
+          id="title"
+          name="title"
+          data-testid="request-title-input"
           required 
           value={formData.title} 
           onChange={e => setFormData({...formData, title: e.target.value})}
@@ -46,8 +49,11 @@ export default function RequestForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Description détaillée *</label>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description détaillée *</label>
         <textarea 
+          id="description"
+          name="description"
+          data-testid="request-description-input"
           required 
           minLength={10}
           rows={5}
@@ -60,13 +66,17 @@ export default function RequestForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Catégorie *</label>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700">Catégorie *</label>
           <select 
+            id="category"
+            name="category"
+            data-testid="request-category-select"
             required 
             value={formData.category} 
             onChange={e => setFormData({...formData, category: e.target.value})}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
+            <option value="field_services">Artisanat, BTP & Services de terrain</option>
             <option value="artisan">Artisanat & Bâtiment</option>
             <option value="health">Santé & Bien-être</option>
             <option value="freelance">Consultant & Informatique</option>
@@ -75,9 +85,12 @@ export default function RequestForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Localisation *</label>
+          <label htmlFor="location" className="block text-sm font-medium text-gray-700">Localisation *</label>
           <input 
             type="text" 
+            id="location"
+            name="location"
+            data-testid="request-location-input"
             required 
             value={formData.location} 
             onChange={e => setFormData({...formData, location: e.target.value})}
@@ -87,9 +100,12 @@ export default function RequestForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Budget estimé (€)</label>
+          <label htmlFor="budget" className="block text-sm font-medium text-gray-700">Budget estimé (€)</label>
           <input 
             type="number" 
+            id="budget"
+            name="budget"
+            data-testid="request-budget-input"
             value={formData.budget || ''} 
             onChange={e => setFormData({...formData, budget: parseInt(e.target.value) || undefined})}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -98,9 +114,12 @@ export default function RequestForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Date souhaitée</label>
+          <label htmlFor="preferredDate" className="block text-sm font-medium text-gray-700">Date souhaitée</label>
           <input 
             type="date" 
+            id="preferredDate"
+            name="preferredDate"
+            data-testid="request-date-input"
             value={formData.preferredDate ? new Date(formData.preferredDate).toISOString().split('T')[0] : ''} 
             onChange={e => setFormData({...formData, preferredDate: e.target.value ? new Date(e.target.value).toISOString() : undefined})}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -128,6 +147,7 @@ export default function RequestForm({
           )}
           <button 
             type="submit" 
+            data-testid="publish-request-btn"
             className="bg-indigo-600 border border-transparent rounded-md shadow-sm py-2 px-4 inline-flex justify-center text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none"
           >
             {(!initialData?.status || initialData.status === 'draft') ? 'Publier la demande' : 'Enregistrer les modifications'}

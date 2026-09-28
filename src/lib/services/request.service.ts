@@ -1,36 +1,39 @@
 import { db } from '../db/server';
 import { requests, organizations } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
-import { Request } from '../data/interfaces/request.interface';
+import { eq } from 'drizzle-orm';
+import { Request, RequestStatus } from '../data/interfaces/request.interface';
 import { generateId } from '../utils/id-generator';
 import { requestSchema } from '../validation/schemas';
 import { AppError } from '@/lib/errors';
 import { userService } from './user.service';
+import { normalizeMarketplaceCategory } from '../marketplace/categories';
 
+function mapDbRequestToInterface(r: typeof requests.$inferSelect): Request {
+  return {
+    id: r.id,
+    clientId: r.clientId,
+    title: r.title,
+    description: r.description,
+    category: r.category,
+    location: r.location || '',
+    budget: r.budget ? parseFloat(r.budget) : undefined,
+    preferredDate: r.deadline || undefined,
+    isPublic: r.visibility === 'public',
+    status: (r.status as RequestStatus) || 'draft',
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
 
 export const requestService = {
   async findAll(): Promise<Request[]> {
     const results = await db.select().from(requests);
-    return results.map(r => ({
-      ...r,
-      budget: r.budget ? parseFloat(r.budget) : undefined,
-      preferredDate: r.deadline || undefined,
-      location: '', // not in schema
-      isPublic: r.visibility === 'public',
-      status: r.status as any,
-    }));
+    return results.map(mapDbRequestToInterface);
   },
 
   async findPublic(userId?: string): Promise<Request[]> {
     const results = await db.select().from(requests).where(eq(requests.visibility, 'public'));
-    const mapped = results.map(r => ({
-      ...r,
-      budget: r.budget ? parseFloat(r.budget) : undefined,
-      preferredDate: r.deadline || undefined,
-      location: '',
-      isPublic: true,
-      status: r.status as any,
-    }));
+    const mapped = results.map(mapDbRequestToInterface);
 
     if (!userId) return mapped;
 
@@ -42,67 +45,53 @@ export const requestService = {
     const org = orgs[0];
     if (!org) return mapped;
 
-    const primaryActivity = org.industry ? org.industry.toLowerCase() : '';
+    const orgSector = org.sector ? normalizeMarketplaceCategory(org.sector) : '';
+    const orgIndustry = org.industry ? normalizeMarketplaceCategory(org.industry) : '';
     let secondarySkills: string[] = [];
     if (org.secondarySkills) {
       try {
         const parsed = JSON.parse(org.secondarySkills);
         if (Array.isArray(parsed)) {
-          secondarySkills = parsed.map((s: string) => s.toLowerCase());
+          secondarySkills = parsed.map((s: string) => normalizeMarketplaceCategory(s));
         }
-      } catch (e) {
-        // Not JSON array, maybe comma separated
-        secondarySkills = org.secondarySkills.split(',').map((s: string) => s.trim().toLowerCase());
+      } catch {
+        secondarySkills = org.secondarySkills.split(',').map((s: string) => normalizeMarketplaceCategory(s.trim()));
       }
     }
 
     // Sort requests
     return mapped.sort((a, b) => {
-      const aCat = a.category.toLowerCase();
-      const bCat = b.category.toLowerCase();
+      const aCatNorm = normalizeMarketplaceCategory(a.category);
+      const bCatNorm = normalizeMarketplaceCategory(b.category);
 
       let scoreA = 0;
       let scoreB = 0;
 
-      if (aCat === primaryActivity) scoreA += 100;
-      else if (secondarySkills.includes(aCat)) scoreA += 50;
+      if (aCatNorm === orgSector || aCatNorm === orgIndustry) scoreA += 100;
+      else if (secondarySkills.includes(aCatNorm)) scoreA += 50;
 
-      if (bCat === primaryActivity) scoreB += 100;
-      else if (secondarySkills.includes(bCat)) scoreB += 50;
+      if (bCatNorm === orgSector || bCatNorm === orgIndustry) scoreB += 100;
+      else if (secondarySkills.includes(bCatNorm)) scoreB += 50;
 
       // Primary sort by score (descending)
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
       }
-      
+
       // Secondary sort by date (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   },
 
   async findById(id: string): Promise<Request | null> {
-    const result = await db.select().from(requests).where(eq(requests.id, id));
-    if (!result[0]) return null;
-    return {
-      ...result[0],
-      budget: result[0].budget ? parseFloat(result[0].budget) : undefined,
-      preferredDate: result[0].deadline || undefined,
-      location: '',
-      isPublic: result[0].visibility === 'public',
-      status: result[0].status as any,
-    };
+    const [result] = await db.select().from(requests).where(eq(requests.id, id)).limit(1);
+    if (!result) return null;
+    return mapDbRequestToInterface(result);
   },
 
   async findByClientId(clientId: string): Promise<Request[]> {
     const results = await db.select().from(requests).where(eq(requests.clientId, clientId));
-    return results.map(r => ({
-      ...r,
-      budget: r.budget ? parseFloat(r.budget) : undefined,
-      preferredDate: r.deadline || undefined,
-      location: '',
-      isPublic: r.visibility === 'public',
-      status: r.status as any,
-    }));
+    return results.map(mapDbRequestToInterface);
   },
 
   async create(data: Omit<Request, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Request> {
@@ -119,22 +108,25 @@ export const requestService = {
 
     const id = generateId();
     const now = new Date().toISOString();
-    
+
     await db.insert(requests).values({
       id,
       clientId: data.clientId,
       title: validated.title,
       description: validated.description,
       category: validated.category,
+      location: validated.location || null,
       budget: validated.budget ? validated.budget.toString() : null,
       deadline: validated.deadline || null,
-      status: validated.status as any,
-      visibility: validated.visibility as any,
+      status: validated.status,
+      visibility: validated.visibility,
       createdAt: now,
       updatedAt: now,
     });
-    
-    return this.findById(id) as Promise<Request>;
+
+    const created = await this.findById(id);
+    if (!created) throw new AppError('Failed to retrieve created request', 500);
+    return created;
   },
 
   async update(id: string, data: Partial<Omit<Request, 'id' | 'createdAt' | 'updatedAt'>>, userId: string): Promise<Request | null> {
@@ -142,11 +134,12 @@ export const requestService = {
     if (!req) throw new AppError('Request not found', 404, 'NOT_FOUND');
     if (req.clientId !== userId) throw new AppError('Unauthorized', 403, 'UNAUTHORIZED');
 
-    const updates: any = { updatedAt: new Date().toISOString() };
-    
+    const updates: Partial<typeof requests.$inferInsert> = { updatedAt: new Date().toISOString() };
+
     if (data.title !== undefined) updates.title = data.title;
     if (data.description !== undefined) updates.description = data.description;
     if (data.category !== undefined) updates.category = data.category;
+    if (data.location !== undefined) updates.location = data.location;
     if (data.budget !== undefined) updates.budget = data.budget ? data.budget.toString() : null;
     if (data.preferredDate !== undefined) updates.deadline = data.preferredDate;
     if (data.status !== undefined) {
@@ -156,7 +149,7 @@ export const requestService = {
     if (data.isPublic !== undefined && data.status === undefined) updates.visibility = data.isPublic ? 'public' : 'private';
 
     await db.update(requests).set(updates).where(eq(requests.id, id));
-    
+
     return this.findById(id);
   },
 

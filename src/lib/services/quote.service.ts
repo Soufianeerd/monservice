@@ -986,7 +986,7 @@ export const quoteService = {
       }
 
       // Règle d'acompte : si acompte exigé, vérifier qu'il est payé
-      if ((Number(quote.depositAmount) || 0) > 0 && !validated.allowUnpaidDeposit) {
+      if ((Number(quote.depositAmount) || 0) > 0) {
         const [paidDeposit] = await tx
           .select({ id: invoices.id })
           .from(invoices)

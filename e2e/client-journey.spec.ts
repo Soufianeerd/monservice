@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Client Journey E2E', () => {
-  const testEmail = 'client_a@monservice.com';
+  const testEmail = 'client_generic_a@monservice.com';
   const password = 'password123';
 
   test.beforeEach(async ({ page }) => {
@@ -24,11 +24,11 @@ test.describe('Client Journey E2E', () => {
 
     await page.fill('input[name="title"]', 'Besoin de plomberie urgente');
     await page.fill('textarea[name="description"]', 'Bonjour, j\'ai une fuite importante dans ma salle de bain. Besoin d\'une intervention rapide.');
-    await page.locator('select').first().selectOption('artisan');
-    await page.fill('input[placeholder="Ville ou adresse"]', 'Paris');
-    await page.fill('input[placeholder="Ex: 1500"]', '500');
+    await page.locator('select[name="category"]').selectOption('field_services');
+    await page.fill('input[name="location"]', 'Lyon');
+    await page.fill('input[name="budget"]', '500');
     
-    await page.click('button:has-text("Publier")');
+    await page.click('button[type="submit"]');
     
     // Wait for redirect to client requests list
     await page.waitForURL('**/client/requests*');

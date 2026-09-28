@@ -138,7 +138,6 @@ export const createWorkOrderFromQuoteSchema = z
     workType: z
       .enum(['job', 'intervention', 'installation', 'maintenance', 'repair', 'inspection', 'project', 'other'])
       .default('intervention'),
-    allowUnpaidDeposit: z.boolean().default(false),
   })
   .strict();
 

@@ -194,15 +194,23 @@ export default function NewQuotePage() {
 
   // Section handlers
   const addSection = (kind: SectionDraft['kind']) => {
+    const newSectionId = `sec-${Date.now()}`;
     const newSection: SectionDraft = {
-      id: `sec-${Date.now()}`,
+      id: newSectionId,
       kind,
       title: kind === 'lot' ? `Lot ${sections.length + 1}` : kind === 'option' ? `Option ${sections.length + 1}` : `Section ${sections.length + 1}`,
       position: sections.length,
       isOptional: kind === 'option' || kind === 'variant',
       isSelected: true,
     };
-    setSections([...sections, newSection]);
+    setSections((prev) => [...prev, newSection]);
+    // If there is only the initial unassigned placeholder line, assign it to the first section
+    setLines((prev) => {
+      if (prev.length === 1 && !prev[0].sectionId && prev[0].description === 'Prestation initiale') {
+        return [{ ...prev[0], sectionId: newSectionId }];
+      }
+      return prev;
+    });
   };
 
   const removeSection = (sectionId: string) => {
@@ -324,6 +332,7 @@ export default function NewQuotePage() {
           </label>
 
           <button
+            data-testid="save-quote-button"
             type="submit"
             disabled={loading}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
@@ -375,6 +384,7 @@ export default function NewQuotePage() {
                   Site / Chantier
                 </label>
                 <select
+                  data-testid="quote-site-select"
                   value={siteId}
                   onChange={(e) => setSiteId(e.target.value)}
                   disabled={!clientId || sites.length === 0}
@@ -402,6 +412,7 @@ export default function NewQuotePage() {
                 Deal / Opportunité CRM
               </label>
               <select
+                data-testid="quote-deal-select"
                 value={dealId}
                 onChange={(e) => setDealId(e.target.value)}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none"
@@ -510,6 +521,7 @@ export default function NewQuotePage() {
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
+                      data-testid="add-line-to-section-button"
                       onClick={() => addLine(section.id)}
                       className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded text-indigo-700 bg-white border border-indigo-300 hover:bg-indigo-50"
                     >
@@ -613,6 +625,7 @@ export default function NewQuotePage() {
 
               <label className="flex items-center space-x-1.5 cursor-pointer">
                 <input
+                  data-testid="deposit-mode-percentage"
                   type="radio"
                   name="depositMode"
                   value="percentage"
@@ -765,6 +778,7 @@ function LineRow({
         )}
 
         <input
+          data-testid="line-description-input"
           type="text"
           value={line.description}
           onChange={(e) => onUpdate({ description: e.target.value })}
@@ -774,6 +788,7 @@ function LineRow({
         />
 
         <button
+          data-testid="delete-line-button"
           type="button"
           onClick={onDelete}
           className="self-end sm:self-center p-1.5 text-gray-400 hover:text-red-600 rounded"
@@ -787,6 +802,7 @@ function LineRow({
         <div>
           <label className="block text-[10px] text-gray-500 uppercase">Qté</label>
           <input
+            data-testid="line-quantity-input"
             type="number"
             step="0.001"
             min="0.001"
@@ -799,6 +815,7 @@ function LineRow({
         <div>
           <label className="block text-[10px] text-gray-500 uppercase">Unité</label>
           <select
+            data-testid="line-unit-select"
             value={line.unitCode}
             onChange={(e) => onUpdate({ unitCode: e.target.value as InvoiceUnitCode })}
             className="w-full rounded border border-gray-300 px-1 py-1"
@@ -814,6 +831,7 @@ function LineRow({
         <div>
           <label className="block text-[10px] text-gray-500 uppercase">Prix Vente HT</label>
           <input
+            data-testid="line-price-input"
             type="number"
             step="0.01"
             min="0"
@@ -845,6 +863,7 @@ function LineRow({
         <div>
           <label className="block text-[10px] text-gray-500 uppercase">Remise (%)</label>
           <input
+            data-testid="line-discount-input"
             type="number"
             step="0.1"
             min="0"
@@ -858,6 +877,7 @@ function LineRow({
         <div>
           <label className="block text-[10px] text-gray-500 uppercase">TVA (%)</label>
           <select
+            data-testid="line-tax-select"
             value={line.taxRate}
             onChange={(e) => onUpdate({ taxRate: Number(e.target.value) || 0 })}
             className="w-full rounded border border-gray-300 px-1 py-1"

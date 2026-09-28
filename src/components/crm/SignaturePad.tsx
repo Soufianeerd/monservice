@@ -123,6 +123,7 @@ export default function SignaturePad({ onSave, onClear, width = 400, height = 20
       <div className="border border-gray-300 rounded overflow-hidden touch-none">
         <canvas
           ref={canvasRef}
+          data-testid="signature-pad-canvas"
           width={width}
           height={height}
           onMouseDown={startDrawing}
@@ -148,6 +149,7 @@ export default function SignaturePad({ onSave, onClear, width = 400, height = 20
         <button
           type="button"
           onClick={saveSignature}
+          data-testid="signature-save-button"
           disabled={!hasSignature}
           className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >

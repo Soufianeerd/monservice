@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Contrôle d\'accès basé sur les rôles (RBAC)', () => {
-  const clientEmail = 'client_a@monservice.com';
-  const proEmail = 'pro_a@monservice.com';
+  const clientEmail = 'client_generic_a@monservice.com';
+  const proEmail = 'pro_generic_a@monservice.com';
   const password = 'password123';
 
   test('RBAC_E2E_01: Un client est redirigé s\'il tente d\'accéder au dashboard pro', async ({ page }) => {

@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState } from 'react';
 import { Request } from '@/lib/data/interfaces';
 
+import { normalizeMarketplaceCategory } from '@/lib/marketplace/categories';
 import RequestDiscoveryFilters, { DiscoveryFilters } from '@/components/marketplace/RequestDiscoveryFilters';
 import RequestDiscoveryList from '@/components/marketplace/RequestDiscoveryList';
 import * as requestActions from '@/app/actions/request.actions';
@@ -20,8 +21,12 @@ export default function MarketplacePage() {
   }, [user]);
 
   const filteredRequests = requests.filter(req => {
-    if (filters.category && req.category !== filters.category) return false;
-    if (filters.location && !req.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
+    if (filters.category) {
+      const filterNorm = normalizeMarketplaceCategory(filters.category);
+      const reqNorm = normalizeMarketplaceCategory(req.category);
+      if (filterNorm !== reqNorm) return false;
+    }
+    if (filters.location && !req.location?.toLowerCase().includes(filters.location.toLowerCase().trim())) return false;
     if (filters.minBudget && req.budget && req.budget < filters.minBudget) return false;
     if (filters.maxBudget && req.budget && req.budget > filters.maxBudget) return false;
     return true;

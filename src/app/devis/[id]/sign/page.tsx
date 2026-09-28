@@ -84,7 +84,11 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Devis signé !</h2>
           <p className="text-gray-600 mb-6">Merci pour votre confiance. Le professionnel a été notifié.</p>
-          <button onClick={() => router.push('/client/dashboard')} className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">
+          <button
+            onClick={() => router.push('/client/dashboard')}
+            data-testid="return-client-dashboard-btn"
+            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700"
+          >
             Retour à l'espace client
           </button>
         </div>
