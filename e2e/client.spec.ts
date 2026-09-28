@@ -29,14 +29,13 @@ test.describe('Client Management', () => {
     await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
-    await page.waitForLoadState('networkidle');
     await dismissSetupGuideIfPresent(page);
   });
 
   test('should create a new client and display it in the list', async ({ page }) => {
     await page.goto('/clients/new');
-    await page.waitForLoadState('networkidle');
     await dismissSetupGuideIfPresent(page);
+    await expect(page.locator('input[name="name"]')).toBeVisible({ timeout: 15000 });
     
     const timestamp = Date.now();
     const clientName = `Entreprise Test ${timestamp}`;
