@@ -186,10 +186,19 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       // Submit Signature
       const saveSigBtn = page.locator('[data-testid="signature-save-button"]');
       await expect(saveSigBtn).toBeEnabled();
-      await saveSigBtn.click();
+
+      const [signResponse] = await Promise.all([
+        page.waitForResponse((res) => res.url().includes('/api/quotes/sign'), { timeout: 15000 }),
+        saveSigBtn.click(),
+      ]);
+
+      if (!signResponse.ok()) {
+        const body = await signResponse.text();
+        console.error('CRITICAL: /api/quotes/sign failed with status', signResponse.status(), body);
+      }
 
       // Wait for success screen
-      await expect(page.locator('text=Devis signé !')).toBeVisible();
+      await expect(page.locator('text=Devis signé !')).toBeVisible({ timeout: 15000 });
 
       // Verify DB: status = 'accepted', accepted_at is set, signature is stored
       const [acceptedQuoteDb] = await sql`SELECT status, accepted_at, signature FROM invoices WHERE id = ${quoteId}`;

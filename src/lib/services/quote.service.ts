@@ -29,7 +29,7 @@ import {
 import { z } from 'zod';
 import { toClientQuoteDTO, ClientQuoteDTO } from '../data/dto/client-billing.dto';
 import { invoiceService } from './invoice.service';
-import { assertFeature, getUserPlan } from '@/lib/billing/quota';
+import { getEffectivePlan } from '@/lib/billing/plans';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -528,19 +528,41 @@ export const quoteService = {
       }
 
       // Vérification de l'entitlement signature électronique sur l'organisation émettrice
-      const [orgOwner] = await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(
-          and(
-            eq(users.organizationId, quote.organizationId),
-            eq(users.profileType, 'professional'),
-          ),
-        )
-        .limit(1);
+      let orgOwner: { id: string; subscriptionTier: string | null; subscriptionStatus: string | null } | undefined;
+
+      if (quote.createdByUserId) {
+        const [creator] = await tx
+          .select({
+            id: users.id,
+            subscriptionTier: users.subscriptionTier,
+            subscriptionStatus: users.subscriptionStatus,
+          })
+          .from(users)
+          .where(eq(users.id, quote.createdByUserId))
+          .limit(1);
+        if (creator) orgOwner = creator;
+      }
+
+      if (!orgOwner) {
+        const [pro] = await tx
+          .select({
+            id: users.id,
+            subscriptionTier: users.subscriptionTier,
+            subscriptionStatus: users.subscriptionStatus,
+          })
+          .from(users)
+          .where(
+            and(
+              eq(users.organizationId, quote.organizationId),
+              eq(users.profileType, 'professional'),
+            ),
+          )
+          .limit(1);
+        orgOwner = pro;
+      }
 
       if (orgOwner) {
-        const plan = await getUserPlan(orgOwner.id);
+        const plan = getEffectivePlan(orgOwner.subscriptionTier, orgOwner.subscriptionStatus);
         if (!plan.features.electronicSignature) {
           throw new AppError('Signature non autorisée par le plan du professionnel', 403, 'FEATURE_NOT_ALLOWED');
         }

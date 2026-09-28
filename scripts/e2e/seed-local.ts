@@ -198,13 +198,28 @@ async function seed() {
 
     if (existingUser) {
       await db
-        .update(users)
-        .set({
+        .insert(users)
+        .values({
+          id: existingUser.id,
+          email,
+          name,
+          profileType,
           organizationId: orgId,
           subscriptionTier: profileType === 'professional' ? 'pro' : 'free',
           subscriptionStatus: profileType === 'professional' ? 'active' : 'inactive',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         })
-        .where(eq(users.id, existingUser.id));
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            organizationId: orgId,
+            profileType,
+            subscriptionTier: profileType === 'professional' ? 'pro' : 'free',
+            subscriptionStatus: profileType === 'professional' ? 'active' : 'inactive',
+            updatedAt: new Date().toISOString(),
+          },
+        });
       return existingUser.id;
     }
   };
@@ -959,6 +974,15 @@ async function seed() {
       answersJson: { q1: 'val1' },
     },
   ]).onConflictDoNothing();
+
+  // Ensure all professional users in DB have pro / active subscription
+  await db
+    .update(users)
+    .set({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'active',
+    })
+    .where(eq(users.profileType, 'professional'));
 
   console.log('Scheduling foundation, Waitlist, Clinical Expansion & Patient Portal Records Org A & Org B seeded successfully!');
   await sql.end();
