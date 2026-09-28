@@ -40,8 +40,6 @@ export default function NewClientPage() {
       
       // activityLog disabled
 
-      alert('Client créé avec succès !');
-      
       const addClientStep = onboardingState?.steps.find(s => s.action === 'add_client');
       if (addClientStep && !addClientStep.completed) {
         await completeStep(addClientStep.id);

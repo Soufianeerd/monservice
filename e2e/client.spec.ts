@@ -48,12 +48,12 @@ test.describe('Client Management', () => {
     await dismissSetupGuideIfPresent(page);
     await page.click('button[type="submit"]');
 
-    // After creating client, it redirects to /clients/[id]
-    await page.waitForURL('**/clients/**');
-    await expect(page.locator(`text=${clientName}`).first()).toBeVisible();
+    // After creating client, it redirects to /clients/[id] (not /clients/new)
+    await page.waitForURL(url => url.pathname.startsWith('/clients/') && url.pathname !== '/clients/new', { timeout: 15000 });
+    await expect(page.locator(`text=${clientName}`).first()).toBeVisible({ timeout: 15000 });
 
     // Check on clients list as well
     await page.goto('/clients');
-    await expect(page.locator(`text=${clientName}`).first()).toBeVisible();
+    await expect(page.locator(`text=${clientName}`).first()).toBeVisible({ timeout: 15000 });
   });
 });

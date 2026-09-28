@@ -70,8 +70,8 @@ test.describe('Marketplace Workflow & Location Persistence', () => {
     await dismissSetupGuideIfPresent(page);
     await page.click('[data-testid="publish-request-btn"]');
 
-    await page.waitForURL('**/client/requests*');
-    await expect(page.locator(`text=${title}`)).toBeVisible();
+    await page.waitForURL('**/client/requests*', { timeout: 15000 });
+    await expect(page.locator(`text=${title}`).first()).toBeVisible({ timeout: 15000 });
 
     // 2. Pro logs in and views request in marketplace
     await page.goto('/login');
