@@ -42,7 +42,8 @@ test.describe('Professional Journey E2E', () => {
 
     await page.fill('input[name="name"]', 'Organization A - Updated');
     await page.locator('select[name="industry"]').selectOption({ index: 1 });
-    await page.click('button:has-text("Enregistrer")');
+    await dismissSetupGuideIfPresent(page);
+    await page.click('button[type="submit"]');
     await expect(page.locator('text=Profil mis à jour avec succès.')).toBeVisible();
   });
 
@@ -57,12 +58,9 @@ test.describe('Professional Journey E2E', () => {
     await expect(nameInput).not.toHaveValue(/Organization Generic B|Organization B/i);
 
     // Attempt to view a client that belongs to Org B
-    const responseClient = await page.goto('/clients/cli-generic-b-5678');
-    // If it's isolated properly by RLS, the database returns 0 rows, triggering a 404
-    if (responseClient?.status() === 200) {
-      await expect(page.locator('body')).toContainText(/404|Introuvable|Non trouvé|Not Found/i);
-    } else {
-      expect(responseClient?.status()).toBe(404);
-    }
+    await page.goto('/clients/cli-generic-b-5678');
+    // If it's isolated properly by RLS/context, client is not shown: user is redirected to /clients
+    await page.waitForURL('**/clients*');
+    await expect(page.locator('body')).not.toContainText(/Client Generic B Record/i);
   });
 });

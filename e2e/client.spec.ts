@@ -16,22 +16,26 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Client Management', () => {
+  const testEmail = 'pro_generic_a@monservice.com';
+  const password = 'password123';
+
   // Use a predefined logged-in state if possible, or login before each
   // For now, we assume we need to login before each test
   test.beforeEach(async ({ page }) => {
     // Navigate to login
     await page.goto('/login');
     // Using a seeded test account for e2e tests
-    await page.fill('input[type="email"]', 'pro_generic_a@monservice.com');
-    await page.fill('input[type="password"]', password123);
+    await page.fill('input[type="email"]', testEmail);
+    await page.fill('input[type="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard');
     await dismissSetupGuideIfPresent(page);
   });
 
-  const password123 = 'password123';
-
   test('should create a new client and display it in the list', async ({ page }) => {
+    // Dismiss any native window.alert if triggered
+    page.on('dialog', dialog => dialog.dismiss());
+
     await page.goto('/clients/new');
     await dismissSetupGuideIfPresent(page);
     
@@ -44,10 +48,12 @@ test.describe('Client Management', () => {
     await dismissSetupGuideIfPresent(page);
     await page.click('button[type="submit"]');
 
-    // Wait for redirect to clients list
-    await page.waitForURL('**/clients*');
-    
-    // Check if the new client is in the list
+    // After creating client, it redirects to /clients/[id]
+    await page.waitForURL('**/clients/**');
+    await expect(page.locator(`text=${clientName}`)).toBeVisible();
+
+    // Check on clients list as well
+    await page.goto('/clients');
     await expect(page.locator(`text=${clientName}`)).toBeVisible();
   });
 });
