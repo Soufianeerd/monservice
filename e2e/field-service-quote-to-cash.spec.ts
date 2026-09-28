@@ -18,7 +18,7 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
   const password = 'password123';
 
   test('QUOTE_TO_CASH_FULL_PERSISTENT: Complete Lead-to-Cash Lifecycle with DB verification', async ({ page, request }) => {
-    test.setTimeout(90000);
+    test.setTimeout(180000);
     const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
     try {

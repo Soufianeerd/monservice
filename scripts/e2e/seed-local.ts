@@ -197,7 +197,14 @@ async function seed() {
     }
 
     if (existingUser) {
-      await db.update(users).set({ organizationId: orgId }).where(eq(users.id, existingUser.id));
+      await db
+        .update(users)
+        .set({
+          organizationId: orgId,
+          subscriptionTier: profileType === 'professional' ? 'pro' : 'free',
+          subscriptionStatus: profileType === 'professional' ? 'active' : 'inactive',
+        })
+        .where(eq(users.id, existingUser.id));
       return existingUser.id;
     }
   };
