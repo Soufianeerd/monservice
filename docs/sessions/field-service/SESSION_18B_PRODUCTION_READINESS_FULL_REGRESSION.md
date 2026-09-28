@@ -120,7 +120,16 @@ Le nouveau test `e2e/field-service-quote-to-cash.spec.ts` exécute l'intégralit
 
 ---
 
-## 9. Limites Restantes & Transition
+## 9. Validation CI & Régression Automatisée
+
+| Workflow | Run ID | Commit SHA | Status | Conclusion | Tests |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **CI (Push main)** | `36467089359` | `2e2cf667d4c343cd6119416e2d025a8f2cb5cba3` | `completed` | `success` | Lint, Typecheck, 191 Security tests, 162 DB tests, 9 Domain Unit suites, Build, 5 Targeted E2E suites + Full Blocking E2E Regression |
+| **E2E Regression** | `36467102118` | `2e2cf667d4c343cd6119416e2d025a8f2cb5cba3` | `completed` | `success` | 23 passed / 0 failed (Full Regression Suite) |
+
+---
+
+## 10. Limites Restantes & Transition
 
 - **Session 19 (Customer Assets & Equipment Tracking) :** Strictement **NON DÉMARRÉE**.
 - **Accréditation PDP :** La transmission réglementaire directe vers le portail public ou PDP partenaires nécessitera un accord opérateur lors d'une session dédiée d'intégration EDI.
