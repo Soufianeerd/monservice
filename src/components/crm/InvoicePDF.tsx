@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import type { ClientInvoiceDTO } from '@/lib/data/dto/client-billing.dto';
 import type { Invoice, Organization } from '@/lib/data/interfaces';
 import { legalService } from '@/lib/services/legal.service';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
@@ -51,7 +52,7 @@ const UNIT_LABELS: Record<string, string> = {
 };
 
 export interface InvoicePDFProps {
-  invoice: Invoice;
+  invoice: Invoice | ClientInvoiceDTO;
   organization: Organization;
   client: {
     name: string;

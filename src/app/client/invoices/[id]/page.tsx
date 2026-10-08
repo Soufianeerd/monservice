@@ -3,7 +3,7 @@ import { getByIdAction, updateAction } from '@/app/actions/organization.actions'
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientInvoiceDTO } from '@/lib/data/dto/client-billing.dto';
 import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useEffect, useState, use } from 'react';
 import { format } from 'date-fns';
@@ -17,7 +17,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const id = resolvedParams.id;
   const { user } = useAuth();
   
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [invoice, setInvoice] = useState<ClientInvoiceDTO | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -25,7 +25,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       try {
         const inv = await invoiceActions.getByIdAction(id);
         
-        if (inv && (inv.clientId === user.id || inv.recipientUserId === user.id) && inv.type === 'invoice') {
+        if (inv?.type === 'invoice') {
           setInvoice(inv);
         }
       } catch (error) {
@@ -38,7 +38,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const handleDownload = async () => {
     if (invoice) {
       try {
-        const orgId = user?.organizationId || invoice.organizationId;
+        const orgId = invoice.organizationId;
         const org = await getByIdAction(orgId);
         if (!org) return;
         const client = { name: user?.name || 'Client', email: user?.email };

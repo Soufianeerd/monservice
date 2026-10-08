@@ -9,6 +9,7 @@ import { userService } from './user.service';
 import { TaxService } from './tax.service';
 import { InvoiceTaxData } from './tax.types';
 import { calculateDocumentTotals, calculateLine } from './billing-calculator';
+import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 import { allocateBillingNumber } from './quote.service';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -102,38 +103,19 @@ export const invoiceService = {
   },
 
   async updateStatusAsClient(id: string, clientUserId: string, status: InvoiceStatus): Promise<void> {
+    // Compatibility commands only. Never forward caller status to an UPDATE.
+    if (!['viewed', 'rejected', 'cancelled'].includes(status)) {
+      throw new AppError('Transition client interdite', 403, 'FORBIDDEN_TRANSITION');
+    }
     const inv = await this.getById(id);
-    if (!inv) throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-
-    let isAuthorized = inv.recipientUserId === clientUserId;
-    if (!isAuthorized) {
-      const [crmClient] = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.id, inv.clientId), eq(clients.userId, clientUserId)))
-        .limit(1);
-      if (crmClient) isAuthorized = true;
+    if (!inv) throw new AppError('Document introuvable', 404);
+    await requireClientBillingAuthority(inv, clientUserId);
+    if (inv.type !== 'quote') {
+      throw new AppError('Transition client interdite pour une facture', 403, 'FORBIDDEN_TRANSITION');
     }
-
-    if (!isAuthorized) {
-      throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-    }
-
-    // Clients can only mark quotes as viewed or cancelled/rejected, not arbitrary status
-    if (inv.type === 'quote') {
-      if (status === 'viewed') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.markQuoteViewed(id, clientUserId);
-        return;
-      }
-      if (status === 'cancelled' || status === 'rejected') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
-        return;
-      }
-    }
-
-    await db.update(invoices).set({ status, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
+    const { quoteService } = await import('./quote.service');
+    if (status === 'viewed') await quoteService.markQuoteViewed(id, clientUserId);
+    else await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
   },
 
   async signInvoice(

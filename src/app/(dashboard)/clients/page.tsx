@@ -49,7 +49,7 @@ export default function ClientsPage() {
     // Récupérer les comptes des entités associées
     const contacts = await contactActions.findByClientIdAction(client.id, user?.organizationId);
     const deals = await dealActions.findByClientIdAction(client.id, user?.organizationId);
-    const invoices = await invoiceActions.findByClientAction(client.id);
+    const invoices = (await invoiceActions.findAllAction()).filter(invoice => invoice.clientId === client.id);
     const tasks = user?.organizationId ? await taskActions.findByEntityAction('client', client.id, user.organizationId) : [];
     
     setClientToDelete(client);

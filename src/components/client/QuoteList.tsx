@@ -1,10 +1,10 @@
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientQuoteDTO } from '@/lib/data/dto/client-billing.dto';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { EyeIcon } from 'lucide-react';
 
-export default function QuoteList({ quotes }: { quotes: Invoice[] }) {
+export default function QuoteList({ quotes }: { quotes: ClientQuoteDTO[] }) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'draft': return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Brouillon</span>;
