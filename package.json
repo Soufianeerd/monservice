@@ -39,6 +39,8 @@
     "test:rls": "vitest run __tests__/integration/rls.integration.test.ts __tests__/integration/practice-structure-rls.integration.test.ts tests/integration/patient-registry-rls.integration.test.ts tests/integration/scheduling-rls.integration.test.ts tests/integration/waitlist-rls.integration.test.ts tests/integration/appointment-lifecycle-rls.integration.test.ts tests/integration/clinical-record-rls.integration.test.ts tests/integration/clinical-record-expansion-rls.integration.test.ts tests/integration/patient-portal-billing-communication-rls.integration.test.ts tests/integration/field-service-operations-rls.integration.test.ts tests/integration/billing-document-rls.integration.test.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1148.0",
+    "@aws-sdk/s3-request-presigner": "^3.1148.0",
     "@floating-ui/react": "^0.27.20",
     "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.21",
@@ -46,6 +48,9 @@
     "@fullcalendar/react": "^6.1.21",
     "@fullcalendar/timegrid": "^6.1.21",
     "@hookform/resolvers": "^5.4.0",
+    "@neon/config": "^1.8.6",
+    "@neon/env": "^1.5.3",
+    "@neondatabase/auth": "^0.5.0-beta",
     "@react-pdf/renderer": "^4.5.1",
     "@stripe/stripe-js": "^9.12.1",
     "@supabase/ssr": "^0.12.3",
