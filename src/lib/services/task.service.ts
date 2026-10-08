@@ -1,3 +1,5 @@
+import { taskUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { tasks } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -61,25 +63,21 @@ export const taskService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const partialSchema = taskSchema.partial();
-    const validated = partialSchema.parse(data);
-
-    const updated = {
-      ...validated,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    // Explicitly map undefined to null or omit
-    const finalUpdate: any = { ...updated };
-    if (data.entityId === undefined) delete finalUpdate.entityId;
-    if (data.assignedTo === undefined) delete finalUpdate.assignedTo;
-    if (data.description === undefined) delete finalUpdate.description;
-    if (data.entityType === undefined) delete finalUpdate.entityType;
-
-    await db.update(tasks)
-      .set(finalUpdate)
-      .where(and(eq(tasks.id, id), eq(tasks.organizationId, organizationId)));
-    return await this.findById(id, organizationId);
+    const validated = taskUpdateSchema.parse(data);
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx.select().from(tasks).where(and(eq(tasks.id,id),eq(tasks.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) return null;
+      if (validated.assignedTo) await requireCoreRelation(tx,organizationId,'user',validated.assignedTo);
+      const entityType = validated.entityType !== undefined ? validated.entityType : existing.entityType;
+      const entityId = validated.entityId !== undefined ? validated.entityId : existing.entityId;
+      if (entityId) {
+        if (!entityType) throw new AppError('Type de relation requis',400,'INVALID_RELATION');
+        await requireCoreRelation(tx,organizationId,entityType,entityId);
+      }
+      await tx.update(tasks).set({ ...validated, updatedAt: new Date().toISOString() }).where(and(eq(tasks.id,id),eq(tasks.organizationId,organizationId)));
+    });
+    return this.findById(id, organizationId);
   },
 
   async markAsDone(id: string, organizationId: string, userId: string): Promise<Task | null> {

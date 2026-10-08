@@ -1,3 +1,5 @@
+import { dealUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { deals } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -58,19 +60,15 @@ export const dealService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const partialSchema = dealSchema.partial();
-    const validated = partialSchema.parse(data);
-
-    const updated = {
-      ...validated,
-      signature: data.signature !== undefined ? (data.signature ? JSON.stringify(data.signature) : null) : undefined,
-      description: data.description !== undefined ? data.description : undefined,
-      updatedAt: new Date().toISOString(),
-    };
-    await db.update(deals)
-      .set(updated)
-      .where(and(eq(deals.id, id), eq(deals.organizationId, organizationId)));
-    return await this.findById(id, organizationId);
+    const validated = dealUpdateSchema.parse(data);
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx.select().from(deals).where(and(eq(deals.id,id),eq(deals.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) return null;
+      if (validated.clientId) await requireCoreRelation(tx,organizationId,'client',validated.clientId);
+      await tx.update(deals).set({ ...validated, updatedAt: new Date().toISOString() }).where(and(eq(deals.id,id),eq(deals.organizationId,organizationId)));
+    });
+    return this.findById(id, organizationId);
   },
 
   async updateStatus(id: string, status: Deal['status'], organizationId: string, userId: string): Promise<Deal | null> {

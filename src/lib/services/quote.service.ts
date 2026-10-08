@@ -1,3 +1,4 @@
+import { requireCoreRelation } from './core-update-authorization';
 import 'server-only';
 import { db } from '../db/server';
 import {
@@ -288,6 +289,9 @@ export const quoteService = {
 
       const clientId = validated.clientId || existing.clientId;
 
+      await requireCoreRelation(tx,organizationId,'client',clientId);
+      const [client] = await tx.select({ userId: clients.userId }).from(clients).where(and(eq(clients.id,clientId),eq(clients.organizationId,organizationId))).limit(1).for('share');
+
       // Validation du site si fourni
       const siteId = validated.siteId !== undefined ? validated.siteId : existing.siteId;
       if (siteId) {
@@ -348,6 +352,8 @@ export const quoteService = {
         .update(invoices)
         .set({
           clientId,
+          recipientUserId: validated.clientId && validated.clientId !== existing.clientId
+          ? client?.userId ?? null : existing.recipientUserId,
           title: validated.title !== undefined ? validated.title : existing.title,
           date: validated.date !== undefined ? validated.date : existing.date,
           validUntil: validated.validUntil !== undefined ? validated.validUntil : existing.validUntil,

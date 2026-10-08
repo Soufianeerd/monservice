@@ -48,13 +48,9 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
       const { lines, ...rest } = data;
 
       await invoiceActions.updateAction(invoice.id, user.organizationId, {
-        type: data.type as any,
         date: data.date || new Date().toISOString(),
         dueDate: data.dueDate,
         clientId: data.clientId || '',
-        totalHT: data.totalHT || 0,
-        taxAmount: data.taxAmount || 0,
-        totalTTC: data.totalTTC || 0,
         message: data.message,
         lines: (lines || []) as any,
       });

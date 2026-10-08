@@ -15,7 +15,7 @@ interface InvoiceDetailProps {
   invoice: Invoice;
   client: Client | undefined;
   products: Product[];
-  onMarkAsPaid: () => Promise<void>;
+  onMarkAsPaid?: () => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
@@ -118,7 +118,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             </button>
           )}
 
-          {invoice.status === 'sent' && !isQuote && (
+          {invoice.status === 'sent' && !isQuote && onMarkAsPaid && (
             <button
               onClick={async () => {
                 await onMarkAsPaid();

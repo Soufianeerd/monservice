@@ -1,6 +1,7 @@
+import { requestUpdateSchema } from '@/lib/validation/core-update.schemas';
 import { db } from '../db/server';
 import { requests, organizations } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { Request, RequestStatus } from '../data/interfaces/request.interface';
 import { generateId } from '../utils/id-generator';
 import { requestSchema } from '../validation/schemas';
@@ -134,6 +135,7 @@ export const requestService = {
     if (!req) throw new AppError('Request not found', 404, 'NOT_FOUND');
     if (req.clientId !== userId) throw new AppError('Unauthorized', 403, 'UNAUTHORIZED');
 
+    data = requestUpdateSchema.parse(data);
     const updates: Partial<typeof requests.$inferInsert> = { updatedAt: new Date().toISOString() };
 
     if (data.title !== undefined) updates.title = data.title;
@@ -148,7 +150,7 @@ export const requestService = {
     }
     if (data.isPublic !== undefined && data.status === undefined) updates.visibility = data.isPublic ? 'public' : 'private';
 
-    await db.update(requests).set(updates).where(eq(requests.id, id));
+    await db.update(requests).set(updates).where(and(eq(requests.id, id),eq(requests.clientId,userId)));
 
     return this.findById(id);
   },

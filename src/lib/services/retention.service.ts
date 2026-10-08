@@ -6,15 +6,17 @@ import { generateId } from '@/lib/utils/id-generator';
 import { ArchivedDocument } from './retention.types';
 import JSZip from 'jszip';
 
+type RetentionDb = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export class RetentionService {
-  async lockDocument(documentId: string, documentType: 'invoice' | 'quote'): Promise<void> {
-    const invData = await db.select().from(invoices).where(eq(invoices.id, documentId));
+  async lockDocument(documentId: string, documentType: 'invoice' | 'quote', connection: RetentionDb = db): Promise<void> {
+    const invData = await connection.select().from(invoices).where(eq(invoices.id, documentId));
     if (!invData.length) throw new Error('Document not found');
     const doc = invData[0];
 
-    const retentionDate = await this.calculateRetentionDate(doc.id, doc.supplierCountry);
+    const retentionDate = await this.calculateRetentionDate(doc.id, doc.supplierCountry, connection);
 
-    await db.update(invoices)
+    await connection.update(invoices)
       .set({
         lockedAt: new Date().toISOString(),
         lockedBy: 'system',
@@ -23,11 +25,11 @@ export class RetentionService {
       .where(eq(invoices.id, documentId));
   }
 
-  async calculateRetentionDate(documentId: string, supplierCountry: string | null): Promise<Date> {
+  async calculateRetentionDate(documentId: string, supplierCountry: string | null, connection: RetentionDb = db): Promise<Date> {
     const country = supplierCountry || 'FR';
     const years = getRetentionYearsForCountry(country);
     
-    const invData = await db.select().from(invoices).where(eq(invoices.id, documentId));
+    const invData = await connection.select().from(invoices).where(eq(invoices.id, documentId));
     if (!invData.length) throw new Error('Document not found');
     const doc = invData[0];
     
