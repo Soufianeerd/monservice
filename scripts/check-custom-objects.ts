@@ -121,6 +121,8 @@ async function verifyCustomObjects() {
     WHERE p.proname IN (
       'handle_new_auth_user',
       'current_organization_id',
+      'current_account_is_active',
+      'protect_account_lifecycle',
       'enforce_appointment_status_transition',
       'enforce_waitlist_status_transition',
       'current_clinical_practitioner_id',
@@ -148,6 +150,8 @@ async function verifyCustomObjects() {
 
   const expectedFuncs: Record<string, ExpectedFunctionContract> = {
     handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    current_account_is_active: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    protect_account_lifecycle: { security_definer: false, public_exec: false, anon_exec: false, auth_exec: false },
     current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_appointment_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_waitlist_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
@@ -168,7 +172,7 @@ async function verifyCustomObjects() {
     enforce_field_service_status_history_append_only: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_assignment_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
-    allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_invoice_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_invoice_child_immutability: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
   };
@@ -440,7 +444,7 @@ async function verifyCustomObjects() {
   const rlsTableNames = new Set(rlsTables.map(t => t.relname));
   
   const policies = await sql`
-    SELECT policyname, tablename, roles, cmd, qual, with_check 
+    SELECT policyname, tablename, roles, cmd, qual, with_check, permissive
     FROM pg_policies WHERE schemaname = 'public'
   `;
 
@@ -450,6 +454,7 @@ async function verifyCustomObjects() {
     JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
     WHERE tgname IN (
       'on_auth_user_created',
+      'users_account_lifecycle_guard',
       'appointments_status_transition_guard',
       'appointment_waitlist_status_transition_guard',
       'care_episodes_transition_trigger',
@@ -472,6 +477,7 @@ async function verifyCustomObjects() {
   
   const requiredTriggers = [
     { name: 'on_auth_user_created' },
+    { name: 'users_account_lifecycle_guard', table: 'users', requiredElements: ['before update', 'for each row', 'protect_account_lifecycle'] },
     {
       name: 'appointments_status_transition_guard',
       table: 'appointments',
@@ -609,6 +615,15 @@ async function verifyCustomObjects() {
     if (tablePolicies.length === 0) {
       console.error(`❌ ERROR: No RLS policies found for table '${table}'.`);
       errorCount++;
+    }
+  }
+
+  // Account closure must restrict every table with an existing permissive policy.
+  for (const table of rlsTableNames) {
+    if (!policies.some(p => p.tablename === table && p.policyname !== 'account_active_required')) continue;
+    const restriction = policies.find(p => p.tablename === table && p.policyname === 'account_active_required');
+    if (!restriction || restriction.permissive !== 'RESTRICTIVE' || !String(restriction.qual).includes('current_account_is_active') || !String(restriction.with_check).includes('current_account_is_active')) {
+      console.error(`❌ Missing account lifecycle restriction: ${table}`); errorCount++;
     }
   }
 
@@ -1105,10 +1120,15 @@ async function verifyCustomObjects() {
 
   // Verify Storage Objects RLS policies
   const storagePolicies = await sql`
-    SELECT policyname, tablename, roles, cmd, qual, with_check
+    SELECT policyname, tablename, roles, cmd, qual, with_check, permissive
     FROM pg_policies
     WHERE schemaname = 'storage' AND tablename = 'objects'
   `;
+
+  const storageClosure = storagePolicies.find(p => p.policyname === 'account_active_required');
+  if (!storageClosure || storageClosure.permissive !== 'RESTRICTIVE' || !String(storageClosure.qual).includes('current_account_is_active')) {
+    console.error('❌ Missing restrictive storage account lifecycle policy'); errorCount++;
+  }
 
   const expectedStoragePolicies = [
     'clinical_documents_storage_select_owner_only',

@@ -1,12 +1,12 @@
 import 'server-only';
 import { db } from '@/lib/db/server';
 import { clients, contacts, deals, invoices, products, users } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { AppError } from '@/lib/errors';
 export type CoreUpdateTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export async function requireCoreUpdateActor(tx: CoreUpdateTx, organizationId: string, userId: string) {
   const [actor] = await tx.select({ id: users.id }).from(users).where(and(
-    eq(users.id,userId),eq(users.organizationId,organizationId),eq(users.profileType,'professional'),
+    eq(users.id,userId),eq(users.organizationId,organizationId),eq(users.profileType,'professional'),isNull(users.accountClosedAt),
   )).limit(1).for('share');
   if (!actor) throw new AppError('Accès professionnel refusé',403,'FORBIDDEN');
 }

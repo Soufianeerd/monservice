@@ -57,11 +57,14 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
   // `public.users`, dont l'identifiant est celui de `auth.users`.
   const profile = await db
     .select({
+      accountClosedAt: users.accountClosedAt,
       profileType: users.profileType,
       organizationId: users.organizationId,
     })
     .from(users)
     .where(eq(users.id, user.id));
+
+  if (profile[0]?.accountClosedAt) return null;
 
   if (!profile[0]) {
     // L'utilisateur existe dans Supabase Auth mais n'a pas de profil

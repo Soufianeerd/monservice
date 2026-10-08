@@ -73,6 +73,7 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   password: text('password'),
+  accountClosedAt: timestamp('account_closed_at', { withTimezone: true }),
   name: text('name'),
   profileType: text('profile_type').notNull(), // 'client' | 'professional'
   organizationId: text('organization_id'),

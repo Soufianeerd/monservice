@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db/server';
 import { clients, users } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { AppError } from '@/lib/errors';
 
 type BillingDb = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -19,7 +19,7 @@ export async function getBillingAuthority(
 ): Promise<'issuer' | 'recipient' | null> {
   const [actor] = await connection
     .select({ profileType: users.profileType, organizationId: users.organizationId })
-    .from(users).where(eq(users.id, userId)).limit(1).for('share');
+    .from(users).where(and(eq(users.id, userId),isNull(users.accountClosedAt))).limit(1).for('share');
 
   if (actor?.profileType === 'professional') {
     return actor.organizationId === resource.organizationId ? 'issuer' : null;
