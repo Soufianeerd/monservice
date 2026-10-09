@@ -6,13 +6,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  // Real EU Auth/Postgres calls and the complete intervention lifecycle span
+  // multiple transactions. Keep every assertion, allow remote round trips.
+  timeout: 120_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3039',
     trace: 'on-first-retry',
   },
   projects: [
@@ -22,8 +25,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: process.env.E2E_PRODUCTION_BUILD === 'true' ? 'npm run start -- --port 3039' : 'npm run dev -- --port 3039',
+    url: process.env.E2E_BASE_URL ?? 'http://localhost:3039',
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === 'true',
   },
 });

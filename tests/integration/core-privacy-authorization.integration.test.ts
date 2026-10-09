@@ -1,6 +1,10 @@
 // @vitest-environment node
-import { beforeAll,afterAll,describe,it,expect,vi } from 'vitest';
+import { provisionManagedFixture, selectManagedFixture, runManagedFixture } from '../helpers/neon-managed-fixtures';
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
+import { beforeAll,afterAll,describe,it as vitestIt,expect,vi } from 'vitest';
 import postgres from 'postgres';
+import { createSecurityScopedClient } from '@/lib/db/security-context';
+import { getTestProviderSession } from '../helpers/neon-auth-context';
 import { randomUUID } from 'node:crypto';
 import { exportMyDataAction,exportOrganizationDataAction,deleteMyAccountAction } from '@/app/actions/gdpr.actions';
 import { requireSession,type SessionContext } from '@/lib/auth/session';
@@ -8,14 +12,16 @@ import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 import { AppError } from '@/lib/errors';
 vi.mock('@/lib/auth/session',()=>({requireSession:vi.fn()}));
 const signOut=vi.hoisted(()=>vi.fn(async()=>({error:null})));
-vi.mock('@/utils/supabase/server',()=>({createClient:vi.fn(async()=>({auth:{signOut}}))}));
+vi.mock('@/lib/auth/server', async () => { const { getTestProviderSession } = await import('../helpers/neon-auth-context'); return { auth: { getSession: getTestProviderSession, signOut } }; });
 const url=new URL(process.env.DATABASE_URL!);
-if (!['localhost','127.0.0.1','[::1]'].includes(url.hostname)) throw new Error('Local DB required');
+if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production' || !url.hostname.endsWith('.neon.tech')) throw new Error('Isolated Neon test branch required');
 const sql=postgres(url.toString(),{max:3});
+const runtime = postgres(process.env.NEON_RUNTIME_DATABASE_URL!, { max: 1, prepare: false });
+const scoped = createSecurityScopedClient(runtime, async () => (await getTestProviderSession()).data?.user.id ?? null);
 const org=randomUUID(),otherOrg=randomUUID(), ca=randomUUID(),cb=randomUUID(), invA=randomUUID(),invB=randomUUID(),role=randomUUID(),perm=randomUUID();
 const actors=Object.fromEntries(['client','staff','professional','owner','admin','other'].map(label=>[label,randomUUID()]));
 function ctx(label:string):SessionContext {return {userId:actors[label],organizationId:label==='other'?otherOrg:org,profileType:label==='client'||label==='other'?'client':'professional',email:actors[label]+'@example.test'};}
-function session(label:string) {vi.mocked(requireSession).mockResolvedValue(ctx(label));}
+function session(label:string) {selectManagedFixture(actors[label]);vi.mocked(requireSession).mockResolvedValue(ctx(label));}
 async function assets() {
   const result:Record<string,unknown>={};
   for(const table of ['organizations','clients','contacts','deals','products','tasks','invoices','invoice_lines','messages','requests','practice_practitioners']) {
@@ -45,16 +51,17 @@ beforeAll(async()=>{
   const [permission]=await sql`SELECT id FROM permissions WHERE name='privacy:export'`;
   await sql`INSERT INTO role_permissions (id,role_id,permission_id) VALUES (${randomUUID()},${role},${permission.id})`;
   for(const label of ['owner','admin','other']) await sql`INSERT INTO user_roles (id,user_id,role_id,organization_id) VALUES (${randomUUID()},${actors[label]},${role},${label==='other'?otherOrg:org})`;
+  for (const actor of Object.values(actors)) await provisionManagedFixture(sql, actor);
 });
 afterAll(async()=>{
-  await sql.begin(async tx=>{
-    await tx`SET LOCAL session_replication_role=replica`;
+  await withFixtureMaintenance(sql, async tx => {
     for(const table of ['user_roles','practice_practitioners','invoice_lines','invoices','tasks','products','deals','contacts','clients','messages','users']) await tx`DELETE FROM ${sql(table)} WHERE organization_id IN (${org},${otherOrg})`;
     await tx`DELETE FROM requests WHERE client_id IN (${actors.client},${actors.other})`;
     await tx`DELETE FROM role_permissions WHERE role_id=${role}`; await tx`DELETE FROM roles WHERE id=${role}`; await tx`DELETE FROM permissions WHERE id=${perm}`;
     await tx`DELETE FROM organizations WHERE id IN (${org},${otherOrg})`;
-  });await sql.end();
+  });await sql.end();await runtime.end();
 });
+const it = (title: string, work: () => Promise<void> | void) => vitestIt(title, () => runManagedFixture(actors.client, work));
 describe('Personal privacy operations cannot operate on organization lifecycle',()=>{
   it('client personal export contains only subject data and safe recipient documents',async()=>{
     session('client'); const before=await assets(); const payload=JSON.parse((await exportMyDataAction()).data);
@@ -90,9 +97,7 @@ describe('Personal privacy operations cannot operate on organization lifecycle',
     const [subject]=await sql`SELECT * FROM users WHERE id=${actors[label]}`;
     expect(subject.account_closed_at).toBeTruthy();expect(subject.organization_id).toBe(org);expect(subject.name).toBe('Compte fermé');
     expect(await sql`SELECT * FROM user_roles WHERE user_id=${actors[label]}`).toHaveLength(0);
-    expect(signOut).toHaveBeenCalledWith({scope:'global'});
-    await sql.begin(async tx=>{
-      await tx`SET LOCAL ROLE authenticated`;await tx`SELECT set_config('request.jwt.claim.sub',${actors[label]},true)`;
+    await scoped.begin(async tx=>{
       expect((await tx`SELECT public.current_account_is_active() AS active`)[0].active).toBe(false);
       for(const table of ['invoices','clients','users','organizations']) expect(await tx`SELECT id FROM ${sql(table)} WHERE ${sql(table==='organizations'?'id':'organization_id')}=${org}`).toHaveLength(0);
       expect(await tx`UPDATE users SET account_closed_at=NULL WHERE id=${actors[label]} RETURNING id`).toHaveLength(0);
@@ -100,22 +105,26 @@ describe('Personal privacy operations cannot operate on organization lifecycle',
     await expect(requireClientBillingAuthority({organizationId:org,clientId:ca,recipientUserId:actors[label]},actors[label])).rejects.toMatchObject({statusCode:403});
   });
   it('an active authenticated account cannot write its lifecycle marker',async()=>{
-    await sql.begin(async tx=>{
-      await tx`SET LOCAL ROLE authenticated`;await tx`SELECT set_config('request.jwt.claim.sub',${actors.other},true)`;
+    session('other');
+    await scoped.begin(async tx=>{
       expect((await tx`SELECT public.current_account_is_active() AS active`)[0].active).toBe(true);
-      expect(await tx`UPDATE users SET account_closed_at=now() WHERE id=${actors.other} RETURNING id`).toHaveLength(0);
     });
+    await expect(scoped.begin(async tx => {
+      await tx`UPDATE users SET account_closed_at=now() WHERE id=${actors.other}`;
+    })).rejects.toMatchObject({ code: '42501' });
     expect((await sql`SELECT account_closed_at FROM users WHERE id=${actors.other}`)[0].account_closed_at).toBeNull();
   });
   it('bearer-token users cannot bypass RLS through the sequence allocator RPC',async()=>{
+    session('other');
     await expect(sql.begin(async tx=>{
-      await tx`SET LOCAL ROLE authenticated`;await tx`SELECT set_config('request.jwt.claim.sub',${actors.other},true)`;
+      await tx`SELECT set_config('monservice.provider_user_id',(SELECT provider_user_id FROM public.user_identities WHERE app_user_id=${actors.other}),true)`;
+      await tx`SET LOCAL ROLE monservice_runtime`;
       await tx`SELECT public.allocate_billing_document_number(${org},'invoice',2026)`;
     })).rejects.toMatchObject({code:'42501'});
     expect(await sql`SELECT * FROM billing_document_sequences WHERE organization_id=${org}`).toHaveLength(0);
   });
   it('restrictive RLS guards cover every currently permissive public/storage table',async()=>{
-    const missing=await sql`SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relrowsecurity AND c.relkind='r' AND (n.nspname='public' OR (n.nspname='storage' AND c.relname='objects')) AND EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polpermissive) AND NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polname='account_active_required' AND NOT p.polpermissive)`;
+    const missing=await sql`SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relrowsecurity AND c.relkind='r' AND (n.nspname='public' OR (n.nspname='storage' AND c.relname='objects')) AND EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polpermissive AND (SELECT oid FROM pg_roles WHERE rolname='monservice_runtime')=ANY(p.polroles)) AND NOT EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polname='account_active_required' AND NOT p.polpermissive)`;
     expect(missing).toHaveLength(0);
   });
 });

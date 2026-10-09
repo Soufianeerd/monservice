@@ -1,18 +1,17 @@
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLIENT_A_EMAIL = 'client_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLIENT_A_EMAIL = 'client_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
-async function signInOrThrow(client: SupabaseClient, email: string): Promise<string> {
+async function signInOrThrow(client: NeonRlsClient, email: string): Promise<string> {
   const { data, error } = await client.auth.signInWithPassword({
     email,
     password: PASSWORD,
@@ -20,15 +19,15 @@ async function signInOrThrow(client: SupabaseClient, email: string): Promise<str
   if (error || !data?.user) {
     throw new Error(`Mandatory authentication failed for ${email}: ${error?.message || 'No user session returned'}`);
   }
-  return data.user.id;
+  return data.appUserId;
 }
 
 describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', () => {
   let sql: postgres.Sql;
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
 
   let proAUserId: string;
   let proBUserId: string;
@@ -59,33 +58,25 @@ describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', (
     `;
 
     // 2. Initialize Supabase Auth clients
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     proAUserId = await signInOrThrow(proAClient, PRO_A_EMAIL);
 
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     proBUserId = await signInOrThrow(proBClient, PRO_B_EMAIL);
 
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     await signInOrThrow(clientAClient, CLIENT_A_EMAIL);
 
     // Clean previous test artifacts
-    await sql`SET session_replication_role = 'replica'`;
-    await sql`DELETE FROM field_service_work_reports WHERE id = ${testReportIdA}`;
-    await sql`DELETE FROM field_service_work_order_assignments WHERE id = ${testAssignmentIdA}`;
-    await sql`DELETE FROM field_service_work_order_status_history WHERE work_order_id = ${testWorkOrderIdA}`;
-    await sql`DELETE FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
-    await sql`DELETE FROM field_service_sites WHERE id = ${testSiteIdA}`;
-    await sql`SET session_replication_role = 'origin'`;
+    await withFixtureMaintenance(sql, async fixture => {
+await fixture`DELETE FROM field_service_work_reports WHERE id = ${testReportIdA}`;
+    await fixture`DELETE FROM field_service_work_order_assignments WHERE id = ${testAssignmentIdA}`;
+    await fixture`DELETE FROM field_service_work_order_status_history WHERE work_order_id = ${testWorkOrderIdA}`;
+    await fixture`DELETE FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
+    await fixture`DELETE FROM field_service_sites WHERE id = ${testSiteIdA}`;
+    });
 
     // Insert seeded Org A records directly for RLS query testing
     await sql`
@@ -122,13 +113,13 @@ describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', (
   });
 
   afterAll(async () => {
-    await sql`SET session_replication_role = 'replica'`;
-    await sql`DELETE FROM field_service_work_reports WHERE id = ${testReportIdA}`;
-    await sql`DELETE FROM field_service_work_order_assignments WHERE id = ${testAssignmentIdA}`;
-    await sql`DELETE FROM field_service_work_order_status_history WHERE work_order_id = ${testWorkOrderIdA}`;
-    await sql`DELETE FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
-    await sql`DELETE FROM field_service_sites WHERE id = ${testSiteIdA}`;
-    await sql`SET session_replication_role = 'origin'`;
+    await withFixtureMaintenance(sql, async fixture => {
+await fixture`DELETE FROM field_service_work_reports WHERE id = ${testReportIdA}`;
+    await fixture`DELETE FROM field_service_work_order_assignments WHERE id = ${testAssignmentIdA}`;
+    await fixture`DELETE FROM field_service_work_order_status_history WHERE work_order_id = ${testWorkOrderIdA}`;
+    await fixture`DELETE FROM field_service_work_orders WHERE id = ${testWorkOrderIdA}`;
+    await fixture`DELETE FROM field_service_sites WHERE id = ${testSiteIdA}`;
+    });
     await sql.end();
   });
 
@@ -265,13 +256,13 @@ describe('Field Service Operations RLS & Multi-Tenant Authority (Session 17)', (
     });
 
     it('Anonymous user sees 0 rows for field service operations tables', async () => {
-      const { data: sites } = await anonClient.from('field_service_sites').select('*');
+      const { data: sites  } = await anonClient.from('field_service_sites').select('*');
       expect(sites ?? []).toHaveLength(0);
 
-      const { data: orders } = await anonClient.from('field_service_work_orders').select('*');
+      const { data: orders  } = await anonClient.from('field_service_work_orders').select('*');
       expect(orders ?? []).toHaveLength(0);
 
-      const { data: reports } = await anonClient.from('field_service_work_reports').select('*');
+      const { data: reports  } = await anonClient.from('field_service_work_reports').select('*');
       expect(reports ?? []).toHaveLength(0);
     });
   });

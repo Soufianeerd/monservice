@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [".next/", "node_modules/", "dist/", "coverage/", "out/", "*.js", "supabase/"]
   },
   eslint.configs.recommended,
+  { files: ['scripts/**/*.mjs'], languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly', Buffer: 'readonly', fetch: 'readonly', setTimeout: 'readonly', AbortSignal: 'readonly' } } },
   ...tseslint.configs.recommended,
   {
     plugins: {

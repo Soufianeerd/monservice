@@ -16,9 +16,9 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Marketplace Workflow & Location Persistence', () => {
-  const proEmail = 'pro_generic_a@monservice.com';
-  const clientEmail = 'client_generic_a@monservice.com';
-  const password = 'password123';
+  const proEmail = 'pro_generic_a@monservice.invalid';
+  const clientEmail = 'client_generic_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test('MARKETPLACE_01: should display marketplace requests and allow clicking on one', async ({ page }) => {
     // Login as a professional

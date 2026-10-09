@@ -1,5 +1,7 @@
 // @vitest-environment node
-import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
+import { provisionManagedFixture, runManagedFixture } from '../helpers/neon-managed-fixtures';
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
+import { beforeAll, afterAll, describe, expect, it as vitestIt, vi } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID } from 'node:crypto';
 import { quoteService } from '@/lib/services/quote.service';
@@ -13,7 +15,7 @@ vi.mock('@/lib/auth/session', () => ({ requireSession: vi.fn(async () => { throw
 
 // Refuse to mutate a remote database, including when .env.local is loaded by setup.
 const url = new URL(process.env.DATABASE_URL!);
-if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Local DB required');
+if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production' || !url.hostname.endsWith('.neon.tech')) throw new Error('Isolated Neon test branch required');
 const sql = postgres(url.toString(), { max: 3 });
 const prefix = `gate1-${randomUUID()}`;
 const orgA = `${prefix}-a`, orgB = `${prefix}-b`;
@@ -45,15 +47,16 @@ beforeAll(async () => {
     (${clientA},${orgA},${actorA},'Client A','a@example.test',now(),now()),
     (${clientA2},${orgA},${actorA2},'Client A2','a2@example.test',now(),now()),
     (${clientB},${orgB},${actorB},'Client B','b@example.test',now(),now())`;
+  await provisionManagedFixture(sql, actorA);
 });
 afterAll(async () => {
-  await sql.begin(async tx => {
-    await tx`SET LOCAL session_replication_role = replica`;
+  await withFixtureMaintenance(sql, async tx => {
     for (const table of ['invoice_lines','invoices','clients','users']) await tx`DELETE FROM ${sql(table)} WHERE organization_id IN (${orgA},${orgB})`;
     await tx`DELETE FROM organizations WHERE id IN (${orgA},${orgB})`;
   });
   await sql.end();
 });
+const it = (title: string, work: () => Promise<void> | void) => vitestIt(title, () => runManagedFixture(actorA, work));
 describe('Core client billing authorization and mutation effects', () => {
   it('reads the explicit recipient and CRM-linked recipient with safe DTOs', async () => {
     for (const recipient of [actorA, null]) {
@@ -76,7 +79,12 @@ describe('Core client billing authorization and mutation effects', () => {
       const promise = operation === 'read' ? quoteService.getClientQuote(id,actor)
         : operation === 'accept' ? quoteService.acceptQuote(id,'signature',actor)
         : operation === 'reject' ? quoteService.rejectQuote(id,'No',actor) : quoteService.markQuoteViewed(id,actor);
-      await expect(promise).rejects.toMatchObject({ statusCode: 403 });
+      // RLS hides unauthorized rows. Read/view reveal no resource existence;
+      // mutations return 404 for hidden rows, and actor mismatch remains 403.
+      const hidden = label === 'same tenant other client' || label === 'other tenant';
+      if (hidden && operation === 'read') await expect(promise).resolves.toBeNull();
+      else if (hidden && operation === 'view') await expect(promise).resolves.toBeUndefined();
+      else await expect(promise).rejects.toMatchObject({ statusCode: hidden ? 404 : 403 });
       expect(await snapshot()).toEqual(before);
     });
   }

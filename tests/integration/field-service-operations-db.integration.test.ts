@@ -1,3 +1,4 @@
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
@@ -38,16 +39,16 @@ describe('Field Service Operations Database Integrity & State Machines (Session 
     sql = postgres(DATABASE_URL);
 
     // Clean prior runs
-    await sql`SET session_replication_role = 'replica'`;
-    await sql`DELETE FROM field_service_work_reports WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_order_assignments WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_order_status_history WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_orders WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_sites WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM clients WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM users WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM organizations WHERE id IN (${orgA}, ${orgB})`;
-    await sql`SET session_replication_role = 'origin'`;
+    await withFixtureMaintenance(sql, async fixture => {
+await fixture`DELETE FROM field_service_work_reports WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_order_assignments WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_order_status_history WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_orders WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_sites WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM clients WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM users WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM organizations WHERE id IN (${orgA}, ${orgB})`;
+    });
 
     // Setup Orgs
     await sql`
@@ -93,16 +94,16 @@ describe('Field Service Operations Database Integrity & State Machines (Session 
 
   afterAll(async () => {
     // Cleanup test data using session_replication_role to bypass deletion trigger on test records
-    await sql`SET session_replication_role = 'replica'`;
-    await sql`DELETE FROM field_service_work_reports WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_order_assignments WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_order_status_history WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_work_orders WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM field_service_sites WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM clients WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM users WHERE organization_id IN (${orgA}, ${orgB})`;
-    await sql`DELETE FROM organizations WHERE id IN (${orgA}, ${orgB})`;
-    await sql`SET session_replication_role = 'origin'`;
+    await withFixtureMaintenance(sql, async fixture => {
+await fixture`DELETE FROM field_service_work_reports WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_order_assignments WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_order_status_history WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_work_orders WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM field_service_sites WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM clients WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM users WHERE organization_id IN (${orgA}, ${orgB})`;
+    await fixture`DELETE FROM organizations WHERE id IN (${orgA}, ${orgB})`;
+    });
     await sql.end();
   });
 

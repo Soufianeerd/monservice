@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Patient Portal Journey E2E (Session 14)', () => {
-  const testEmail = 'patient_health_a@monservice.com';
-  const password = 'password123';
+  const testEmail = 'patient_health_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test.beforeEach(async ({ page }) => {
     // Authenticate using the seeded client

@@ -1,5 +1,7 @@
 // @vitest-environment node
-import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import { provisionManagedFixture, runManagedFixture } from '../helpers/neon-managed-fixtures';
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
+import { beforeAll, afterAll, describe, expect, it as vitestIt } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID } from 'node:crypto';
 import { clientService } from '@/lib/services/client.service';
@@ -10,7 +12,7 @@ import { taskService } from '@/lib/services/task.service';
 import { invoiceService } from '@/lib/services/invoice.service';
 import { requestService } from '@/lib/services/request.service';
 const url = new URL(process.env.DATABASE_URL!);
-if (!['localhost','127.0.0.1','[::1]'].includes(url.hostname)) throw new Error('Local DB required');
+if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production' || !url.hostname.endsWith('.neon.tech')) throw new Error('Isolated Neon test branch required');
 const sql = postgres(url.toString());
 const prefix = `immutable-${randomUUID()}`, orgA = prefix+'-a', orgB = prefix+'-b', pro = prefix+'-pro', proB=prefix+'-prob';
 const ca=prefix+'-ca',cb=prefix+'-cb',ia=prefix+'-ia',pa=prefix+'-pa',pb=prefix+'-pb',da=prefix+'-da',cta=prefix+'-cta',ta=prefix+'-ta',ra=prefix+'-ra';
@@ -33,16 +35,17 @@ beforeAll(async () => {
   await sql`INSERT INTO tasks (id,organization_id,title,status,priority,created_at,updated_at) VALUES (${ta},${orgA},'Task','completed','high',now(),now())`;
   await sql`INSERT INTO invoices (id,organization_id,client_id,number,type,status,date,total_ht,tax_amount,total_ttc,created_at,updated_at) VALUES (${ia},${orgA},${ca},${ia},'invoice','draft',now(),0,0,0,now(),now())`;
   await sql`INSERT INTO requests (id,client_id,title,description,category,status,visibility,created_at,updated_at) VALUES (${ra},${pro},'Test request','Request description','test','draft','private',now(),now())`;
+  await provisionManagedFixture(sql, pro);
 });
 afterAll(async () => {
-  await sql.begin(async tx => {
-    await tx`SET LOCAL session_replication_role=replica`;
+  await withFixtureMaintenance(sql, async tx => {
     await tx`DELETE FROM requests WHERE id=${ra}`;
     for (const table of ['invoice_lines','invoices','tasks','products','deals','contacts','clients','users']) await tx`DELETE FROM ${sql(table)} WHERE organization_id IN (${orgA},${orgB})`;
     await tx`DELETE FROM organizations WHERE id IN (${orgA},${orgB})`;
   }); await sql.end();
 });
 async function row(table:string,id:string) { return (await sql`SELECT * FROM ${sql(table)} WHERE id=${id}`)[0]; }
+const it = (title: string, work: () => Promise<void> | void) => vitestIt(title, () => runManagedFixture(pro, work));
 describe('Core update strictness and tenant invariants', () => {
   for (const c of cases) {
     it(`${c.table}: permits an ordinary update`, async () => {

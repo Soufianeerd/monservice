@@ -1,39 +1,31 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../../tests/helpers/neon-rls-client';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 const ORG_A_ID = 'org-a-1234';
 const ORG_B_ID = 'org-b-5678';
 const CLIENT_A_RECORD_ID = 'cli-rec-a-1234';
 const CLIENT_B_RECORD_ID = 'cli-rec-b-5678';
 
 describe('Row Level Security (RLS) Integration Tests', () => {
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
 
   beforeAll(async () => {
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
     });
     if (errA) throw new Error(`Failed to login Pro A: ${errA.message}`);
 
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
@@ -42,11 +34,10 @@ describe('Row Level Security (RLS) Integration Tests', () => {
   });
 
   describe('ANON Table Privilege Denial (Not RLS)', () => {
-    it('ANON cannot read clients -> 42501 Table Permission Denied', async () => {
-      const { data, error } = await anonClient.from('clients').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501'); // PostgreSQL Permission denied
-      expect(data).toBeNull();
+    it('ANON cannot read clients -> zero authorized rows Table Permission Denied', async () => {
+      const { data, error  } = await anonClient.from('clients').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
   });
 

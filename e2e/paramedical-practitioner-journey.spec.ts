@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Paramedical Practitioner Journey E2E (Session 15)', () => {
-  const proEmail = 'pro_health_a@monservice.com';
-  const password = 'password123';
+  const proEmail = 'pro_health_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test.beforeEach(async ({ page }) => {
     // Login as professional

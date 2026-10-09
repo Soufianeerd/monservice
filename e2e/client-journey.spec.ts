@@ -16,8 +16,8 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Client Journey E2E', () => {
-  const testEmail = 'client_generic_a@monservice.com';
-  const password = 'password123';
+  const testEmail = 'client_generic_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test.beforeEach(async ({ page }) => {
     // Authenticate using the seeded client
@@ -30,6 +30,7 @@ test.describe('Client Journey E2E', () => {
   });
 
   test('CLIENT_E2E_01: Client A can access client dashboard and create a request', async ({ page }) => {
+    const title = `Besoin de plomberie urgente ${Date.now()}`;
     // 1. Dashboard access
     expect(page.url()).toContain('/client/dashboard');
 
@@ -39,7 +40,7 @@ test.describe('Client Journey E2E', () => {
     
     await expect(page.locator('input[name="title"]')).toBeVisible();
 
-    await page.fill('input[name="title"]', 'Besoin de plomberie urgente');
+    await page.fill('input[name="title"]', title);
     await page.fill('textarea[name="description"]', 'Bonjour, j\'ai une fuite importante dans ma salle de bain. Besoin d\'une intervention rapide.');
     await page.locator('select[name="category"]').selectOption('field_services');
     await page.fill('input[name="location"]', 'Lyon');
@@ -50,6 +51,6 @@ test.describe('Client Journey E2E', () => {
     
     // Wait for redirect to client requests list
     await page.waitForURL('**/client/requests*');
-    await expect(page.locator('text=Besoin de plomberie urgente')).toBeVisible();
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
   });
 });

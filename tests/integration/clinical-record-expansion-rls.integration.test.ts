@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import {
   SEED_PRACTICE_IDS,
@@ -9,19 +9,16 @@ import {
 } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY || '';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLIENT_A_EMAIL = 'client_a@monservice.com';
-const STAFF_A_EMAIL = 'staff_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLIENT_A_EMAIL = 'client_a@monservice.invalid';
+const STAFF_A_EMAIL = 'staff_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
-async function signInOrThrow(client: SupabaseClient, email: string): Promise<void> {
+async function signInOrThrow(client: NeonRlsClient, email: string): Promise<void> {
   const { data, error } = await client.auth.signInWithPassword({
     email,
     password: PASSWORD,
@@ -33,11 +30,11 @@ async function signInOrThrow(client: SupabaseClient, email: string): Promise<voi
 
 describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () => {
   let sql: postgres.Sql;
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
-  let staffAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
+  let staffAClient: NeonRlsClient;
 
   const dynamicDocIds: string[] = [];
   const dynamicTemplateIds: string[] = [];
@@ -46,39 +43,27 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   const createdStoragePaths: string[] = [];
 
   beforeAll(async () => {
-    if (!SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for integration tests and cleanup');
-    }
+    if (!process.env.NEON_ADMIN_DATABASE_URL) throw new Error('Validation fixture administrator required');
 
     sql = postgres(DATABASE_URL);
 
     // 1. Anon Client (intentionally unauthenticated)
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
     // 2. Pro A Client (Practitioner in Org A)
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     await signInOrThrow(proAClient, PRO_A_EMAIL);
 
     // 3. Pro B Client (Practitioner in Org B)
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     await signInOrThrow(proBClient, PRO_B_EMAIL);
 
     // 4. Client A Client (Patient/Client profile)
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     await signInOrThrow(clientAClient, CLIENT_A_EMAIL);
 
     // 5. Staff A Client (Professional profile in Org A, but not linked to a practice_practitioner)
-    staffAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    staffAClient = createRlsTestClient();
     await signInOrThrow(staffAClient, STAFF_A_EMAIL);
   });
 
@@ -99,13 +84,8 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     // Cleanup Storage test objects via Storage API (admin authority fail-fast)
     if (createdStoragePaths.length > 0) {
-      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { persistSession: false },
-      });
-      const { error: cleanupError } = await adminClient.storage.from('clinical-documents').remove(createdStoragePaths);
-      if (cleanupError) {
-        throw new Error(`Test storage cleanup failed: ${cleanupError.message}`);
-      }
+      const { objectStore } = await import('@/lib/storage/neon-object-store');
+      for (const key of createdStoragePaths) await objectStore.removeOrphan('clinical-documents', key);
     }
 
     if (sql) {
@@ -119,7 +99,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   describe('Clinical Documents Table RLS Matrix', () => {
     it('anon cannot read or insert clinical documents', async () => {
       const { data } = await anonClient.from('clinical_documents').select('*');
-      expect(data).toBeNull();
+      expect(data).toEqual([]);
 
       const { error: insertError } = await anonClient.from('clinical_documents').insert({
         id: randomUUID(),
@@ -203,10 +183,10 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       expect(error).toBeNull();
       expect(data).not.toBeNull();
 
-      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+      const foundA = data?.find((d: { id: string }) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
       expect(foundA).toBeDefined();
 
-      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
+      const foundB = data?.find((d: { id: string }) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
       expect(foundB).toBeUndefined();
 
       const newDocId = randomUUID();
@@ -240,10 +220,10 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       expect(error).toBeNull();
       expect(data).not.toBeNull();
 
-      const foundB = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
+      const foundB = data?.find((d: { id: string }) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentB);
       expect(foundB).toBeDefined();
 
-      const foundA = data?.find((d) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
+      const foundA = data?.find((d: { id: string }) => d.id === SEED_CLINICAL_EXPANSION_IDS.clinicalDocumentA);
       expect(foundA).toBeUndefined();
     });
 
@@ -292,7 +272,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   describe('Clinical Form Templates Table RLS Matrix', () => {
     it('anon cannot read or insert clinical form templates', async () => {
       const { data } = await anonClient.from('clinical_form_templates').select('*');
-      expect(data).toBeNull();
+      expect(data).toEqual([]);
 
       const { error } = await anonClient.from('clinical_form_templates').insert({
         id: randomUUID(),
@@ -304,9 +284,9 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
       expect(error).not.toBeNull();
     });
 
-    it('client A and staff A cannot read, insert, or update clinical form templates', async () => {
+    it('portal client reads only assigned templates; clients and staff cannot mutate them', async () => {
       const { data: clientData } = await clientAClient.from('clinical_form_templates').select('*');
-      expect(clientData).toHaveLength(0);
+      expect(clientData.map((row: { id: string }) => row.id)).toEqual([SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA]);
 
       const { error: clientInsert } = await clientAClient.from('clinical_form_templates').insert({
         id: randomUUID(),
@@ -332,8 +312,8 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro A reads own templates and can insert own template', async () => {
       const { data } = await proAClient.from('clinical_form_templates').select('*');
-      const foundA = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA);
-      const foundB = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
+      const foundA = data?.find((t: { id: string }) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateA);
+      const foundB = data?.find((t: { id: string }) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
@@ -359,7 +339,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro B reads own templates (positive control)', async () => {
       const { data } = await proBClient.from('clinical_form_templates').select('*');
-      const foundB = data?.find((t) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
+      const foundB = data?.find((t: { id: string }) => t.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormTemplateB);
       expect(foundB).toBeDefined();
     });
 
@@ -390,7 +370,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   describe('Clinical Form Responses Table RLS Matrix', () => {
     it('anon cannot read or insert clinical form responses', async () => {
       const { data } = await anonClient.from('clinical_form_responses').select('*');
-      expect(data).toBeNull();
+      expect(data).toEqual([]);
 
       const { error } = await anonClient.from('clinical_form_responses').insert({
         id: randomUUID(),
@@ -433,8 +413,8 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro A reads own form responses and can insert own response', async () => {
       const { data } = await proAClient.from('clinical_form_responses').select('*');
-      const foundA = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA);
-      const foundB = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
+      const foundA = data?.find((r: { id: string }) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA);
+      const foundB = data?.find((r: { id: string }) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
@@ -464,7 +444,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro B reads own form responses (positive control)', async () => {
       const { data } = await proBClient.from('clinical_form_responses').select('*');
-      const foundB = data?.find((r) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
+      const foundB = data?.find((r: { id: string }) => r.id === SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseB);
       expect(foundB).toBeDefined();
     });
 
@@ -497,7 +477,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   describe('Clinical Measurements Table RLS Matrix', () => {
     it('anon cannot read or insert clinical measurements', async () => {
       const { data } = await anonClient.from('clinical_measurements').select('*');
-      expect(data).toBeNull();
+      expect(data).toEqual([]);
 
       const { error } = await anonClient.from('clinical_measurements').insert({
         id: randomUUID(),
@@ -546,8 +526,8 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro A reads own measurements and can insert own measurement', async () => {
       const { data } = await proAClient.from('clinical_measurements').select('*');
-      const foundA = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementA);
-      const foundB = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
+      const foundA = data?.find((m: { id: string }) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementA);
+      const foundB = data?.find((m: { id: string }) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
 
       expect(foundA).toBeDefined();
       expect(foundB).toBeUndefined();
@@ -579,7 +559,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
 
     it('pro B reads own measurements (positive control)', async () => {
       const { data } = await proBClient.from('clinical_measurements').select('*');
-      const foundB = data?.find((m) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
+      const foundB = data?.find((m: { id: string }) => m.id === SEED_CLINICAL_EXPANSION_IDS.clinicalMeasurementB);
       expect(foundB).toBeDefined();
     });
 
@@ -638,6 +618,10 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         expect(uploadError).toBeNull();
         expect(uploadData?.path).toBe(testPath);
 
+        // Metadata is the application download authority, independent of bucket credentials.
+        dynamicDocIds.push(docId);
+        await sql`INSERT INTO clinical_documents(id,organization_id,patient_id,practitioner_id,title,category,file_name,mime_type,size_bytes,storage_path)
+          VALUES(${docId},${SEED_PRACTICE_IDS.orgA},${SEED_PATIENT_IDS.patientA},${SEED_PRACTICE_IDS.practitionerA},'Synthetic storage proof','other','bilan.pdf','application/pdf',${sampleBuffer.length},${testPath})`;
         // 2. Create Signed URL
         const { data: signedData, error: signedError } = await proAClient.storage
           .from('clinical-documents')
