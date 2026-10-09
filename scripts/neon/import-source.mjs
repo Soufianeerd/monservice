@@ -17,7 +17,10 @@ if (!new URL(environment.DATABASE_URL_UNPOOLED).hostname.includes('eu-central-1'
 if (sourceTables.length!==57 || sourceTables.some(table=>table.tablename!=='users' && Number(table.rows)!==0) || inventory.objects.length!==0) throw new Error('Source scope changed: reassess full data copy and HDS before import');
 if (users.some(user=>user.password!==null) || users.length!==Number(sourceTables.find(table=>table.tablename==='users').rows)) throw new Error('Private export is inconsistent');
 if (identities.some(user=>!user.email_confirmed_at || user.is_anonymous)) throw new Error('Unverified source identities require a separate import decision');
+if(new Set(identities.map(user=>user.email.toLowerCase())).size!==identities.length)throw new Error('Duplicate source Auth email requires explicit reconciliation');
 for(const user of users)if(!identities.some(identity=>identity.id===user.id && identity.email.toLowerCase()===user.email.toLowerCase()))throw new Error('Source business identity mismatch');
+const verifiedSource=spawnSync(process.execPath,['scripts/neon/verify-source-unchanged.mjs'],{stdio:'pipe',env:process.env});
+if(verifiedSource.status!==0)throw new Error('Source no longer matches the private export; refresh/reconcile before importing');
 const sql=postgres(environment.DATABASE_URL_UNPOOLED,{max:1,prepare:false});
 try {
   await sql.begin(async tx=>{
@@ -34,6 +37,13 @@ try {
     }
     const imported=await tx`select * from public.users order by id`;
     for(const source of users){const target=imported.find(row=>row.id===source.id);for(const [column,value]of Object.entries(source))if(target?.[column]!==value)throw new Error('Business field reconciliation failed: '+column);}
+    const bindings=await tx`select app_user_id,provider_user_id,linkage_method from public.user_identities where provider='supabase'`;
+    const reenrollments=await tx`select app_user_id,verified_source_email,source_provider_user_id from public.identity_reenrollments`;
+    if(bindings.length!==users.length||reenrollments.length!==users.length)throw new Error('Source identity/reenrollment count mismatch');
+    for(const user of users){
+      if(!bindings.some(binding=>binding.app_user_id===user.id&&binding.provider_user_id===user.id&&binding.linkage_method==='source_import'))throw new Error('Source identity binding mismatch');
+      if(!reenrollments.some(record=>record.app_user_id===user.id&&record.source_provider_user_id===user.id&&record.verified_source_email===user.email.toLowerCase()))throw new Error('Reenrollment allowlist mismatch');
+    }
   });
   // Official management API creates users without credentials and without
   // marking email as verified. No password/session/token is imported or sent.
@@ -49,10 +59,12 @@ try {
     if(!record || record.emailVerified)throw new Error('Unexpected Auth verification state');
     authCount++;
   }
+  const [actualAuth]=await sql`select count(*)::int as count from neon_auth."user"`;
+  if(actualAuth.count!==identities.length)throw new Error('Auth count reconciliation failed');
   const counts=[];
   for(const table of sourceTables){const [target]=await sql.unsafe(`select count(*)::int as count from public."${table.tablename.replaceAll('"','""')}"`);if(target.count!==Number(table.rows))throw new Error('Table count mismatch: '+table.tablename);counts.push({table:table.tablename,source:Number(table.rows),target:target.count});}
   const files=['source-public.dump','source-inventory.json','source-identities.json','source-app-users.json'];
-  const report={completedAt:new Date().toISOString(),source:'leydfjctaxohovcmcgea',target:'misty-field-54835523',branch:environment.NEON_BRANCH_ID,region:'aws-eu-central-1',counts,authUsers:authCount,sourceBindings:users.length,verifiedReenrollmentsPending:users.length,storage:{objects:0,bytes:0,copyRequired:false},sourceUnchanged:true,orphanOrganizationReferences:users.filter(user=>user.organization_id).length,monetaryAndSequences:'No billing, sequence, audit or clinical rows in source; all corresponding target counts remain zero',backup:files.map(name=>({name,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(directory,name))).digest('hex')}))};
+  const report={completedAt:new Date().toISOString(),source:'leydfjctaxohovcmcgea',target:'misty-field-54835523',branch:environment.NEON_BRANCH_ID,region:'aws-eu-central-1',counts,authUsers:authCount,sourceBindings:users.length,verifiedReenrollmentsPending:users.length,storage:{objects:0,bytes:0,copyRequired:false},sourceUnchangedVerifiedAt:JSON.parse(fs.readFileSync('docs/database/artifacts/source-unchanged-report.json')).verifiedAt,orphanOrganizationReferences:users.filter(user=>user.organization_id).length,monetaryAndSequences:'No billing, sequence, audit or clinical rows in source; all corresponding target counts remain zero',backup:files.map(name=>({name,sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(directory,name))).digest('hex')}))};
   fs.writeFileSync(path.join(directory,'production-import-report.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600});
   fs.mkdirSync('docs/database/artifacts',{recursive:true});fs.writeFileSync('docs/database/artifacts/production-import-report.json',JSON.stringify(report,null,2)+'\n');
   console.log({businessTables:counts.length,businessProfiles:users.length,authUsers:authCount,storageObjects:0,fieldReconciliation:true});
