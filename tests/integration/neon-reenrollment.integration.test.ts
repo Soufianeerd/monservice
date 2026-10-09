@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID, createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { createSecurityScopedClient } from '@/lib/db/security-context';
 
 const admin=postgres(process.env.NEON_ADMIN_DATABASE_URL!,{max:1});
@@ -22,9 +23,17 @@ afterAll(async()=>{
 describe('Controlled source identity recovery with managed Auth',()=>{
   it('denies an unverified email, verifies real OTP, preserves the stable ID/profile and creates only an own missing workspace',async()=>{
     if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH==='production')throw new Error('Synthetic branch required');
-    const created=await request('/sign-up/email',{email,name:'Synthetic migrated professional',password:process.env.E2E_AUTH_PASSWORD});
-    if(!created.ok)throw new Error('Synthetic managed signup unavailable');
-    const data=await created.json();providerId=data.user.id;
+    // Match the production import: a management-created account has no
+    // transferred password and starts with an unverified email.
+    const branchResult=spawnSync('neon',['branches','get',process.env.NEON_BRANCH!,'--project-id','misty-field-54835523','-o','json'],{encoding:'utf8'});
+    if(branchResult.status!==0)throw new Error('Synthetic branch lookup unavailable');
+    const branch=JSON.parse(branchResult.stdout);
+    const created=spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branch.id}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});
+    if(created.status!==0)throw new Error('Synthetic management account creation unavailable');
+    providerId=JSON.parse(created.stdout).id;
+    const [provider]=await admin`select "emailVerified" from neon_auth."user" where id=${providerId}`;
+    expect(provider.emailVerified).toBe(false);
+    expect((await admin`select id from neon_auth.account where "userId"=${providerId} and password is not null`)).toHaveLength(0);
     const now=new Date().toISOString();
     await admin`insert into public.users(id,email,name,profile_type,organization_id,created_at,updated_at) values(${appId},${email},'Synthetic migrated professional','professional',${ghost},${now},${now})`;
     await admin`insert into public.identity_reenrollments(app_user_id,verified_source_email,source_provider_user_id) values(${appId},${email},${randomUUID()})`;
@@ -59,6 +68,7 @@ describe('Controlled source identity recovery with managed Auth',()=>{
     if(!reset)throw new Error('Managed reset token missing');
     const token=reset.identifier.slice('reset-password:'.length);const password=randomUUID()+'Aa1!';
     expect((await request('/reset-password',{token,newPassword:password})).ok).toBe(true);
+    expect((await admin`select id from neon_auth.account where "userId"=${providerId} and "providerId"='credential'`)).toHaveLength(1);
     expect((await request('/reset-password',{token,newPassword:password})).ok).toBe(false);
     expect((await request('/sign-in/email',{email,password})).ok).toBe(true);
     expect((await request('/sign-in/email',{email,password:process.env.E2E_AUTH_PASSWORD})).ok).toBe(false);
