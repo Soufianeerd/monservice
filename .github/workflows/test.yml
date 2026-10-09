@@ -29,3 +29,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Isolated schema, Auth, storage, security and browser validation
         run: node scripts/neon/ci-branch.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-validation-evidence
+          path: docs/database/artifacts/ci-validation-report.json

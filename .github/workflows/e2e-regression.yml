@@ -25,3 +25,7 @@ jobs:
       - run: npm install --global neon@8.0.7
       - run: npx playwright install --with-deps chromium
       - run: node scripts/neon/ci-branch.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-validation-evidence
+          path: docs/database/artifacts/ci-validation-report.json
