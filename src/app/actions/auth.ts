@@ -1,140 +1,59 @@
 'use server';
-
-import { organizationService } from '@/lib/services/organization.service';
-import { userService } from '@/lib/services/user.service';
+import { auth } from '@/lib/auth/server';
+import { db } from '@/lib/db/server';
 import { registerSchema } from '@/lib/validation/schemas';
-import { createClient } from '@/utils/supabase/server';
+import { sql } from 'drizzle-orm';
+import { provisionSignupIdentity } from '@/lib/auth/provisioning';
+import { getSessionContext } from '@/lib/auth/session';
+import { organizationService } from '@/lib/services/organization.service';
 
-/**
- * Inscription — Supabase Auth + profil applicatif.
- *
- * Le compte d'authentification vit dans `auth.users` (géré par Supabase) ;
- * le profil métier (`profileType`, `organizationId`, onboarding) vit dans
- * `public.users`, avec le MÊME identifiant. C'est cette égalité d'identifiant
- * qui permet à `getSessionContext()` de relier les deux.
- *
- * Changements par rapport à la version précédente :
- *  - validation stricte des entrées, politique de mot de passe appliquée ;
- *  - suppression de `role: 'admin'` codé en dur, qui écrivait une colonne
- *    inexistante dans le schéma (anomalie MS-034) ;
- *  - le compte est créé avec un abonnement `free` et un statut `inactive` :
- *    les droits payants ne peuvent venir que du webhook Stripe.
- */
+/** Provider credentials and stable application IDs are provisioned separately. */
 export async function registerAction(data: {
-  name: string;
-  email: string;
-  password?: string;
-  orgName?: string;
-  profileType?: 'client' | 'professional';
-  sector?: string;
-  profession?: string;
-}): Promise<{
-  success: boolean;
-  error?: string;
-  requiresEmailConfirmation?: boolean;
-  userId?: string;
-}> {
+  name: string; email: string; password?: string; orgName?: string;
+  profileType?: 'client' | 'professional'; sector?: string; profession?: string;
+}): Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean; userId?: string }> {
   const parsed = registerSchema.safeParse(data);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    return { success: false, error: firstIssue?.message ?? 'Données invalides.' };
-  }
-
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Données invalides.' };
   const input = parsed.data;
-
   try {
-    if (await userService.emailExists(input.email)) {
-      return { success: false, error: 'Cet email est déjà utilisé.' };
-    }
-
-    const supabase = await createClient();
-
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        // Les métadonnées sont indicatives : la source de vérité du
-        // `profileType` reste la table `public.users`, non modifiable par
-        // l'utilisateur (contrairement à `user_metadata`).
-        data: { name: input.name, profileType: input.profileType },
-      },
+    const { data: created, error } = await auth.signUp.email({
+      email: input.email.trim().toLowerCase(), name: input.name, password: input.password,
     });
-
-    if (signUpError || !signUpData.user) {
-      console.error("[auth] échec de l'inscription Supabase:", signUpError?.message);
-      return { success: false, error: "Impossible de créer le compte." };
-    }
-
-    const authUserId = signUpData.user.id;
-
-    let organizationId: string | undefined;
-
-    try {
-      const { db } = await import('@/lib/db/server');
-      const { organizations, users } = await import('@/lib/db/schema');
-      const { generateId } = await import('@/lib/utils/id-generator');
-
-      await db.transaction(async (tx) => {
-        if (input.profileType === 'professional' && input.orgName) {
-          organizationId = generateId();
-          await tx.insert(organizations).values({
-            id: organizationId,
-            name: input.orgName,
-            industry: input.sector || 'Non spécifié',
-            sector: input.sector,
-            profession: input.profession ?? null,
-            profileType: 'professional',
-            isPublic: true,
-            country: 'France',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } as any);
-        }
-
-        const now = new Date().toISOString();
-        await tx.insert(users).values({
-          id: authUserId,
-          name: input.name,
-          email: input.email.trim().toLowerCase(),
-          profileType: input.profileType,
-          organizationId: organizationId ?? null,
-          onboardingCompleted: false,
-          onboardingStep: 0,
-          subscriptionTier: 'free',
-          subscriptionStatus: 'inactive',
-          createdAt: now,
-          updatedAt: now,
-        } as any);
-      });
-    } catch (profileError) {
-      // Le compte d'authentification existe désormais sans profil applicatif.
-      // Sa suppression exige la clé `service_role`, indisponible ici : on
-      // journalise explicitement pour permettre un rattrapage manuel.
-      console.error('[auth] COMPTE ORPHELIN — profil applicatif non créé', {
-        authUserId,
-        email: input.email,
-        error: profileError,
-      });
-      return {
-        success: false,
-        error: 'Compte partiellement créé. Contactez le support.',
-      };
-    }
-
-    console.info('[audit] user.registered', {
-      userId: authUserId,
-      profileType: input.profileType,
-      at: new Date().toISOString(),
-    });
-
-    // Si la confirmation d'e-mail est activée dans Supabase, aucune session
-    // n'est ouverte tant que l'adresse n'est pas confirmée.
-    const requiresEmailConfirmation = !signUpData.session;
-
-    return { success: true, userId: authUserId, requiresEmailConfirmation };
-  } catch (err: unknown) {
-    console.error("Erreur à l'inscription:", err);
-    // Message générique : ne jamais exposer le détail interne au client.
-    return { success: false, error: 'Erreur serveur.' };
+    if (error || !created?.user) return { success: false, error: 'Impossible de créer le compte.' };
+    const userId = await provisionSignupIdentity(created.user.id, input);
+    return { success: true, userId, requiresEmailConfirmation: !created.token };
+  } catch {
+    return { success: false, error: 'Impossible de finaliser le compte. Réessayez ou contactez le support.' };
   }
+}
+
+/** Recovery decisions come from the verified provider and stored application. */
+export async function getAccountRecoveryAction() {
+  const { data, error } = await auth.getSession();
+  if (error || !data?.user) return null;
+  if (data.user.emailVerified) await db.execute(sql`select public.link_current_reenrollment()`);
+  const profile = await getSessionContext();
+  const organization = profile?.organizationId ? await organizationService.getById(profile.organizationId) : null;
+  return { email: data.user.email, emailVerified: data.user.emailVerified, profileType: profile?.profileType ?? null,
+    needsWorkspace: profile?.profileType === 'professional' && !organization, hasProfile: !!profile };
+}
+
+export async function completeProfileAction(input: {
+  profileType?: 'client' | 'professional'; orgName?: string; sector?: string; profession?: string;
+}) {
+  const { data, error } = await auth.getSession();
+  if (error || !data?.user?.emailVerified) throw new Error('Confirmez votre adresse email pour continuer.');
+  const profile = await getSessionContext();
+  const parsed = registerSchema.safeParse({ ...input, name: data.user.name || 'Compte', email: data.user.email,
+    password: 'RecoveryValidation1!', profileType: profile?.profileType ?? input.profileType });
+  if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? 'Données invalides.');
+  const values = parsed.data;
+  // NULL resolves exclusively to the verified transaction context in PostgreSQL.
+  await db.execute(sql`select public.provision_app_user(null,${values.profileType},${values.orgName ?? null},${values.sector ?? null},${values.profession ?? null})`);
+  const current = await getSessionContext();
+  if (current?.profileType === 'professional' && values.orgName) {
+    const organization = current.organizationId ? await organizationService.getById(current.organizationId) : null;
+    if (!organization) await db.execute(sql`select public.recover_current_workspace(${values.orgName},${values.sector ?? null},${values.profession ?? null})`);
+  }
+  return { destination: current?.profileType === 'client' ? '/client/dashboard' : '/dashboard' };
 }

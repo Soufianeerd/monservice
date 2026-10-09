@@ -14,6 +14,8 @@ import {
   check,
   jsonb,
   foreignKey,
+  primaryKey,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
@@ -558,6 +560,28 @@ export const stripeEvents = sqliteTable('stripe_events', {
   id: text('id').primaryKey(), // event.id fourni par Stripe
   type: text('type').notNull(),
   processedAt: text('processed_at').notNull(),
+});
+
+// Provider credentials never replace stable application foreign keys.
+export const userIdentities = pgTable('user_identities', {
+  appUserId: text('app_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  provider: text('provider').notNull(),
+  providerUserId: text('provider_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull(),
+  linkageMethod: text('linkage_method').notNull(),
+}, table => [
+  primaryKey({ columns: [table.provider,table.providerUserId] }),
+  unique('user_identities_app_user_id_provider_key').on(table.appUserId,table.provider),
+  check('user_identities_provider_check',sql`${table.provider} IN ('neon','supabase')`),
+  check('user_identities_linkage_method_check',sql`${table.linkageMethod} IN ('provider_signup','verified_reenrollment','source_import','synthetic_fixture')`),
+]);
+export const identityReenrollments = pgTable('identity_reenrollments', {
+  appUserId: text('app_user_id').primaryKey().references(() => users.id, { onDelete: 'restrict' }),
+  verifiedSourceEmail: text('verified_source_email').notNull().unique(),
+  sourceProviderUserId: text('source_provider_user_id'),
+  importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 // Legal Entities
@@ -1754,5 +1778,4 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
     name: 'field_service_status_history_changed_by_user_fk'
   })
 ]);
-
 

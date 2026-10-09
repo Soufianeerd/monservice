@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db/server';
 import { users, userRoles, organizations, clients, contacts, deals, products, invoices, invoiceLines, tasks, messages, requests } from '@/lib/db/schema';
-import { and, eq, or, inArray, isNull } from 'drizzle-orm';
+import { and, eq, or, inArray, isNull, sql } from 'drizzle-orm';
 import type { SessionContext } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
 import { RBACService } from './rbac.service';
@@ -54,11 +54,7 @@ export const accountPrivacyService = {
       const [subject]=await tx.select().from(users).where(eq(users.id,ctx.userId)).limit(1).for('update');
       if (!subject || subject.accountClosedAt) throw new AppError('Compte indisponible',401);
       if (!ctx.email || confirmationEmail.trim().toLowerCase() !== ctx.email.toLowerCase()) throw new AppError('Adresse de confirmation incorrecte',400);
-      // Preserve IDs/tenant/profile and every organization-owned or retained record.
-      await tx.update(users).set({
-        accountClosedAt:new Date(),name:'Compte fermé',email:`closed-${subject.id}@account.invalid`,password:null,updatedAt:new Date().toISOString(),
-      }).where(eq(users.id,ctx.userId));
-      await tx.delete(userRoles).where(eq(userRoles.userId,ctx.userId));
+      await tx.execute(sql`select public.close_current_account(${confirmationEmail})`);
       return { success:true };
     });
   },

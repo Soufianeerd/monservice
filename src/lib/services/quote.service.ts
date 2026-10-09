@@ -562,6 +562,12 @@ export const quoteService = {
         orgOwner = pro;
       }
 
+      if (!orgOwner) {
+        const entitlement = await tx.execute(sql`select * from public.quote_issuer_entitlement(${quoteId})`);
+        orgOwner = entitlement[0] as unknown as typeof orgOwner;
+      }
+      if (!orgOwner) throw new AppError('Autorité de signature indisponible', 403, 'FEATURE_NOT_ALLOWED');
+
       if (orgOwner) {
         const plan = getEffectivePlan(orgOwner.subscriptionTier, orgOwner.subscriptionStatus);
         if (!plan.features.electronicSignature) {
@@ -587,10 +593,7 @@ export const quoteService = {
 
       // Si rattaché à un Deal commercial, on le passe à 'won'
       if (quote.dealId) {
-        await tx
-          .update(deals)
-          .set({ status: 'won', updatedAt: now })
-          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, quote.organizationId)));
+        await tx.execute(sql`select public.sync_current_quote_deal(${quoteId})`);
       }
 
       console.info('[audit] quote.accepted', {
@@ -640,10 +643,7 @@ export const quoteService = {
         .where(eq(invoices.id, quoteId));
 
       if (quote.dealId) {
-        await tx
-          .update(deals)
-          .set({ status: 'lost', updatedAt: now })
-          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, quote.organizationId)));
+        await tx.execute(sql`select public.sync_current_quote_deal(${quoteId})`);
       }
 
       return (await this.getQuoteById(quoteId, quote.organizationId, tx))!;

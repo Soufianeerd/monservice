@@ -13,12 +13,11 @@ export const metadata: Metadata = {
 export default async function SecurityPage() {
   const session = await requireSession();
   
-  const isEnabled = false; // MFA state is now managed by Supabase Auth
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">Sécurité et Accès</h1>
-      <MFASettings user={{ mfaEnabled: isEnabled }} />
+      <p>L’authentification à deux facteurs n’est pas encore disponible. Aucun second facteur n’est activé sur ce compte.</p>
     </div>
   );
 }

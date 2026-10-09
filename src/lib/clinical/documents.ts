@@ -17,7 +17,7 @@ export function isValidDocumentCategory(category: string): category is ClinicalD
 }
 
 /**
- * Sanitise un nom de fichier pour un stockage sécurisé dans l'arborescence Supabase Storage.
+ * Sanitise un nom de fichier pour un stockage sécurisé dans l'arborescence stockage privé.
  * Supprime les caractères de contrôle, path traversal (../), accents, et restreint aux caractères sûrs en minuscules.
  */
 export function sanitizeFileName(fileName: string): string {

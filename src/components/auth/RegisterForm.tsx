@@ -182,7 +182,7 @@ export default function RegisterForm() {
     if (result.requiresEmailConfirmation) {
       setIsSubmitting(false);
       toast.success('Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse.');
-      router.push('/login');
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       return;
     }
 

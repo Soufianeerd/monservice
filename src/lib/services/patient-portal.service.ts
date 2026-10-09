@@ -646,14 +646,11 @@ export class PatientPortalService {
       );
     }
 
-    const [updated] = await db
-      .update(patientQuestionnaireAssignments)
-      .set({
-        answersJson: answers,
-        updatedAt: new Date(),
-      })
-      .where(eq(patientQuestionnaireAssignments.id, assignmentId))
-      .returning();
+    const rows = await db.execute(sql`select * from public.write_current_questionnaire(${assignmentId}, ${JSON.stringify(answers)}::jsonb, false)`);
+    const updated = {
+      ...existing, answersJson: answers, updatedAt: new Date(),
+    };
+    if (!rows[0]) throw new AppError('Questionnaire indisponible', 403);
 
     return this.mapQuestionnaireToDTO(updated);
   }
@@ -717,42 +714,12 @@ export class PatientPortalService {
       }
     }
 
-    const now = new Date();
-    const clinicalResponseId = randomUUID();
-
-    // Transactional creation of clinical response and assignment transition
-    const updatedAssignment = await db.transaction(async (tx) => {
-      // 1. Insert clinical form response under practitioner authority
-      await tx.insert(clinicalFormResponses).values({
-        id: clinicalResponseId,
-        organizationId: assignment.organizationId,
-        patientId: assignment.patientId,
-        practitionerId: assignment.practitionerId,
-        templateId: assignment.templateId,
-        careEpisodeId: assignment.careEpisodeId,
-        encounterId: null,
-        status: 'draft',
-        answersJson: answers,
-        finalizedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // 2. Mark assignment as submitted
-      const [res] = await tx
-        .update(patientQuestionnaireAssignments)
-        .set({
-          status: 'submitted',
-          answersJson: answers,
-          submittedAt: now,
-          clinicalResponseId,
-          updatedAt: now,
-        })
-        .where(eq(patientQuestionnaireAssignments.id, assignment.id))
-        .returning();
-
-      return res;
-    });
+    const rows = await db.execute(sql`select * from public.write_current_questionnaire(${assignmentId}, ${JSON.stringify(answers)}::jsonb, true)`);
+    const result = rows[0];
+    if (!result) throw new AppError('Questionnaire indisponible', 403);
+    const updatedAssignment = { ...assignment, status: 'submitted', answersJson: answers,
+      submittedAt: new Date(result.submitted_at as string), clinicalResponseId: result.clinical_response_id as string,
+      updatedAt: new Date(result.updated_at as string) };
 
     return this.mapQuestionnaireToDTO(
       updatedAssignment,

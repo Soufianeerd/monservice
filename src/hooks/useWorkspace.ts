@@ -12,7 +12,7 @@ import { WorkspaceConfig } from '@/lib/workspaces/types';
  * IL NE DOIT JAMAIS ÊTRE UTILISÉ POUR CONTRÔLER L'ACCÈS AUX DONNÉES.
  * Les vérifications d'autorisation, RLS, et RBAC doivent se faire
  * de manière stricte via `requireSession`, `requireProfessional`
- * et par des politiques Supabase backend.
+ * et par des politiques RLS PostgreSQL.
  * Masquer une entrée de la sidebar ne signifie pas l'interdire.
  * 
  * @returns {WorkspaceConfig | null} La configuration Workspace résolue ou null

@@ -1,3 +1,4 @@
+import { withWorkerDatabase } from '@/lib/db/worker-context';
 import { NextResponse } from 'next/server';
 import { reminderService } from '@/lib/services/reminder.service';
 import { getSessionContext } from '@/lib/auth/session';
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     const isCron = Boolean(cronSecret && cronSecret.length > 0) && providedSecret === cronSecret;
 
     if (isCron) {
-      const result = await reminderService.checkAndSendRemindersForAllOrganizations();
+      const result = await withWorkerDatabase({ kind: 'reminders' }, () => reminderService.checkAndSendRemindersForAllOrganizations());
       return NextResponse.json({ success: true, count: result.sent });
     }
 

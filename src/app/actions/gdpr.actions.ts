@@ -1,7 +1,7 @@
 'use server';
 import { requireSession } from '@/lib/auth/session';
 import { accountPrivacyService } from '@/lib/services/account-privacy.service';
-import { createClient } from '@/utils/supabase/server';
+import { auth } from '@/lib/auth/server';
 import { AppError } from '@/lib/errors';
 
 function jsonExport(scope: string, payload: unknown) {
@@ -30,7 +30,7 @@ export async function deleteMyAccountAction(confirmationEmail:string): Promise<{
     console.info('[audit] privacy.account_closed',{ userId:ctx.userId });
     // Closure is already enforced by server session resolution and restrictive RLS.
     // Cookie/session revocation failure must not report a committed closure as failed.
-    try { const supabase=await createClient(); await supabase.auth.signOut({scope:'global'}); }
+    try { await auth.signOut(); }
     catch { console.warn('[privacy] signout unavailable after account closure',{ userId:ctx.userId }); }
     return result;
   } catch(error) {

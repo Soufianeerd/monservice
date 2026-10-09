@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Source d'identité unique : le socle `lib/auth/session`. Ne jamais
   // introduire de second système d'authentification en parallèle : c'est la
-  // coexistence NextAuth / Supabase qui provoquait une boucle de redirection
+  // coexistence anciens systèmes Auth qui provoquait une boucle de redirection
   // et rendait l'application inutilisable (anomalie MS-008).
   const ctx = await getSessionContext();
 

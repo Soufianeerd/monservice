@@ -32,7 +32,7 @@ export async function getBillingAuthority(
       eq(clients.id, resource.clientId),
       eq(clients.organizationId, resource.organizationId),
       eq(clients.userId, userId),
-    )).limit(1).for('share');
+    )).limit(1);
   return linkedClient ? 'recipient' : null;
 }
 

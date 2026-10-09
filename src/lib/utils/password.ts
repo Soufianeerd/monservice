@@ -1,11 +1,11 @@
 /**
- * @deprecated Depuis la migration vers Supabase Auth, les mots de passe sont
- * gérés exclusivement par Supabase (`auth.users.encrypted_password`).
+ * @deprecated Depuis la migration vers Neon Auth, les mots de passe sont
+ * gérés exclusivement par le fournisseur Neon Auth.
  *
  * Ces fonctions ne sont plus utilisées par l'application. Elles sont
  * conservées uniquement pour la migration des comptes historiques (les
  * hachages bcrypt `$2b$` existants sont directement importables dans
- * Supabase — voir `drizzle/postgres/0002_supabase_auth_migration.sql`).
+ * Neon Auth).
  *
  * Ne pas réintroduire de vérification de mot de passe côté application.
  */

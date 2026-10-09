@@ -1,24 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { authClient } from '@/lib/auth/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     
-    const supabase = createClient();
-    // IMPORTANT : L'URL de callback doit être ajoutée dans Supabase Dashboard (URL Configuration)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
+    const { error } = await authClient.requestPasswordReset({
+      email: email.trim().toLowerCase(),
+      redirectTo: `${window.location.origin}/reset-password`,
     });
 
     setLoading(false);
