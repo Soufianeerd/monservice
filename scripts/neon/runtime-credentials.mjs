@@ -5,18 +5,23 @@ import crypto from 'node:crypto';
 import dotenv from 'dotenv';
 import postgres from 'postgres';
 
-const environment = dotenv.parse(fs.readFileSync('.env.neon-admin.local'));
+const environment = dotenv.parse(fs.readFileSync(process.env.NEON_ADMIN_ENV_FILE ?? '.env.neon-admin.local'));
 const sql = postgres(environment.DATABASE_URL_UNPOOLED, { max: 1 });
 try {
-  const password = crypto.randomBytes(36).toString('hex');
-  await sql.unsafe(`ALTER ROLE monservice_runtime PASSWORD '${password}'`);
-  const runtimeUrl = new URL(environment.DATABASE_URL);
-  runtimeUrl.username = 'monservice_runtime';
-  runtimeUrl.password = password;
-  const local = dotenv.parse(fs.readFileSync('.env.local'));
+  const local = dotenv.parse(fs.readFileSync(process.env.NEON_RUNTIME_ENV_FILE ?? '.env.local'));
   delete local.DATABASE_URL_UNPOOLED;
-  local.DATABASE_URL = runtimeUrl.toString();
-  fs.writeFileSync('.env.local', Object.entries(local).map(([key,value]) => `${key}=${JSON.stringify(value)}`).join('\n') + '\n', { mode: 0o600 });
+  for (const [role,key] of [['monservice_runtime','DATABASE_URL'],['monservice_stripe','NEON_STRIPE_DATABASE_URL'],['monservice_reminders','NEON_REMINDERS_DATABASE_URL']]) {
+    const existing = local[key] ? new URL(local[key]) : null;
+    if (existing?.username === role && process.env.NEON_ROTATE_RUNTIME_CREDENTIALS !== 'true') continue;
+    const password = crypto.randomBytes(36).toString('hex');
+    await sql.unsafe(`ALTER ROLE ${role} PASSWORD '${password}'`);
+    const url = new URL(environment.DATABASE_URL);
+    url.username = role;
+    url.password = password;
+    local[key] = url.toString();
+  }
+  const runtimeUrl = new URL(local.DATABASE_URL);
+  fs.writeFileSync(process.env.NEON_RUNTIME_ENV_FILE ?? '.env.local', Object.entries(local).map(([key,value]) => `${key}=${JSON.stringify(value)}`).join('\n') + '\n', { mode: 0o600 });
   const runtime = postgres(runtimeUrl.toString(), { max: 1 });
   try {
     const [role] = await runtime`select current_user as role,rolsuper,rolbypassrls,rolinherit from pg_roles where rolname=current_user`;

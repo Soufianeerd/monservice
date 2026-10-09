@@ -1,51 +1,27 @@
-name: E2E Regression
+name: Neon nightly regression
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *' # Every day at 2 AM
+    - cron: '0 2 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: monservice-neon-validation
+  cancel-in-progress: false
 jobs:
-  e2e-regression:
+  regression:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+      NEON_API_KEY: ${{ secrets.NEON_CI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          
+          cache: npm
+      - run: test -n "$NEON_API_KEY"
       - run: npm ci
-      
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-          
-      - name: Start Supabase Local (Without app seed)
-        run: supabase start
-        
-      - name: Export Real Local Supabase Keys to Env
-        run: |
-          supabase status -o env >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status -o env | grep API_URL | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(supabase status -o env | grep ANON_KEY | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o env | grep SERVICE_ROLE_KEY | cut -d '=' -f2 | tr -d '\"')" >> $GITHUB_ENV
-          
-      - name: Verify PostgreSQL is ready
-        run: |
-          pg_isready -d "$DATABASE_URL" -t 5
-          psql "$DATABASE_URL" -c "SELECT 1;"
-          
-      - name: Run Drizzle Migrations
-        run: npm run db:migrate
-        
-      - name: Local E2E Seed & Setup
-        run: npm run seed:local
-        
-      - run: npm run build
-      
-      - run: npx playwright install --with-deps
-      
-      - name: Full E2E Regression
-        run: npm run test:e2e
+      - run: npm install --global neon@8.0.7
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/neon/ci-branch.mjs
