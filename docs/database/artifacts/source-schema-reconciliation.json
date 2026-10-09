@@ -1,0 +1,297 @@
+{
+  "comparedAt": "2026-10-09T00:15:03.054Z",
+  "sourceProject": "leydfjctaxohovcmcgea",
+  "canonical": "closed migrations 0000–0023",
+  "columns": [
+    {
+      "object": "users.account_closed_at",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"timestamp with time zone\",\"timestamptz\",\"YES\",null]"
+    }
+  ],
+  "constraints": [],
+  "indexes": [],
+  "functions": [
+    {
+      "object": "enforce_invoice_invariants()",
+      "classification": "SOURCE_DEPLOYED_BUT_DRIFTED",
+      "source": "CREATE OR REPLACE FUNCTION public.enforce_invoice_invariants()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF current_setting('session_replication_role', true) = 'replica' THEN\n    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\n  END IF;\n\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.status NOT IN ('draft') THEN\n      RAISE EXCEPTION 'Cannot delete non-draft document (status: %)', OLD.status;\n    END IF;\n    RETURN OLD;\n  END IF;\n\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.status = 'accepted' AND NEW.status != 'accepted' THEN\n      RAISE EXCEPTION 'Cannot change status of an accepted quote';\n    END IF;\n\n    IF OLD.status = 'accepted' THEN\n      IF OLD.total_ht != NEW.total_ht OR\n         OLD.total_ttc != NEW.total_ttc OR\n         OLD.tax_amount != NEW.tax_amount OR\n         OLD.deposit_amount != NEW.deposit_amount OR\n         OLD.deposit_rate IS DISTINCT FROM NEW.deposit_rate OR\n         OLD.deposit_fixed_amount IS DISTINCT FROM NEW.deposit_fixed_amount OR\n         OLD.deposit_mode IS DISTINCT FROM NEW.deposit_mode OR\n         OLD.client_id != NEW.client_id OR\n         OLD.organization_id != NEW.organization_id OR\n         OLD.signature IS DISTINCT FROM NEW.signature THEN\n        RAISE EXCEPTION 'Cannot modify financial or signature fields of an accepted quote';\n      END IF;\n    END IF;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+      "canonical": "CREATE OR REPLACE FUNCTION public.enforce_invoice_invariants()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF current_setting('session_replication_role', true) = 'replica' THEN\n    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\n  END IF;\n\n  -- Prevent hard delete on non-draft or accepted quotes / paid invoices\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.status NOT IN ('draft') THEN\n      RAISE EXCEPTION 'Cannot delete non-draft document (status: %)', OLD.status;\n    END IF;\n    RETURN OLD;\n  END IF;\n\n  -- Protect accepted quote immutability\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.status = 'accepted' AND NEW.status != 'accepted' THEN\n      RAISE EXCEPTION 'Cannot change status of an accepted quote';\n    END IF;\n\n    IF OLD.status = 'accepted' THEN\n      IF OLD.total_ht != NEW.total_ht OR\n         OLD.total_ttc != NEW.total_ttc OR\n         OLD.tax_amount != NEW.tax_amount OR\n         OLD.deposit_amount != NEW.deposit_amount OR\n         OLD.deposit_rate IS DISTINCT FROM NEW.deposit_rate OR\n         OLD.deposit_fixed_amount IS DISTINCT FROM NEW.deposit_fixed_amount OR\n         OLD.deposit_mode IS DISTINCT FROM NEW.deposit_mode OR\n         OLD.client_id != NEW.client_id OR\n         OLD.organization_id != NEW.organization_id OR\n         OLD.signature IS DISTINCT FROM NEW.signature THEN\n        RAISE EXCEPTION 'Cannot modify financial or signature fields of an accepted quote';\n      END IF;\n    END IF;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    {
+      "object": "current_account_is_active()",
+      "classification": "REPO_ONLY",
+      "canonical": "CREATE OR REPLACE FUNCTION public.current_account_is_active()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$ SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid()::text AND account_closed_at IS NULL); $function$\n"
+    },
+    {
+      "object": "protect_account_lifecycle()",
+      "classification": "REPO_ONLY",
+      "canonical": "CREATE OR REPLACE FUNCTION public.protect_account_lifecycle()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog', 'public'\nAS $function$ BEGIN\n  IF current_user = 'authenticated' AND NEW.account_closed_at IS DISTINCT FROM OLD.account_closed_at THEN\n    RAISE EXCEPTION 'Account lifecycle is server owned' USING ERRCODE = '42501';\n  END IF;\n  RETURN NEW;\nEND $function$\n"
+    }
+  ],
+  "triggers": [
+    {
+      "object": "users.users_account_lifecycle_guard",
+      "classification": "REPO_ONLY",
+      "canonical": "CREATE TRIGGER users_account_lifecycle_guard BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION protect_account_lifecycle()"
+    }
+  ],
+  "policies": [
+    {
+      "object": "contacts.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "products.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "tasks.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "message_templates.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "requests.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "users.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clients.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "messages.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "organizations.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practice_locations.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practice_practitioners.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practitioner_locations.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practice_rooms.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practice_resources.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_profiles.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_representatives.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_representative_links.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "appointment_types.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practitioner_availability_rules.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "practitioner_availability_exceptions.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "appointments.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "appointment_waitlist_entries.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "care_episodes.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_encounters.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_notes.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_form_templates.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_form_responses.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_measurements.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "clinical_documents.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_portal_access.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_questionnaire_assignments.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "patient_billing_links.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "field_service_work_orders.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "field_service_sites.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "field_service_work_order_assignments.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "field_service_work_reports.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "field_service_work_order_status_history.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "deals.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "invoice_lines.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "invoices.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "billing_document_sequences.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    },
+    {
+      "object": "invoice_sections.account_active_required",
+      "classification": "REPO_ONLY",
+      "canonical": "[\"ALL\",\"RESTRICTIVE\",[\"authenticated\"],\"current_account_is_active()\",\"current_account_is_active()\"]"
+    }
+  ],
+  "ledger": {
+    "exactMatches": 21,
+    "repoOnly": [
+      {
+        "name": "0018_deep_white_tiger.sql",
+        "hash": "0774a694192cb61a4859bc101afedcee500e7487d34430f772964e53daf0c5dc"
+      },
+      {
+        "name": "0021_field_service_estimates_quotes.sql",
+        "hash": "6853ff5e89e288126aa9d1638cf5b1a24a2bd3098154014f22c413760f465e76"
+      },
+      {
+        "name": "0023_account_lifecycle.sql",
+        "hash": "e8cf3c58d8f4dad986690864f8aa07896ba347d81656d334d77dc0bb4660e28b"
+      }
+    ],
+    "sourceUnmatched": [
+      {
+        "id": 19,
+        "hash": "a86cd5b58c198ac6845b3b5a6ac3f0dd02df7903883d2af0728316de4fe0ff66",
+        "created_at": "1789417918707"
+      },
+      {
+        "id": 20,
+        "hash": "c69609c84b39079473b30c62a7165dac4003f23b6c530192767a1139e51d30fb",
+        "created_at": "1789718400000"
+      },
+      {
+        "id": 22,
+        "hash": "4a98f31b4bb341d55f9ef51ff79c2e57863fe4f162c4dd01064e39ce40650fff",
+        "created_at": "1790120371153"
+      },
+      {
+        "id": 24,
+        "hash": "954c9b8e62597f9c86ac05c217b44833273ace1a563837c321aaeb3a9fd103ce",
+        "created_at": "1790465172668"
+      }
+    ]
+  },
+  "decisions": {
+    "structure": "Canonical replay replaces source drift; no business rows depend on altered constraints because all tables except users are empty.",
+    "authTrigger": "Supabase auth.users trigger is replaced by explicit Neon provisioning.",
+    "identity": "Provider binding changes are explicit in versioned Neon SQL.",
+    "closedAccount": "Gate 1 migration 0023 is repo-only and mandatory on Neon.",
+    "orphanOrganizations": "Five source profiles reference absent organizations; retain references in import, recover only through verified self-service provisioning."
+  }
+}
