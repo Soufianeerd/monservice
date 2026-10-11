@@ -1,0 +1,323 @@
+{
+  "completedAt": "2026-10-11T00:03:29.130Z",
+  "source": "leydfjctaxohovcmcgea",
+  "target": "misty-field-54835523",
+  "branch": "br-little-surf-b1l5wgni",
+  "region": "aws-eu-central-1",
+  "counts": [
+    {
+      "table": "appointment_reminder_deliveries",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "appointment_types",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "appointment_waitlist_entries",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "appointments",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "archived_documents",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "audit_logs",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "billing_document_sequences",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "breach_notifications",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "care_episodes",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clients",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_documents",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_encounters",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_form_responses",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_form_templates",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_measurements",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "clinical_notes",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "consent_events",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "contacts",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "country_compliance_profiles",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "data_subject_requests",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "deals",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "field_service_sites",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "field_service_work_order_assignments",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "field_service_work_order_status_history",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "field_service_work_orders",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "field_service_work_reports",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "invoice_lines",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "invoice_sections",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "invoices",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "legal_entities",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "message_templates",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "messages",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "organizations",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_billing_links",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_portal_access",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_profiles",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_questionnaire_assignments",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_representative_links",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "patient_representatives",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "permissions",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practice_locations",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practice_practitioners",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practice_resources",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practice_rooms",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practitioner_availability_exceptions",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practitioner_availability_rules",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "practitioner_locations",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "processing_activities",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "products",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "requests",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "retention_policies",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "role_permissions",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "roles",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "stripe_events",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "tasks",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "user_roles",
+      "source": 0,
+      "target": 0
+    },
+    {
+      "table": "users",
+      "source": 5,
+      "target": 5
+    }
+  ],
+  "authUsers": 16,
+  "sourceBindings": 5,
+  "verifiedReenrollmentsPending": 5,
+  "storage": {
+    "objects": 0,
+    "bytes": 0,
+    "copyRequired": false
+  },
+  "sourceUnchangedVerifiedAt": "2026-10-11T00:02:43.330Z",
+  "orphanOrganizationReferences": 5,
+  "monetaryAndSequences": "No billing, sequence, audit or clinical rows in source; all corresponding target counts remain zero",
+  "backup": [
+    {
+      "name": "source-public.dump",
+      "sha256": "6b1bc2a7c3678fff44b05cd256a6786fc1d9b516e2496b4bff33e7e3167baf43"
+    },
+    {
+      "name": "source-inventory.json",
+      "sha256": "ead803437a6b4d9b8a6439eae41af9598f480902b53974bbdf4fd53d88694e6d"
+    },
+    {
+      "name": "source-identities.json",
+      "sha256": "20dd4b2322865a30c13e966fc1355f602bfc25b7da066d583a24f11d6fcc7b63"
+    },
+    {
+      "name": "source-app-users.json",
+      "sha256": "eef8419aa54874ab88b9dfd3dd7484e6574b642fae64b231a6851adc556ee1b7"
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Production Schema Reconciliation & Audit (READ-ONLY)
 
+> Archive de l'audit Supabase antérieur. Ce document ne définit plus les étapes
+> de production. Voir [le rapport Neon](../database/neon-migration.md) et
+> [le runbook actuel](PRODUCTION_DEPLOYMENT_RUNBOOK.md). Les migrations historiques
+> restent fermées ; aucune ne doit être appliquée à la source pour cette mission.
+
 ## 1. Contexte & Périmètre
 
 Cet audit compare l'état attendu défini par le dépôt de code (`drizzle/postgres/0000` à `0022_marketplace_request_location.sql` et `src/lib/db/schema.ts`) avec l'état effectif de la base PostgreSQL Supabase.
