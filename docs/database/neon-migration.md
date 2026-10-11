@@ -1,94 +1,349 @@
-# Supabase → Neon migration
+# MonService — rapport final Supabase → Neon
 
-Status: implementation and validation in progress. No production cutover authorized or performed.
+État au 11 octobre 2026 : **migration technique validée et backend Neon production
+préparé avec les données autorisées**. Aucune bascule du site public, aucun push,
+aucun merge `main`, aucune mutation ou suppression Supabase. Session 19 reste hors périmètre.
 
-## Git and scope
+## Git
 
-`migration/neon-full` starts at `ddc2408` on `security/core-p0-hardening` and preserves
-`50788be`, `7feaf33`, `ddc2408`. Source project `leydfjctaxohovcmcgea` is read-only.
-No public deployment, remote Git push, or source mutation is part of validation.
-Security tests target the isolated Neon branch and synthetic fixtures only.
+Dépôt canonique : `https://github.com/Soufianeerd/monservice.git`.
+Branche locale : `migration/neon-full`, issue de `security/core-p0-hardening`
+au commit `ddc2408e840fc974343b45d88725cfa627fd0a09`.
+Baseline `origin/main` : `3b62b4759ff64e18d0354cd0d3be4e510d1c72cf`.
+Les trois commits Gate 1 sont toujours des ancêtres, sans réécriture :
+`50788be3ff3ccba3a0ba57a080af4fe01185b253`,
+`7feaf3334da2ed8f6cfcf18f5ebabb348b8a255d`, `ddc2408e840fc974343b45d88725cfa627fd0a09`.
 
-## Verified infrastructure
+| Commit d'implémentation/replay | Changement |
+|---|---|
+| `c3e382f` | chore(neon): provision EU validation and version canonical migration baseline |
+| `c69515c` | chore(deps): secure Next 16 and remove obsolete Supabase packages |
+| `edecae7` | feat(neon): migrate verified auth, restricted RLS and private storage runtime |
+| `5eaef68` | test(neon): port multi-workspace regression and verify auth, pooling and storage boundaries |
+| `800d2e9` | chore(ci): replay Neon validation on disposable synthetic branches |
+| `6b2adf3` | chore(migration): add read-only source reconciliation and guarded EU import tooling |
+| `d8e242d` | fix(neon): isolate compliance records and verify imported account recovery |
+| `0e64e99` | chore(ci): retain sanitized evidence after successful branch cleanup |
+| `292a3b9` | chore(migration): guard imports with read-only source and identity reconciliation |
+| `5aaac29` | chore(deployment): guard deterministic EU production replay with complete CI evidence |
+| `5279c39` | chore(production): record verified Frankfurt replay, source import and cutover runbook |
 
-- Canonical EU project: `misty-field-54835523` / `Monservice-Europe`, AWS Frankfurt
-  (`aws-eu-central-1`), PostgreSQL 18.
-- Empty production: `br-little-surf-b1l5wgni` / `production`.
-- Validation: `br-jolly-flower-b1ptunij` / `migration-validation`.
-- Ohio `snowy-heart-26768144` is preserved and unused for imports.
-- Neon CLI 8.0.7 authenticated; project-scoped MCP and five relevant skills installed.
-- Official CLI generated `neon.ts`; plan reviewed before apply. Managed Better Auth
-  and private `clinical-documents` / `einvoices` exist only on validation so far.
-- Validation Auth allows localhost, email/password signup and login; shared SMTP
-  verification method OTP; verification and signup/signin emails disabled for fixtures.
+Le commit final ajoute ce rapport et les derniers artefacts de préflight. Son SHA
+exact figure dans le manifeste privé du paquet de déploiement et dans le résumé
+final. Aucun commit de cette migration n'a été poussé.
 
-## Source inventory and rollback assets
+## Source Supabase
 
-Observed PostgreSQL 17.6, database 18,574,483 bytes, 57 business tables. Five
-application users; every other business table empty. Sixteen Auth accounts,
-eleven email identities, no MFA factors. One private clinical bucket, zero objects.
-No clinical data is present in this snapshot. The CLI account lists other projects;
-the secured database connection explicitly identifies the required project and
-successfully reads its catalogs. No other Supabase project was used.
+Source exclusivement utilisée : `leydfjctaxohovcmcgea`, PostgreSQL 17.6,
+18 574 483 octets au snapshot. Cinquante-sept tables `public`, cinq lignes dans
+`users`, zéro ligne dans chacune des 56 autres tables métier. Seize comptes Auth,
+onze identités de provider `email`, aucun OAuth observé, aucun facteur MFA.
+Les seize adresses source étaient confirmées. Les cinq profils métier correspondent
+à cinq comptes Auth source. Aucun mot de passe applicatif n'est présent.
+Un bucket privé `clinical-documents`, zéro objet et zéro octet.
 
-The canonical snapshot has the same business tables/columns except
-`users.account_closed_at`, which is repo-only (Gate 1 migration 0023). Source has
-25 Drizzle migration records; these are inventoried rather than blindly replayed.
-Full constraints/functions/policies/indexes/triggers and source migration hashes
-are retained in the private inventory for further reconciliation.
+L'inventaire privé contient schémas, colonnes, contraintes, indexes, fonctions,
+triggers, policies, rôles, extensions et ledger. Le catalogue source compte
+219 indexes, 278 contraintes, 18 triggers publics non internes, 61 policies publiques
+et 213 fonctions publiques, dont des fonctions d'extension. Voir
+[le résumé de catalogue](artifacts/catalog-summary.json).
 
-Private assets: `~/.local/share/monservice-migration/2026-10-09/`, directory 0700,
-files 0600. Contains source environment, `source-public.dump` (329,532 bytes),
-catalog inventory, minimum Auth re-enrollment records and app-user records.
-Passwords/sessions are never used for provider transfer. The source remains the
-primary rollback system; no source rows or objects have been changed/deleted.
+Le CLI Supabase connecté ne possède pas le bon projet ; la connexion DB sécurisée
+identifie explicitement le project ref demandé et a permis toutes les lectures.
+Aucun autre projet n'a servi de source. Toutes les transactions de vérification
+source sont `REPEATABLE READ READ ONLY`.
 
-## Identity and RLS architecture
+## Cible Neon et décision de région
 
-Stable `public.users.id` retains every business reference. `user_identities` binds
-provider IDs to it. Existing accounts use a server-owned re-enrollment allowlist;
-linking requires the actual Neon provider account's verified email. No browser
-email or requested application ID determines linking.
+| Élément | Valeur |
+|---|---|
+| Projet canonique | `Monservice-Europe` / `misty-field-54835523` |
+| Région | `aws-eu-central-1`, Frankfurt |
+| DB | `neondb`, PostgreSQL 18 |
+| Production | `br-little-surf-b1l5wgni` |
+| Validation synthétique | `br-jolly-flower-b1ptunij` |
+| Modèle CI vide | `br-icy-morning-b1317ev6` |
+| CLI | Neon 8.0.7, config officielle générée puis planifiée/appliquée |
 
-Verified Neon session → provider ID → `SET LOCAL monservice.provider_user_id`
-inside a transaction → stored app identity/tenant/profile → restricted runtime
-login → RLS. The runtime login is `NOINHERIT`, `NOBYPASSRLS`, nonsuperuser and owns
-zero business tables (verified on Neon). Migration owner credentials are isolated
-in an ignored admin environment. Pool reuse cannot retain transaction-local GUCs.
+Le projet Ohio `snowy-heart-26768144` reste intact et inutilisé pour les données
+réelles. Le choix européen a été réalisé avant import. Le dépôt est désormais
+lié à production via `neon link --no-env-pull --no-config` ; `.env.local` reste
+explicitement sur validation. MCP et cinq skills Neon ont été installés.
+Les skills pertinents du Hub ont été réellement routés et consultés ; le dépôt
+MonService a conservé l'autorité sur le produit.
 
-`drizzle/neon` is a new explicit baseline. Historical `drizzle/postgres` files are
-unchanged. Structure is compiled from canonical migrations on disposable PG,
-never copied blindly from source drift. Business FK/composite FK/CHECK/index,
-scheduling exclusions and 19 triggers are retained. Provider-specific Auth trigger
-and Storage catalog are omitted. Identity-bearing helper functions have explicit
-reviewed bindings; canonical policy predicates are versioned individually.
-Additive policies/guards cover client billing, professional mutations, closed
-accounts, portal access and RBAC. Further capability validation remains mandatory.
+La capacité observée suffit à cette source : limite logique de branche 1 GiB,
+source environ 18,6 MB, seize comptes, Storage vide. Rétention observée de six heures.
+Aucune troncature ni montée de plan payante. Les besoins de rétention longue et de
+trafic soutenu nécessitent un budget adapté. Voir [le relevé](artifacts/capacity-report.json)
+et [les plans officiels](https://neon.com/docs/introduction/plans).
 
-## Storage and application boundaries
+## Migration PostgreSQL et différences
 
-Private S3 transport uses branch credentials and path-style addressing. Every
-domain adapter verifies active session and domain resource before upload/presign.
-E-invoice paths include organization, document ID and a random version component;
-uploads disallow overwriting. Clinical downloads require RLS-visible metadata.
-Presigned GET lifetime is at most 60 seconds. Already-issued URLs remain usable
-until expiry; account closure prevents new URLs but does not revoke old S3 URLs.
+Quatorze migrations nouvelles, `drizzle/neon/0000` à `0013`, replayées intégralement
+sur validation, CI puis production. Les migrations historiques Supabase restent
+inchangées. Le checksum ledger refuse toute édition d'une migration appliquée.
+Le schéma Drizzle et la DB réelle concordent sur **59/59 tables** : 57 tables
+canoniques et deux tables de mapping/ré-enrôlement.
 
-Neon SDK manages the Next 16 Auth proxy and cookies. Session helpers remain the
-application boundary. Managed MFA is unsupported; the previous misleading setup
-UI is removed. Stripe/Resend remain external and require separate narrow server
-capabilities where they mutate business data without a browser session.
+La baseline a été compilée depuis les migrations fermées canoniques 0000–0023
+sur un PostgreSQL jetable. Les relations composites, contraintes CHECK/uniques,
+exclusions de scheduling, indexes, allocator de numérotation, protections des
+documents et historique métier ont été préservés. Le trigger Auth Supabase,
+les rôles Supabase et les dépendances `storage.*` sont remplacés explicitement.
+Drizzle et les Server Actions restent le chemin métier ; aucune Data API parallèle.
 
-## Pending acceptance criteria
+Différences source/repo inventoriées : `users.account_closed_at`, son trigger et
+42 gardes de compte fermé sont repo-only ; une définition de
+`enforce_invoice_invariants` diffère textuellement ; contraintes et indexes
+canoniques n'ont aucune différence. Ledger source : 25 enregistrements contre
+24 fichiers historiques, 21 checksums exacts concordants. Fichiers repo non
+concordants 0018/0021/0023 et entrées source 19/20/22/24 sont documentés dans
+[la réconciliation](artifacts/source-schema-reconciliation.json).
+La baseline canonique a été retenue, avec zéro document financier source affecté.
 
-Auth/browser verification, all canonical RLS/DB/security/regression tests,
-production build, full authenticated Playwright, storage expiry/isolation,
-capacity check, five-user reconciliation/re-enrollment, isolated-branch CI,
-deterministic production replay and deployment/rollback preflight are pending.
-No GO status is claimed until these pass. Real clinical production data requires
-demonstrated HDS coverage if introduced later.
+Production observée : **223 indexes, 68 triggers publics non internes,
+204 policies et 252 fonctions publiques**. Les fonctions d'extension sont incluses
+dans ce dernier chiffre. Les gardes supplémentaires expliquent les triggers/policies
+ajoutés. Les **722 contraintes** incluent 436 contraintes NOT NULL désormais
+représentées dans le catalogue PostgreSQL 18, 131 FK, 88 CHECK, 58 PK, 6 uniques
+et 3 exclusions. Aucune contrainte non validée. `btree_gist` 1.8 est présent ;
+`plpgsql` et le UUID natif PostgreSQL suffisent aux autres besoins utilisés.
+Les extensions Supabase non utilisées ne sont pas copiées aveuglément.
 
-Official contracts verified: [Neon CLI](https://neon.com/docs/cli),
-[Next.js Auth SDK](https://neon.com/docs/auth/quick-start/nextjs-api-only),
-[Supabase Auth migration](https://neon.com/docs/auth/migrate/from-supabase),
-[Neon config](https://neon.com/docs/cli/config).
+## Données et rapprochement
+
+**57/57 tables : count source = count target**. `users` : 5 → 5 ; chaque autre
+ table métier : 0 → 0. Chaque champ source des cinq lignes a été comparé exactement,
+y compris ID, email, profil, ancien organization ID, abonnement, statut,
+onboarding et timestamps. `account_closed_at` est ajouté avec valeur NULL.
+Zéro donnée clinique, audit, financière ou séquence métier à transférer ; leurs
+comptages restent zéro. Aucun total monétaire ni compteur n'a été fabriqué.
+
+Les cinq profils source référencent des organisations absentes de la source.
+Les anciens IDs sont conservés lors de l'import. Après vérification et choix
+explicite, un professionnel importé peut créer uniquement son propre nouvel
+espace privé. Aucun espace fantôme partagé ni droit professionnel n'est inventé
+pour les deux clients. Le parcours client reste un compte client ; un rattachement
+réel nécessite la procédure métier autorisée.
+
+L'import est transactionnel pour les profils et bindings, contrôlé et reprenable
+pour Auth. Il refuse une source avec nouvelles tables/lignes métier ou objets
+Storage sans réévaluation du périmètre et du HDS. Voir
+[les 57 comptes et hashes de sauvegarde](artifacts/production-import-report.json).
+La source a été revérifiée après import : [preuve d'intégrité](artifacts/source-unchanged-report.json).
+
+## Identité et comptes existants
+
+`public.users.id` est l'identifiant métier stable. `user_identities` sépare provider
+et application. État initial de production : **5 bindings source Supabase,
+5 allowlists de ré-enrôlement, 0 binding Neon revendiqué**. Les seize comptes
+Neon sont précréés par l'API de gestion officielle, sans mot de passe transféré,
+sans session transférée et avec email non vérifié.
+
+Le compte Neon doit vérifier son email auprès du provider ; seule cette preuve
+réelle permet de revendiquer le binding autorisé. Aucun email/ID fourni par le
+navigateur ne suffit. Les cinq mappings Neon seront créés lors du ré-enrôlement
+réel, sans réécrire les relations métier. Les onze comptes source sans profil
+applicatif suivent un onboarding sans récupération de privilèges inexistants.
+
+Le test réservé reproduit une création par l'API de gestion, l'absence de mot de
+passe, le refus du linking non vérifié, OTP réel, récupération de l'ancien ID/profil,
+nouveau workspace propre, reset réel et connexion avec le nouveau mot de passe.
+Aucune connexion aux comptes réels n'a été effectuée à leur place.
+
+## Auth et boundary Next.js
+
+Neon Managed Better Auth remplace l'intégration Auth Supabase. SDK Next officiel,
+route `/api/auth/[...path]`, `src/proxy.ts`, cookies serveur signés et client SDK
+sur `/api/auth`. Guides Next 16 installés consultés avant modification.
+`requireSession`, `requireProfessional`, contextes paramédicaux et Field Service
+restent les abstractions applicatives.
+
+Signup, login positif/négatif, logout, sessions, OTP, callbacks sûrs, provisionnement,
+reset avec vrai token, refus du replay et refus de l'ancien mot de passe sont
+validés sur une cible synthétique. Le test OTP utilise une adresse réservée et
+le hash de verification de ce seul fixture via le owner de test pour récupérer
+le code ; il n'a pas simulé le flag `emailVerified`. **La réception dans une vraie
+boîte email n'est pas certifiée.** Le runtime ne dispose pas de cette capacité owner.
+
+Production exige la vérification email, utilise OTP et refuse localhost. Les origines
+et callbacks publics exacts, SMTP MonService et preuve de livraison restent à
+configurer avec le domaine/hébergeur. MFA n'est pas proposé par cette intégration ;
+l'ancienne UI trompeuse a été retirée, aucun faux MFA conservé.
+
+## RLS et connexions
+
+Session Neon vérifiée → provider ID → mapping applicatif stocké → transaction DB
+→ `SET LOCAL` → tenant/profil stockés → rôle restreint → policies RLS.
+Aucun tenant/profil arbitraire n'est pris du navigateur. La session signée mise en
+cache par le SDK est en outre confrontée à la session Managed Auth exacte et active
+via une fonction SQL minimale : un logout réel invalide immédiatement les requêtes.
+
+**59/59 tables publiques sous RLS.** Rôles `monservice_runtime`,
+`monservice_stripe`, `monservice_reminders` : NOSUPERUSER, NOBYPASSRLS, NOINHERIT,
+zéro table possédée, aucun héritage `neon_superuser`. Owner et connexion unpooled
+restent dans un fichier admin privé. Les workers Stripe et rappels sont des
+capacités serveur séparées, installées seulement après signature webhook ou secret
+CRON vérifiés. Leur projection exclut les données cliniques inutiles.
+
+Tests : 198 RLS, 263 contraintes/intégration et 14 boundaries supplémentaires.
+Identités concurrentes/anon, pool réutilisé, rollback et savepoints ne partagent
+pas les settings. Comptes fermés, tenant étranger et utilisateurs sans relation
+sont refusés. Les quatre tables de conformité historiquement sans RLS ont été
+protégées par 0013, avec lectures personnelles/professionnelles et écritures de
+sujet contrôlées. Les tables de référence globales sont en lecture seule pour
+les comptes actifs ; les autres capacités restent default-deny selon leurs grants.
+
+## Storage
+
+Deux buckets production privés : `clinical-documents`, `einvoices`.
+Source : 0 objet / 0 octet ; cible : 0 objet / 0 octet. Aucune copie nécessaire,
+aucune suppression source. Les tests S3 réels valident bytes, refus d'écrasement
+et expiration ; les tests domaine couvrent acteur autorisé, même tenant sans
+relation, tenant étranger et compte fermé.
+
+Chaque URL est précédée de session, identité, tenant et autorisation de ressource.
+Paths e-invoice : organization + document ID + composant aléatoire. Upload sans
+upsert. Les documents cliniques exigent une ligne metadata autorisée et active.
+TTL signé de 1 à 60 secondes. Une URL déjà émise reste valable jusqu'à expiration ;
+fermer le compte empêche les nouvelles URLs, sans révoquer une ancienne URL S3.
+
+## Suppression du runtime Supabase
+
+`@supabase/supabase-js`, `@supabase/ssr`, anciens utilitaires et middleware supprimés.
+Aucun import SDK Supabase applicatif ni variable Supabase dans le runtime local.
+Le CSP ne permet plus les endpoints Supabase. La DB, Auth et Storage du produit
+utilisent Neon ; Stripe et Resend restent externes.
+
+Classification des occurrences restantes :
+
+| Occurrence | Classification |
+|---|---|
+| Exports privés et scripts de lecture source/reconciliation | MIGRATION_ONLY |
+| Migrations fermées, anciens rapports archivés | MIGRATION_ONLY / TEST_REFERENCE |
+| Provider `supabase` dans bindings hérités | MIGRATION_ONLY, donnée de provenance |
+| URLs fictives historiques dans mocks et assertions d'absence | TEST_REFERENCE |
+| `@supabase/auth-js` transitif dans le lockfile du SDK Neon | STILL_REQUIRED_TEMPORARILY par le SDK officiel ; aucun appel au backend Supabase |
+| Imports/config/env applicatifs Supabase | REMOVE, effectué |
+
+## CI et validations
+
+Une branche par run depuis **le modèle vide immuable**, jamais depuis production
+après import. Création → config Auth/Storage → 14 migrations → rôles → seed managed
+Auth + mapping + données synthétiques → contrôles DB → tests → build → Playwright
+→ suppression et suppression des fichiers privés. Expiration à 24 h en fallback.
+
+La clé CI est limitée au projet EU et installée dans `NEON_CI_API_KEY` sur GitHub ;
+accès à l'ancien projet Ohio refusé. Les workflows utilisent Node 22, Neon 8.0.7,
+un worker navigateur et une concurrence globale sérialisée. Le pipeline entier
+identique au workflow a été exécuté localement avec cette clé, puis nettoyé.
+**Les nouveaux workflows ne sont pas encore publiés ni exécutés sur GitHub** :
+aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-report.json).
+
+| Vérification complète, le 9 octobre | Résultat |
+|---|---|
+| Unitaires et conformité | 699/699, 81 fichiers |
+| Contraintes / intégration / Gate 1 | 263/263, 12 fichiers |
+| RLS | 198/198, 11 fichiers |
+| Auth / pool / workers / Storage / conformité complémentaires | 14/14, 3 fichiers |
+| Typecheck | PASS |
+| Lint | 0 erreur, 380 avertissements existants |
+| Build Next.js production | PASS |
+| Playwright sur build production | 23/23, 0 failed, 0 skipped, 4,6 minutes |
+| Branche CI et fichiers privés temporaires | Supprimés |
+
+Le 11 octobre : replay production et contrôles essentiels **read-only** réussis ;
+aucun test destructif ou seed sur production. [Preuve production](artifacts/production-validation-report.json).
+
+## Security Gate 1 et autres findings
+
+| Identifiant | Invariant vérifié sur Neon | État |
+|---|---|---|
+| MS-N01 | Accept/reject/sign réservés au destinataire autorisé | PASS |
+| MS-N02 | Lecture client limitée aux documents et projections autorisés | PASS |
+| MS-N03 | Mutation arbitraire de statut client interdite | PASS |
+| MS-N04 | Export organisation soumis à permission explicite | PASS |
+| MS-N05 | Fermeture personnelle préserve assets et références d'organisation | PASS |
+| MS-N06 | Profil, tenant et identités structurelles non mutables arbitrairement | PASS |
+
+Les 101 scénarios Gate 1 sont inclus dans les 263 tests d'intégration. Findings de
+migration également traités : RLS des tables de conformité, isolation des workers,
+validation de session vivante, linking/provisionnement vérifié, paths Storage sans
+collision et UI MFA retirée. Next a été mis à niveau de 16.2.11 à **16.4.0** dans
+un commit distinct ; packages/lockfile ont été audités et le produit retesté.
+
+Audit npm courant : **0 vulnérabilité runtime**, 28 dans la chaîne de développement
+(23 moderate, 5 high, 0 critical). Les high proviennent de la chaîne glob/ESLint Next ;
+les autres concernent notamment les outils de test/génération. Les suggestions
+`audit fix --force` rétrogradant ESLint Next 14 ou Drizzle Kit ne sont pas appliquées.
+[Préflight sécurité](artifacts/security-preflight-report.json).
+
+L'identifiant DB source codé en dur dans `scripts/audit-prod.ts` a été supprimé du
+code courant. L'historique Git est conservé conformément à la mission ; rotation
+source à organiser après bascule et identification des consommateurs. Aucun secret
+actuel détecté dans les fichiers suivis lors du préflight ; aucun dump/credential
+n'est commité. Aucun compte réel fermé, supprimé ou utilisé pour les tests.
+
+## Régression produit et E2E
+
+Generic/Core : Auth, onboarding, CRM clients/contacts/deals/products/tasks,
+devis/factures, paiements et permissions privacy couverts par unités, intégration
+et parcours navigateur. Paramédical : praticiens, patients/représentants,
+agenda/exclusions, épisodes/notes/documents, portail, questionnaires, facturation
+et messagerie validés avec des fixtures synthétiques. Field Service : site,
+lead/devis, acompte, work order, assignments, rapport finalisé et facture finale.
+
+Les **23 scénarios navigateur** préservent la couverture des 22 parcours historiques
+avec un parcours supplémentaire. Desktop et mobile réels Chromium, login client/pro,
+isolation tenant, marketplace/localisation, portail patient, praticien et workflow
+Field complet. Le quote-to-cash signe un vrai webhook de test traité par la route
+Stripe de production ; montant/idempotence et état DB sont vérifiés. Aucun paiement
+réel ni appel réseau Stripe simulant un paiement réel n'est exécuté. Les premiers
+runs échoués ont été diagnostiqués/corrigés ; seul le replay final complet vert
+sert de preuve d'acceptance, sans skip de setup ni assertion supprimée.
+
+## Sauvegarde et rollback
+
+Assets privés hors Git : `~/.local/share/monservice-migration/2026-10-09/`,
+dossier 0700, fichiers 0600. Dump public de 329 532 octets, inventaire complet,
+export minimal Auth sans hash/password/session et cinq profils. Quatre SHA-256
+figurent dans le rapport d'import. Supabase, ses comptes, données et bucket sont
+intacts ; une fenêtre de rollback et le delta éventuel après ouverture des écritures
+Neon doivent être gérés selon [le runbook](../deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md).
+
+## Conformité et blocages restants
+
+Aucune vraie donnée clinique/patient/document santé n'était présente dans la source ;
+l'import autorisé contient uniquement profils et identités générales. Le workspace
+paramédical fonctionne techniquement sur les données synthétiques. **HDS non démontré
+pour la chaîne complète : NO-GO pour introduire de vraies données de santé.**
+Aucun sous-ensemble clinique existant n'a été transféré ou retenu artificiellement.
+
+Seul le chantier de **bascule publique** reste bloqué : hébergeur/site inaccessible
+ou non identifié, URL canonique manquante, domaine MonService vérifié et SMTP Auth
+à fournir/configurer puis réception email à prouver. Deux domaines Resend vérifiés
+observés appartiennent à d'autres projets et n'ont pas été réutilisés. Les paramètres
+Stripe/Resend/scheduler réellement déployés doivent être préservés à la bascule.
+
+Le paquet de sources et le runtime restreint sont préparés localement dans
+`~/.local/share/monservice-migration/2026-10-09/deployment/`. Il contient archive de
+HEAD, manifeste SHA-256 et `runtime.env` privé ; aucun owner, secret CI ou export
+source. Aucun de ces fichiers privés n'est destiné au Git ou au rapport public.
+La confirmation de bascule est la dernière étape, après identification de ces
+paramètres et vérification d'un aperçu. Aucun push/merge/public deploy automatique.
+
+## GO / NO-GO
+
+| Périmètre | Verdict |
+|---|---|
+| Migration technique Neon : DB, Auth, Storage, RLS, Gate 1, seeds, CI, produit, build, E2E | **GO** |
+| Backend Neon production préparé et import autorisé rapproché | **GO** |
+| Runtime applicatif public Neon | **NO-GO tant que hébergeur/domaine/SMTP et approbation de bascule manquent** |
+| Production paramédicale avec vraies données de santé | **NO-GO — BLOCKED_PENDING_HDS** |
+
+Contrats officiels consultés : [CLI Neon](https://neon.com/docs/cli),
+[Auth Next.js](https://neon.com/docs/auth/quick-start/nextjs-api-only),
+[migration Auth Supabase](https://neon.com/docs/auth/migrate/from-supabase),
+[configuration Neon](https://neon.com/docs/cli/config),
+[checklist Auth production](https://neon.com/docs/auth/production-checklist).

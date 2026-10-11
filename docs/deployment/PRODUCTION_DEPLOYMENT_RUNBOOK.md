@@ -52,6 +52,7 @@ préparés. Il n'est jamais une pièce jointe publique ni un artefact CI.
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Clé publique Stripe du même environnement |
 | `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS` | Tarifs existants, si activés |
 | `RESEND_API_KEY` | Emails métier ; service externe conservé |
+| `EMAIL_FROM` | Expéditeur métier vérifié, à conserver ou définir pour MonService |
 | `CRON_SECRET` | Secret à synchroniser avec le scheduler |
 
 Ne pas injecter `DATABASE_URL_UNPOOLED`, `NEON_ADMIN_DATABASE_URL`, `NEON_API_KEY`,
