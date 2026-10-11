@@ -1,0 +1,127 @@
+{
+  "completedAt": "2026-10-09T01:06:19.665Z",
+  "project": "misty-field-54835523",
+  "region": "aws-eu-central-1",
+  "template": "br-icy-morning-b1317ev6",
+  "validatedBranch": "br-summer-poetry-b1prq5rp",
+  "branchDeleted": true,
+  "syntheticOnly": true,
+  "workers": 1,
+  "gitHead": "292a3b9201968a959b82b6fe1b993a31c42c7cf1",
+  "commands": [
+    {
+      "command": "node scripts/neon/migrate.mjs",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/runtime-credentials.mjs",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx tsx scripts/e2e/seed-local.ts",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run db:check-drift",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run db:check-contract",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run db:check-custom-objects",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run typecheck",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run lint",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx vitest run __tests__/unit tests/unit __tests__/compliance",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run test:db-constraints -- --no-file-parallelism --hookTimeout=180000",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run test:rls -- --no-file-parallelism --hookTimeout=180000",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run test:neon-boundaries",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run build",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx playwright test --workers=1",
+      "passed": true
+    }
+  ],
+  "migrations": [
+    {
+      "name": "0000_structure.sql",
+      "sha256": "b08a95a705dd0d2dfe12b124d840125ce92fbff0dafe08cf28cae9d4738d2cf3"
+    },
+    {
+      "name": "0001_identity.sql",
+      "sha256": "bd58b52ba3978f85ae2c661ec280c08f64e1cea72273078e60a6f8bf6a4831a9"
+    },
+    {
+      "name": "0002_business_guards.sql",
+      "sha256": "2dfd71f602c749a3864c9f70a23e9ec831bad53ccc8ef1a10a57cc506af4f198"
+    },
+    {
+      "name": "0003_canonical_rls.sql",
+      "sha256": "21eeb23574e518709ffeebb2a0d2bc8981138a65b2261b795408f9dc65a966cc"
+    },
+    {
+      "name": "0004_runtime_boundaries.sql",
+      "sha256": "6aa27e1ae7b582031eb2526e242f4bb2e23c81a9bff158b4ec6fb1c6f74d01fc"
+    },
+    {
+      "name": "0005_client_capabilities.sql",
+      "sha256": "083c76b6ac5e283f3a1f874c7182d4cc42773abb2595dfaf4901fa2dc9d2d539"
+    },
+    {
+      "name": "0006_portal_questionnaires.sql",
+      "sha256": "dfa86b06b1937a60d0cbce376ba36b79b04614503f0510dc98fcde938c60506e"
+    },
+    {
+      "name": "0007_restricted_workers.sql",
+      "sha256": "21e7504b6fa843f64bb53929f48fdff68331820ee6ef08820ce52b50aaaaabec"
+    },
+    {
+      "name": "0008_active_rbac.sql",
+      "sha256": "774da717ac8ce3a6d2e0c784fac9e8d4b6fda503c3dd53edc72ee49485b2a6e2"
+    },
+    {
+      "name": "0009_verified_provisioning.sql",
+      "sha256": "81295bfc8f87af45d6808a0e6dc2890c6d3457dd2bd4e7df4da66ad8a704a699"
+    },
+    {
+      "name": "0010_reenrollment_claim.sql",
+      "sha256": "8afbbf65da84c8842cb1e7550a11b4aaaa7cb62ab599916d9ad4fa2c1349834c"
+    },
+    {
+      "name": "0011_minimal_reminder_columns.sql",
+      "sha256": "1ed539f2772af0b0284611ab3b0b51da9d4f8c8c6be5d2b30e32aaa50b8f94ef"
+    },
+    {
+      "name": "0012_live_provider_sessions.sql",
+      "sha256": "6f6023578cfa78c1eb33768e3c656e928ae9b73ebda184adda71ca13109e6e1a"
+    },
+    {
+      "name": "0013_compliance_rls.sql",
+      "sha256": "cbe6be96d27995de20723d59618ef5d87fb0fd3ef6bb956b671cc815fc1f7115"
+    }
+  ]
+}

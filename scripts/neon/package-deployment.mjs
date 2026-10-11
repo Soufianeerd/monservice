@@ -1,0 +1,25 @@
+// Local reviewable deployment package. Does not upload, push, merge or deploy.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import dotenv from 'dotenv';
+import { spawnSync } from 'node:child_process';
+process.umask(0o077);
+const runtime=dotenv.parse(fs.readFileSync('.env.neon-production.local'));
+if(runtime.NEON_BRANCH!=='production'||new URL(runtime.DATABASE_URL).username!=='monservice_runtime')throw new Error('Restricted production runtime required');
+const dirty=spawnSync('git',['status','--porcelain'],{encoding:'utf8'});
+if(dirty.status!==0||dirty.stdout.trim())throw new Error('Commit the reviewed deployment package first');
+const gitHead=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
+const directory=path.join(os.homedir(),'.local/share/monservice-migration/2026-10-09/deployment');
+fs.mkdirSync(directory,{recursive:true,mode:0o700});
+const archive=path.join(directory,`monservice-${gitHead.slice(0,12)}.tar.gz`);
+const result=spawnSync('git',['archive','--format=tar.gz','--output',archive,'HEAD']);
+if(result.status!==0)throw new Error('Source package creation failed');
+fs.chmodSync(archive,0o600);
+const allowed=['DATABASE_URL','NEON_AUTH_BASE_URL','NEON_AUTH_COOKIE_SECRET','AWS_ENDPOINT_URL_S3','AWS_REGION','AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','NEON_STRIPE_DATABASE_URL','NEON_REMINDERS_DATABASE_URL','NEXT_PUBLIC_APP_URL','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY','STRIPE_PRICE_STARTER','STRIPE_PRICE_PRO','STRIPE_PRICE_BUSINESS','RESEND_API_KEY','CRON_SECRET'];
+const values=Object.fromEntries(allowed.filter(key=>runtime[key]).map(key=>[key,runtime[key]]));
+fs.writeFileSync(path.join(directory,'runtime.env'),Object.entries(values).map(([key,value])=>`${key}=${JSON.stringify(value)}`).join('\n')+'\n',{mode:0o600});
+const manifest={preparedAt:new Date().toISOString(),gitHead,branch:'migration/neon-full',archive:path.basename(archive),sha256:crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'),project:'misty-field-54835523',backendBranch:'br-little-surf-b1l5wgni',region:'aws-eu-central-1',nodeVersion:22,install:'npm ci',build:'npm run build',runtimeVariableNames:Object.keys(values),excluded:['migration owner','Neon management/CI API keys','Supabase credentials','synthetic test password','private source exports'],publicDeploymentPerformed:false,pending:['Identify actual host/site and canonical HTTPS URL','Configure MonService verified SMTP sender and confirm mailbox delivery','Preserve live Stripe/Resend and scheduler settings','Verify source delta and agree public cutover window','Human approval before public push/deployment'],clinicalRealData:'NO-GO until hosting HDS coverage demonstrated'};
+fs.writeFileSync(path.join(directory,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{mode:0o600});
+console.log({prepared:true,directory,gitHead,publicDeployment:false});
