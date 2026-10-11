@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-10-11T00:18:37.343Z",
-  "gitHead": "bfd22312be7f0e9af4c094548ab20a909244918f",
+  "checkedAt": "2026-10-11T00:26:36.037Z",
+  "gitHead": "a1f5c30e50d47b26f798a8cb11be933bb4b25ee8",
   "project": "misty-field-54835523",
   "branch": "br-little-surf-b1l5wgni",
   "readOnly": true,
@@ -9,7 +9,7 @@
   "checks": [
     {
       "name": "canonical_https_application_url",
-      "passed": false
+      "passed": true
     },
     {
       "name": "runtime_role_and_pooled_connection",
@@ -33,7 +33,7 @@
     },
     {
       "name": "canonical_origin_authorized",
-      "passed": false
+      "passed": true
     },
     {
       "name": "private_storage_buckets",
@@ -65,14 +65,12 @@
     }
   ],
   "blockers": [
-    "canonical_https_application_url",
-    "canonical_origin_authorized",
     "custom_auth_email_provider",
     "business_email_sender"
   ],
   "observations": {
-    "publicOrigin": null,
-    "trustedOriginCount": 0,
+    "publicOrigin": "https://monservicecrm.netlify.app",
+    "trustedOriginCount": 1,
     "localhostAllowed": false,
     "authEmailProvider": "shared"
   },

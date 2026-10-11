@@ -18,7 +18,7 @@ function cli(args) {
 const read = path => cli(['api', `/projects/${project}/branches/${branch}/auth${path}`, '-X', 'GET']);
 const auth = read('');
 const policy = read('/email_and_password');
-const domains = read('/domains').domains;
+const domains = read('/domains').domains.filter(entry => entry.auth_provider === 'better_auth').map(entry => entry.domain);
 const localhost = read('/allow_localhost').allow_localhost;
 const smtp = read('/email_provider');
 const services = cli(['config', 'status', '--project-id', project, '--branch', branch, '--config-json']);

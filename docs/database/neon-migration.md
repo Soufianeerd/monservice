@@ -338,16 +338,32 @@ paramédical fonctionne techniquement sur les données synthétiques. **HDS non 
 pour la chaîne complète : NO-GO pour introduire de vraies données de santé.**
 Aucun sous-ensemble clinique existant n'a été transféré ou retenu artificiellement.
 
-Seul le chantier de **bascule publique** reste bloqué : hébergeur/site inaccessible
-ou non identifié, URL canonique manquante, domaine MonService vérifié et SMTP Auth
-à fournir/configurer puis réception email à prouver. Deux domaines Resend vérifiés
+Le chantier de **bascule publique** reste à finaliser : domaine MonService vérifié
+et SMTP Auth à fournir/configurer puis réception email à prouver. Deux domaines Resend vérifiés
 observés appartiennent à d'autres projets et n'ont pas été réutilisés. Les paramètres
-Stripe/Resend/scheduler réellement déployés doivent être préservés à la bascule.
+Stripe/Resend/scheduler restent optionnels tant que leurs credentials ne sont pas
+configurés ; aucun credential de ces services n'a été observé sur le site Netlify.
+
+L'hébergeur a été retrouvé dans la session navigateur existante : **Netlify /
+monservicecrm**, site ID `dc084088-bcde-4d4f-9be5-d5aa8959650a`, dépôt exact
+`Soufianeerd/monservice`, URL `https://monservicecrm.netlify.app`. Aucun domaine
+personnalisé ni déploiement publié. Dernier build `main@3b62b47` échoué faute de
+`DATABASE_URL`, lors de la collecte des données de page. Seul `NODE_VERSION=22.x`
+est installé, tous contextes. Builds actifs, branche production `main`, branch
+deploys limités à production, previews activées pour les PR. Aucune modification
+Netlify, aucun trigger lancé. [Inventaire hébergeur](artifacts/hosting-readiness-report.json).
+
+L'URL observée a été inscrite uniquement dans le runtime privé préparé et ajoutée
+à la allowlist Neon Auth de production, puis relue. Localhost reste désactivé.
+Le paquet cible explicitement le site identifié, avec credentials production
+réservés au contexte production. Les previews nécessitent une branche synthétique
+et une origine exacte distinctes ; les credentials production ne doivent pas y
+être partagés. Aucun déploiement public sans approbation finale.
 
 Le [préflight automatisé de bascule](artifacts/cutover-preflight-report.json)
-lit les configurations Neon réelles sans mutation et confirme les quatre blocages
-techniques : URL HTTPS canonique, origine autorisée, SMTP Auth personnalisé,
-expéditeur métier. Il vérifie aussi les connexions runtime/workers de production,
+lit les configurations Neon réelles sans mutation et confirme les deux blocages
+techniques encore présents : SMTP Auth personnalisé et expéditeur métier.
+L'URL et l'origine Netlify sont désormais vérifiées. Il vérifie aussi les connexions runtime/workers de production,
 les buckets privés, l'absence de credentials administrateur/source dans le runtime,
 les cookies et la politique Auth. Un code de sortie 2 exprime le NO-GO ; aucun
 contournement ni bascule automatique. La source et l'état importé de production

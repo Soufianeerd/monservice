@@ -16,10 +16,15 @@ const worker = (client: postgres.Sql, role: string, subject='',event='') => crea
 async function login(email: string) {
   const base=process.env.NEON_AUTH_BASE_URL!;
   const response=await fetch(base+'/sign-in/email',{method:'POST',headers:{'content-type':'application/json',origin:'http://localhost:3039'},body:JSON.stringify({email,password:process.env.E2E_AUTH_PASSWORD})});
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    const code = typeof result.code === 'string' && /^[A-Z_]+$/.test(result.code) ? result.code : 'UNKNOWN';
+    throw new Error(`Managed fixture sign-in failed: HTTP ${response.status}, ${code}`);
+  }
   const cookie=response.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
   const verified=await fetch(base+'/get-session',{headers:{cookie}});
   const session=await verified.json();
-  if (!response.ok || !verified.ok || !session?.user?.id) throw new Error('Real managed Auth login required');
+  if (!verified.ok || !session?.user?.id) throw new Error(`Real managed Auth session required: HTTP ${verified.status}`);
   const [mapping]=await admin`select i.app_user_id as app,u.organization_id as org from public.user_identities i join public.users u on u.id=i.app_user_id where i.provider='neon' and i.provider_user_id=${session.user.id}`;
   if (!mapping) throw new Error('Stable fixture mapping missing');
   return {provider:session.user.id,app:mapping.app,org:mapping.org,sessionId:session.session.id,cookie};

@@ -105,8 +105,12 @@ test.describe('Production Auth policy — actual browser recovery', () => {
     const [reset] = await admin`select identifier from neon_auth.verification where value=${providerId}
       and identifier like 'reset-password:%' order by "createdAt" desc limit 1`;
     if (!reset) throw new Error('Managed synthetic reset token missing');
-    const resetPath = `/reset-password?token=${encodeURIComponent(reset.identifier.slice('reset-password:'.length))}`;
-    await page.goto(resetPath);
+    const token = reset.identifier.slice('reset-password:'.length);
+    const resetPath = `/reset-password?token=${encodeURIComponent(token)}`;
+    // Follow the provider callback used by the actual managed reset email.
+    // Only fixture token acquisition bypasses mailbox delivery.
+    await page.goto(`${process.env.NEON_AUTH_BASE_URL}/reset-password/${encodeURIComponent(token)}?callbackURL=${encodeURIComponent('http://localhost:3039/reset-password')}`);
+    await expect(page).toHaveURL(new RegExp('/reset-password\\?token='));
     await page.locator('input[type="password"]').nth(0).fill(password);
     await page.locator('input[type="password"]').nth(1).fill(password);
     await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click();

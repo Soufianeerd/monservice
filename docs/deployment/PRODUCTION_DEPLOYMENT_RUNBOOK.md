@@ -2,7 +2,10 @@
 
 Le backend canonique est `Monservice-Europe` / `misty-field-54835523`, Frankfurt,
 PostgreSQL 18. Aucun push Git, merge `main` ou déploiement public n'a été effectué.
-Le dépôt contient une configuration Netlify, sans preuve d'un site lié accessible.
+Le site Netlify **monservicecrm** est accessible en lecture seule et lié au dépôt
+canonique. Site ID `dc084088-bcde-4d4f-9be5-d5aa8959650a`, URL configurée
+`https://monservicecrm.netlify.app`, aucun domaine personnalisé ni déploiement
+publié. Le dernier build de `main@3b62b47` échouait faute de `DATABASE_URL`.
 
 ## Artefacts
 
@@ -13,6 +16,7 @@ Le dépôt contient une configuration Netlify, sans preuve d'un site lié access
 - [Source inchangée](../database/artifacts/source-unchanged-report.json).
 - [Parcours navigateur avec vérification obligatoire](../database/artifacts/auth-recovery-validation-report.json).
 - [Préflight de bascule publique](../database/artifacts/cutover-preflight-report.json).
+- [Inventaire de l'hébergeur](../database/artifacts/hosting-readiness-report.json).
 - [Classification du schéma](../database/artifacts/source-schema-reconciliation.json).
 
 ## Replay du backend
@@ -49,13 +53,21 @@ préparés. Il n'est jamais une pièce jointe publique ni un artefact CI.
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Credentials S3 serveur de production |
 | `NEON_STRIPE_DATABASE_URL` | Connexion du worker Stripe restreint |
 | `NEON_REMINDERS_DATABASE_URL` | Connexion du worker de rappels restreint |
-| `NEXT_PUBLIC_APP_URL` | URL publique HTTPS canonique, à fournir |
+| `NEXT_PUBLIC_APP_URL` | `https://monservicecrm.netlify.app`, préparée dans le paquet privé et autorisée dans Neon Auth |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Secrets existants de l'hébergeur, hors credentials de test |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Clé publique Stripe du même environnement |
 | `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS` | Tarifs existants, si activés |
 | `RESEND_API_KEY` | Emails métier ; service externe conservé |
 | `EMAIL_FROM` | Expéditeur métier vérifié, à conserver ou définir pour MonService |
 | `CRON_SECRET` | Secret à synchroniser avec le scheduler |
+
+La seule variable actuellement observée dans Netlify est `NODE_VERSION=22.x`
+(tous contextes). Aucun credential applicatif n'y est installé. Le paquet privé
+reste prêt à importer après validation finale ; n'appliquer ses credentials de
+production qu'au contexte **production**. Les Deploy Previews sont activées pour
+les PR ; elles doivent utiliser une branche Neon synthétique distincte et leur
+propre origine Auth exacte, une fois l'URL de preview connue. Aucun wildcard de
+domaine ni credential production partagé avec une preview.
 
 Ne pas injecter `DATABASE_URL_UNPOOLED`, `NEON_ADMIN_DATABASE_URL`, `NEON_API_KEY`,
 la clé CI, `E2E_AUTH_PASSWORD`, les exports source ou les variables Supabase dans
@@ -78,9 +90,9 @@ node scripts/neon/cutover-preflight.mjs
 
 Lecture seule des configurations réelles de production et des variables privées ;
 aucun email ni déploiement. Le script écrit une preuve sans credential et sort avec
-le code **2** si un prérequis technique manque. Le 11 octobre : quatre blocages,
-URL HTTPS canonique absente, origine non autorisée, SMTP Auth partagé et expéditeur
-métier non configuré. Le contrat Management API nomme le SMTP personnalisé
+le code **2** si un prérequis technique manque. Le 11 octobre, après découverte de
+Netlify et préparation de son origine : SMTP Auth partagé et expéditeur métier
+restent non configurés. Le contrat Management API nomme le SMTP personnalisé
 `type=standard`. Même un contrôle technique vert ne remplace pas la preuve de
 réception email, la réconciliation des secrets du site, la fenêtre de bascule ni
 l'approbation finale du déploiement public.
@@ -95,13 +107,16 @@ privé contenant la clé CI EU. La branche et ses fichiers temporaires sont supp
 
 ## Déploiement public — confirmation finale nécessaire
 
-1. Identifier site, compte d'hébergement et domaine. Exporter l'ancienne configuration
-   privée et conserver l'identifiant du dernier déploiement Supabase.
+1. Vérifier à nouveau le site Netlify identifié et exporter sa configuration privée.
+   Aucun ancien déploiement publié n'existe ; conserver les commits source et le
+   statut public non déployé comme référence. Choisir le domaine d'envoi MonService.
 2. Vérifier à nouveau la source. Réconcilier tout delta depuis le snapshot.
 3. Définir une fenêtre de bascule et suspendre les écritures applicatives côté
    hébergeur ; aucune mutation du projet Supabase n'est nécessaire.
 4. Configurer Neon runtime, URL, callbacks et SMTP. Conserver les secrets Stripe/Resend
-   du site ; ne jamais installer les credentials synthétiques des tests.
+   du site s'ils ont été ajoutés depuis l'inventaire ; sinon ces intégrations
+   optionnelles restent désactivées. Ne jamais installer les credentials
+   synthétiques des tests dans le contexte production.
 5. Après approbation, pousser la branche de migration et ouvrir une PR avec CI Neon.
    Ne jamais pousser directement ni merger `main` automatiquement. Évaluer les
    triggers de déploiement avant ce push.
@@ -115,8 +130,11 @@ privé contenant la clé CI EU. La branche et ses fichiers temporaires sont supp
 
 ## Rollback
 
-Avant ouverture des écritures Neon, restaurer le dernier déploiement Supabase et
-sa configuration privée suffit : source, comptes et objets sont intacts.
+Avant ouverture des écritures Neon, conserver/restaurer la configuration source et
+le commit source suffit pour préparer un retour : source, comptes et objets sont
+intacts. Le site Netlify n'ayant jamais eu de déploiement publié, il n'existe pas
+de bouton de retour vers un ancien déploiement réussi ; la référence publique
+reste le site non déployé, ou une page de maintenance approuvée.
 Après de nouvelles écritures Neon, un simple retour vers Supabase perdrait ces
 écritures. Suspendre les écritures, sauvegarder le delta Neon et organiser sa
 réconciliation explicitement avant retour. Aucun backend n'est supprimé.
