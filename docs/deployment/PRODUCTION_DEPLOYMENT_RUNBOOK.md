@@ -11,6 +11,8 @@ Le dépôt contient une configuration Netlify, sans preuve d'un site lié access
 - [Import et rapprochement](../database/artifacts/production-import-report.json).
 - [Contrôles production](../database/artifacts/production-validation-report.json).
 - [Source inchangée](../database/artifacts/source-unchanged-report.json).
+- [Parcours navigateur avec vérification obligatoire](../database/artifacts/auth-recovery-validation-report.json).
+- [Préflight de bascule publique](../database/artifacts/cutover-preflight-report.json).
 - [Classification du schéma](../database/artifacts/source-schema-reconciliation.json).
 
 ## Replay du backend
@@ -67,6 +69,29 @@ Ajouter l'URL canonique aux origines et callbacks autorisés via le contrat Neon
 actuel. Localhost est désactivé sur production. Les comptes importés sont non
 vérifiés et sans mot de passe : reset, confirmation OTP, puis récupération de
 l'identité MonService. Aucun email de masse n'est envoyé.
+
+### Contrôle automatisé avant bascule
+
+```sh
+node scripts/neon/cutover-preflight.mjs
+```
+
+Lecture seule des configurations réelles de production et des variables privées ;
+aucun email ni déploiement. Le script écrit une preuve sans credential et sort avec
+le code **2** si un prérequis technique manque. Le 11 octobre : quatre blocages,
+URL HTTPS canonique absente, origine non autorisée, SMTP Auth partagé et expéditeur
+métier non configuré. Le contrat Management API nomme le SMTP personnalisé
+`type=standard`. Même un contrôle technique vert ne remplace pas la preuve de
+réception email, la réconciliation des secrets du site, la fenêtre de bascule ni
+l'approbation finale du déploiement public.
+
+Les deux parcours Auth obligatoires sont intégrés au replay CI avant les 23
+parcours historiques. Ils utilisent uniquement une branche jetable et des adresses
+`@monservice.invalid`, avec `require_email_verification=true`. Les codes et tokens
+sont lus par le propriétaire de cette fixture, hors runtime : aucune preuve de
+délivrabilité réelle n'en découle. Un replay ciblé est disponible avec
+`NEON_CI_AUTH_ONLY=true node scripts/neon/ci-branch.mjs`, dans l'environnement
+privé contenant la clé CI EU. La branche et ses fichiers temporaires sont supprimés.
 
 ## Déploiement public — confirmation finale nécessaire
 

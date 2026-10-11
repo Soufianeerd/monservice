@@ -1,0 +1,90 @@
+{
+  "checkedAt": "2026-10-11T00:18:37.343Z",
+  "gitHead": "bfd22312be7f0e9af4c094548ab20a909244918f",
+  "project": "misty-field-54835523",
+  "branch": "br-little-surf-b1l5wgni",
+  "readOnly": true,
+  "publicDeploymentPerformed": false,
+  "technicalChecksPassed": false,
+  "checks": [
+    {
+      "name": "canonical_https_application_url",
+      "passed": false
+    },
+    {
+      "name": "runtime_role_and_pooled_connection",
+      "passed": true
+    },
+    {
+      "name": "production_auth_endpoint",
+      "passed": true
+    },
+    {
+      "name": "private_cookie_secret",
+      "passed": true
+    },
+    {
+      "name": "mandatory_email_verification",
+      "passed": true
+    },
+    {
+      "name": "production_localhost_disabled",
+      "passed": true
+    },
+    {
+      "name": "canonical_origin_authorized",
+      "passed": false
+    },
+    {
+      "name": "private_storage_buckets",
+      "passed": true
+    },
+    {
+      "name": "private_storage_credentials",
+      "passed": true
+    },
+    {
+      "name": "custom_auth_email_provider",
+      "passed": false
+    },
+    {
+      "name": "business_email_sender",
+      "passed": false
+    },
+    {
+      "name": "no_admin_or_source_credentials_in_runtime",
+      "passed": true
+    },
+    {
+      "name": "stripe_worker_role",
+      "passed": true
+    },
+    {
+      "name": "reminders_worker_role",
+      "passed": true
+    }
+  ],
+  "blockers": [
+    "canonical_https_application_url",
+    "canonical_origin_authorized",
+    "custom_auth_email_provider",
+    "business_email_sender"
+  ],
+  "observations": {
+    "publicOrigin": null,
+    "trustedOriginCount": 0,
+    "localhostAllowed": false,
+    "authEmailProvider": "shared"
+  },
+  "optionalIntegrations": {
+    "stripe": "host-settings-not-yet-reconciled",
+    "reminders": "host-settings-not-yet-reconciled"
+  },
+  "requiredHumanEvidence": [
+    "Actual host/site identity and previous deployment rollback reference",
+    "Consent-based mailbox receipt of OTP and password-reset link",
+    "Source delta reconciliation and write-freeze cutover window",
+    "Final approval before Git push, merge or public deployment"
+  ],
+  "clinicalRealData": "NO-GO until hosting HDS coverage demonstrated"
+}

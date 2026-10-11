@@ -256,6 +256,24 @@ aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-
 Le 11 octobre : replay production et contrôles essentiels **read-only** réussis ;
 aucun test destructif ou seed sur production. [Preuve production](artifacts/production-validation-report.json).
 
+Après demande de poursuite, deux parcours navigateur supplémentaires ont été
+validés avec la vérification email **obligatoire**, sur une nouvelle branche CI
+isolée et un build production. Inscription client : login refusé avant OTP,
+code erroné refusé, ID conservé après confirmation/rechargement, redirection externe
+refusée et accès protégé refusé après déconnexion. Professionnel importé : compte
+sans mot de passe, reset via formulaire, login refusé avant confirmation, claim du
+même ID/profil, création de son seul workspace absent, récupération idempotente
+et réutilisation du lien reset refusée. [Preuve ciblée](artifacts/auth-recovery-validation-report.json).
+
+Ces essais ont corrigé le traitement des exceptions du SDK Neon dans les formulaires
+OTP/reset : un code ou token invalide est distingué d'une indisponibilité ; les
+formulaires reset et demande de lien libèrent leur état de chargement après erreur.
+Le SDK normalise `INVALID_TOKEN` en `bad_jwt`, ce qui est traité explicitement.
+Les codes/tokens ne proviennent pas d'une boîte réelle mais d'une fixture réservée,
+accessible au seul propriétaire de la branche synthétique. Délivrabilité toujours
+à prouver avant ouverture publique. La CI exécute ces deux parcours séparément,
+puis rétablit sa politique synthétique pour les 23 parcours historiques.
+
 ## Security Gate 1 et autres findings
 
 | Identifiant | Invariant vérifié sur Neon | État |
@@ -325,6 +343,15 @@ ou non identifié, URL canonique manquante, domaine MonService vérifié et SMTP
 à fournir/configurer puis réception email à prouver. Deux domaines Resend vérifiés
 observés appartiennent à d'autres projets et n'ont pas été réutilisés. Les paramètres
 Stripe/Resend/scheduler réellement déployés doivent être préservés à la bascule.
+
+Le [préflight automatisé de bascule](artifacts/cutover-preflight-report.json)
+lit les configurations Neon réelles sans mutation et confirme les quatre blocages
+techniques : URL HTTPS canonique, origine autorisée, SMTP Auth personnalisé,
+expéditeur métier. Il vérifie aussi les connexions runtime/workers de production,
+les buckets privés, l'absence de credentials administrateur/source dans le runtime,
+les cookies et la politique Auth. Un code de sortie 2 exprime le NO-GO ; aucun
+contournement ni bascule automatique. La source et l'état importé de production
+ont été recontrôlés en lecture seule le 11 octobre, sans changement.
 
 Le paquet de sources et le runtime restreint sont préparés localement dans
 `~/.local/share/monservice-migration/2026-10-09/deployment/`. Il contient archive de

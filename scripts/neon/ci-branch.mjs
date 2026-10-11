@@ -14,6 +14,7 @@ const runtimeFile = `.env.${name}-runtime.local`;
 const environment = { ...process.env, NEON_ADMIN_ENV_FILE: adminFile, NEON_RUNTIME_ENV_FILE: runtimeFile };
 let branchId;
 let validationSucceeded=false;
+const authOnly = process.env.NEON_CI_AUTH_ONLY === 'true';
 const validatedCommands=[];
 function command(binary, args, env = environment, visible = false) {
   const result = spawnSync(binary, args, { env, encoding: 'utf8', stdio: visible ? 'inherit' : 'pipe' });
@@ -22,6 +23,8 @@ function command(binary, args, env = environment, visible = false) {
   return result.stdout;
 }
 const cli = args => command('neon', args);
+const validationHead = command('git', ['rev-parse', 'HEAD']).trim();
+const validationWorktreeClean = command('git', ['status', '--porcelain']).trim() === '';
 try {
   const created = JSON.parse(cli(['branches','create','--project-id',project,'--name',name,'--parent',template,'--cu','0.25','--no-secrets','--expires-at',new Date(Date.now()+86400000).toISOString(),'-o','json']));
   branchId = created.branch.id;
@@ -47,8 +50,9 @@ try {
   command('node',['scripts/neon/migrate.mjs'],environment,true);
   command('node',['scripts/neon/runtime-credentials.mjs'],environment,true);
   const run = args => command('node',['scripts/neon/run-tests.mjs',...args],environment,true);
-  run(['npx','tsx','scripts/e2e/seed-local.ts']);
+  if (!authOnly) run(['npx','tsx','scripts/e2e/seed-local.ts']);
   if (process.env.NEON_CI_SETUP_ONLY !== 'true') {
+    if (!authOnly) {
     run(['npm','run','db:check-drift']);
     run(['npm','run','db:check-contract']);
     run(['npm','run','db:check-custom-objects']);
@@ -58,10 +62,18 @@ try {
     run(['npm','run','test:db-constraints','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:rls','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:neon-boundaries']);
+    }
     run(['npm','run','build']);
-    command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true'},true);
+    // Match production's mandatory verification policy without affecting the
+    // historical unverified synthetic login fixtures or the production branch.
+    cli(['api',`${endpoint}/email_and_password`,'-X','PATCH','-F','require_email_verification=true']);
+    command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','e2e/auth-recovery.spec.ts','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true',E2E_STRICT_AUTH:'true'},true);
+    if (!authOnly) {
+      cli(['api',`${endpoint}/email_and_password`,'-X','PATCH','-F','require_email_verification=false']);
+      command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true'},true);
+    }
   }
-  console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : 'full validation'})`);
+  console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : 'full validation'})`);
   validationSucceeded=process.env.NEON_CI_SETUP_ONLY!=='true';
 } catch (error) {
   console.error(error.message);
@@ -73,9 +85,10 @@ try {
   }
   for (const path of [adminFile,runtimeFile]) if (fs.existsSync(path)) fs.unlinkSync(path);
   if(validationSucceeded&&process.exitCode!==1){
-    const report={completedAt:new Date().toISOString(),project,region:'aws-eu-central-1',template,validatedBranch:branchId,branchDeleted:true,syntheticOnly:true,workers:1,gitHead:command('git',['rev-parse','HEAD']).trim(),commands:validatedCommands,migrations:fs.readdirSync('drizzle/neon').filter(name=>name.endsWith('.sql')).sort().map(name=>({name,sha256:crypto.createHash('sha256').update(fs.readFileSync('drizzle/neon/'+name)).digest('hex')}))};
+    const report={completedAt:new Date().toISOString(),project,region:'aws-eu-central-1',template,validatedBranch:branchId,branchDeleted:true,syntheticOnly:true,workers:1,gitHead:validationHead,worktreeCleanAtStart:validationWorktreeClean,commands:validatedCommands,migrations:fs.readdirSync('drizzle/neon').filter(name=>name.endsWith('.sql')).sort().map(name=>({name,sha256:crypto.createHash('sha256').update(fs.readFileSync('drizzle/neon/'+name)).digest('hex')}))};
     fs.mkdirSync('docs/database/artifacts',{recursive:true});
-    fs.writeFileSync('docs/database/artifacts/ci-validation-report.json',JSON.stringify(report,null,2)+'\n');
-    console.log('Saved sanitized full CI validation evidence');
+    report.validationScope=authOnly?'mandatory-email-verification-browser':'full';
+    fs.writeFileSync(`docs/database/artifacts/${authOnly?'auth-recovery':'ci'}-validation-report.json`,JSON.stringify(report,null,2)+'\n');
+    console.log('Saved sanitized CI validation evidence');
   }
 }

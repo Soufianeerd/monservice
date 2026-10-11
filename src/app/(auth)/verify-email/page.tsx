@@ -2,6 +2,7 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth/client';
+import { isAuthApiError } from '@neondatabase/auth/next';
 
 function VerificationForm() {
   const params = useSearchParams();
@@ -23,7 +24,9 @@ function VerificationForm() {
       const { error } = await authClient.emailOtp.verifyEmail({ email: email.trim().toLowerCase(), otp });
       if (error) setMessage('Code invalide ou expiré.');
       else window.location.href = '/login';
-    } catch { setMessage('Vérification indisponible. Réessayez.'); }
+    } catch (error) {
+      setMessage(isAuthApiError(error) && error.status === 400 ? 'Code invalide ou expiré.' : 'Vérification indisponible. Réessayez.');
+    }
     finally { setPending(false); }
   };
   return <div className="max-w-md mx-auto p-6 space-y-4"><h1 className="text-xl font-bold">Confirmer votre adresse email</h1>

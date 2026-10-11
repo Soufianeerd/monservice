@@ -13,17 +13,20 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setMessage(null);
     
-    const { error } = await authClient.requestPasswordReset({
-      email: email.trim().toLowerCase(),
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    try {
+      const { error } = await authClient.requestPasswordReset({
+        email: email.trim().toLowerCase(),
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
-    setLoading(false);
-    if (error) {
-      setMessage({ text: 'Erreur lors de l\'envoi. Vérifiez votre email.', type: 'error' });
-    } else {
-      setMessage({ text: 'Si ce compte existe, un email de réinitialisation a été envoyé.', type: 'success' });
-    }
+      if (error) {
+        setMessage({ text: 'Envoi indisponible. Réessayez dans quelques instants.', type: 'error' });
+      } else {
+        setMessage({ text: 'Si ce compte existe, un email de réinitialisation a été envoyé.', type: 'success' });
+      }
+    } catch {
+      setMessage({ text: 'Envoi indisponible. Réessayez dans quelques instants.', type: 'error' });
+    } finally { setLoading(false); }
   };
 
   return (
