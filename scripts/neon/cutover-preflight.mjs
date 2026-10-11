@@ -64,8 +64,8 @@ const report = {
   checks, blockers: checks.filter(check => !check.passed).map(check => check.name),
   observations: { publicOrigin, trustedOriginCount: domains.length, localhostAllowed: localhost, authEmailProvider: smtp.type },
   optionalIntegrations,
-  requiredHumanEvidence: [
-    'Actual host/site identity and previous deployment rollback reference',
+  remainingCutoverSteps: [
+    'Install and verify production-only Netlify runtime variables; previews use synthetic credentials',
     'Consent-based mailbox receipt of OTP and password-reset link',
     'Source delta reconciliation and write-freeze cutover window',
     'Final approval before Git push, merge or public deployment',

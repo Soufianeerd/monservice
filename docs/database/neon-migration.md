@@ -241,7 +241,7 @@ identique au workflow a été exécuté localement avec cette clé, puis nettoy�
 **Les nouveaux workflows ne sont pas encore publiés ni exécutés sur GitHub** :
 aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-report.json).
 
-| Vérification complète, le 9 octobre | Résultat |
+| Vérification complète, rejouée le 11 octobre | Résultat |
 |---|---|
 | Unitaires et conformité | 699/699, 81 fichiers |
 | Contraintes / intégration / Gate 1 | 263/263, 12 fichiers |
@@ -250,7 +250,7 @@ aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-
 | Typecheck | PASS |
 | Lint | 0 erreur, 380 avertissements existants |
 | Build Next.js production | PASS |
-| Playwright sur build production | 23/23, 0 failed, 0 skipped, 4,6 minutes |
+| Playwright sur build production | 25/25 : 2 parcours Auth stricts + 23 historiques, 0 failed, 0 skipped |
 | Branche CI et fichiers privés temporaires | Supprimés |
 
 Le 11 octobre : replay production et contrôles essentiels **read-only** réussis ;
@@ -269,10 +269,17 @@ Ces essais ont corrigé le traitement des exceptions du SDK Neon dans les formul
 OTP/reset : un code ou token invalide est distingué d'une indisponibilité ; les
 formulaires reset et demande de lien libèrent leur état de chargement après erreur.
 Le SDK normalise `INVALID_TOKEN` en `bad_jwt`, ce qui est traité explicitement.
-Les codes/tokens ne proviennent pas d'une boîte réelle mais d'une fixture réservée,
+La récupération suit également la redirection réelle `/reset-password/:token`
+du provider, vers le formulaire applicatif. Les codes/tokens ne proviennent pas d'une boîte réelle mais d'une fixture réservée,
 accessible au seul propriétaire de la branche synthétique. Délivrabilité toujours
 à prouver avant ouverture publique. La CI exécute ces deux parcours séparément,
 puis rétablit sa politique synthétique pour les 23 parcours historiques.
+
+Le replay complet final valide le commit `96543ea`, depuis un arbre propre,
+sur une nouvelle branche jetable supprimée après succès. L'échec de connexion
+Auth d'une fixture sur le premier replay n'a pas été reproduit lors du contrôle
+ciblé ni du replay final ; le diagnostic conserve désormais HTTP status/code,
+sans corps de réponse. Aucun bypass, skip d'acceptance ou suppression d'assertion.
 
 ## Security Gate 1 et autres findings
 
@@ -303,6 +310,14 @@ source à organiser après bascule et identification des consommateurs. Aucun se
 actuel détecté dans les fichiers suivis lors du préflight ; aucun dump/credential
 n'est commité. Aucun compte réel fermé, supprimé ou utilisé pour les tests.
 
+Un contrôle complémentaire en lecture seule a confirmé que **zéro des seize IDs
+Auth de production** est présent dans la branche CI du replay du 11 octobre.
+Une première requête de diagnostic a échoué avec `22P02` et affiché des IDs Auth
+techniques dans son erreur, sans adresse email, mot de passe, token ni clé. Ces IDs
+ne sont pas repris dans les artefacts versionnés. La comparaison corrigée se fait
+localement en mémoire ; les erreurs ne sortent que leur type/code et les résultats
+ne contiennent que les compteurs. Aucune mutation liée à ce diagnostic.
+
 ## Régression produit et E2E
 
 Generic/Core : Auth, onboarding, CRM clients/contacts/deals/products/tasks,
@@ -312,8 +327,8 @@ agenda/exclusions, épisodes/notes/documents, portail, questionnaires, facturati
 et messagerie validés avec des fixtures synthétiques. Field Service : site,
 lead/devis, acompte, work order, assignments, rapport finalisé et facture finale.
 
-Les **23 scénarios navigateur** préservent la couverture des 22 parcours historiques
-avec un parcours supplémentaire. Desktop et mobile réels Chromium, login client/pro,
+Les **25 scénarios navigateur** préservent les 23 parcours précédemment portés
+et ajoutent les deux parcours Auth avec vérification obligatoire. Desktop et mobile réels Chromium, login client/pro,
 isolation tenant, marketplace/localisation, portail patient, praticien et workflow
 Field complet. Le quote-to-cash signe un vrai webhook de test traité par la route
 Stripe de production ; montant/idempotence et état DB sont vérifiés. Aucun paiement
@@ -382,7 +397,7 @@ paramètres et vérification d'un aperçu. Aucun push/merge/public deploy automa
 |---|---|
 | Migration technique Neon : DB, Auth, Storage, RLS, Gate 1, seeds, CI, produit, build, E2E | **GO** |
 | Backend Neon production préparé et import autorisé rapproché | **GO** |
-| Runtime applicatif public Neon | **NO-GO tant que hébergeur/domaine/SMTP et approbation de bascule manquent** |
+| Runtime applicatif public Neon | **NO-GO tant que domaine d'envoi/SMTP, réception email, variables Netlify et approbation de bascule manquent** |
 | Production paramédicale avec vraies données de santé | **NO-GO — BLOCKED_PENDING_HDS** |
 
 Contrats officiels consultés : [CLI Neon](https://neon.com/docs/cli),

@@ -1,13 +1,14 @@
 {
-  "completedAt": "2026-10-09T01:06:19.665Z",
+  "completedAt": "2026-10-11T00:41:47.229Z",
   "project": "misty-field-54835523",
   "region": "aws-eu-central-1",
   "template": "br-icy-morning-b1317ev6",
-  "validatedBranch": "br-summer-poetry-b1prq5rp",
+  "validatedBranch": "br-round-dust-b1658brf",
   "branchDeleted": true,
   "syntheticOnly": true,
   "workers": 1,
-  "gitHead": "292a3b9201968a959b82b6fe1b993a31c42c7cf1",
+  "gitHead": "96543ea41027dbfbed715192ec0da7f4c3b04ff0",
+  "worktreeCleanAtStart": true,
   "commands": [
     {
       "command": "node scripts/neon/migrate.mjs",
@@ -59,6 +60,10 @@
     },
     {
       "command": "node scripts/neon/run-tests.mjs npm run build",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx playwright test e2e/auth-recovery.spec.ts --workers=1",
       "passed": true
     },
     {
@@ -123,5 +128,6 @@
       "name": "0013_compliance_rls.sql",
       "sha256": "cbe6be96d27995de20723d59618ef5d87fb0fd3ef6bb956b671cc815fc1f7115"
     }
-  ]
+  ],
+  "validationScope": "full"
 }

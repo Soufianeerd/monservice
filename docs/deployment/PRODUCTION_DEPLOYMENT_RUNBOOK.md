@@ -82,6 +82,31 @@ actuel. Localhost est désactivé sur production. Les comptes importés sont non
 vérifiés et sans mot de passe : reset, confirmation OTP, puis récupération de
 l'identité MonService. Aucun email de masse n'est envoyé.
 
+### Paramètres email prêts à appliquer après choix du domaine
+
+Le domaine d'envoi doit appartenir à MonService ou être explicitement choisi par
+son propriétaire. Aucun des domaines des autres projets n'a été réutilisé. Créer
+le domaine Resend, installer ses enregistrements DNS exacts puis attendre son état
+vérifié avant activation. Les credentials restent dans le stockage privé et dans
+Neon/Netlify, jamais dans une commande copiée au rapport.
+
+| Neon Auth SMTP | Valeur à préparer |
+|---|---|
+| Type Management API | `standard` |
+| Host | `smtp.resend.com` |
+| Port | `465` (TLS implicite) |
+| Username | `resend` |
+| Password | Clé Resend privée autorisée à envoyer pour le domaine MonService |
+| Sender email | Adresse du domaine vérifié choisi, à fournir |
+| Sender name | `MonService` |
+
+Les emails métier utilisent `RESEND_API_KEY` et `EMAIL_FROM` dans le contexte
+Netlify production ; les emails Auth utilisent ce SMTP dans Neon. Les paramètres
+SMTP et le prérequis de domaine vérifié sont confirmés par la
+[documentation Resend](https://resend.com/docs/send-with-smtp).
+Valider ensuite OTP et lien reset sur une boîte consentante, sans lancement de
+campagne ni email automatique aux seize comptes importés.
+
 ### Contrôle automatisé avant bascule
 
 ```sh

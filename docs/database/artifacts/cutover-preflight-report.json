@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-10-11T00:26:36.037Z",
-  "gitHead": "a1f5c30e50d47b26f798a8cb11be933bb4b25ee8",
+  "checkedAt": "2026-10-11T00:36:46.232Z",
+  "gitHead": "96543ea41027dbfbed715192ec0da7f4c3b04ff0",
   "project": "misty-field-54835523",
   "branch": "br-little-surf-b1l5wgni",
   "readOnly": true,
@@ -78,8 +78,8 @@
     "stripe": "host-settings-not-yet-reconciled",
     "reminders": "host-settings-not-yet-reconciled"
   },
-  "requiredHumanEvidence": [
-    "Actual host/site identity and previous deployment rollback reference",
+  "remainingCutoverSteps": [
+    "Install and verify production-only Netlify runtime variables; previews use synthetic credentials",
     "Consent-based mailbox receipt of OTP and password-reset link",
     "Source delta reconciliation and write-freeze cutover window",
     "Final approval before Git push, merge or public deployment"
