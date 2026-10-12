@@ -3,6 +3,7 @@ import postgres from 'postgres';
 import { createSecurityScopedClient } from '@/lib/db/security-context';
 import { objectStore } from '@/lib/storage/neon-object-store';
 import { randomUUID } from 'node:crypto';
+import { fetchNeonFixture } from '../helpers/neon-fixture-fetch';
 
 const runtime = postgres(process.env.NEON_RUNTIME_DATABASE_URL!, { max: 1, prepare: false });
 const admin = postgres(process.env.NEON_ADMIN_DATABASE_URL!, { max: 1, prepare: false });
@@ -15,7 +16,7 @@ const identity = (actor: typeof actorA) => createSecurityScopedClient(runtime, a
 const worker = (client: postgres.Sql, role: string, subject='',event='') => createSecurityScopedClient(client,async()=>null,()=>({ client,role,settings:{ 'monservice.worker_subject_id':subject,'monservice.worker_event_id':event } }));
 async function login(email: string) {
   const base=process.env.NEON_AUTH_BASE_URL!;
-  const response=await fetch(base+'/sign-in/email',{method:'POST',headers:{'content-type':'application/json',origin:'http://localhost:3039'},body:JSON.stringify({email,password:process.env.E2E_AUTH_PASSWORD})});
+  const response=await fetchNeonFixture(base+'/sign-in/email',{method:'POST',headers:{'content-type':'application/json',origin:'http://localhost:3039'},body:JSON.stringify({email,password:process.env.E2E_AUTH_PASSWORD})});
   if (!response.ok) {
     const result = await response.json().catch(() => ({}));
     const code = typeof result.code === 'string' && /^[A-Z_]+$/.test(result.code) ? result.code : 'UNKNOWN';
@@ -32,7 +33,7 @@ async function login(email: string) {
 beforeAll(async()=>{
   if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production') throw new Error('Synthetic branch required');
   actorA=await login('pro_generic_a@monservice.invalid'); actorB=await login('pro_generic_b@monservice.invalid');
-},60_000);
+},300_000);
 afterAll(async()=>{await Promise.all([runtime.end(),admin.end(),stripe.end(),reminders.end()]);});
 
 describe('Neon pooled transaction and worker boundaries',()=>{
