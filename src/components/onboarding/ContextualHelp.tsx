@@ -117,6 +117,9 @@ export default function ContextualHelp() {
     };
     const submit = (event: Event) => {
       if (event.target instanceof Element && event.target.closest('[data-guide-ui]')) return;
+      // Un formulaire de recherche ne crée rien et n’attend pas une confirmation de sauvegarde.
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement) || !elementsRef.current.some(step => step.action === 'save' && form.contains(step.element))) return;
       setWaiting(true);
     };
     const click = (event: Event) => {

@@ -44,6 +44,7 @@ export function collectGuideElements(path: string, type: WorkspaceType, help: Pa
     }
   }
   root.querySelectorAll<HTMLElement>('[data-guide-title], button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [contenteditable="true"]').forEach(element => add(element));
+  if (!form) document.querySelector('header')?.querySelectorAll<HTMLElement>('button, a[href], [role="button"]').forEach(element => add(element));
   return form ? [...result.filter(step => step.action !== 'save'), ...result.filter(step => step.action === 'save')] : result;
 }
 

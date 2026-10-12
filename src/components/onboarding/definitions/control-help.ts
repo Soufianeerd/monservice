@@ -118,6 +118,11 @@ const fields: [RegExp, string][] = [
 ];
 
 const actions: [RegExp, string][] = [
+  [/^rechercher|^chercher|^filtrer/i, 'Cliquez pour appliquer les critères saisis et afficher les dossiers correspondants. Cette action recherche dans votre activité ; elle n’enregistre pas de nouveau dossier.'],
+  [/^réinitialiser/i, 'Effacez les critères pour retrouver la liste sans votre recherche précédente. Les dossiers sont conservés.'],
+  [/mode clair|mode sombre/i, 'Choisissez l’affichage clair ou sombre. Votre préférence est conservée pour les prochaines visites.'],
+  [/notifications/i, 'Ouvrez les alertes de votre activité. Le compteur indique les notifications à consulter ; ouvrez une alerte pour suivre l’action correspondante.'],
+  [/déconnexion|se déconnecter/i, 'Fermez votre session MonService. Vous devrez vous reconnecter pour reprendre votre activité. Vous pouvez passer cette étape pendant la visite.'],
   [/coordonnées|organisation/i, 'Ouvrez les coordonnées de votre activité. Renseignez le nom, l’adresse et les moyens de contact, puis enregistrez.'],
   [/ajouter un patient|nouveau patient/i, 'Cliquez pour ouvrir la fiche administrative. Le guide suivra le nom, le prénom, la date de naissance et les coordonnées jusqu’à Créer le patient.'],
   [/nouveau client|ajouter un client/i, 'Cliquez pour créer le destinataire de vos devis et factures. Le guide suivra ses coordonnées et celles de votre interlocuteur.'],
@@ -157,7 +162,8 @@ export function describeControl(element: HTMLElement, path: string, type: Worksp
   const title = controlLabel(element);
   const explicit = element.getAttribute('data-guide-text');
   const field = element.matches('input, select, textarea, [contenteditable="true"]');
-  const save = (element instanceof HTMLButtonElement && element.type === 'submit' && !!element.form) || element.matches('input[type="submit"]') || /^(enregistrer|créer le patient|émettre la facture|confirmer le rendez-vous|sauvegarder)/i.test(title);
+  const search = /^rechercher|^chercher|^filtrer|^appliquer.*filtre|^réinitialiser/i.test(title) || !!element.closest('form[role="search"], [data-tour="patient-filters"]');
+  const save = !search && ((element instanceof HTMLButtonElement && element.type === 'submit' && !!element.form) || element.matches('input[type="submit"]') || /^(enregistrer|créer le patient|émettre la facture|confirmer le rendez-vous|sauvegarder)/i.test(title));
   let text = explicit || (field ? fields : actions).find(([match]) => match.test(title))?.[1];
   if (save) text = 'Vérifiez les champs et le récapitulatif, puis cliquez ici pour enregistrer. Le guide attend la confirmation du logiciel. Si une erreur apparaît, corrigez-la et réessayez ; un clic seul ne confirme pas la création.';
   if (field && /nom de l.entreprise/i.test(title)) text = 'Indiquez le nom du client ou de son entreprise, par exemple CLIENT TEST pour un exercice fictif.';
@@ -165,6 +171,13 @@ export function describeControl(element: HTMLElement, path: string, type: Worksp
   if (field && /nom.*prestation|nom.*produit|nom.*service/i.test(title)) text = 'Nommez le tarif réutilisable : Bilan initial, Heure de conseil ou Déplacement. Ce nom sera proposé dans votre catalogue.';
   if (field && /connexion/i.test(title)) text = 'Cette adresse identifie votre compte de connexion. Elle est affichée en lecture seule et reçoit les messages de sécurité.';
   if (field && element instanceof HTMLSelectElement && /^patient/i.test(title)) text = 'Choisissez le patient actif concerné par le document. La sauvegarde reprend son destinataire administratif ou son représentant de facturation, sans copier les informations cliniques. S’il manque, créez d’abord sa fiche dans Patients.';
+  if (field && /^nom.*site/i.test(title)) text = 'Nommez le site du client, par exemple Résidence principale ou SITE TEST. Renseignez ensuite son adresse et les indications d’accès avant d’enregistrer.';
+  if (field && element.closest('[data-tour="patient-filters"]')) {
+    text = /^nom/i.test(title) ? 'Saisissez tout ou partie du nom de naissance ou du nom d’usage à rechercher, puis cliquez sur Rechercher.'
+      : /^prénom/i.test(title) ? 'Saisissez tout ou partie du prénom à rechercher, puis cliquez sur Rechercher.'
+      : /date de naissance/i.test(title) ? 'Facultatif : choisissez la date de naissance pour distinguer les dossiers, puis cliquez sur Rechercher.'
+      : 'Choisissez les dossiers actifs, archivés ou tous les dossiers. Ce filtre s’applique immédiatement et ne modifie pas les patients.';
+  }
   if (field && path.startsWith('/operations/') && /titre/i.test(title)) text = 'Nommez le travail à réaliser, par exemple Réparation de la chaudière. Ce titre identifie l’intervention dans la liste et le planning.';
   if (!field && /^\/operations\/[^/]+$/.test(path) && !element.closest('form')) {
     const transitions: Record<string, string> = {
@@ -178,6 +191,11 @@ export function describeControl(element: HTMLElement, path: string, type: Worksp
   }
   if (field && element.matches('input[type="checkbox"]') && element.closest('[data-guide-form="structure"]')) text = 'Cochez ce lieu pour y affecter le praticien. Vous pouvez choisir plusieurs lieux, puis enregistrer les affectations.';
   if (field && element.matches('input[type="radio"]') && element.closest('[data-guide-form="structure"]')) text = 'Choisissez le lieu principal parmi les lieux affectés à ce praticien, puis enregistrez.';
+  if (field && element.matches('input[type="checkbox"]') && !element.closest('[data-guide-form="structure"]')) {
+    if (/mode avancé|détails des tarifs/i.test(title)) text = 'Activez les détails pour afficher les unités, catégories, remises et taux de TVA. Le guide intégrera les nouveaux champs qui apparaissent.';
+    else if (!/journée entière/i.test(title) && !explicit) text = `Cochez pour activer « ${title} », ou décochez pour désactiver cette option. Vérifiez son libellé avant de la retenir.`;
+  }
+  if (field && element.matches('input[type="radio"]') && !element.closest('[data-guide-form="structure"]') && !explicit) text = `Choisissez « ${title} » parmi les options proposées. Une seule option de ce groupe peut être retenue ; les champs associés apparaissent ensuite.`;
   if (!text) text = field ? `Renseignez « ${title} » pour ce dossier. Les champs marqués * sont obligatoires ; les autres peuvent rester vides. Vous pourrez vérifier les valeurs avant l’enregistrement.` : `Utilisez « ${title} » pour ouvrir cette rubrique ou appliquer l’action indiquée. Le guide suivra les contrôles qui apparaissent. Vous pouvez aussi passer à l’élément suivant sans cliquer.`;
   if (element.matches(':disabled, [aria-disabled="true"]')) text += ' Ce contrôle est indisponible pour le moment. Complétez les prérequis ou la sélection indiqués sur la page ; vous pouvez poursuivre la découverte sans l’activer.';
   if (field && element.matches('[readonly]')) text += ' Ce champ est en lecture seule.';

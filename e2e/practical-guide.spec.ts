@@ -1,11 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+import { signInFixture } from './helpers/sign-in-fixture';
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(process.env.E2E_AUTH_PASSWORD!);
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await signInFixture(page, email, /\/dashboard$/);
   await expect(page.getByLabel('Comprendre cette page')).toBeVisible();
 }
 const tour = (page: Page) => page.getByRole('dialog', { name: 'Tutoriel de cette page' });
@@ -27,7 +24,7 @@ async function throughFields(page: Page, lastTitle: string) {
 }
 
 test('Le tutoriel patient suit les champs jusqu’à une création réellement persistée', async ({ page }) => {
-  await signIn(page, 'pro_health_a@monservice.invalid');
+  await signIn(page, 'pro_a@monservice.invalid');
   const name = `PATIENT TUTORIEL ${Date.now()}`;
   await choose(page, 'Ajouter un patient, champ par champ');
   await expect(page).toHaveURL(/\/patients\/new$/);
@@ -48,7 +45,7 @@ test('Le tutoriel patient suit les champs jusqu’à une création réellement p
 });
 
 test('Le devis du cabinet sélectionne un patient et conserve une TVA à zéro après sauvegarde', async ({ page }) => {
-  await signIn(page, 'pro_health_a@monservice.invalid');
+  await signIn(page, 'pro_a@monservice.invalid');
   await choose(page, 'Créer un devis, ligne par ligne');
   await expect(page).toHaveURL(/\/facturation\/devis\/nouveau$/);
   await expect(tour(page)).toContainText('Rechercher un patient');
@@ -71,7 +68,7 @@ test('Le devis du cabinet sélectionne un patient et conserve une TVA à zéro a
 });
 
 test('La facture du cabinet propose des patients et enregistre les lignes du catalogue', async ({ page }) => {
-  await signIn(page, 'pro_health_a@monservice.invalid');
+  await signIn(page, 'pro_a@monservice.invalid');
   await choose(page, 'Créer une facture pour un patient');
   await expect(page).toHaveURL(/\/facturation\/factures\/new$/);
   await expect(page.getByRole('heading', { name: 'Nouvelle facture patient', exact: true })).toBeVisible();
@@ -87,6 +84,39 @@ test('La facture du cabinet propose des patients et enregistre les lignes du cat
   await expect(page).toHaveURL(/\/facturation\/factures\/[^/]+$/);
   await page.reload();
   await expect(page.locator('main')).toContainText('FACTURE TUTORIEL FICTIF');
+});
+
+test('Le guide accompagne un rendez-vous réel pour un patient fictif', async ({ page }) => {
+  await signIn(page, 'pro_a@monservice.invalid');
+  const name = `RDV TUTORIEL ${Date.now()}`;
+  await choose(page, 'Ajouter un patient, champ par champ');
+  await page.locator('#patient-birth-name').fill(name);
+  await page.locator('#patient-first-birth-name').fill('Martin');
+  await page.locator('#patient-birth-date').fill('1990-01-01');
+  await page.getByRole('button', { name: 'Créer le patient', exact: true }).click();
+  await expect(tour(page)).toContainText('Enregistrement confirmé');
+  await choose(page, 'Planifier un rendez-vous');
+  await expect(page).toHaveURL(/\/agenda\/calendrier$/);
+  const controls = page.locator('[data-tour="calendar-controls"]');
+  await controls.getByRole('button', { name: 'Suivant', exact: true }).click();
+  await page.locator('[data-tour="new-appointment"]').click();
+  await expect(tour(page).getByRole('heading', { name: 'Patient *', exact: true })).toBeVisible();
+  const form = page.locator('form[data-guide-form="rendez-vous"]');
+  await form.locator('input[placeholder="Rechercher par nom ou prénom..."]').fill(name);
+  await form.getByRole('button').filter({ hasText: name }).click();
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + ((8 - date.getUTCDay()) % 7 || 7));
+  await form.locator('input[type="date"]').fill(date.toISOString().slice(0, 10));
+  await form.locator('input[type="time"]').fill('10:00');
+  await throughFields(page, 'Confirmer le rendez-vous');
+  await page.screenshot({ path: test.info().outputPath('guide-rendez-vous.png') });
+  await form.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true }).click();
+  await expect(tour(page)).toContainText('Enregistrement confirmé');
+  await expect(page.locator('main')).toContainText(name);
+  // La vue de calendrier n’est pas persistée ; retrouver la semaine après rechargement.
+  await page.reload();
+  await page.locator('[data-tour="calendar-controls"]').getByRole('button', { name: 'Suivant', exact: true }).click();
+  await expect(page.locator('main')).toContainText(name);
 });
 
 for (const [email, label] of [['pro_generic_a@monservice.invalid', 'tertiaire'], ['pro_fs_a@monservice.invalid', 'BTP']] as const) {

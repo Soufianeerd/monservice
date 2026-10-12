@@ -6,7 +6,7 @@ Demande du 12 octobre 2026 : guider les actions et les champs jusqu’à l’enr
 
 Le bouton **Aide de cette page** reste disponible pour chaque professionnel, même après sa prise en main initiale. Il propose deux usages : découvrir les éléments visibles, ou choisir une action dans **Tous les parcours de prise en main**.
 
-La découverte cible les cartes annotées, boutons, liens, champs, sélecteurs et onglets réels. Les titres seuls, champs cachés, options repliées et contrôles de l’aide sont exclus. Chaque champ reçoit une explication en français : usage, exemple, caractère facultatif ou prérequis. Les contrôles indisponibles sont expliqués sans être activés.
+La découverte cible les cartes annotées, boutons, liens, champs, sélecteurs et onglets réels, ainsi que les commandes de l’en-tête. Les titres seuls, champs cachés, options repliées et contrôles de l’aide sont exclus. Chaque champ reçoit une explication en français : usage, exemple, caractère facultatif ou prérequis. Les cases et choix uniques reçoivent des instructions adaptées à leur type. Les contrôles indisponibles sont expliqués sans être activés. Une recherche de patient n’est jamais traitée comme une sauvegarde.
 
 Un parcours suit la navigation et les fenêtres de saisie. Les nouveaux champs d’une ligne de devis ou d’une option sont intégrés ; les valeurs saisies restent dans le formulaire. Les bulles restent attachées aux contrôles pendant le défilement. L’utilisateur garde chaque clic et chaque sauvegarde ; l’aide n’envoie aucun document, ne saisit aucune donnée et ne crée aucun dossier automatiquement.
 
@@ -23,6 +23,8 @@ Les formulaires principaux signalent la réussite seulement après leur réponse
 Le tableau de bord du cabinet explique le cadre À traiter, les coordonnées, Ajouter un patient, Planifier un rendez-vous, Créer une facture et Configurer les lieux et l’équipe. Les autres tableaux de bord décrivent séparément leurs indicateurs et leur graphique. Les indicateurs d’affaires gagnées et de factures réglées sont nommés selon les données réellement affichées ; un nombre de factures réglées n’est plus présenté comme un montant impayé.
 
 Les pages complémentaires de chaque navigation bénéficient également de la découverte des contrôles visibles. Les parcours de création sont ceux listés ci-dessus ; la découverte d’un contrôle complémentaire ne prétend pas avoir réalisé ou validé une opération métier.
+
+Limite du produit confirmée : le calendrier du BTP et du tertiaire affiche actuellement les échéances des tâches et factures ainsi que les clôtures d’opportunités. Les interventions BTP se planifient dans leur dossier ; leur projection complète dans le calendrier reste à réaliser. L’aide décrit le calendrier tel qu’il fonctionne et ne promet pas cette intégration.
 
 ## Destinataires des documents du cabinet
 

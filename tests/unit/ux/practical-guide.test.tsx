@@ -9,18 +9,28 @@ import { announceGuideSaved, getHelpWorkflows } from '@/components/onboarding/de
 import type { WorkspaceType } from '@/lib/workspaces/types';
 import PatientForm from '@/components/patients/PatientForm';
 import Link from 'next/link';
+import LoginForm from '@/components/auth/LoginForm';
 
-const state = vi.hoisted(() => ({ path: '/patients/new', type: 'paramedical' as WorkspaceType, push: vi.fn(), reference: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => state.path, useRouter: () => ({ push: state.push }) }));
+const state = vi.hoisted(() => ({ path: '/patients/new', type: 'paramedical' as WorkspaceType, push: vi.fn(), reference: vi.fn(), authLoading: true, signIn: vi.fn() }));
+vi.mock('next/navigation', () => ({ usePathname: () => state.path, useRouter: () => ({ push: state.push }), useSearchParams: () => new URLSearchParams() }));
+vi.mock('@/components/auth/AuthContext', () => ({ useAuth: () => ({ isLoading: state.authLoading, signIn: state.signIn }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ type: state.type }) }));
 vi.mock('@/app/actions/patient-registry.actions', () => ({ createPatientAction: vi.fn(), updatePatientAction: vi.fn() }));
 vi.mock('@floating-ui/react', () => ({ useFloating: () => ({ refs: { setReference: state.reference, setFloating: vi.fn() }, floatingStyles: {} }), offset: vi.fn(), flip: vi.fn(), shift: vi.fn(), autoUpdate: (_a: Element, _b: Element, update: () => void) => { update(); return vi.fn(); } }));
 
-beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); state.path = '/patients/new'; state.type = 'paramedical'; });
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); state.path = '/patients/new'; state.type = 'paramedical'; state.authLoading = true; });
 const tour = () => screen.getByRole('dialog', { name: 'Tutoriel de cette page' });
 const start = () => fireEvent.click(screen.getByRole('button', { name: 'Me montrer les éléments' }));
 
 describe('Guide pratique des formulaires', () => {
+  it('attend que la connexion soit prête avant de permettre un clic de connexion', () => {
+    const view = render(<LoginForm />);
+    expect(screen.getByRole('button', { name: 'Se connecter' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
+    expect(state.signIn).not.toHaveBeenCalled();
+    state.authLoading = false; view.rerender(<LoginForm />);
+    expect(screen.getByRole('button', { name: 'Se connecter' })).toBeEnabled();
+  });
   it('pointe chaque champ réel du patient et ne guide jamais son titre', async () => {
     render(<><main><h1>Ajouter un patient</h1><PatientForm /></main><ContextualHelp /></>);
     start();
@@ -69,6 +79,24 @@ describe('Guide pratique des formulaires', () => {
     fireEvent.click(within(tour()).getByRole('button', { name: 'Choisir la suite' }));
     expect(screen.getByLabelText('Aide contextuelle')).toBeVisible();
   });
+  it('explique la recherche de patients sans attendre une création de dossier', () => {
+    state.path = '/patients';
+    render(<><main><form data-tour="patient-filters" onSubmit={e => e.preventDefault()}><label htmlFor="filter-name">Nom (naissance / usage)</label><input id="filter-name" /><button type="submit">Rechercher</button></form></main><ContextualHelp /></>); start();
+    expect(tour()).toHaveTextContent('nom de naissance ou du nom d’usage à rechercher');
+    const steps = collectGuideElements(state.path, state.type, getPageHelp(state.path));
+    expect(steps.some(step => step.action === 'save')).toBe(false);
+    fireEvent.submit(document.querySelector('form')!);
+    expect(tour()).not.toHaveTextContent('En attente de confirmation');
+  });
+
+  it('inclut les commandes de l’en-tête pendant la découverte mais pas dans une création', () => {
+    render(<><header><button type="button">Activer le mode sombre</button></header><main><form data-guide-form="test"><input aria-label="Nom" /><button type="submit">Enregistrer</button></form></main></>);
+    const page = collectGuideElements('/dashboard', 'generic', getPageHelp('/dashboard', 'generic'));
+    expect(page.at(-1)?.title).toBe('Activer le mode sombre');
+    expect(page.at(-1)?.text).toContain('préférence');
+    const form = collectGuideElements('/clients/new', 'generic', getPageHelp('/clients/new', 'generic'), activeGuideForm());
+    expect(form.some(step => step.title.includes('mode sombre'))).toBe(false);
+  });
 
   it('reprend le formulaire parent après la sauvegarde d’un site intermédiaire', async () => {
     render(<><main><form data-guide-form="intervention"><input aria-label="Client" /><button type="submit">Enregistrer</button></form></main><ContextualHelp /></>); start();
@@ -94,6 +122,12 @@ describe('Guide pratique des formulaires', () => {
     render(<main><div><label>Prix unitaire HT</label><div><input data-testid="prix" /></div></div><div><label>TVA (%)</label><input data-testid="tva" /></div></main>);
     expect(describeControl(screen.getByTestId('prix'), '/facturation/devis/nouveau', 'generic').text).toContain('50 €');
     expect(describeControl(screen.getByTestId('tva'), '/facturation/devis/nouveau', 'generic').text).toContain('taux applicable');
+  });
+  it('explique un affichage des tarifs comme une option et non une saisie de prix', () => {
+    render(<main><input type="checkbox" aria-label="Détails des tarifs (unités, TVA, remises)" /></main>);
+    const description = describeControl(screen.getByRole('checkbox'), '/facturation/devis/nouveau', 'paramedical');
+    expect(description.text).toContain('Activez les détails');
+    expect(description.text).not.toContain('Saisissez le prix');
   });
 });
 
