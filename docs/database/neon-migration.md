@@ -1,6 +1,6 @@
 # MonService — rapport final Supabase → Neon
 
-État au 11 octobre 2026 : **migration technique validée et backend Neon production
+État au 12 octobre 2026 : **migration technique validée et backend Neon production
 préparé avec les données autorisées**. Aucune bascule du site public, aucun push,
 aucun merge `main`, aucune mutation ou suppression Supabase. Session 19 reste hors périmètre.
 
@@ -241,16 +241,16 @@ identique au workflow a été exécuté localement avec cette clé, puis nettoy�
 **Les nouveaux workflows ne sont pas encore publiés ni exécutés sur GitHub** :
 aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-report.json).
 
-| Vérification complète, rejouée le 11 octobre | Résultat |
+| Vérification complète, rejouée le 12 octobre | Résultat |
 |---|---|
-| Unitaires et conformité | 699/699, 81 fichiers |
+| Unitaires et conformité | 715/715, 84 fichiers |
 | Contraintes / intégration / Gate 1 | 263/263, 12 fichiers |
 | RLS | 198/198, 11 fichiers |
 | Auth / pool / workers / Storage / conformité complémentaires | 14/14, 3 fichiers |
 | Typecheck | PASS |
-| Lint | 0 erreur, 380 avertissements existants |
+| Lint | 0 erreur, 379 avertissements existants |
 | Build Next.js production | PASS |
-| Playwright sur build production | 25/25 : 2 parcours Auth stricts + 23 historiques, 0 failed, 0 skipped |
+| Playwright sur build production | 31/31 : 2 parcours Auth stricts + 23 historiques + 6 UX cabinet, 0 failed, 0 skipped |
 | Branche CI et fichiers privés temporaires | Supprimés |
 
 Le 11 octobre : replay production et contrôles essentiels **read-only** réussis ;
@@ -318,6 +318,31 @@ ne sont pas repris dans les artefacts versionnés. La comparaison corrigée se f
 localement en mémoire ; les erreurs ne sortent que leur type/code et les résultats
 ne contiennent que les compteurs. Aucune mutation liée à ce diagnostic.
 
+## Correction UX du cabinet du 12 octobre
+
+La demande produit a précisé le français comme unique langue source et Stripe
+comme moyen de règlement des seuls abonnements MonService. Les coordonnées du
+cabinet, les lieux/praticiens, les factures patients et le forfait logiciel sont
+maintenant distingués dans l’interface. Stripe Connect et le paiement Stripe
+des honoraires patients sont retirés ; les anciens accès restent authentifiés
+et ne créent plus de comptes ou de sessions de paiement. Le portail d’abonnement
+utilise exclusivement le customer ID serveur du professionnel connecté.
+
+Le champ de mot de passe du profil est remplacé par le parcours Neon de confirmation
+par lien e-mail ; le nom est réellement enregistré et les erreurs ne sont plus
+masquées. L’aide du cabinet suit les pages et met les contrôles en évidence.
+Thème clair/sombre persisté, filtres patients clarifiés, prérequis d’agenda expliqués,
+professions sans débordement et commandes d’horaires adaptatives. Aucun changement
+SQL, aucun compte utilisateur réel modifié, aucun appel Stripe réel ou envoi manuel
+d’e-mail de sécurité. [Rapport UX et limites](../product/ux-cabinet-2026-10-12.md).
+
+Le dernier replay complet valide le code au commit `c130453cca49d071672fc5d75355cce171abab54`.
+Deux problèmes de fixtures ont aussi été corrigés : attente bornée des HTTP 429,
+et restauration de la classification des seules organisations synthétiques avant
+le navigateur, après les tests DB qui les changent volontairement. Aucun contrôle
+n’a été supprimé ou ignoré. Les validations précédentes ne constituaient pas une
+validation de la clarté UX ; les nouveaux tests vérifient les parcours exposés.
+
 ## Régression produit et E2E
 
 Generic/Core : Auth, onboarding, CRM clients/contacts/deals/products/tasks,
@@ -327,8 +352,8 @@ agenda/exclusions, épisodes/notes/documents, portail, questionnaires, facturati
 et messagerie validés avec des fixtures synthétiques. Field Service : site,
 lead/devis, acompte, work order, assignments, rapport finalisé et facture finale.
 
-Les **25 scénarios navigateur** préservent les 23 parcours précédemment portés
-et ajoutent les deux parcours Auth avec vérification obligatoire. Desktop et mobile réels Chromium, login client/pro,
+Les **31 scénarios navigateur** préservent les 23 parcours précédemment portés
+et ajoutent les deux parcours Auth avec vérification obligatoire et six parcours UX du cabinet. Desktop et mobile réels Chromium, login client/pro,
 isolation tenant, marketplace/localisation, portail patient, praticien et workflow
 Field complet. Le quote-to-cash signe un vrai webhook de test traité par la route
 Stripe de production ; montant/idempotence et état DB sont vérifiés. Aucun paiement

@@ -1,13 +1,13 @@
 {
-  "completedAt": "2026-10-11T00:41:47.229Z",
+  "completedAt": "2026-10-12T06:58:02.377Z",
   "project": "misty-field-54835523",
   "region": "aws-eu-central-1",
   "template": "br-icy-morning-b1317ev6",
-  "validatedBranch": "br-round-dust-b1658brf",
+  "validatedBranch": "br-square-waterfall-b1gkzqny",
   "branchDeleted": true,
   "syntheticOnly": true,
   "workers": 1,
-  "gitHead": "96543ea41027dbfbed715192ec0da7f4c3b04ff0",
+  "gitHead": "c130453cca49d071672fc5d75355cce171abab54",
   "worktreeCleanAtStart": true,
   "commands": [
     {
@@ -56,6 +56,10 @@
     },
     {
       "command": "node scripts/neon/run-tests.mjs npm run test:neon-boundaries",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx tsx scripts/e2e/seed-local.ts",
       "passed": true
     },
     {
