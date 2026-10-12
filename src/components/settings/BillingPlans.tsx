@@ -7,58 +7,59 @@ import { Card, CardBody } from '@/components/ui/Card';
 const plans = [
   {
     id: 'starter',
-    name: 'Starter',
+    name: 'Essentiel',
     price: '29',
-    features: ['Jusqu\'à 10 devis/mois', 'Profil public basique', 'Support email'],
+    features: ['Jusqu\'à 10 devis/mois', 'Profil public basique', 'Assistance par e-mail'],
   },
   {
     id: 'pro',
-    name: 'Pro',
+    name: 'Professionnel',
     price: '79',
-    features: ['Devis illimités', 'Profil public premium', 'Support prioritaire', 'Statistiques avancées'],
+    features: ['Devis illimités', 'Profil public premium', 'Assistance prioritaire', 'Statistiques avancées'],
     popular: true,
   },
   {
     id: 'business',
-    name: 'Business',
+    name: 'Équipe',
     price: '199',
-    features: ['Tout du plan Pro', 'API Access', 'Gestion multi-comptes', 'Account manager dédié'],
+    features: ['Tout du plan Pro', 'Accès à l’API', 'Gestion multi-comptes', 'Accompagnement dédié'],
   },
 ];
 
-export default function BillingPlans() {
+export default function BillingPlans({ enabled = true }: { enabled?: boolean }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const handleSubscribe = async (tier: string) => {
-    if (!user) return;
+    if (!user || !enabled) return;
     setLoading(tier);
+    setError('');
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
-          organizationId: user.organizationId,
           tier,
         }),
       });
       const data = await res.json();
-      if (data.url) {
+      if (res.ok && data.url) {
         window.location.assign(data.url);
       } else {
-        alert(data.error || 'Erreur lors de la redirection vers Stripe');
+        setError('La souscription n’a pas pu être ouverte. Réessayez plus tard.');
       }
     } catch (error) {
-      console.error(error);
-      alert('Erreur serveur');
+      setError('La souscription n’a pas pu être ouverte. Réessayez plus tard.');
     } finally {
       setLoading(null);
     }
   };
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
+    <div className="space-y-4">
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      <div className="grid md:grid-cols-3 gap-6">
       {plans.map((plan) => (
         <Card key={plan.id} className={`relative ${plan.popular ? 'border-indigo-500 shadow-md ring-1 ring-indigo-500' : ''}`}>
           {plan.popular && (
@@ -85,7 +86,7 @@ export default function BillingPlans() {
             <div className="mt-8">
               <button
                 onClick={() => handleSubscribe(plan.id)}
-                disabled={loading === plan.id || user?.subscriptionTier === plan.id}
+                disabled={!enabled || loading !== null || user?.subscriptionTier === plan.id}
                 className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                   user?.subscriptionTier === plan.id
                     ? 'bg-green-600 hover:bg-green-700 cursor-default'
@@ -98,6 +99,7 @@ export default function BillingPlans() {
           </CardBody>
         </Card>
       ))}
+      </div>
     </div>
   );
 }

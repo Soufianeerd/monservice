@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Product } from '@/lib/data/interfaces';
 
 import { productSchema } from '@/utils/validation';
@@ -19,6 +20,7 @@ interface ProductFormProps {
 
 export default function ProductForm({ initialData, onSubmit, isSubmitting }: ProductFormProps) {
   const router = useRouter();
+  const isPractice = useWorkspace()?.type === 'paramedical';
   
   const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof productSchema>, unknown, ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -33,7 +35,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting }: Pro
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom du produit/service *</label>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700">{isPractice ? 'Nom de la prestation *' : 'Nom du produit ou service *'}</label>
         <input
           type="text"
           id="name"

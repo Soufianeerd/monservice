@@ -148,7 +148,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
         <div>
           <h2 className="text-xl font-bold text-gray-900">Types de séances</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Définissez les motifs de consultation, durées et temps de préparation (buffers).
+            Définissez les motifs de consultation, durées et temps de préparation entre deux rendez-vous.
           </p>
         </div>
         <button
@@ -208,7 +208,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                       <p className="text-xs text-gray-500">{preset.description}</p>
                     )}
                     <div className="text-[11px] text-gray-400 pt-1">
-                      Buffers : +{preset.bufferBeforeMinutes}m av. / +{preset.bufferAfterMinutes}m ap. — Pas de {preset.slotStepMinutes}m
+                      Préparation : +{preset.bufferBeforeMinutes}m av. / +{preset.bufferAfterMinutes}m ap. — Départs tous les {preset.slotStepMinutes} min
                     </div>
                   </div>
 
@@ -254,7 +254,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                     Durée
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Buffers (Avant / Après)
+                    Préparation (avant / après)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Pas de créneau
@@ -376,7 +376,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Pas de créneau (min) *</label>
+                  <label className="block text-sm font-medium text-gray-700">Intervalle entre les départs proposés (min) *</label>
                   <input
                     type="number"
                     required
@@ -393,7 +393,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Buffer avant (min)</label>
+                  <label className="block text-sm font-medium text-gray-700">Temps de préparation avant (min)</label>
                   <input
                     type="number"
                     min={0}
@@ -410,7 +410,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Buffer après (min)</label>
+                  <label className="block text-sm font-medium text-gray-700">Temps de pause après (min)</label>
                   <input
                     type="number"
                     min={0}

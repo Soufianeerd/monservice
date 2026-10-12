@@ -8,7 +8,6 @@ import { Invoice, Client, Product, Organization } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import DocumentPDF from './DocumentPDF';
-import StripePaymentButton from './StripePaymentButton';
 import { generateInvoicePDF, generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 
 interface InvoiceDetailProps {
@@ -80,7 +79,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             <button
               onClick={async () => {
                 try {
-                  const blob = isQuote 
+                  const blob = isQuote
                     ? await generateQuotePDF(invoice as any, organization, client as any)
                     : await generateInvoicePDF(invoice, organization, client as any);
                   downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
@@ -130,9 +129,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             </button>
           )}
 
-          {(!isQuote && invoice.status !== 'paid' && invoice.status !== 'draft' && organization) && (
-            <StripePaymentButton invoiceId={invoice.id} organizationId={organization.id} />
-          )}
+
 
           {invoice.status === 'draft' && (
             <Link
@@ -216,7 +213,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
           </div>
         </div>
       </div>
-      
+
       <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
         <button
           onClick={async () => {

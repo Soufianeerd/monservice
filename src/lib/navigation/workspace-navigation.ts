@@ -37,7 +37,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
     return [
       { id: 'dashboard', name: 'Tableau de bord', href: '/dashboard', icon: 'dashboard' },
       { id: 'clients', name: 'Clients', href: '/clients', icon: 'users', dataTour: 'clients-nav' },
-      { id: 'deals', name: 'Deals', href: '/deals', icon: 'deals' },
+      { id: 'deals', name: 'Opportunités', href: '/deals', icon: 'deals' },
       {
         id: 'billing',
         name: 'Facturation',
@@ -70,7 +70,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
-          { name: 'Facturation', href: '/parametres/facturation' },
+          { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
         ],
@@ -91,13 +91,13 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
       },
       {
         id: 'billing',
-        name: 'Facturation',
+        name: 'Factures patients',
         href: '/facturation',
         icon: 'billing',
         subItems: [
           { name: 'Factures', href: '/facturation/factures' },
           { name: 'Devis', href: '/facturation/devis' },
-          { name: workspace.terminology.servicePlural ?? 'Prestations', href: '/facturation/produits' },
+          { name: 'Prestations et tarifs', href: '/facturation/produits' },
         ],
       },
       {
@@ -106,8 +106,8 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         href: '/agenda',
         icon: 'agenda',
         subItems: [
-          { name: 'Calendrier', href: '/agenda/calendrier' },
-          { name: 'Disponibilités', href: '/agenda/disponibilites' },
+          { name: 'Rendez-vous', href: '/agenda/calendrier' },
+          { name: 'Horaires et absences', href: '/agenda/disponibilites' },
           { name: 'Types de séances', href: '/agenda/types-seances' },
           { name: "Liste d'attente", href: '/agenda/liste-attente' },
           { name: 'Tâches', href: '/agenda/taches' },
@@ -120,10 +120,10 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         icon: 'settings',
         dataTour: 'settings-nav',
         subItems: [
-          { name: 'Profil', href: '/parametres/profil' },
-          { name: 'Organisation', href: '/parametres/organisation' },
-          { name: 'Cabinet', href: '/parametres/cabinet' },
-          { name: 'Facturation', href: '/parametres/facturation' },
+          { name: 'Mon compte', href: '/parametres/profil' },
+          { name: 'Coordonnées du cabinet', href: '/parametres/organisation' },
+          { name: 'Lieux et équipe', href: '/parametres/cabinet' },
+          { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
         ],
@@ -181,7 +181,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
-          { name: 'Facturation', href: '/parametres/facturation' },
+          { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
         ],

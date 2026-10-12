@@ -7,10 +7,11 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { useOnboardingContext } from '@/components/onboarding/OnboardingProvider';
 import { Organization } from '@/lib/data/interfaces';
 import Skeleton from '@/components/crm/Skeleton';
-import StripeConnectButton from '@/components/settings/StripeConnectButton';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export default function OrganizationSettingsPage() {
-  const { user, organization } = useAuth();
+  const { organization, refresh } = useAuth();
+  const workspace = useWorkspace();
   const { onboardingState, completeStep, activeTour, endTour } = useOnboardingContext();
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,9 +50,11 @@ export default function OrganizationSettingsPage() {
         if (updatePayload[k] === undefined) delete updatePayload[k];
       }
       await updateAction(currentOrg.id, updatePayload);
+      await refresh();
       setCurrentOrg({
         ...currentOrg,
-        ...data,
+        postalCode: data.zipCode,
+        ...updatePayload,
         logo: logo || currentOrg.logo,
         updatedAt: new Date().toISOString(),
       });
@@ -115,6 +118,10 @@ export default function OrganizationSettingsPage() {
         </div>
       )}
 
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900">{workspace?.type === "paramedical" ? "Coordonnées du cabinet" : "Coordonnées de votre activité"}</h2>
+        <p className="mt-2 text-sm text-gray-500">Ces informations identifient votre activité sur vos documents. Les lieux de consultation et les praticiens se règlent dans « Lieux et équipe ».</p>
+      </div>
       <div data-tour="company-form">
         <OrganizationForm
           initialData={currentOrg}
@@ -123,13 +130,7 @@ export default function OrganizationSettingsPage() {
         />
       </div>
 
-      <div className="mt-12 pt-8 border-t border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Paiements & Facturation</h2>
-        <p className="text-gray-600 mb-6">
-          Connectez votre compte Stripe pour pouvoir recevoir des paiements en ligne de la part de vos clients.
-        </p>
-        <StripeConnectButton organizationId={currentOrg.id} isConnected={!!currentOrg.stripeAccountId} />
-      </div>
+
     </div>
   );
 }

@@ -49,7 +49,7 @@ describe('Stripe Patient Portal Payment Authorization', () => {
     vi.mocked(isStripeConfigured).mockReturnValue(true);
   });
 
-  it('allows payment session creation when invoice recipientUserId matches authenticated patient user', async () => {
+  it('directs the authenticated patient to manual payment without any Stripe session', async () => {
     vi.mocked(requireSession).mockResolvedValue({
       userId: 'patient-user-123',
       email: 'pat@cabinet.fr',
@@ -66,14 +66,9 @@ describe('Stripe Patient Portal Payment Authorization', () => {
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.url).toBe('https://checkout.stripe.com/c/pay/cs_test_123');
-    expect(createInvoicePaymentSession).toHaveBeenCalledWith(
-      baseInvoice,
-      expect.stringContaining('/client/invoices/inv-1?payment=success'),
-      expect.stringContaining('/client/invoices/inv-1?payment=cancel'),
-    );
+    expect(res.status).toBe(410);
+    expect((await res.json()).error).toContain('directement auprès du professionnel');
+    expect(createInvoicePaymentSession).not.toHaveBeenCalled();
   });
 
   it('rejects same-tenant client attacker targeting another patient invoice (P0 same-tenant client attack test)', async () => {
@@ -96,7 +91,7 @@ describe('Stripe Patient Portal Payment Authorization', () => {
     expect(createInvoicePaymentSession).not.toHaveBeenCalled();
   });
 
-  it('allows professional issuer of the organization to initiate payment session', async () => {
+  it('does not collect patient honoraires through the MonService Stripe account', async () => {
     vi.mocked(requireSession).mockResolvedValue({
       userId: 'pro-user-1',
       email: 'pro@cabinet.fr',
@@ -113,10 +108,8 @@ describe('Stripe Patient Portal Payment Authorization', () => {
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.url).toBe('https://checkout.stripe.com/c/pay/cs_test_pro');
-    expect(createInvoicePaymentSession).toHaveBeenCalled();
+    expect(res.status).toBe(410);
+    expect(createInvoicePaymentSession).not.toHaveBeenCalled();
   });
 
   it('rejects cross-tenant professional trying to initiate payment session for other org invoice', async () => {

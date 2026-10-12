@@ -97,13 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = useCallback(
     async (data: Partial<User>) => {
-      try {
-        const { updateUserAction } = await import('@/app/actions/session');
-        await updateUserAction(data as Record<string, unknown>);
-        await loadProfile();
-      } catch (err) {
-        console.error('Erreur lors de la mise à jour du profil:', err);
-      }
+      const { updateUserAction } = await import('@/app/actions/session');
+      await updateUserAction(data as Record<string, unknown>);
+      await loadProfile();
     },
     [loadProfile],
   );

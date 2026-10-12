@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState, useTransition } from 'react';
 import {
   AvailabilityRuleDTO,
@@ -40,13 +41,15 @@ export function AvailabilityManager({
   initialRules,
   initialExceptions,
 }: Props) {
+  const initialPractitioner = practitioners.find(p => locations.some(l => p.assignedLocationIds.includes(l.id))) || practitioners[0];
   const [selectedPractitionerId, setSelectedPractitionerId] = useState<string>(
-    practitioners[0]?.id || ''
+    initialPractitioner?.id || ''
   );
   const [selectedLocationId, setSelectedLocationId] = useState<string>(
-    locations[0]?.id || ''
+    locations.find(l => initialPractitioner?.assignedLocationIds.includes(l.id))?.id || ''
   );
 
+  const availableLocations = locations.filter(l => practitioners.find(p => p.id === selectedPractitionerId)?.assignedLocationIds.includes(l.id));
   const selectedLocation = locations.find((l) => l.id === selectedLocationId);
   const selectedTimezone = selectedLocation?.timezone || 'Europe/Paris';
 
@@ -258,19 +261,30 @@ export function AvailabilityManager({
     });
   };
 
+  if (!practitioners.length || !locations.length || !practitioners.some(p => locations.some(l => p.assignedLocationIds.includes(l.id)))) {
+    return <section data-tour="availability-setup" className="rounded-xl border border-indigo-200 bg-white p-6 space-y-4">
+      <h2 className="text-xl font-semibold text-gray-900">Préparez votre planning</h2>
+      <p className="text-sm text-gray-600">Pour définir vos horaires, ajoutez un lieu de consultation et associez-y un praticien dans « Lieux et équipe ».</p>
+      <ol className="list-decimal pl-5 text-sm text-gray-600 space-y-2"><li>Créez votre lieu de consultation (cabinet, domicile…).</li><li>Ajoutez votre fiche de praticien et associez-la à ce lieu.</li><li>Revenez ici pour indiquer vos horaires habituels et vos absences.</li></ol>
+      <Link href="/parametres/cabinet" className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Configurer les lieux et l’équipe</Link>
+    </section>;
+  }
+
   return (
     <div className="space-y-8">
+      <p className="text-sm text-gray-600">Vos horaires habituels indiquent quand des rendez-vous peuvent être proposés. Ajoutez une absence pour bloquer une journée ou une plage horaire.</p>
       {/* Filter Bar */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div data-tour="availability-controls" className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Praticien
             </label>
             <select
+              aria-label="Praticien"
               value={selectedPractitionerId}
-              onChange={(e) => setSelectedPractitionerId(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
+              onChange={(e) => { setSelectedPractitionerId(e.target.value); setSelectedLocationId(locations.find(l => practitioners.find(p => p.id === e.target.value)?.assignedLocationIds.includes(l.id))?.id || ''); }}
+              className="w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
             >
               {practitioners.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -285,11 +299,13 @@ export function AvailabilityManager({
               Lieu de consultation
             </label>
             <select
+              aria-label="Lieu de consultation"
               value={selectedLocationId}
               onChange={(e) => setSelectedLocationId(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
+              className="w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
             >
-              {locations.map((loc) => (
+              {!availableLocations.length && <option value="">Aucun lieu associé à ce praticien</option>}
+              {availableLocations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name} ({loc.timezone})
                 </option>
@@ -300,16 +316,18 @@ export function AvailabilityManager({
 
         <div className="flex gap-3 w-full md:w-auto justify-end">
           <button
+            disabled={!selectedLocationId || isPending}
             onClick={openCreateRuleModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            + Règle hebdomadaire
+            + Ajouter des horaires
           </button>
           <button
+            disabled={!selectedLocationId || isPending}
             onClick={openCreateExceptionModal}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            + Exception ponctuelle
+            + Absence ou ouverture exceptionnelle
           </button>
         </div>
       </div>
@@ -324,7 +342,7 @@ export function AvailabilityManager({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Disponibilités hebdomadaires récurrentes</h3>
+            <h3 className="text-lg font-bold text-gray-900">Horaires habituels</h3>
             <p className="text-xs text-gray-500 mt-1">
               Définit les plages d&apos;ouverture standard du praticien sur chaque jour de la semaine.
             </p>
@@ -333,7 +351,7 @@ export function AvailabilityManager({
 
         {filteredRules.length === 0 ? (
           <div className="p-8 text-center text-gray-500 text-sm">
-            Aucune règle récurrente configurée pour ce praticien sur ce lieu.
+            Aucun horaire défini. Cliquez sur « Ajouter des horaires », puis choisissez un jour et une plage horaire.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -401,7 +419,7 @@ export function AvailabilityManager({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Exceptions ponctuelles & Fermetures</h3>
+            <h3 className="text-lg font-bold text-gray-900">Absences et ouvertures exceptionnelles</h3>
             <p className="text-xs text-gray-500 mt-1">
               Fermeture de cabinet, congés ou ouvertures exceptionnelles. Les fermetures priment toujours sur les ouvertures.
             </p>
@@ -495,7 +513,7 @@ export function AvailabilityManager({
                 <select
                   value={ruleFormData.weekday}
                   onChange={(e) => setRuleFormData({ ...ruleFormData, weekday: Number(e.target.value) })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {WEEKDAYS.map((w) => (
                     <option key={w.id} value={w.id}>
@@ -513,7 +531,7 @@ export function AvailabilityManager({
                     required
                     value={ruleFormData.startTime}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, startTime: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -523,7 +541,7 @@ export function AvailabilityManager({
                     required
                     value={ruleFormData.endTime}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, endTime: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -536,7 +554,7 @@ export function AvailabilityManager({
                     required
                     value={ruleFormData.validFrom}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, validFrom: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -545,7 +563,7 @@ export function AvailabilityManager({
                     type="date"
                     value={ruleFormData.validUntil}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, validUntil: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -589,7 +607,7 @@ export function AvailabilityManager({
                   onChange={(e) =>
                     setExceptionFormData({ ...exceptionFormData, localDate: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
@@ -646,7 +664,7 @@ export function AvailabilityManager({
                       onChange={(e) =>
                         setExceptionFormData({ ...exceptionFormData, startTime: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -658,7 +676,7 @@ export function AvailabilityManager({
                       onChange={(e) =>
                         setExceptionFormData({ ...exceptionFormData, endTime: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>

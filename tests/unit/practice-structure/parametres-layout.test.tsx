@@ -66,8 +66,8 @@ describe('ParametresLayout Server Component', () => {
     const jsx = await ParametresLayout({ children: <div data-testid="child-content" /> });
     render(jsx);
 
-    expect(screen.queryByText('Cabinet')).toBeNull();
-    expect(screen.getByText('Profil')).toBeDefined();
+    expect(screen.queryByText('Lieux et équipe')).toBeNull();
+    expect(screen.getByText('Mon compte')).toBeDefined();
     expect(screen.getByText('Organisation')).toBeDefined();
   });
 
@@ -88,9 +88,9 @@ describe('ParametresLayout Server Component', () => {
     const jsx = await ParametresLayout({ children: <div data-testid="child-content" /> });
     render(jsx);
 
-    expect(screen.getByText('Cabinet')).toBeDefined();
-    expect(screen.getByText('Profil')).toBeDefined();
-    expect(screen.getByText('Organisation')).toBeDefined();
+    expect(screen.getByText('Lieux et équipe')).toBeDefined();
+    expect(screen.getByText('Mon compte')).toBeDefined();
+    expect(screen.getByText('Coordonnées du cabinet')).toBeDefined();
   });
 
   it('Missing organization: calls notFound()', async () => {

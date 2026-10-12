@@ -22,12 +22,12 @@ export default async function AgendaLayout({ children }: { children: React.React
   });
 
   const tabs = [
-    { name: 'Calendrier', href: '/agenda/calendrier' },
+    { name: workspace.type === 'paramedical' ? 'Rendez-vous' : 'Calendrier', href: '/agenda/calendrier' },
   ];
 
   if (workspace.type === 'paramedical') {
     tabs.push(
-      { name: 'Disponibilités', href: '/agenda/disponibilites' },
+      { name: 'Horaires et absences', href: '/agenda/disponibilites' },
       { name: 'Types de séances', href: '/agenda/types-seances' },
       { name: "Liste d'attente", href: '/agenda/liste-attente' }
     );
@@ -36,13 +36,13 @@ export default async function AgendaLayout({ children }: { children: React.React
   tabs.push({ name: 'Tâches', href: '/agenda/taches' });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Agenda</h1>
           <p className="mt-1 text-sm text-gray-500">
             {workspace.type === 'paramedical'
-              ? 'Gérez vos séances, vos disponibilités et vos tâches.'
+              ? 'Planifiez les rendez-vous de vos patients. Réglez vos horaires habituels et vos absences.'
               : 'Gérez vos tâches et consultez votre calendrier.'}
           </p>
         </div>

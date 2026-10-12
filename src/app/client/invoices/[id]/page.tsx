@@ -10,13 +10,12 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateInvoicePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { DownloadIcon } from 'lucide-react';
-import InvoicePaymentButton from '@/components/client/InvoicePaymentButton';
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const { user } = useAuth();
-  
+
   const [invoice, setInvoice] = useState<ClientInvoiceDTO | null>(null);
 
   useEffect(() => {
@@ -24,7 +23,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       if (!user?.id) return;
       try {
         const inv = await invoiceActions.getByIdAction(id);
-        
+
         if (inv?.type === 'invoice') {
           setInvoice(inv);
         }
@@ -55,16 +54,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">Pour régler votre facture, utilisez les moyens de paiement convenus avec votre professionnel.</p>
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Facture {invoice.number}</h1>
           <p className="text-gray-500">Émise le {format(new Date(invoice.createdAt), 'PP', { locale: fr })}</p>
         </div>
         <div className="flex space-x-3">
-          {invoice.status !== 'paid' && (
-            <InvoicePaymentButton invoiceId={invoice.id} />
-          )}
-          <button 
+
+          <button
             onClick={handleDownload}
             className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
           >

@@ -35,25 +35,9 @@ function isPublic(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const response = isPublic(request.nextUrl.pathname) ? NextResponse.next() : await auth.middleware({ loginUrl: '/login' })(request);
 
-  // i18n logic
-  const hasLocaleCookie = request.cookies.has('NEXT_LOCALE');
-  if (!hasLocaleCookie) {
-    const locales = ['fr', 'de', 'nl', 'en'];
-    const defaultLocale = 'fr';
-    const acceptLanguage = request.headers.get('accept-language');
-    let locale = defaultLocale;
-    
-    if (acceptLanguage) {
-      const preferred = acceptLanguage.split(',')[0].split('-')[0];
-      if (locales.includes(preferred)) {
-        locale = preferred;
-      }
-    }
-    
-    response.cookies.set('NEXT_LOCALE', locale, {
-      path: '/',
-      maxAge: 365 * 24 * 60 * 60
-    });
+  // L’interface possède une seule langue source. Corriger aussi les anciens cookies.
+  if (request.cookies.get('NEXT_LOCALE')?.value !== 'fr') {
+    response.cookies.set('NEXT_LOCALE', 'fr', { path: '/', maxAge: 365 * 24 * 60 * 60, sameSite: 'lax' });
   }
 
   // NOTE: Les redirections d'authentification sont gérées par les layouts

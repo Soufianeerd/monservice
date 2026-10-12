@@ -10,7 +10,7 @@ import {
   generateNotificationsAction 
 } from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
 interface HeaderProps {
@@ -87,7 +87,7 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4">
         
-        <div className="flex items-center w-1/3">
+        <div className="flex items-center min-w-0 flex-1">
           <button 
             type="button"
             className="md:hidden p-2 -ml-2 mr-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
@@ -98,11 +98,11 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
           </button>
           {mounted ? (
             <>
-              <span className="text-gray-700 font-semibold text-lg hidden md:block">
+              <span className="text-gray-700 font-semibold text-lg truncate hidden md:block">
                 {organization?.name || 'Mon Organisation'}
               </span>
               <span className="mx-3 text-gray-300 hidden md:block">|</span>
-              <span className="text-sm text-gray-500 capitalize bg-gray-100 px-2 py-1 rounded hidden md:block">
+              <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded hidden md:block">
                 {getWorkspaceLabel()}
               </span>
             </>
@@ -115,14 +115,14 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
           )}
         </div>
 
-        <div className="flex-1 flex justify-center w-1/3 px-4">
+        <div className="hidden lg:flex flex-1 justify-center px-4">
           {showGlobalSearch && <GlobalSearchBar />}
         </div>
         
-        <div className="flex items-center justify-end w-1/3 space-x-4">
+        <div className="flex items-center justify-end gap-1 sm:gap-3 shrink-0">
           
-          <div className="hidden sm:block">
-            <LanguageSwitcher />
+          <div className="shrink-0">
+            <ThemeSwitcher />
           </div>
 
           <div className="relative" ref={notifRef}>

@@ -57,7 +57,7 @@ export default function ParamedicalPracticeDashboard({
     .join(' ');
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-200 pb-6" data-tour="dashboard-overview">
         <div>
@@ -82,7 +82,7 @@ export default function ParamedicalPracticeDashboard({
             href="/parametres/organisation"
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
           >
-            Configurer mon organisation
+            Compléter les coordonnées du cabinet
           </Link>
         )}
       </div>
@@ -154,59 +154,16 @@ export default function ParamedicalPracticeDashboard({
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
-              Accès rapides
+              Commencer une action
             </h2>
-            <nav className="space-y-2">
-              <Link 
-                href="/patients"
-                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
-              >
-                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
-                  <Users className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                </div>
-                <span className="font-medium">{workspace.terminology.customerPlural}</span>
-              </Link>
-
-              <Link 
-                href="/agenda"
-                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
-              >
-                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
-                  <Calendar className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                </div>
-                <span className="font-medium">Agenda</span>
-              </Link>
-              
-              <Link 
-                href="/agenda/taches"
-                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
-              >
-                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
-                  <CheckSquare className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                </div>
-                <span className="font-medium">Tâches</span>
-              </Link>
-
-              <Link 
-                href="/facturation"
-                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
-              >
-                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
-                  <FileText className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                </div>
-                <span className="font-medium">Facturation</span>
-              </Link>
-
-              <Link 
-                href="/parametres/organisation"
-                className="flex items-center gap-3 p-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors group"
-              >
-                <div className="bg-gray-100 group-hover:bg-blue-100 p-2 rounded-md transition-colors">
-                  <Settings className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                </div>
-                <span className="font-medium">Organisation</span>
-              </Link>
+            <nav className="space-y-3" aria-label="Actions du cabinet">
+              {[
+                { href: '/patients/new', label: 'Ajouter un patient', description: 'Créer sa fiche administrative.', icon: Users },
+                { href: '/agenda/calendrier', label: 'Planifier un rendez-vous', description: 'Choisir un patient, une date et un praticien.', icon: Calendar },
+                { href: '/facturation/factures/new', label: 'Créer une facture', description: 'Préparer un document pour votre patient.', icon: FileText },
+              ].map(action => <Link key={action.href} href={action.href} className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-gray-700 hover:bg-gray-50"><action.icon className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" /><span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs text-gray-500">{action.description}</span></span></Link>)}
             </nav>
+            <div className="mt-5 border-t border-gray-200 pt-4 text-sm text-gray-600"><p className="mb-2 font-medium text-gray-900">Préparer votre agenda</p><p className="text-xs">Ajoutez vos lieux et praticiens, puis définissez vos horaires et types de séances.</p><Link href="/parametres/cabinet" className="mt-3 inline-block font-medium text-indigo-600">Configurer les lieux et l’équipe →</Link></div>
           </div>
         </div>
       </div>

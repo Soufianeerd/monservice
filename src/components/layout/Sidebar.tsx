@@ -100,14 +100,14 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
             {navItems.map((item) => {
               const itemKey = item.id || item.name;
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const isExpanded = expandedItems[itemKey] || isActive;
+              const isExpanded = expandedItems[itemKey] ?? isActive;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const Icon = item.icon;
 
               return (
                 <div key={itemKey}>
                   <Link
-                    href={hasSubItems ? '#' : item.href}
+                    href={item.href}
                     onClick={(e) => {
                       if (hasSubItems) {
                         e.preventDefault();
@@ -138,6 +138,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
                         const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
                         return (
                           <Link
+                            data-tour={`nav-${subItem.href.split('/').filter(Boolean).join('-')}`}
                             key={subItem.name}
                             href={subItem.href}
                             onClick={() => setIsOpen?.(false)}
