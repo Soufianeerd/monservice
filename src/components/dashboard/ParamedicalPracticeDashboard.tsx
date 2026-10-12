@@ -90,7 +90,7 @@ export default function ParamedicalPracticeDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" data-tour="dashboard-activities">
         {/* Main Content Area (Tasks) */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div data-guide="dashboard-tasks" data-guide-title="À traiter" data-guide-text="Ce cadre affiche les rappels administratifs ouverts, leurs échéances et leur priorité. Utilisez Voir les tâches pour les retrouver ou en ajouter. Une tâche ne réserve pas de rendez-vous." className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 À traiter
@@ -160,8 +160,8 @@ export default function ParamedicalPracticeDashboard({
               {[
                 { href: '/patients/new', label: 'Ajouter un patient', description: 'Créer sa fiche administrative.', icon: Users },
                 { href: '/agenda/calendrier', label: 'Planifier un rendez-vous', description: 'Choisir un patient, une date et un praticien.', icon: Calendar },
-                { href: '/facturation/factures/new', label: 'Créer une facture', description: 'Préparer un document pour votre patient.', icon: FileText },
-              ].map(action => <Link key={action.href} href={action.href} className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-gray-700 hover:bg-gray-50"><action.icon className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" /><span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs text-gray-500">{action.description}</span></span></Link>)}
+                { href: '/facturation/factures/new', label: 'Créer une facture', description: 'Choisir le patient et ses prestations.', icon: FileText },
+              ].map(action => <Link key={action.href} data-guide={action.href === '/facturation/factures/new' ? 'dashboard-patient-invoice' : undefined} href={action.href} className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-gray-700 hover:bg-gray-50"><action.icon className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" /><span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs text-gray-500">{action.description}</span></span></Link>)}
             </nav>
             <div className="mt-5 border-t border-gray-200 pt-4 text-sm text-gray-600"><p className="mb-2 font-medium text-gray-900">Préparer votre agenda</p><p className="text-xs">Ajoutez vos lieux et praticiens, puis définissez vos horaires et types de séances.</p><Link href="/parametres/cabinet" className="mt-3 inline-block font-medium text-indigo-600">Configurer les lieux et l’équipe →</Link></div>
           </div>

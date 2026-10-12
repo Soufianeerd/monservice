@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import * as taskActions from '@/app/actions/task.actions';
 
 import { useState, useEffect } from 'react';
@@ -38,7 +40,8 @@ export default function NewTaskPage() {
         entityId: data.entityId,
         organizationId: user.organizationId,
       });
-      router.push('/tasks');
+      announceGuideSaved('La tâche est enregistrée.');
+      router.push('/agenda/taches');
     } catch (error) {
       console.error('Erreur', error);
       setIsSubmitting(false);

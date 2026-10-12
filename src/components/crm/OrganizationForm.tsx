@@ -58,7 +58,7 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="organisation" onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
       {/* Logo */}
       <div>

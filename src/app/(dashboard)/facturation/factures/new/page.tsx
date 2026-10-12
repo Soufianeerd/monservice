@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as invoiceActions from '@/app/actions/invoice.actions';
@@ -9,10 +11,13 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
 import { handleError } from '@/lib/utils/error-handler';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { preparePatientBillingRecipientAction } from '@/app/actions/patient-billing.actions';
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const isPractice = useWorkspace()?.type === 'paramedical';
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,6 +27,7 @@ export default function NewInvoicePage() {
     setIsSubmitting(true);
     try {
       const type = data.type || 'invoice';
+      const recipientId = isPractice ? await preparePatientBillingRecipientAction(data.clientId) : data.clientId;
       const number = await invoiceActions.getNextInvoiceNumberAction(user.organizationId, type);
       
       const { lines, ...rest } = data;
@@ -32,7 +38,7 @@ export default function NewInvoicePage() {
         date: data.date || new Date().toISOString(),
         dueDate: data.dueDate,
         status: 'draft',
-        clientId: data.clientId || '',
+        clientId: recipientId || '',
         organizationId: user.organizationId,
         totalHT: data.totalHT || 0,
         taxAmount: data.taxAmount || 0,
@@ -42,6 +48,7 @@ export default function NewInvoicePage() {
 
       // activityLog disabled
       
+      announceGuideSaved(data.type === 'invoice' ? 'La facture est enregistrée.' : 'Le devis est enregistré.');
       alert(data.type === 'invoice' ? 'Facture créée avec succès !' : 'Devis créé avec succès !');
       if (data.type === 'invoice') {
         router.push(`/facturation/factures/${newInvoice.id}`);
@@ -59,7 +66,7 @@ export default function NewInvoicePage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Nouveau Document</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{isPractice ? 'Nouvelle facture patient' : 'Nouveau document'}</h1>
         <p className="mt-1 text-sm text-gray-500">
           Créer un devis ou une facture.
         </p>

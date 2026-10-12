@@ -33,7 +33,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting }: Pro
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="prestation" onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">{isPractice ? 'Nom de la prestation *' : 'Nom du produit ou service *'}</label>
         <input

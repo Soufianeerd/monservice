@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useTransition } from 'react';
 import { AppointmentTypeDTO } from '@/lib/scheduling/types';
 import {
@@ -106,6 +108,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
           });
           setTypes((prev) => [created, ...prev]);
         }
+        announceGuideSaved('Le type de séance est enregistré.');
         setIsModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -335,7 +338,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
               {editingType ? 'Modifier le type de séance' : 'Nouveau type de séance'}
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form data-guide-form="type-seance" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nom de la séance *</label>
                 <input

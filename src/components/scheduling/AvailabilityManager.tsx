@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import Link from 'next/link';
 import React, { useState, useTransition } from 'react';
 import {
@@ -166,6 +168,7 @@ export function AvailabilityManager({
           });
           setRules((prev) => [...prev, created]);
         }
+        announceGuideSaved('Les horaires sont enregistrés.');
         setIsRuleModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -250,6 +253,7 @@ export function AvailabilityManager({
           });
           setExceptions((prev) => [...prev, created]);
         }
+        announceGuideSaved('L’absence ou l’ouverture exceptionnelle est enregistrée.');
         setIsExceptionModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -507,7 +511,7 @@ export function AvailabilityManager({
               {editingRule ? 'Modifier la règle récurrente' : 'Nouvelle règle hebdomadaire'}
             </h3>
 
-            <form onSubmit={handleRuleSubmit} className="space-y-4">
+            <form data-guide-form="horaires" onSubmit={handleRuleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Jour de la semaine *</label>
                 <select
@@ -597,7 +601,7 @@ export function AvailabilityManager({
               {editingException ? 'Modifier l’exception ponctuelle' : 'Nouvelle exception ponctuelle'}
             </h3>
 
-            <form onSubmit={handleExceptionSubmit} className="space-y-4">
+            <form data-guide-form="horaires" onSubmit={handleExceptionSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date concernée *</label>
                 <input

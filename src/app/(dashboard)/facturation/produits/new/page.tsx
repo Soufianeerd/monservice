@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProductForm from '@/components/crm/ProductForm';
@@ -31,6 +33,7 @@ export default function NewProductPage() {
 
       // activityLog disabled
 
+      announceGuideSaved('La prestation et son tarif sont enregistrés.');
       router.push('/facturation/produits');
       router.refresh();
     } catch {

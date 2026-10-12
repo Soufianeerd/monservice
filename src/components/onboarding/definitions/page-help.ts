@@ -1,11 +1,17 @@
+import type { WorkspaceType } from '@/lib/workspaces/types';
+
 export interface HelpStep { title: string; text: string; target: string }
 export interface PageHelp { title: string; text: string; steps: HelpStep[] }
 
 const overview = 'main h1, main h2';
 const help: Record<string, PageHelp> = {
   '/dashboard': { title: 'Votre journée au cabinet', text: 'Retrouvez vos tâches et commencez une action : ajouter un patient, planifier un rendez-vous ou créer une facture.', steps: [
-    { title: 'Votre espace de travail', text: 'Le menu permet de passer des patients aux rendez-vous, aux factures et aux paramètres du cabinet.', target: '[data-tour="dashboard-overview"]' },
-    { title: 'Commencer une action', text: 'Ces raccourcis ouvrent les parcours utiles. Pour un premier rendez-vous, configurez d’abord les lieux et l’équipe.', target: '[aria-label="Actions du cabinet"]' },
+    { title: 'Les tâches à traiter', text: 'Ce cadre affiche le nombre de tâches ouvertes, les prochaines échéances et leur priorité. « Voir les tâches » permet de créer et suivre vos rappels administratifs.', target: '[data-guide="dashboard-tasks"]' },
+    { title: 'Les coordonnées de votre cabinet', text: 'Ce bouton ouvre le nom et les coordonnées de votre activité. Le guide vous accompagnera jusqu’au bouton d’enregistrement.', target: 'main a[href="/parametres/organisation"]' },
+    { title: 'Ajouter un patient', text: 'Cliquez ici pour créer sa fiche administrative. Le guide pourra vous accompagner champ par champ.', target: 'main a[href="/patients/new"]' },
+    { title: 'Planifier un rendez-vous', text: 'Cliquez ici pour ouvrir le calendrier, puis Nouvelle séance. Configurez d’abord le lieu, le praticien, ses horaires et le type de séance.', target: 'main a[href="/agenda/calendrier"]' },
+    { title: 'Créer une facture patient', text: 'Cliquez pour choisir le patient, sélectionner les prestations et vérifier les quantités, les prix et la TVA avant d’enregistrer.', target: '[data-guide="dashboard-patient-invoice"]' },
+    { title: 'Configurer les lieux et l’équipe', text: 'Créez votre lieu, ajoutez votre fiche de praticien puis utilisez Affecter lieux. Le guide propose un parcours pour chacune de ces étapes.', target: 'main a[href="/parametres/cabinet"]' },
   ] },
   '/patients': { title: 'Retrouver vos patients', text: 'Chaque fiche rassemble les informations du patient. Les dossiers archivés restent consultables avec le filtre de statut.', steps: [
     { title: 'Ajouter un patient', text: 'Créez sa fiche administrative avant de planifier ses rendez-vous.', target: '[data-tour="new-patient"]' },
@@ -41,10 +47,31 @@ const help: Record<string, PageHelp> = {
   '/facturation/produits': { title: 'Vos prestations et tarifs', text: 'Ce catalogue mémorise vos prestations et leurs prix pour remplir vos devis et factures. Il ne remplace pas les types de séances de l’agenda.', steps: [{ title: 'Réutiliser un tarif', text: 'Ajoutez par exemple une prestation de bilan ou de suivi, puis sélectionnez-la lors de la création d’un document.', target: '[data-tour="service-catalog"]' }] },
 };
 
-export function getPageHelp(path: string): PageHelp {
+const commonPages: Record<string, [string, string]> = {
+  '/clients': ['Vos clients', 'Créez un client avant un devis, une facture ou une intervention. Ses coordonnées et celles de votre interlocuteur se conservent dans sa fiche.'],
+  '/deals': ['Vos opportunités commerciales', 'Une opportunité suit une vente potentielle : client, montant estimé et étape du pipeline. Un devis chiffre la proposition ; une facture demande son règlement.'],
+  '/operations': ['Vos interventions et chantiers', 'Une intervention associe un client, son site et les travaux à réaliser. Planifiez les dates, attribuez les intervenants puis suivez l’avancement et les comptes rendus.'],
+  '/messages': ['Votre messagerie', 'Choisissez une conversation, lisez les échanges puis composez votre message. Vérifiez le destinataire avant l’envoi.'],
+  '/marketplace': ['Les demandes de services', 'Consultez les demandes disponibles et ouvrez une demande pour examiner les besoins avant de proposer une réponse.'],
+  '/parametres/privacy': ['Les outils de confidentialité', 'Ces rubriques regroupent les consentements, demandes d’accès, registre et incidents. Le guide montre les contrôles disponibles et les informations à renseigner.'],
+  '/parametres/notifications': ['Vos notifications', 'Consultez les alertes de votre activité et les préférences proposées sur cet écran.'],
+};
+
+export function getPageHelp(path: string, type: WorkspaceType = 'paramedical'): PageHelp {
+  const isForm = /\/(new|nouveau|edit)$/.test(path);
+  if (isForm && !path.startsWith('/patients/')) {
+    const subject = path.startsWith('/facturation/devis') ? 'devis' : path.startsWith('/facturation/factures') ? 'facture' : path.startsWith('/facturation/produits') ? 'prestation et son tarif' : path.startsWith('/operations') ? 'intervention' : path.startsWith('/clients') ? 'client' : path.startsWith('/deals') ? 'opportunité commerciale' : 'tâche';
+    return { title: `Renseigner votre ${subject}`, text: 'Le tutoriel suit chaque champ, les options qui apparaissent et le bouton d’enregistrement. Les exemples restent des suggestions : vous gardez la main sur la saisie et la sauvegarde.', steps: [] };
+  }
+  if (type !== 'paramedical' && path === '/dashboard') return { title: type === 'field_service' ? 'Votre activité sur le terrain' : 'Votre activité professionnelle', text: 'Chaque indicateur et cadre présente une partie de votre activité. Découvrez-les, puis choisissez un parcours pour créer un client, une prestation, un devis ou une facture.', steps: [] };
+  if (type !== 'paramedical' && path === '/agenda/calendrier') return { title: 'Votre calendrier de travail', text: 'Changez la période et consultez les événements affichés. Les tâches suivent les rappels administratifs ; les interventions se créent dans leur rubrique dédiée.', steps: [] };
+  if (type !== 'paramedical' && path === '/parametres/organisation') return { title: 'Les coordonnées de votre activité', text: 'Renseignez les coordonnées professionnelles distinctes de votre compte personnel. Aucun compte Stripe professionnel n’est nécessaire.', steps: [] };
+  const common = Object.keys(commonPages).find(key => path === key || path.startsWith(`${key}/`));
+  if (common) return { title: commonPages[common][0], text: commonPages[common][1], steps: [] };
+  if (type !== 'paramedical' && path.startsWith('/facturation/')) return { title: path.includes('/devis') ? 'Vos devis' : path.includes('/produits') ? 'Vos prestations et tarifs' : 'Vos factures clients', text: 'Choisissez un parcours pour préparer votre document ou votre tarif. Les quantités, prix, remises et TVA déterminent le total ; l’encaissement du client reste géré par vous.', steps: [] };
   if (help[path]) return help[path];
-  if (path === '/patients/new') return { title: 'Ajouter un patient', text: 'Créez une fiche administrative. Complétez les champs obligatoires, puis enregistrez pour ouvrir le dossier.', steps: [{ title: 'Informations du patient', text: 'Les informations saisies seront conservées dans le dossier de ce patient.', target: 'main form' }] };
+  if (path === '/patients/new') return { title: 'Ajouter un patient', text: 'Le guide suit chaque champ jusqu’à Créer le patient. Pour vous entraîner, un exemple fictif est proposé dans l’aide ; vous pouvez quitter avant d’enregistrer.', steps: [] };
   if (path.startsWith('/patients/')) return { title: 'Le dossier de votre patient', text: 'Retrouvez les informations et les rendez-vous de ce patient dans les rubriques de son dossier.', steps: [{ title: 'Parcourir le dossier', text: 'Les onglets regroupent les informations du patient. Vérifiez le dossier ouvert avant de modifier une information.', target: overview }] };
   const parent = Object.keys(help).filter(key => path.startsWith(`${key}/`)).sort((a, b) => b.length - a.length)[0];
-  return parent ? help[parent] : { title: 'Comprendre cette page', text: 'Le menu permet de retrouver vos patients, votre agenda, vos factures et les réglages de votre cabinet.', steps: [{ title: 'Votre espace', text: 'Utilisez les rubriques du menu pour passer à une autre partie de votre activité.', target: overview }] };
+  return parent ? help[parent] : { title: 'Comprendre cette page', text: 'Découvrez les contrôles de cette page ou choisissez un parcours complet pour prendre en main votre activité.', steps: [] };
 }

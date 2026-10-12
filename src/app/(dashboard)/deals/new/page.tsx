@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DealForm from '@/components/crm/DealForm';
@@ -31,6 +33,7 @@ export default function NewDealPage() {
       // activityLog disabled
 
       alert('Opportunité créée !');
+      announceGuideSaved('L’opportunité est enregistrée.');
       router.push(`/deals/${newDeal.id}`);
     } catch (error) {
       handleError(error, "Erreur lors de la création de l'opportunité");
@@ -41,7 +44,7 @@ export default function NewDealPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Nouveau deal</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Nouvelle opportunité</h1>
         <p className="mt-1 text-sm text-gray-500">Créez une nouvelle opportunité commerciale.</p>
       </div>
       <DealForm organizationId={user?.organizationId || ''} onSubmit={handleSubmit} isSubmitting={isSubmitting} />

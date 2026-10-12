@@ -1,4 +1,6 @@
 'use client';
+
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
 
 import React, { useEffect, useState } from 'react';
@@ -50,6 +52,7 @@ export default function OrganizationSettingsPage() {
         if (updatePayload[k] === undefined) delete updatePayload[k];
       }
       await updateAction(currentOrg.id, updatePayload);
+      announceGuideSaved('Les coordonnées de votre activité sont enregistrées.');
       await refresh();
       setCurrentOrg({
         ...currentOrg,

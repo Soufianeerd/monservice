@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 
 async function dismissSetupGuideIfPresent(page: Page) {
   try {
-    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"], button[aria-label="Réduire l’aide"]');
     if (await closeBtn.isVisible({ timeout: 1000 })) {
       await closeBtn.click({ force: true });
     }

@@ -22,6 +22,7 @@ test('Le français reste la langue source malgré un ancien cookie de langue', a
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+  await expect(page.getByRole('heading', { name: "Aujourd'hui", exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('cabinet-dark.png') });
   await page.getByLabel('Activer le mode clair').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -35,7 +36,7 @@ test('Le guide cible les contrôles, suit le défilement et change avec la page'
   const tour = page.getByRole('dialog', { name: 'Tutoriel de cette page' });
   await expect(tour).toContainText('Ajouter un patient');
   await page.getByRole('button', { name: 'Suivant', exact: true }).click();
-  await expect(tour).toContainText('Chercher un dossier');
+  await expect(tour).toContainText('Nom (naissance / usage)');
   await page.locator('main').evaluate(element => { element.scrollTop += 150; });
   await expect(tour).toBeVisible();
   await page.goto('/agenda/disponibilites');

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ContextualHelp from '@/components/onboarding/ContextualHelp';
@@ -17,6 +18,7 @@ vi.mock('@floating-ui/react', () => ({
   offset: vi.fn(), flip: vi.fn(), shift: vi.fn(), autoUpdate: (_target: Element, _floating: Element, update: () => void) => { update(); return vi.fn(); },
 }));
 vi.mock('@/components/auth/AuthContext', () => ({ useAuth: vi.fn() }));
+vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ type: 'paramedical' }) }));
 vi.mock('@/lib/auth/client', () => ({ authClient: { getSession: vi.fn(), requestPasswordReset: vi.fn() } }));
 vi.mock('@/app/actions/patient-registry.actions', () => ({ listPatientsAction: vi.fn() }));
 vi.mock('@/app/actions/scheduling.actions', () => ({}));
@@ -27,15 +29,15 @@ beforeEach(() => {
 });
 
 describe('Aide contextuelle du cabinet', () => {
-  it('suit la navigation et réinitialise la visite sans forcer de route', () => {
-    const view = render(<><a data-tour="new-patient">Nouveau patient</a><ContextualHelp /></>);
+  it('suit la navigation et réinitialise la visite sans forcer de route', async () => {
+    const view = render(<><main><Link data-tour="new-patient" href="/patients/new">Nouveau patient</Link></main><ContextualHelp /></>);
     expect(screen.getByRole('heading', { name: 'Retrouver vos patients' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Me montrer les éléments' }));
     expect(state.setReference).toHaveBeenCalledWith(document.querySelector('[data-tour="new-patient"]'));
     expect(screen.getByRole('dialog')).toHaveTextContent('Ajouter un patient');
     state.path = '/parametres/facturation';
     view.rerender(<ContextualHelp />);
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByRole('heading', { name: 'Votre abonnement MonService' })).toBeVisible();
     expect(screen.getByLabelText('Aide contextuelle')).toHaveTextContent('ne concernent pas les honoraires');
   });

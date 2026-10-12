@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { authClient } from '@/lib/auth/client';
@@ -18,6 +20,7 @@ export default function ProfilePage() {
     event.preventDefault(); setPending(true); setError(''); setNotice('');
     try {
       await updateUser({ name: (name ?? user!.name ?? '').trim() });
+      announceGuideSaved('Votre nom est enregistré.');
       setNotice('Votre nom a été enregistré.');
     } catch { setError('Votre profil n’a pas pu être enregistré. Réessayez.'); }
     finally { setPending(false); }
@@ -42,7 +45,7 @@ export default function ProfilePage() {
       <div><h2 className="text-xl font-semibold text-gray-900">Mon compte</h2><p className="mt-2 text-sm text-gray-500">Vos informations personnelles de connexion. Les coordonnées professionnelles se règlent séparément.</p></div>
       {error && <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-lg bg-green-50 p-4 text-sm text-green-700">{notice}</p>}
-      <form onSubmit={save} data-tour="profile-form" className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <form data-guide-form="profil" data-guide-inline onSubmit={save} data-tour="profile-form" className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div><label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom complet</label><input id="name" required maxLength={120} value={name ?? user.name ?? ''} onChange={e => setName(e.target.value)} className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2" /></div>
         <div><label htmlFor="email" className="block text-sm font-medium text-gray-700">Adresse e-mail de connexion</label><input id="email" type="email" readOnly value={user.email || ''} className="mt-2 block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2" /><p className="mt-2 text-xs text-gray-500">Cette adresse identifie votre compte et reçoit les messages de sécurité.</p></div>
         <button disabled={pending} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Enregistrement…' : 'Enregistrer mon nom'}</button>

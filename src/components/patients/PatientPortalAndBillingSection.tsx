@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect } from 'react';
 import {
   grantPatientPortalAccessAction,
@@ -166,6 +168,7 @@ export default function PatientPortalAndBillingSection({
         ],
       });
       setInvoices((prev) => [newInv, ...prev]);
+      announceGuideSaved('La facture patient est enregistrée.');
     } catch (err: unknown) {
       setBillingError(err instanceof Error ? err.message : 'Erreur lors de la création de la facture');
     } finally {
@@ -237,7 +240,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Grant Access Form */}
-            <form onSubmit={handleGrantAccess} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <form data-guide-form="facture-patient" onSubmit={handleGrantAccess} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Activer un nouvel accès</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-1">
@@ -357,7 +360,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Assign Form */}
-            <form onSubmit={handleAssignQuestionnaire} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row gap-3 items-end">
+            <form data-guide-form="facture-patient" onSubmit={handleAssignQuestionnaire} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row gap-3 items-end">
               <div className="flex-1 w-full">
                 <label className="block text-xs font-medium text-slate-600 mb-1">Sélectionner un modèle de formulaire</label>
                 <select
@@ -442,7 +445,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Quick Invoice Creation Form */}
-            <form onSubmit={handleCreateInvoice} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <form data-guide-form="facture-patient" onSubmit={handleCreateInvoice} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Créer une facture rapide</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">

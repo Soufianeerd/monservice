@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -20,12 +22,13 @@ import {
   TrendingUp,
   Percent,
 } from 'lucide-react';
-import * as clientActions from '@/app/actions/client.actions';
+import { preparePatientBillingRecipientAction } from '@/app/actions/patient-billing.actions';
+import { useBillingRecipients } from '@/hooks/useBillingRecipients';
 import * as dealActions from '@/app/actions/deal.actions';
 import { listFieldServiceSitesAction } from '@/app/actions/field-service-operations.actions';
 import { createQuoteAction } from '@/app/actions/quote.actions';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
-import type { Client, Deal, InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces';
+import type { Deal, InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces';
 
 interface SectionDraft {
   id: string;
@@ -82,6 +85,7 @@ export default function NewQuotePage() {
   const workspace = useWorkspace();
 
   const isFieldService = workspace?.type === 'field_service';
+  const isPractice = workspace?.type === 'paramedical';
 
   // Zero Re-Entry initial query params
   const paramDealId = searchParams.get('dealId') || '';
@@ -105,7 +109,7 @@ export default function NewQuotePage() {
   const [advancedMode, setAdvancedMode] = useState(isFieldService);
 
   // Data Selectors
-  const [clients, setClients] = useState<Client[]>([]);
+  const { recipients: clients, query: patientQuery, setQuery: setPatientQuery, error: recipientError } = useBillingRecipients(user?.organizationId, isPractice);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [sites, setSites] = useState<any[]>([]);
 
@@ -131,11 +135,8 @@ export default function NewQuotePage() {
   useEffect(() => {
     if (!user?.organizationId) return;
 
-    clientActions.findAllAction(user.organizationId).then((cls) => {
-      setClients(cls);
-    });
 
-    dealActions.findAllAction(user.organizationId).then((dls) => {
+    if (!isPractice) dealActions.findAllAction(user.organizationId).then((dls) => {
       setDeals(dls);
       if (paramDealId) {
         const found = dls.find((d) => d.id === paramDealId);
@@ -147,11 +148,11 @@ export default function NewQuotePage() {
         }
       }
     });
-  }, [user, paramDealId]);
+  }, [user, paramDealId, isPractice]);
 
   // Load sites when client changes
   useEffect(() => {
-    if (!user?.organizationId || !clientId) {
+    if (!isFieldService || !user?.organizationId || !clientId) {
       setSites([]);
       return;
     }
@@ -166,7 +167,7 @@ export default function NewQuotePage() {
       .catch(() => {
         setSites([]);
       });
-  }, [user, clientId]);
+  }, [user, clientId, isFieldService]);
 
   // Pure calculations preview
   const totals = useMemo(() => {
@@ -250,7 +251,7 @@ export default function NewQuotePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
-      setError('Veuillez sélectionner un client.');
+      setError(isPractice ? 'Veuillez sélectionner un patient.' : 'Veuillez sélectionner un client.');
       return;
     }
     if (lines.length === 0) {
@@ -263,7 +264,7 @@ export default function NewQuotePage() {
 
     try {
       const payload = {
-        clientId,
+        clientId: isPractice ? await preparePatientBillingRecipientAction(clientId) : clientId,
         siteId: siteId || undefined,
         dealId: dealId || undefined,
         title: title || undefined,
@@ -288,12 +289,13 @@ export default function NewQuotePage() {
           unitCost: l.unitCost ? Number(l.unitCost) : undefined,
           unitPrice: Number(l.unitPrice) || 0,
           discountRate: Number(l.discountRate) || 0,
-          taxRate: Number(l.taxRate) || 20,
+          taxRate: Number(l.taxRate),
           position: idx,
         })),
       };
 
       const createdQuote = await createQuoteAction(payload);
+      announceGuideSaved('Le devis est enregistré.');
       router.push(`/facturation/devis/${createdQuote.id}`);
     } catch (err: unknown) {
       console.error('Erreur création devis:', err);
@@ -303,7 +305,9 @@ export default function NewQuotePage() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
+    <form data-guide-form="devis" onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
+      {recipientError && <p role="alert" className="text-sm text-red-600">{recipientError}</p>}
+      {isPractice && <div><label htmlFor="quote-patient-search" className="block text-sm font-medium text-gray-700">Rechercher un patient</label><input id="quote-patient-search" value={patientQuery} onChange={event => { setPatientQuery(event.target.value); setClientId(''); }} placeholder="Au moins deux lettres du nom ou prénom" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /><p className="mt-1 text-xs text-gray-500">Choisissez ensuite le patient dans la liste des résultats.</p></div>}
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-4">
         <div>
@@ -314,9 +318,9 @@ export default function NewQuotePage() {
             <ArrowLeft className="w-4 h-4 mr-1" />
             Retour aux devis
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Nouveau Devis Professionnel</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isPractice ? 'Nouveau devis patient' : 'Nouveau devis professionnel'}</h1>
           <p className="text-sm text-gray-500">
-            Chiffrage précis avec métrés, multi-TVA et options
+            {isPractice ? 'Décrivez les prestations proposées et vérifiez leur montant avant d’enregistrer.' : 'Chiffrage précis avec unités, TVA et options'}
           </p>
         </div>
 
@@ -328,7 +332,7 @@ export default function NewQuotePage() {
               onChange={(e) => setAdvancedMode(e.target.checked)}
               className="rounded text-blue-600 focus:ring-blue-500"
             />
-            <span className="font-medium">Mode Avancé BTP / Chantier</span>
+            <span className="font-medium">{isFieldService ? 'Mode avancé BTP / Chantier' : 'Détails des tarifs (unités, TVA, remises)'}</span>
           </label>
 
           <button
@@ -356,7 +360,7 @@ export default function NewQuotePage() {
             {/* Client Selection */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                Client <span className="text-red-500">*</span>
+                {isPractice ? 'Patient' : 'Client'} <span className="text-red-500">*</span>
               </label>
               <select
                 data-testid="quote-client-select"
@@ -368,7 +372,7 @@ export default function NewQuotePage() {
                 required
                 className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none"
               >
-                <option value="">Sélectionner un client...</option>
+                <option value="">{isPractice ? 'Sélectionner un patient...' : 'Sélectionner un client...'}</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.company ? `(${c.company})` : ''}
@@ -378,7 +382,7 @@ export default function NewQuotePage() {
             </div>
 
             {/* Site / Chantier (Field service & advanced mode) */}
-            {advancedMode && (
+            {advancedMode && isFieldService && (
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Site / Chantier
@@ -407,9 +411,9 @@ export default function NewQuotePage() {
             )}
 
             {/* Deal / Opportunité */}
-            <div>
+            <div hidden={isPractice}>
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                Deal / Opportunité CRM
+                Opportunité commerciale
               </label>
               <select
                 data-testid="quote-deal-select"
@@ -417,7 +421,7 @@ export default function NewQuotePage() {
                 onChange={(e) => setDealId(e.target.value)}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none"
               >
-                <option value="">Aucun deal associé</option>
+                <option value="">Aucune opportunité associée</option>
                 {deals.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} ({new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(d.value)})
@@ -765,6 +769,7 @@ function LineRow({
       <div className="flex flex-col sm:flex-row gap-2">
         {advancedMode && (
           <select
+            aria-label="Type de prestation"
             value={line.lineType}
             onChange={(e) => onUpdate({ lineType: e.target.value as InvoiceLineType })}
             className="sm:w-40 rounded border border-gray-300 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-50"
@@ -778,6 +783,7 @@ function LineRow({
         )}
 
         <input
+          aria-label="Description de la ligne"
           data-testid="line-description-input"
           type="text"
           value={line.description}
@@ -788,6 +794,7 @@ function LineRow({
         />
 
         <button
+          aria-label="Supprimer la ligne"
           data-testid="delete-line-button"
           type="button"
           onClick={onDelete}
