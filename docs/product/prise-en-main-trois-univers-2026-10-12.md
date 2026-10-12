@@ -42,6 +42,14 @@ Les essais automatisés se déroulent sur une branche CI vide et jetable, avec d
 
 ## Validation
 
-Le replay complet est en cours. Le résultat final, son périmètre et le commit vérifié seront ajoutés après la fin du navigateur. Le rapport précédent ne prouve pas la validation de ce nouveau lot.
+Validation terminée le **2026-10-12T12:13:53.139Z**. Les preuves sont complémentaires et leurs périmètres restent explicites :
+
+- **1 215 tests backend et conformité passent** : 740 unités/conformité (86 fichiers), 263 intégration/Gate 1, 198 RLS et 14 frontières, au commit `b2c0811ff5f1d67e31565705b75821f4146ba198`. Typecheck, contrôles de schéma, build et lint passent ; lint conserve 375 avertissements, sans erreur. [Preuve backend avec historique des deux assertions navigateur alors en échec](../database/artifacts/practical-guide-backend-validation-report.json).
+- Après correction des seules assertions de navigation, **38 parcours Chromium passent** : deux Auth avec vérification obligatoire puis 36 parcours, dont sept nouveaux guides pratiques. Zéro échec et zéro skip. Le replay navigateur rejoue aussi les 740 unités/conformité, les contrôles de schéma, typecheck, lint et build, mais ne prétend pas rejouer les matrices DB. [Preuve navigateur](../database/artifacts/browser-validation-report.json).
+- Le commit navigateur `0230ba671396a5b8d01599405c158b6e352d7660` possède exactement le même arbre `src` que le commit backend : `6657bb1c528d32f7de9ac7e4aa776bd243a4f649`. Les changements entre ces commits portent uniquement sur les tests, leur orchestration et les preuves. Chaque branche CI et ses fichiers privés temporaires ont été supprimés.
+
+Les nouveaux essais créent réellement un patient fictif, son rendez-vous, un devis patient à TVA 0 %, une facture patient et des prestations BTP/tertiaires ; les rechargements vérifient leur persistance. Un site créé en fenêtre reprend le formulaire de l’intervention. Les contrôles du patient sont parcourus champ par champ et la bulle cible le bouton de confirmation, pas le titre.
+
+Les reprises ont corrigé deux fixtures d’horloge (mesure passée basée sur l’horloge PostgreSQL ; URL signée de test valable cinq secondes avant vérification de son expiration), une identité de test non rattachée à un praticien, et des assertions qui acceptaient `/new` ou `/nouveau` comme URL de détail puis rechargeaient trop tôt. Aucun garde-fou applicatif n’a été assoupli. La connexion attend l’initialisation du contexte côté client ; le helper navigateur ne rejoue qu’un HTTP 429, au maximum trois fois, et ne rejoue jamais un refus d’identité.
 
 Aucun push, merge ni déploiement public n’est effectué par ce lot.

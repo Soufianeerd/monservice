@@ -241,7 +241,7 @@ identique au workflow a été exécuté localement avec cette clé, puis nettoy�
 **Les nouveaux workflows ne sont pas encore publiés ni exécutés sur GitHub** :
 aucun push n'était autorisé. [Preuve CI et checksums](artifacts/ci-validation-report.json).
 
-| Vérification complète, rejouée le 12 octobre | Résultat |
+| Vérification complète du premier lot UX, rejouée le 12 octobre | Résultat |
 |---|---|
 | Unitaires et conformité | 715/715, 84 fichiers |
 | Contraintes / intégration / Gate 1 | 263/263, 12 fichiers |
@@ -336,12 +336,38 @@ professions sans débordement et commandes d’horaires adaptatives. Aucun chang
 SQL, aucun compte utilisateur réel modifié, aucun appel Stripe réel ou envoi manuel
 d’e-mail de sécurité. [Rapport UX et limites](../product/ux-cabinet-2026-10-12.md).
 
-Le dernier replay complet valide le code au commit `c130453cca49d071672fc5d75355cce171abab54`.
+Le replay complet du premier lot UX valide le code au commit `c130453cca49d071672fc5d75355cce171abab54`.
 Deux problèmes de fixtures ont aussi été corrigés : attente bornée des HTTP 429,
 et restauration de la classification des seules organisations synthétiques avant
 le navigateur, après les tests DB qui les changent volontairement. Aucun contrôle
 n’a été supprimé ou ignoré. Les validations précédentes ne constituaient pas une
 validation de la clarté UX ; les nouveaux tests vérifient les parcours exposés.
+
+## Prise en main pratique des trois univers
+
+L’aide professionnelle est maintenant commune aux univers paramédical, BTP et tertiaire,
+même après la checklist initiale. Elle suit les cartes, boutons, champs, cases, fenêtres
+et nouvelles lignes de devis. Quatorze parcours du cabinet, neuf du BTP et huit du tertiaire
+accompagnent les créations jusqu’à une confirmation métier réelle. Les devis et factures
+nouveaux du cabinet sélectionnent les patients ; leur destinataire administratif est préparé
+uniquement à l’enregistrement, après contrôle du contexte clinique et du patient actif dans
+le cabinet de la session. Aucune donnée clinique n’est copiée vers le CRM.
+
+La validation de ce lot s’appuie sur deux preuves complémentaires :
+**1 215 tests backend/conformité réussis** au commit `b2c0811ff5f1d67e31565705b75821f4146ba198`
+([preuve avec périmètre explicite](artifacts/practical-guide-backend-validation-report.json)),
+puis **38 parcours navigateur réussis** au commit `0230ba671396a5b8d01599405c158b6e352d7660`
+([preuve navigateur](artifacts/browser-validation-report.json)). Ce dernier rejoue aussi les
+740 unités/conformité, les contrôles de schéma, typecheck, lint et build. Les deux commits
+ont exactement le même arbre applicatif `src` ; les matrices DB ne sont pas présentées
+comme rejouées dans le mode navigateur. Lint : zéro erreur, 375 avertissements. Zéro skip.
+Les branches CI et fichiers privés temporaires sont supprimés. Aucun changement SQL,
+aucun seed sur le compte réel de démonstration ou sur la production.
+
+Le calendrier BTP/tertiaire présente encore les échéances, pas une projection complète des
+interventions. Cette limite est explicitée dans l’aide. Les confirmations réelles d’e-mail,
+la configuration d’abonnement et le déploiement public restent soumis aux étapes du runbook.
+[Couverture, exemples fictifs et limites du guide](../product/prise-en-main-trois-univers-2026-10-12.md).
 
 ## Régression produit et E2E
 
@@ -352,7 +378,7 @@ agenda/exclusions, épisodes/notes/documents, portail, questionnaires, facturati
 et messagerie validés avec des fixtures synthétiques. Field Service : site,
 lead/devis, acompte, work order, assignments, rapport finalisé et facture finale.
 
-Les **31 scénarios navigateur** préservent les 23 parcours précédemment portés
+Les **31 scénarios navigateur du premier lot UX** préservent les 23 parcours précédemment portés
 et ajoutent les deux parcours Auth avec vérification obligatoire et six parcours UX du cabinet. Desktop et mobile réels Chromium, login client/pro,
 isolation tenant, marketplace/localisation, portail patient, praticien et workflow
 Field complet. Le quote-to-cash signe un vrai webhook de test traité par la route
