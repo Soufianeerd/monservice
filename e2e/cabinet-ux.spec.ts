@@ -94,7 +94,7 @@ test('La navigation et les filtres patients restent utilisables sur mobile', asy
   await page.getByLabel('Ouvrir le menu').click();
   await page.getByRole('link', { name: 'Patients', exact: true }).click();
   await expect(page).toHaveURL(/\/patients$/);
-  await expect(page.getByLabel('Nom (naissance / usage)')).toBeVisible();
+  await expect(page.getByLabel('Nom (naissance / usage)', { exact: true })).toBeVisible();
   await page.getByLabel('Statut', { exact: true }).selectOption('archived');
   await expect(page.getByLabel('Statut', { exact: true })).toHaveValue('archived');
   await expect(page.getByRole('button', { name: 'Rechercher', exact: true })).toBeEnabled();
