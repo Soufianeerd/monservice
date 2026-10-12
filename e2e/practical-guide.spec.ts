@@ -60,14 +60,14 @@ test('Le devis du cabinet sélectionne un patient et conserve une TVA à zéro a
   await page.getByTestId('line-tax-select').selectOption('0');
   await page.getByRole('button', { name: 'Créer le devis', exact: true }).click();
   await expect(tour(page)).toContainText('Enregistrement confirmé');
-  await expect(page).toHaveURL(/\/facturation\/devis\/[^/]+$/);
+  await expect(page).toHaveURL(/\/facturation\/devis\/(?!nouveau$)[^/]+$/);
   await page.reload();
   await expect(page.locator('main')).toContainText('DEVIS TUTORIEL FICTIF');
-  await expect(page.locator('main')).toContainText('50');
-  await expect(page.locator('main')).not.toContainText('60,00');
+  await expect(page.getByText('Total TTC :', { exact: true }).locator('..')).toContainText('50.00 €');
+  await expect(page.getByText('Total TVA :', { exact: true }).locator('..')).toContainText('0.00 €');
 });
 
-test('La facture du cabinet propose des patients et enregistre les lignes du catalogue', async ({ page }) => {
+test('La facture du cabinet propose des patients et enregistre ses prestations', async ({ page }) => {
   await signIn(page, 'pro_a@monservice.invalid');
   await choose(page, 'Créer une facture pour un patient');
   await expect(page).toHaveURL(/\/facturation\/factures\/new$/);
@@ -81,7 +81,7 @@ test('La facture du cabinet propose des patients et enregistre les lignes du cat
   await throughFields(page, 'Enregistrer la facture');
   await page.getByRole('button', { name: 'Enregistrer la facture', exact: true }).click();
   await expect(tour(page)).toContainText('Enregistrement confirmé');
-  await expect(page).toHaveURL(/\/facturation\/factures\/[^/]+$/);
+  await expect(page).toHaveURL(/\/facturation\/factures\/(?!new$)[^/]+$/);
   await page.reload();
   await expect(page.locator('main')).toContainText('FACTURE TUTORIEL FICTIF');
 });

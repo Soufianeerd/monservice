@@ -15,6 +15,10 @@ const environment = { ...process.env, NEON_ADMIN_ENV_FILE: adminFile, NEON_RUNTI
 let branchId;
 let validationSucceeded=false;
 const authOnly = process.env.NEON_CI_AUTH_ONLY === 'true';
+// Rejeu ciblé après une correction de tests navigateur : rapport distinct,
+// sans présenter comme rejouées les matrices DB du mode complet par défaut.
+const browserOnly = process.env.NEON_CI_BROWSER_ONLY === 'true';
+if (authOnly && browserOnly) throw new Error('Choose exactly one targeted validation scope');
 const validatedCommands=[];
 function command(binary, args, env = environment, visible = false) {
   const result = spawnSync(binary, args, { env, encoding: 'utf8', stdio: visible ? 'inherit' : 'pipe' });
@@ -59,11 +63,13 @@ try {
     run(['npm','run','typecheck']);
     run(['npm','run','lint']);
     run(['npx','vitest','run','__tests__/unit','tests/unit','__tests__/compliance']);
+    if (!browserOnly) {
     run(['npm','run','test:db-constraints','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:rls','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:neon-boundaries']);
     // Restore only classifications changed by DB scenarios, without replaying data or Auth.
     run(['npx','tsx','scripts/e2e/seed-local.ts'],{NEON_SEED_WORKSPACE_ONLY:'true'});
+    }
     }
     run(['npm','run','build']);
     // Match production's mandatory verification policy without affecting the
@@ -75,7 +81,7 @@ try {
       command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true'},true);
     }
   }
-  console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : 'full validation'})`);
+  console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : browserOnly ? 'browser regression' : 'full validation'})`);
   validationSucceeded=process.env.NEON_CI_SETUP_ONLY!=='true';
 } catch (error) {
   console.error(error.message);
@@ -89,8 +95,8 @@ try {
   if(validationSucceeded&&process.exitCode!==1){
     const report={completedAt:new Date().toISOString(),project,region:'aws-eu-central-1',template,validatedBranch:branchId,branchDeleted:true,syntheticOnly:true,workers:1,gitHead:validationHead,worktreeCleanAtStart:validationWorktreeClean,commands:validatedCommands,migrations:fs.readdirSync('drizzle/neon').filter(name=>name.endsWith('.sql')).sort().map(name=>({name,sha256:crypto.createHash('sha256').update(fs.readFileSync('drizzle/neon/'+name)).digest('hex')}))};
     fs.mkdirSync('docs/database/artifacts',{recursive:true});
-    report.validationScope=authOnly?'mandatory-email-verification-browser':'full';
-    fs.writeFileSync(`docs/database/artifacts/${authOnly?'auth-recovery':'ci'}-validation-report.json`,JSON.stringify(report,null,2)+'\n');
+    report.validationScope=authOnly?'mandatory-email-verification-browser':browserOnly?'browser-regression':'full';
+    fs.writeFileSync(`docs/database/artifacts/${authOnly?'auth-recovery':browserOnly?'browser':'ci'}-validation-report.json`,JSON.stringify(report,null,2)+'\n');
     console.log('Saved sanitized CI validation evidence');
   }
 }
