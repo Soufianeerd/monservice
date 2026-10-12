@@ -6,6 +6,7 @@ async function signIn(page: import('@playwright/test').Page) {
   await page.locator('input[name="password"]').fill(process.env.E2E_AUTH_PASSWORD!);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.locator('header')).toContainText('Masseur-Kinésithérapeute');
 }
 
 test('Le français reste la langue source malgré un ancien cookie de langue', async ({ page, context }) => {
@@ -99,6 +100,12 @@ test('La navigation et les filtres patients restent utilisables sur mobile', asy
   await expect(page.getByRole('button', { name: 'Rechercher', exact: true })).toBeEnabled();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath('patients-mobile.png') });
+  for (const width of [917, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/agenda/disponibilites');
+    await expect(page.getByRole('button', { name: '+ Ajouter des horaires', exact: true })).toBeEnabled();
+    await expect.poll(() => page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
 });
 
 test('Les professions ne débordent pas lors de l’inscription, sur desktop et mobile', async ({ page }) => {

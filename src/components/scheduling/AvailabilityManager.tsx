@@ -274,8 +274,8 @@ export function AvailabilityManager({
     <div className="space-y-8">
       <p className="text-sm text-gray-600">Vos horaires habituels indiquent quand des rendez-vous peuvent être proposés. Ajoutez une absence pour bloquer une journée ou une plage horaire.</p>
       {/* Filter Bar */}
-      <div data-tour="availability-controls" className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+      <div data-tour="availability-controls" className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col 2xl:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 w-full 2xl:w-auto">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Praticien
@@ -314,7 +314,7 @@ export function AvailabilityManager({
           </div>
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap gap-3 w-full 2xl:w-auto justify-end">
           <button
             disabled={!selectedLocationId || isPending}
             onClick={openCreateRuleModal}

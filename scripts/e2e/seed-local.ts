@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { sql as sqlExpression } from 'drizzle-orm';
 import postgres from 'postgres';
 import { 
   organizations, 
@@ -123,6 +124,7 @@ async function seed() {
   const authUrl = process.env.NEON_AUTH_BASE_URL;
   const password = process.env.E2E_AUTH_PASSWORD;
   if (!dbUrl || !authUrl || !password || !process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production') throw new Error('Isolated Neon branch and private fixture credential required');
+  if (process.env.NEON_SEED_WORKSPACE_ONLY === 'true' && !process.env.NEON_BRANCH.startsWith('ci-')) throw new Error('Workspace refresh is restricted to disposable CI branches');
   if (!new URL(dbUrl).hostname.endsWith('.neon.tech')) throw new Error('Neon validation database required');
   const sql = postgres(dbUrl, { max: 1 });
   const db = drizzle(sql, { schema: { organizations, users, clients, invoices, requests, practiceLocations, practicePractitioners, practitionerLocations, practiceRooms, practiceResources } });
@@ -139,7 +141,18 @@ async function seed() {
     // Field Service
     { id: SEED_FIELD_SERVICE_IDS.orgA, name: 'Plomberie Chauffage Service', slug: 'org-fs-a', sector: 'field_services', profession: 'plumber', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: SEED_FIELD_SERVICE_IDS.orgB, name: 'Électricité Générale B', slug: 'org-fs-b', sector: 'field_services', profession: 'electrician', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-  ]).onConflictDoNothing();
+  ]).onConflictDoUpdate({
+    target: organizations.id,
+    // Des suites DB changent volontairement la verticale de ces fixtures.
+    // Restaurer uniquement leur classification avant les parcours navigateur.
+    set: { sector: sqlExpression`excluded.sector`, profession: sqlExpression`excluded.profession` },
+  });
+
+  if (process.env.NEON_SEED_WORKSPACE_ONLY === 'true') {
+    console.log('Synthetic workspace classifications restored; no Auth, user or patient writes');
+    await sql.end();
+    return;
+  }
 
   const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string) => {
     let [provider] = await sql`select id::text as id from neon_auth."user" where email=${email}`;

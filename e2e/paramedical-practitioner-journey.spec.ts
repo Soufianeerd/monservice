@@ -11,6 +11,7 @@ test.describe('Paramedical Practitioner Journey E2E (Session 15)', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
     await page.waitForURL((url) => !url.pathname.includes('/login'));
+    await expect(page.locator('header')).toContainText('Masseur-Kinésithérapeute');
   });
 
   test('PRACTITIONER_E2E_01: Desktop Journey (1440x900) - Dashboard to Patients and Agenda', async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe('Paramedical Practitioner Journey E2E (Session 15)', () => {
 
     // 1. Navigate to Patients registry
     await page.goto('/patients');
-    await expect(page.locator('h1, h2').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Patients', exact: true })).toBeVisible();
 
     // 2. Navigate to Agenda & Planning
     await page.goto('/agenda');

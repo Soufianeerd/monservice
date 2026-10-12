@@ -49,7 +49,7 @@ try {
   save(runtimeFile,admin);
   command('node',['scripts/neon/migrate.mjs'],environment,true);
   command('node',['scripts/neon/runtime-credentials.mjs'],environment,true);
-  const run = args => command('node',['scripts/neon/run-tests.mjs',...args],environment,true);
+  const run = (args, extraEnvironment = {}) => command('node',['scripts/neon/run-tests.mjs',...args],{...environment,...extraEnvironment},true);
   if (!authOnly) run(['npx','tsx','scripts/e2e/seed-local.ts']);
   if (process.env.NEON_CI_SETUP_ONLY !== 'true') {
     if (!authOnly) {
@@ -62,6 +62,8 @@ try {
     run(['npm','run','test:db-constraints','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:rls','--','--no-file-parallelism','--hookTimeout=180000']);
     run(['npm','run','test:neon-boundaries']);
+    // Restore only classifications changed by DB scenarios, without replaying data or Auth.
+    run(['npx','tsx','scripts/e2e/seed-local.ts'],{NEON_SEED_WORKSPACE_ONLY:'true'});
     }
     run(['npm','run','build']);
     // Match production's mandatory verification policy without affecting the
