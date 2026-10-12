@@ -273,9 +273,9 @@ La récupération suit également la redirection réelle `/reset-password/:token
 du provider, vers le formulaire applicatif. Les codes/tokens ne proviennent pas d'une boîte réelle mais d'une fixture réservée,
 accessible au seul propriétaire de la branche synthétique. Délivrabilité toujours
 à prouver avant ouverture publique. La CI exécute ces deux parcours séparément,
-puis rétablit sa politique synthétique pour les 23 parcours historiques.
+puis rétablit sa politique synthétique pour les 23 parcours historiques et les six parcours UX du cabinet.
 
-Le replay complet final valide le commit `96543ea`, depuis un arbre propre,
+Le replay complet du 11 octobre validait le commit `96543ea`, depuis un arbre propre,
 sur une nouvelle branche jetable supprimée après succès. L'échec de connexion
 Auth d'une fixture sur le premier replay n'a pas été reproduit lors du contrôle
 ciblé ni du replay final ; le diagnostic conserve désormais HTTP status/code,
