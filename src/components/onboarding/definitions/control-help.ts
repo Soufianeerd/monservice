@@ -179,6 +179,15 @@ export function describeControl(element: HTMLElement, path: string, type: Worksp
       : 'Choisissez les dossiers actifs, archivés ou tous les dossiers. Ce filtre s’applique immédiatement et ne modifie pas les patients.';
   }
   if (field && path.startsWith('/operations/') && /titre/i.test(title)) text = 'Nommez le travail à réaliser, par exemple Réparation de la chaudière. Ce titre identifie l’intervention dans la liste et le planning.';
+  if (field && type === 'paramedical' && path.startsWith('/patients/') && path !== '/patients/new' && !element.closest('[data-guide-form="facture-patient"]')) {
+    if (/valeur numérique/i.test(title)) text = 'Saisissez le nombre relevé pour cette mesure, puis précisez son unité si nécessaire. Il s’agit d’une observation du dossier patient.';
+    else if (/^unité/i.test(title)) text = 'Indiquez l’unité du relevé, par exemple kg, degrés ou /10, selon la mesure saisie. Ce champ est facultatif.';
+    else if (/code technique/i.test(title)) text = 'Cet identifiant regroupe les relevés d’une même mesure. Utilisez un code stable en minuscules, par exemple pain_score ; les modèles peuvent vous aider à le renseigner.';
+    else if (/libellé lisible/i.test(title)) text = 'Donnez un nom compréhensible à la mesure pour la retrouver dans le dossier et les graphiques.';
+    else if (/observation textuelle/i.test(title)) text = 'Saisissez l’observation relevée sous forme de texte, avec les éléments utiles à son suivi dans le dossier.';
+    else if (/date.*heure.*relevé/i.test(title)) text = 'Indiquez quand le relevé a été effectué. Une observation ne peut pas être enregistrée avec une date future.';
+    else if (/épisode lié/i.test(title)) text = 'Facultatif : rattachez ce relevé à l’épisode de prise en charge concerné, ou laissez Aucun épisode.';
+  }
   if (!field && /^\/operations\/[^/]+$/.test(path) && !element.closest('form')) {
     const transitions: Record<string, string> = {
       'Démarrer': 'Passez l’intervention en cours lorsque le travail commence. L’historique conserve ce changement de statut.',

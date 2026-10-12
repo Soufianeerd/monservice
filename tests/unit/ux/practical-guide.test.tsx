@@ -129,6 +129,14 @@ describe('Guide pratique des formulaires', () => {
     expect(description.text).toContain('Activez les détails');
     expect(description.text).not.toContain('Saisissez le prix');
   });
+  it('distingue une valeur clinique du montant d’une opportunité commerciale', () => {
+    render(<main><input type="number" aria-label="Valeur numérique" /><input aria-label="Unité (optionnelle)" /></main>);
+    const value = describeControl(screen.getByLabelText('Valeur numérique'), '/patients/test/clinique', 'paramedical');
+    const unit = describeControl(screen.getByLabelText('Unité (optionnelle)'), '/patients/test/clinique', 'paramedical');
+    expect(value.text).toContain('observation du dossier patient');
+    expect(value.text).not.toContain('affaire commerciale');
+    expect(unit.text).not.toContain('prix');
+  });
 });
 
 describe('Parcours adaptés aux trois univers', () => {

@@ -94,9 +94,11 @@ describe('Neon pooled transaction and worker boundaries',()=>{
       expect(await objectStore.read('einvoices',key)).toEqual(content);
       await expect(objectStore.put('einvoices',key,Buffer.from('overwrite'),'text/plain')).rejects.toThrow();
       expect(await objectStore.read('einvoices',key)).toEqual(content);
-      const url=await objectStore.presign('einvoices',key,1);
+      // SigV4 arrondit la date de signature à la seconde. Une durée d’une
+      // seconde peut déjà être expirée à l’arrivée du premier GET distant.
+      const url=await objectStore.presign('einvoices',key,5);
       expect((await fetch(url)).status).toBe(200);
-      await new Promise(resolve=>setTimeout(resolve,2100));
+      await new Promise(resolve=>setTimeout(resolve,6100));
       expect((await fetch(url)).ok).toBe(false);
       await expect(objectStore.presign('einvoices',key,61)).rejects.toThrow('Invalid private download lifetime');
     } finally {await objectStore.removeOrphan('einvoices',key);}
