@@ -35,6 +35,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
   let proBClient: NeonRlsClient;
   let clientAClient: NeonRlsClient;
   let staffAClient: NeonRlsClient;
+  let measurementObservedAt: string;
 
   const dynamicDocIds: string[] = [];
   const dynamicTemplateIds: string[] = [];
@@ -46,6 +47,11 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
     if (!process.env.NEON_ADMIN_DATABASE_URL) throw new Error('Validation fixture administrator required');
 
     sql = postgres(DATABASE_URL);
+    // La règle « pas de mesure future » utilise l’horloge PostgreSQL. Une date
+    // issue du poste peut la dépasser de quelques millisecondes ; la fixture
+    // doit être passée pour que les refus testés portent réellement sur RLS.
+    const [clock] = await sql<{ observed_at: Date }[]>`select current_timestamp - interval '1 minute' as observed_at`;
+    measurementObservedAt = clock.observed_at.toISOString();
 
     // 1. Anon Client (intentionally unauthenticated)
     anonClient = createRlsTestClient();
@@ -487,7 +493,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         code: 'pain_score',
         label: 'Douleur',
         value_numeric: 5,
-        observed_at: new Date().toISOString(),
+        observed_at: measurementObservedAt,
       });
       expect(error).not.toBeNull();
     });
@@ -504,7 +510,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         code: 'pain_score',
         label: 'Douleur',
         value_numeric: 5,
-        observed_at: new Date().toISOString(),
+        observed_at: measurementObservedAt,
       });
       expect(clientInsert).not.toBeNull();
 
@@ -519,7 +525,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         code: 'pain_score',
         label: 'Douleur',
         value_numeric: 5,
-        observed_at: new Date().toISOString(),
+        observed_at: measurementObservedAt,
       });
       expect(staffInsert).not.toBeNull();
     });
@@ -548,7 +554,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
           label: 'EVA Douleur Repos',
           value_numeric: 4,
           unit: '/10',
-          observed_at: new Date().toISOString(),
+          observed_at: measurementObservedAt,
         })
         .select()
         .single();
@@ -582,7 +588,7 @@ describe('Clinical Record Expansion RLS & Storage Security (Session 12B)', () =>
         code: 'pain_score',
         label: 'Douleur',
         value_numeric: 8,
-        observed_at: new Date().toISOString(),
+        observed_at: measurementObservedAt,
       });
       expect(error).not.toBeNull();
     });

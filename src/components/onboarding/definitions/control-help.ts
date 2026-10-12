@@ -88,10 +88,16 @@ const fields: [RegExp, string][] = [
   [/échéance/i, 'Choisissez la date limite de règlement de la facture, ou la date à laquelle cette tâche doit être terminée.'],
   [/validité/i, 'Choisissez jusqu’à quelle date le destinataire peut accepter ce devis.'],
   [/acompte|taux \(%\)/i, 'Choisissez aucun acompte, un pourcentage du devis ou un montant fixe. Vérifiez le récapitulatif avant d’enregistrer.'],
+  [/rôle sur le chantier/i, 'Choisissez le rôle de l’intervenant : responsable, technicien, assistant ou observateur. Il indique sa mission sur cette intervention.'],
   [/site|chantier/i, 'Choisissez le site rattaché au client. S’il manque, utilisez Nouveau site pour renseigner son adresse avant de le sélectionner.'],
+  [/intervenant|professionnel/i, 'Sélectionnez le professionnel autorisé à participer à cette intervention, puis choisissez son rôle avant d’enregistrer.'],
+  [/travaux réalisés/i, 'Décrivez les opérations effectivement réalisées sur le terrain. Ces informations seront conservées dans le compte rendu.'],
+  [/problèmes constatés/i, 'Notez les difficultés et anomalies rencontrées : accès, équipement défectueux ou travaux supplémentaires à prévoir.'],
+  [/recommandations/i, 'Indiquez les suites utiles pour le client : entretien, précautions ou prochains travaux.'],
+  [/motif.*annulation/i, 'Choisissez la raison de l’annulation de l’intervention, puis précisez-la si nécessaire avant de confirmer.'],
   [/opportunité|deal/i, 'Facultatif : reliez ce devis à une affaire commerciale pour suivre son avancement du premier contact à la vente.'],
   [/objet du devis|titre du projet/i, 'Donnez un titre compréhensible au devis, par exemple Entretien annuel ou Rénovation de la salle de bain.'],
-  [/type d.intervention|type de travaux/i, 'Choisissez la catégorie de travail correspondant à l’intervention.'],
+  [/type d.intervention|type de travaux|type de travail/i, 'Choisissez la catégorie : intervention, chantier, installation, entretien, réparation ou diagnostic.'],
   [/priorité/i, 'Choisissez l’urgence de la tâche ou de l’intervention. Cela facilite le tri ; ce réglage ne crée pas de rendez-vous.'],
   [/statut/i, 'Choisissez l’état à afficher ou à enregistrer : à faire, en cours, terminé… Un filtre ne modifie pas les dossiers.'],
   [/lier à|entité liée/i, 'Facultatif : reliez la tâche à un client ou une affaire. Il faut le type et l’identifiant du dossier correspondant.'],
@@ -137,6 +143,8 @@ const actions: [RegExp, string][] = [
   [/supprimer|archiver|désactiver/i, 'Cette action modifie ou retire un dossier. Pour découvrir l’interface, vous pouvez passer cette étape sans cliquer. Vérifiez le dossier concerné avant toute confirmation.'],
   [/annuler|retour|fermer/i, 'Ce bouton ferme le formulaire ou revient à l’écran précédent. Les modifications non enregistrées ne seront pas conservées.'],
   [/modifier|éditer/i, 'Ouvrez le formulaire de ce dossier. Le guide suivra les champs modifiables puis le bouton d’enregistrement.'],
+  [/ajouter.*intervenant|affecter.*intervenant/i, 'Cliquez pour choisir le professionnel qui participe à l’intervention et son rôle, puis enregistrez cette affectation.'],
+  [/compte rendu|rapport/i, 'Ouvrez le compte rendu de l’intervention. Renseignez le résumé, les travaux, les problèmes et vos recommandations. Relisez-le avant de le finaliser.'],
   [/envoyer|inviter/i, 'Cette action peut transmettre un document ou une invitation au destinataire indiqué. Vérifiez ce destinataire et le contenu avant de confirmer.'],
   [/convertir/i, 'Ce bouton transforme le devis selon les actions proposées sur ce document. Vérifiez les lignes et montants du document résultant.'],
   [/recevoir.*lien/i, 'Demandez le lien sécurisé, ouvrez l’e-mail reçu puis saisissez et confirmez le nouveau mot de passe sur la page dédiée.'],
@@ -157,6 +165,17 @@ export function describeControl(element: HTMLElement, path: string, type: Worksp
   if (field && /nom.*prestation|nom.*produit|nom.*service/i.test(title)) text = 'Nommez le tarif réutilisable : Bilan initial, Heure de conseil ou Déplacement. Ce nom sera proposé dans votre catalogue.';
   if (field && /connexion/i.test(title)) text = 'Cette adresse identifie votre compte de connexion. Elle est affichée en lecture seule et reçoit les messages de sécurité.';
   if (field && element instanceof HTMLSelectElement && /^patient/i.test(title)) text = 'Choisissez le patient actif concerné par le document. La sauvegarde reprend son destinataire administratif ou son représentant de facturation, sans copier les informations cliniques. S’il manque, créez d’abord sa fiche dans Patients.';
+  if (field && path.startsWith('/operations/') && /titre/i.test(title)) text = 'Nommez le travail à réaliser, par exemple Réparation de la chaudière. Ce titre identifie l’intervention dans la liste et le planning.';
+  if (!field && /^\/operations\/[^/]+$/.test(path) && !element.closest('form')) {
+    const transitions: Record<string, string> = {
+      'Démarrer': 'Passez l’intervention en cours lorsque le travail commence. L’historique conserve ce changement de statut.',
+      'Mettre en pause': 'Suspendez le travail en cours. Vous pourrez utiliser Reprendre lorsque l’intervention peut continuer.',
+      'Reprendre': 'Remettez l’intervention en cours après une pause, pour poursuivre le suivi du travail.',
+      'Terminer': 'Marquez l’intervention terminée lorsque les travaux sont achevés. Vérifiez auparavant les comptes rendus et les actions restantes.',
+      'Annuler': 'Ce bouton ouvre la confirmation d’annulation de l’intervention. Choisissez le motif et vérifiez le dossier avant de confirmer ; il ne ferme pas simplement un formulaire.',
+    };
+    text = transitions[title] || text;
+  }
   if (field && element.matches('input[type="checkbox"]') && element.closest('[data-guide-form="structure"]')) text = 'Cochez ce lieu pour y affecter le praticien. Vous pouvez choisir plusieurs lieux, puis enregistrer les affectations.';
   if (field && element.matches('input[type="radio"]') && element.closest('[data-guide-form="structure"]')) text = 'Choisissez le lieu principal parmi les lieux affectés à ce praticien, puis enregistrez.';
   if (!text) text = field ? `Renseignez « ${title} » pour ce dossier. Les champs marqués * sont obligatoires ; les autres peuvent rester vides. Vous pourrez vérifier les valeurs avant l’enregistrement.` : `Utilisez « ${title} » pour ouvrir cette rubrique ou appliquer l’action indiquée. Le guide suivra les contrôles qui apparaissent. Vous pouvez aussi passer à l’élément suivant sans cliquer.`;

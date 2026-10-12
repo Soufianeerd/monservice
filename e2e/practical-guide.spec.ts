@@ -36,6 +36,7 @@ test('Le tutoriel patient suit les champs jusqu’à une création réellement p
   await tour(page).getByRole('button', { name: 'Suivant', exact: true }).click();
   await expect(tour(page)).toContainText('Premier prénom de naissance');
   await page.locator('#patient-first-birth-name').fill('Martin');
+  await page.screenshot({ path: test.info().outputPath('guide-patient-champs.png') });
   await page.locator('#patient-birth-date').fill('1990-01-01');
   await throughFields(page, 'Créer le patient');
   await page.getByRole('button', { name: 'Créer le patient', exact: true }).click();

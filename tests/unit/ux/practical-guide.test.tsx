@@ -120,4 +120,9 @@ describe('Parcours adaptés aux trois univers', () => {
     expect(steps[0].text).toContain('échéances');
     expect(steps[0].action).toBe('read');
   });
+  it('distingue l’annulation d’une intervention de la fermeture de son formulaire', () => {
+    render(<main><button data-testid="cancel-operation" type="button">Annuler</button><form><button data-testid="cancel-form" type="button">Annuler</button></form></main>);
+    expect(describeControl(screen.getByTestId('cancel-operation'), '/operations/test', 'field_service').text).toContain('confirmation d’annulation');
+    expect(describeControl(screen.getByTestId('cancel-form'), '/operations/test', 'field_service').text).toContain('ferme le formulaire');
+  });
 });
