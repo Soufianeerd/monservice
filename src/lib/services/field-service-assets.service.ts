@@ -16,7 +16,8 @@ import type {
   ListFieldServiceAssetsInput,
   UpdateFieldServiceAssetInput,
 } from '@/lib/validation/field-service-assets.schemas';
-import { WARRANTY_ALERT_DAYS } from '@/lib/workspaces/field-service/assets';
+import { MAINTENANCE_ALERT_DAYS, WARRANTY_ALERT_DAYS, addMonthsIso } from '@/lib/workspaces/field-service/assets';
+import { createFieldServiceWorkOrder } from '@/lib/services/field-service-operations.service';
 
 // Session 19 — équipements clients. Toutes les fonctions reçoivent
 // l'organisation de la session : la RLS reste la barrière de dernier recours,
@@ -61,6 +62,14 @@ function mapUniqueViolation(err: unknown): never {
   throw err;
 }
 
+/** Première échéance : celle saisie, sinon mise en service (ou aujourd'hui) + périodicité. */
+function initialNextMaintenance(input: CreateFieldServiceAssetInput): string | null {
+  if (input.nextMaintenanceOn) return input.nextMaintenanceOn;
+  if (!input.maintenanceIntervalMonths) return null;
+  const base = input.installedOn ?? new Date().toISOString().slice(0, 10);
+  return addMonthsIso(base, input.maintenanceIntervalMonths);
+}
+
 export async function createFieldServiceAsset(organizationId: string, input: CreateFieldServiceAssetInput) {
   await assertClientInOrganization(organizationId, input.clientId);
   if (input.siteId) await assertSiteOfClient(organizationId, input.clientId, input.siteId);
@@ -81,6 +90,8 @@ export async function createFieldServiceAsset(organizationId: string, input: Cre
         installedOn: input.installedOn ?? null,
         warrantyEndsOn: input.warrantyEndsOn ?? null,
         notes: input.notes ?? null,
+        maintenanceIntervalMonths: input.maintenanceIntervalMonths ?? null,
+        nextMaintenanceOn: initialNextMaintenance(input),
         status: 'active',
       })
       .returning();
@@ -126,6 +137,12 @@ export async function updateFieldServiceAsset(organizationId: string, input: Upd
   if (input.warrantyEndsOn !== undefined) values.warrantyEndsOn = input.warrantyEndsOn;
   if (input.notes !== undefined) values.notes = input.notes;
   if (input.status !== undefined) values.status = input.status;
+  if (input.maintenanceIntervalMonths !== undefined) {
+    values.maintenanceIntervalMonths = input.maintenanceIntervalMonths;
+    // Sans périodicité, il n'y a plus d'échéance automatique à suivre.
+    if (input.maintenanceIntervalMonths === null && input.nextMaintenanceOn === undefined) values.nextMaintenanceOn = null;
+  }
+  if (input.nextMaintenanceOn !== undefined) values.nextMaintenanceOn = input.nextMaintenanceOn;
 
   if (Object.keys(values).length === 0) {
     throw new AppError('Aucune modification fournie', 400, 'ASSET_NO_CHANGES');
@@ -186,6 +203,8 @@ export async function listFieldServiceAssets(organizationId: string, filters: Li
       serialNumber: fieldServiceAssets.serialNumber,
       installedOn: fieldServiceAssets.installedOn,
       warrantyEndsOn: fieldServiceAssets.warrantyEndsOn,
+      maintenanceIntervalMonths: fieldServiceAssets.maintenanceIntervalMonths,
+      nextMaintenanceOn: fieldServiceAssets.nextMaintenanceOn,
       status: fieldServiceAssets.status,
       createdAt: fieldServiceAssets.createdAt,
       clientName: clients.name,
@@ -217,6 +236,8 @@ export async function getFieldServiceAssetById(organizationId: string, assetId: 
       warrantyEndsOn: fieldServiceAssets.warrantyEndsOn,
       status: fieldServiceAssets.status,
       notes: fieldServiceAssets.notes,
+      maintenanceIntervalMonths: fieldServiceAssets.maintenanceIntervalMonths,
+      nextMaintenanceOn: fieldServiceAssets.nextMaintenanceOn,
       createdAt: fieldServiceAssets.createdAt,
       updatedAt: fieldServiceAssets.updatedAt,
       clientName: clients.name,
@@ -382,8 +403,56 @@ export async function getFieldServiceAssetMetrics(organizationId: string, today:
       total: sql<number>`count(*) FILTER (WHERE ${fieldServiceAssets.status} <> 'decommissioned')::int`,
       outOfService: sql<number>`count(*) FILTER (WHERE ${fieldServiceAssets.status} = 'out_of_service')::int`,
       warrantyExpiring: sql<number>`count(*) FILTER (WHERE ${fieldServiceAssets.status} <> 'decommissioned' AND ${fieldServiceAssets.warrantyEndsOn} >= ${today}::date AND ${fieldServiceAssets.warrantyEndsOn} <= ${today}::date + ${WARRANTY_ALERT_DAYS}::int)::int`,
+      maintenanceDue: sql<number>`count(*) FILTER (WHERE ${fieldServiceAssets.status} <> 'decommissioned' AND ${fieldServiceAssets.nextMaintenanceOn} <= ${today}::date + ${MAINTENANCE_ALERT_DAYS}::int)::int`,
     })
     .from(fieldServiceAssets)
     .where(eq(fieldServiceAssets.organizationId, organizationId));
-  return row ?? { total: 0, outOfService: 0, warrantyExpiring: 0 };
+  return row ?? { total: 0, outOfService: 0, warrantyExpiring: 0, maintenanceDue: 0 };
+}
+
+/**
+ * Crée l'opération d'entretien d'un équipement (type « maintenance », même
+ * client et même site) puis l'y rattache. À la clôture de cette opération, le
+ * trigger SQL recalcule la prochaine échéance selon la périodicité.
+ */
+export async function scheduleAssetMaintenance(
+  organizationId: string,
+  createdByUserId: string,
+  assetId: string,
+  scheduledStart?: string | null,
+) {
+  const [asset] = await db
+    .select({
+      id: fieldServiceAssets.id,
+      clientId: fieldServiceAssets.clientId,
+      siteId: fieldServiceAssets.siteId,
+      label: fieldServiceAssets.label,
+      status: fieldServiceAssets.status,
+    })
+    .from(fieldServiceAssets)
+    .where(and(eq(fieldServiceAssets.id, assetId), eq(fieldServiceAssets.organizationId, organizationId)))
+    .limit(1);
+  if (!asset) throw new AppError('Équipement introuvable', 404, 'ASSET_NOT_FOUND');
+  if (asset.status === 'decommissioned') {
+    throw new AppError('Un équipement retiré ne peut plus être entretenu', 409, 'ASSET_DECOMMISSIONED');
+  }
+
+  let scheduledEnd: string | null = null;
+  if (scheduledStart) {
+    const end = new Date(scheduledStart);
+    end.setHours(end.getHours() + 2);
+    scheduledEnd = end.toISOString();
+  }
+
+  const workOrder = await createFieldServiceWorkOrder(organizationId, createdByUserId, {
+    clientId: asset.clientId,
+    siteId: asset.siteId,
+    title: `Entretien — ${asset.label}`.slice(0, 200),
+    workType: 'maintenance',
+    priority: 'medium',
+    scheduledStart: scheduledStart ?? null,
+    scheduledEnd,
+  });
+  await linkAssetToWorkOrder(organizationId, workOrder.id, asset.id);
+  return { workOrderId: workOrder.id };
 }

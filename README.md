@@ -41,8 +41,8 @@ Supabase n'est plus une dépendance runtime. Les migrations historiques `drizzle
 ### 2.3 Field Service & BTP Workspace (Sessions 16–18)
 - Chantiers et sites d'intervention, ordres de travail, assignations, comptes-rendus signés et immuables.
 - Lead-to-Cash : devis par lots, métrés, multi-taux de TVA, remises, acomptes, signature, factures d'acompte et de solde.
-- Équipements clients (Session 19) : parc par client et par site, garanties, numéros de série, rattachement aux interventions et historique d'entretien.
-- *Sessions 16 à 19 (V1) terminées. Session 19B (QR codes, maintenance préventive) et Session 20 (portail client terrain) planifiées.*
+- Équipements clients (Session 19) : parc par client et par site, garanties, numéros de série, rattachement aux interventions, historique d'entretien, maintenance préventive périodique et étiquettes QR.
+- *Sessions 16 à 19B terminées. Session 20 (portail client terrain) planifiée.*
 
 ---
 
@@ -140,7 +140,7 @@ npm run test:e2e
 
 ## 7. Règles d'exploitation (Production Safety)
 
-1. **Jamais de `drizzle-kit push`** : toute évolution passe par un nouveau fichier `drizzle/neon/NNNN_*.sql` (prochain : `0015`).
+1. **Jamais de `drizzle-kit push`** : toute évolution passe par un nouveau fichier `drizzle/neon/NNNN_*.sql` (prochain : `0016`).
 2. **Jamais de modification d'une migration appliquée** : `drizzle/neon/*` est protégé par checksum ; `drizzle/postgres/*` est historique et fermé.
 3. **Jamais de seed, test d'intégration ou suppression sur la production** ; ne jamais réinitialiser ni supprimer une base ou une branche distante non jetable.
 4. **Aucun contournement de typage** (`as any`, `as never`, `@ts-ignore`) dans le code modifié.

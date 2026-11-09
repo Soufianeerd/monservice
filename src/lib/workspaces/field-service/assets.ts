@@ -45,3 +45,28 @@ export function getWarrantyState(warrantyEndsOn: string | null | undefined, toda
   limit.setUTCDate(limit.getUTCDate() + WARRANTY_ALERT_DAYS);
   return warrantyEndsOn <= limit.toISOString().slice(0, 10) ? 'expiring' : 'valid';
 }
+
+/** Périodicités d'entretien proposées (mois). */
+export const MAINTENANCE_INTERVAL_OPTIONS = [3, 6, 12, 24, 36, 60] as const;
+
+/** Nombre de jours avant l'échéance d'entretien à partir duquel on alerte. */
+export const MAINTENANCE_ALERT_DAYS = 30;
+
+export type MaintenanceState = 'none' | 'scheduled' | 'due_soon' | 'overdue';
+
+export function addMonthsIso(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+/** État d'entretien à une date de référence (dates ISO AAAA-MM-JJ). */
+export function getMaintenanceState(nextMaintenanceOn: string | null | undefined, today: string): MaintenanceState {
+  if (!nextMaintenanceOn) return 'none';
+  if (nextMaintenanceOn < today) return 'overdue';
+  const limit = new Date(`${today}T00:00:00Z`);
+  limit.setUTCDate(limit.getUTCDate() + MAINTENANCE_ALERT_DAYS);
+  return nextMaintenanceOn <= limit.toISOString().slice(0, 10) ? 'due_soon' : 'scheduled';
+}

@@ -28,6 +28,8 @@ const assetFields = {
   installedOn: isoDate.nullable().optional(),
   warrantyEndsOn: isoDate.nullable().optional(),
   notes: optionalText(4000),
+  maintenanceIntervalMonths: z.number().int().min(1, 'Périodicité minimale : 1 mois').max(120, 'Périodicité maximale : 120 mois').nullable().optional(),
+  nextMaintenanceOn: isoDate.nullable().optional(),
 };
 
 function checkWarrantyDates(
@@ -60,6 +62,8 @@ export const updateFieldServiceAssetSchema = z
     installedOn: assetFields.installedOn,
     warrantyEndsOn: assetFields.warrantyEndsOn,
     notes: assetFields.notes,
+    maintenanceIntervalMonths: assetFields.maintenanceIntervalMonths,
+    nextMaintenanceOn: assetFields.nextMaintenanceOn,
     status: z.enum(FIELD_SERVICE_ASSET_STATUSES).optional(),
   })
   .strict()
@@ -79,6 +83,13 @@ export const workOrderAssetLinkSchema = z
   .object({
     workOrderId: z.string().min(1),
     assetId: z.string().min(1),
+  })
+  .strict();
+
+export const scheduleAssetMaintenanceSchema = z
+  .object({
+    assetId: z.string().min(1),
+    scheduledStart: z.string().datetime({ offset: true }).nullable().optional(),
   })
   .strict();
 

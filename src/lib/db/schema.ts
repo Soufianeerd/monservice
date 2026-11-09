@@ -1796,6 +1796,8 @@ export const fieldServiceAssets = sqliteTable('field_service_assets', {
   warrantyEndsOn: date('warranty_ends_on'),
   status: text('status').$type<FieldServiceAssetStatus>().notNull().default('active'),
   notes: text('notes'),
+  maintenanceIntervalMonths: integer('maintenance_interval_months'),
+  nextMaintenanceOn: date('next_maintenance_on'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -1807,6 +1809,8 @@ export const fieldServiceAssets = sqliteTable('field_service_assets', {
   index('field_service_assets_org_site_idx').on(t.organizationId, t.siteId),
   index('field_service_assets_org_status_idx').on(t.organizationId, t.status),
   index('field_service_assets_org_warranty_idx').on(t.organizationId, t.warrantyEndsOn),
+  index('field_service_assets_org_next_maintenance_idx').on(t.organizationId, t.nextMaintenanceOn),
+  check('field_service_assets_maintenance_interval_check', sql`${t.maintenanceIntervalMonths} IS NULL OR (${t.maintenanceIntervalMonths} >= 1 AND ${t.maintenanceIntervalMonths} <= 120)`),
   check('field_service_assets_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
   check('field_service_assets_category_check', sql`${t.category} IN ('heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other')`),
   check('field_service_assets_status_check', sql`${t.status} IN ('active', 'out_of_service', 'decommissioned')`),

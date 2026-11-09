@@ -31,6 +31,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         warrantyEndsOn: asset.warrantyEndsOn,
         status: asset.status,
         notes: asset.notes,
+        maintenanceIntervalMonths: asset.maintenanceIntervalMonths,
+        nextMaintenanceOn: asset.nextMaintenanceOn,
         clientName: asset.clientName,
         siteLabel: asset.siteLabel,
         siteAddressLine1: asset.siteAddressLine1,

@@ -155,6 +155,62 @@ describe('Field Service customer assets (Session 19)', () => {
     });
   });
 
+  describe('preventive maintenance (Session 19B)', () => {
+    const maintained = 'asset-test-maintained';
+    const notPeriodic = 'asset-test-not-periodic';
+    const maintenanceOrder = 'wo-asset-test-maint';
+    const repairOrder = 'wo-asset-test-repair';
+
+    const complete = async (id: string) => {
+      await sql`UPDATE field_service_work_orders SET status = 'scheduled', scheduled_start = now(), scheduled_end = now() + interval '1 hour' WHERE id = ${id}`;
+      await sql`UPDATE field_service_work_orders SET status = 'in_progress' WHERE id = ${id}`;
+      await sql`UPDATE field_service_work_orders SET status = 'completed' WHERE id = ${id}`;
+    };
+
+    it('bounds the maintenance interval between 1 and 120 months', async () => {
+      expect(await rejection(sql`INSERT INTO field_service_assets (id, organization_id, client_id, category, label, maintenance_interval_months)
+        VALUES ('asset-test-interval0', ${orgA}, ${clientA}, 'other', 'Zéro', 0)`)).toBe('23514');
+      expect(await rejection(sql`INSERT INTO field_service_assets (id, organization_id, client_id, category, label, maintenance_interval_months)
+        VALUES ('asset-test-interval121', ${orgA}, ${clientA}, 'other', 'Trop', 121)`)).toBe('23514');
+    });
+
+    it('advances the next maintenance date only when a linked maintenance order completes', async () => {
+      await sql`INSERT INTO field_service_assets (id, organization_id, client_id, category, label, maintenance_interval_months, next_maintenance_on)
+        VALUES (${maintained}, ${orgA}, ${clientA}, 'heating', 'Chaudière périodique', 12, '2020-01-01'),
+               (${notPeriodic}, ${orgA}, ${clientA}, 'heating', 'Sans périodicité', NULL, '2020-01-01')`;
+      await sql`INSERT INTO field_service_work_orders (id, organization_id, client_id, created_by_user_id, reference, title, work_type)
+        VALUES (${repairOrder}, ${orgA}, ${clientA}, ${proAUserId}, 'WO-ASSET-TEST-REPAIR', 'Dépannage', 'repair'),
+               (${maintenanceOrder}, ${orgA}, ${clientA}, ${proAUserId}, 'WO-ASSET-TEST-MAINT', 'Entretien annuel', 'maintenance')`;
+      await sql`INSERT INTO field_service_work_order_assets (id, organization_id, client_id, work_order_id, asset_id) VALUES
+        ('link-test-repair', ${orgA}, ${clientA}, ${repairOrder}, ${maintained}),
+        ('link-test-maint', ${orgA}, ${clientA}, ${maintenanceOrder}, ${maintained}),
+        ('link-test-maint2', ${orgA}, ${clientA}, ${maintenanceOrder}, ${notPeriodic})`;
+
+      await complete(repairOrder);
+      const [afterRepair] = await sql`SELECT next_maintenance_on::text AS d FROM field_service_assets WHERE id = ${maintained}`;
+      expect(afterRepair.d).toBe('2020-01-01');
+
+      await complete(maintenanceOrder);
+      const [[expected], [periodic], [untouched]] = await Promise.all([
+        sql`SELECT (((now() AT TIME ZONE 'Europe/Paris')::date) + interval '12 months')::date::text AS d`,
+        sql`SELECT next_maintenance_on::text AS d FROM field_service_assets WHERE id = ${maintained}`,
+        sql`SELECT next_maintenance_on::text AS d FROM field_service_assets WHERE id = ${notPeriodic}`,
+      ]);
+      expect(periodic.d).toBe(expected.d);
+      expect(untouched.d).toBe('2020-01-01');
+    });
+
+    it('lets the professional set the interval and next date but not another tenant', async () => {
+      const own = await proA.from('field_service_assets').update({ maintenance_interval_months: 6, next_maintenance_on: '2030-06-01' }).eq('id', maintained).select('id');
+      expect(own.error).toBeNull();
+      expect(own.data).toHaveLength(1);
+      const foreign = await proB.from('field_service_assets').update({ next_maintenance_on: '2099-01-01' }).eq('id', maintained).select('id');
+      expect(foreign.data ?? []).toHaveLength(0);
+      const [row] = await sql`SELECT next_maintenance_on::text AS d FROM field_service_assets WHERE id = ${maintained}`;
+      expect(row.d).toBe('2030-06-01');
+    });
+  });
+
   describe('row level security', () => {
     it('lets the Field Service professional read and create assets in their organization', async () => {
       const { data, error } = await proA.from('field_service_assets').select('id, label').eq('id', assetA);

@@ -3,18 +3,20 @@
 import React, { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Plus, Search, ShieldCheck, Wrench, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CalendarClock, Plus, Search, ShieldCheck, Wrench, X } from 'lucide-react';
 import { createFieldServiceAssetAction } from '@/app/actions/field-service-assets.actions';
 import {
   FIELD_SERVICE_ASSET_CATEGORIES,
   FIELD_SERVICE_ASSET_CATEGORY_LABELS,
   FIELD_SERVICE_ASSET_STATUSES,
   FIELD_SERVICE_ASSET_STATUS_LABELS,
+  getMaintenanceState,
   getWarrantyState,
+  MAINTENANCE_INTERVAL_OPTIONS,
   type FieldServiceAssetCategory,
   type FieldServiceAssetStatus,
 } from '@/lib/workspaces/field-service/assets';
-import { AssetStatusBadge, WarrantyBadge, formatDateFr } from './asset-badges';
+import { AssetStatusBadge, MaintenanceBadge, WarrantyBadge, formatDateFr, intervalLabel } from './asset-badges';
 
 export interface AssetListItem {
   id: string;
@@ -25,6 +27,7 @@ export interface AssetListItem {
   model: string | null;
   serialNumber: string | null;
   warrantyEndsOn: string | null;
+  nextMaintenanceOn: string | null;
   status: FieldServiceAssetStatus;
   clientName: string | null;
   siteLabel: string | null;
@@ -35,7 +38,7 @@ export interface AssetListItem {
 
 interface Props {
   today: string;
-  metrics: { total: number; outOfService: number; warrantyExpiring: number };
+  metrics: { total: number; outOfService: number; warrantyExpiring: number; maintenanceDue: number };
   clients: { id: string; name: string }[];
   sites: { id: string; clientId: string; label: string; city: string }[];
   assets: AssetListItem[];
@@ -50,6 +53,7 @@ export default function AssetsClient({ today, metrics, clients, sites, assets }:
   const [statusFilter, setStatusFilter] = useState<'all' | FieldServiceAssetStatus>('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | FieldServiceAssetCategory>('all');
+  const [maintenanceOnly, setMaintenanceOnly] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const filtered = useMemo(() => {
@@ -58,11 +62,12 @@ export default function AssetsClient({ today, metrics, clients, sites, assets }:
       if (statusFilter !== 'all' && a.status !== statusFilter) return false;
       if (clientFilter !== 'all' && a.clientId !== clientFilter) return false;
       if (categoryFilter !== 'all' && a.category !== categoryFilter) return false;
+      if (maintenanceOnly && (a.status === 'decommissioned' || !['due_soon', 'overdue'].includes(getMaintenanceState(a.nextMaintenanceOn, today)))) return false;
       if (!q) return true;
       return [a.label, a.serialNumber, a.manufacturer, a.model, a.clientName, a.siteCity]
         .some((v) => v?.toLowerCase().includes(q));
     });
-  }, [assets, search, statusFilter, clientFilter, categoryFilter]);
+  }, [assets, search, statusFilter, clientFilter, categoryFilter, maintenanceOnly, today]);
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6" data-testid="assets-page">
@@ -96,10 +101,13 @@ export default function AssetsClient({ today, metrics, clients, sites, assets }:
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Metric icon={Wrench} label="Équipements suivis" value={metrics.total} />
         <Metric icon={AlertTriangle} label="Hors service" value={metrics.outOfService} tone="rose" />
         <Metric icon={ShieldCheck} label="Garanties à échéance (60 j)" value={metrics.warrantyExpiring} tone="amber" />
+        <button type="button" onClick={() => setMaintenanceOnly((v) => !v)} aria-pressed={maintenanceOnly} className={`text-left rounded-2xl ${maintenanceOnly ? 'ring-2 ring-primary-500' : ''}`} data-testid="maintenance-due-filter">
+          <Metric icon={CalendarClock} label={maintenanceOnly ? 'Entretiens à prévoir — filtre actif' : 'Entretiens à prévoir (30 j)'} value={metrics.maintenanceDue} tone="amber" />
+        </button>
       </div>
 
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
@@ -157,6 +165,7 @@ export default function AssetsClient({ today, metrics, clients, sites, assets }:
                   {a.lastInterventionAt && <span className="block">Dernière : {formatDateFr(a.lastInterventionAt)}</span>}
                 </div>
                 <div className="flex flex-wrap gap-2 sm:w-64 sm:justify-end">
+                  {a.status !== 'decommissioned' && <MaintenanceBadge state={getMaintenanceState(a.nextMaintenanceOn, today)} nextOn={a.nextMaintenanceOn} />}
                   <WarrantyBadge state={getWarrantyState(a.warrantyEndsOn, today)} endsOn={a.warrantyEndsOn} />
                   <AssetStatusBadge status={a.status} />
                 </div>
@@ -214,6 +223,7 @@ function NewAssetDialog({
   const [installedOn, setInstalledOn] = useState('');
   const [warrantyEndsOn, setWarrantyEndsOn] = useState('');
   const [notes, setNotes] = useState('');
+  const [maintenanceInterval, setMaintenanceInterval] = useState('');
 
   const clientSites = sites.filter((s) => s.clientId === clientId);
 
@@ -232,6 +242,7 @@ function NewAssetDialog({
         installedOn: installedOn || null,
         warrantyEndsOn: warrantyEndsOn || null,
         notes: notes || null,
+        maintenanceIntervalMonths: maintenanceInterval ? Number(maintenanceInterval) : null,
       });
       if (result.ok) onCreated(result.data.id);
       else setError(result.error);
@@ -282,6 +293,12 @@ function NewAssetDialog({
           </Field>
           <Field label="Fin de garantie">
             <input type="date" value={warrantyEndsOn} min={installedOn || undefined} onChange={(e) => setWarrantyEndsOn(e.target.value)} className={inputClass} data-testid="asset-warranty-input" />
+          </Field>
+          <Field label="Entretien périodique">
+            <select value={maintenanceInterval} onChange={(e) => setMaintenanceInterval(e.target.value)} className={inputClass} data-testid="asset-interval-select">
+              <option value="">Aucun</option>
+              {MAINTENANCE_INTERVAL_OPTIONS.map((m) => <option key={m} value={m}>{intervalLabel(m)}</option>)}
+            </select>
           </Field>
         </div>
         <Field label="Notes (accès, particularités…)">

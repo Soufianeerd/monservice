@@ -146,6 +146,7 @@ async function verifyCustomObjects() {
       'enforce_field_service_work_report_transition',
       'enforce_field_service_asset_mutation',
       'enforce_field_service_work_order_asset_link',
+      'advance_field_service_asset_maintenance',
       'allocate_billing_document_number',
       'enforce_invoice_invariants',
       'enforce_invoice_child_immutability'
@@ -177,6 +178,7 @@ async function verifyCustomObjects() {
     enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_asset_mutation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_work_order_asset_link: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    advance_field_service_asset_maintenance: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_invoice_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_invoice_child_immutability: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
@@ -476,6 +478,7 @@ async function verifyCustomObjects() {
       'trg_field_service_work_report_transition',
       'trg_field_service_asset_mutation',
       'trg_field_service_work_order_asset_link',
+      'trg_field_service_asset_maintenance_advance',
       'runtime_immutable_fields',
       'trg_enforce_invoice_invariants',
       'trg_enforce_invoice_lines_immutability',
@@ -583,6 +586,11 @@ async function verifyCustomObjects() {
       name: 'trg_field_service_work_order_asset_link',
       table: 'field_service_work_order_assets',
       requiredElements: ['before', 'insert', 'update', 'for each row', 'enforce_field_service_work_order_asset_link'],
+    },
+    {
+      name: 'trg_field_service_asset_maintenance_advance',
+      table: 'field_service_work_orders',
+      requiredElements: ['after', 'update of status', 'for each row', 'advance_field_service_asset_maintenance'],
     },
     {
       name: 'runtime_immutable_fields',

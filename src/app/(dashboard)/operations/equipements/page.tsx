@@ -41,6 +41,7 @@ export default async function AssetsPage() {
         model: a.model,
         serialNumber: a.serialNumber,
         warrantyEndsOn: a.warrantyEndsOn,
+        nextMaintenanceOn: a.nextMaintenanceOn,
         status: a.status,
         clientName: a.clientName,
         siteLabel: a.siteLabel,

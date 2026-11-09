@@ -993,6 +993,7 @@ async function verifyContract() {
     'field_service_assets_org_site_idx',
     'field_service_assets_org_status_idx',
     'field_service_assets_org_warranty_idx',
+    'field_service_assets_org_next_maintenance_idx',
     'field_service_work_order_assets_wo_asset_unique',
     'field_service_work_order_assets_org_asset_idx',
     'field_service_work_order_assets_org_wo_idx',
@@ -1212,6 +1213,11 @@ async function verifyContract() {
       name: 'field_service_assets_category_check',
       table: 'field_service_assets',
       elements: ['category', 'heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other'],
+    },
+    {
+      name: 'field_service_assets_maintenance_interval_check',
+      table: 'field_service_assets',
+      elements: ['maintenance_interval_months', 'is null', '1', '120'],
     },
     {
       name: 'field_service_assets_status_check',

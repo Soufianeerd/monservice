@@ -39,9 +39,27 @@ Aucune modification des migrations fermées, aucune table supprimée, aucun chan
 
 Les parcours navigateur ont tourné dans la VM Linux du poste : un fichier de configuration local non versionné y allongeait seulement les délais d'attente (latence réseau vers Neon), sans retirer d'assertion.
 
-## Reporté (Session 19B)
+## Session 19B — maintenance préventive et étiquette QR (9 novembre 2026)
 
-- QR code imprimable par équipement et ouverture de la fiche depuis un smartphone.
-- Maintenance préventive : périodicité d'entretien (ex. chaudière annuelle) et génération des opérations à prévoir.
+Migration additive `drizzle/neon/0015_field_service_asset_maintenance.sql`.
+
+| Élément | Détail |
+|---|---|
+| Colonnes | `maintenance_interval_months` (1 à 120, facultatif), `next_maintenance_on` (date), index `(organization_id, next_maintenance_on)` |
+| Trigger | `trg_field_service_asset_maintenance_advance` : à la clôture d'une opération de type « maintenance », la prochaine échéance de chaque équipement rattaché et périodique devient « date de fin (heure de Paris) + périodicité ». Bornée à l'organisation de l'opération, jamais sur un équipement retiré |
+| Création | Échéance saisie, sinon mise en service (ou aujourd'hui) + périodicité |
+| Service / action | `scheduleAssetMaintenance` : crée l'opération d'entretien (même client et site) et y rattache l'équipement |
+| Interface | Indicateur et filtre « Entretiens à prévoir (30 j) », badges « Entretien à prévoir / en retard », bloc entretien sur la fiche avec « Planifier l'entretien », périodicité dans les formulaires |
+| Étiquette QR | `/operations/equipements/[id]/etiquette` : étiquette imprimable dont le QR ouvre la fiche authentifiée (aucune donnée publique) |
+
+Preuves (branche `migration-validation`) : contrat 61/61, objets SQL conformes (fonction et trigger ajoutés aux contrôles), 18/18 tests DB/RLS équipements (dont 3 de maintenance), 17 unitaires équipements, 765/765 unitaires, Playwright ASSETS_01 et ASSETS_02 sur build production, typecheck, lint 0 erreur.
+
+## CI GitHub — premier run (PR #1)
+
+Le premier run GitHub a échoué sur des délais de 5 s dépassés (`core-privacy`, `core-billing`) : le runner américain interroge Neon Francfort. L'assertion « 4 factures au lieu de 3 » était une conséquence d'un test interrompu. Correction : `--testTimeout=90000` pour les suites d'intégration dans `ci-branch.mjs` et `test:neon-boundaries`, délai d'assertion Playwright à 20 s. Aucune assertion modifiée.
+
+## Reporté (Session 19C)
+
 - Pièces jointes (notice, PV de mise en service) via le stockage privé.
-- Visibilité des équipements dans le portail client (Session 20).
+- Visibilité des équipements et de l'historique dans le portail client (Session 20).
+- Relances automatiques par e-mail des entretiens à prévoir.

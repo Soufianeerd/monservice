@@ -8,6 +8,7 @@ import {
   createFieldServiceAssetSchema,
   updateFieldServiceAssetSchema,
   workOrderAssetLinkSchema,
+  scheduleAssetMaintenanceSchema,
 } from '@/lib/validation/field-service-assets.schemas';
 import * as assetsService from '@/lib/services/field-service-assets.service';
 
@@ -71,5 +72,17 @@ export async function unlinkAssetFromWorkOrderAction(rawInput: unknown) {
     revalidatePath(`/operations/${input.workOrderId}`);
     revalidatePath(`/operations/equipements/${input.assetId}`);
     return { linked: false as const };
+  });
+}
+
+export async function scheduleAssetMaintenanceAction(rawInput: unknown) {
+  return run(async () => {
+    const ctx = await requireFieldServiceContext();
+    const input = scheduleAssetMaintenanceSchema.parse(rawInput);
+    const result = await assetsService.scheduleAssetMaintenance(ctx.organizationId, ctx.userId, input.assetId, input.scheduledStart);
+    revalidatePath('/operations');
+    revalidatePath('/operations/equipements');
+    revalidatePath(`/operations/equipements/${input.assetId}`);
+    return result;
   });
 }

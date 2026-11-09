@@ -103,4 +103,47 @@ test.describe('Field Service customer assets (Session 19)', () => {
     await expect(page.locator('[data-testid="asset-edit-toggle"]')).toHaveCount(0);
     await expect(page.locator('[data-testid="asset-history"]')).toContainText(workTitle);
   });
+
+  test('ASSETS_02: periodic maintenance becomes overdue, is planned in one click and the QR label opens the record', async ({ page }) => {
+    const runId = Date.now();
+    const assetLabel = `PAC E2E #${runId}`;
+
+    await page.goto('/operations/equipements');
+    await dismissGuide(page);
+    await page.click('[data-testid="new-asset-button"]');
+    await page.selectOption('[data-testid="asset-client-select"]', { label: clientName });
+    await page.selectOption('[data-testid="asset-category-select"]', 'heating');
+    await page.fill('[data-testid="asset-label-input"]', assetLabel);
+    await page.fill('[data-testid="asset-installed-input"]', '2024-03-01');
+    await page.selectOption('[data-testid="asset-interval-select"]', '12');
+    await page.click('[data-testid="asset-submit"]');
+    await page.waitForURL(/\/operations\/equipements\/[0-9a-f-]{36}$/);
+    const assetUrl = page.url();
+    await dismissGuide(page);
+
+    // Mise en service 2024-03-01 + 12 mois : l'entretien est en retard.
+    await expect(page.locator('[data-testid="asset-next-maintenance"]')).toHaveText('01/03/2025');
+    await expect(page.locator('[data-testid="asset-maintenance-badge"]')).toHaveText('Entretien en retard');
+
+    // The filter of the list surfaces it.
+    await page.goto('/operations/equipements');
+    await dismissGuide(page);
+    await page.click('[data-testid="maintenance-due-filter"]');
+    await page.fill('[data-testid="asset-search"]', assetLabel);
+    await expect(page.locator('[data-testid="asset-row"]')).toHaveCount(1);
+
+    // Plan the maintenance: a maintenance work order is created and linked.
+    await page.goto(assetUrl);
+    await dismissGuide(page);
+    await page.click('[data-testid="asset-plan-maintenance"]');
+    await page.waitForURL(/\/operations\/[0-9a-f-]{36}$/);
+    await dismissGuide(page);
+    await expect(page.locator('h1')).toContainText(`Entretien — ${assetLabel}`);
+    await expect(page.locator('[data-testid="linked-assets"]')).toContainText(assetLabel);
+
+    // Printable QR label pointing to the authenticated record.
+    await page.goto(`${assetUrl}/etiquette`);
+    await expect(page.locator('[data-testid="asset-label"]')).toContainText(assetLabel);
+    await expect(page.locator('[data-testid="asset-label-qr"]')).toHaveAttribute('src', /^data:image\/png;base64,/);
+  });
 });

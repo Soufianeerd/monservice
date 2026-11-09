@@ -2,6 +2,7 @@ import React from 'react';
 import {
   FIELD_SERVICE_ASSET_STATUS_LABELS,
   type FieldServiceAssetStatus,
+  type MaintenanceState,
   type WarrantyState,
 } from '@/lib/workspaces/field-service/assets';
 
@@ -40,4 +41,25 @@ export function WarrantyBadge({ state, endsOn }: { state: WarrantyState; endsOn:
       {label}
     </span>
   );
+}
+
+const maintenanceText: Record<Exclude<MaintenanceState, 'none' | 'scheduled'>, { label: string; style: string }> = {
+  due_soon: { label: 'Entretien à prévoir', style: 'bg-amber-50 text-amber-800 border-amber-200' },
+  overdue: { label: 'Entretien en retard', style: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+export function MaintenanceBadge({ state, nextOn }: { state: MaintenanceState; nextOn: string | null }) {
+  if (state === 'none' || state === 'scheduled') return null;
+  const { label, style } = maintenanceText[state];
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-medium ${style}`} title={`Prochain entretien : ${formatDateFr(nextOn)}`} data-testid="asset-maintenance-badge">
+      {label}
+    </span>
+  );
+}
+
+export function intervalLabel(months: number | null): string {
+  if (!months) return 'Aucune';
+  if (months % 12 === 0) return months === 12 ? 'Tous les ans' : `Tous les ${months / 12} ans`;
+  return `Tous les ${months} mois`;
 }

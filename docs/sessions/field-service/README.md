@@ -11,7 +11,7 @@ Ce dossier regroupe les spécifications, blueprints, livrables et revues de conf
 | **Session 16** | **Multi-Vertical Foundation** | Résolution d'espace de travail dynamique, 9 familles métiers, 36 professions, contraintes DB sectorielles, enregistrement dynamique, navigation sans route fantôme, blueprint complet. | ✅ Réalisée |
 | **Session 17** | **Work Orders, Chantiers & Interventions** | Modèle de données universel d'intervention, statuts de chantier, assignation d'équipes, géolocalisation et rapports d'intervention. | ✅ Réalisée |
 | **Session 18** | **Estimates, Quotes & Line-Item Breakdown (BTP/Artisans)** | Devis détaillés BTP, métrés, tranches de travaux, acomptes, TVA multi-taux (5.5%, 10%, 20%), conversion devis-facture. | ✅ Réalisée |
-| **Session 19** | **Customer Asset & Equipment Tracking** | Suivi du parc d'équipements clients, garanties, numéros de série, rattachement aux interventions et historique de maintenance. QR codes et maintenance préventive planifiée reportés en 19B. | ✅ Réalisée (V1) |
+| **Session 19** | **Customer Asset & Equipment Tracking** | Suivi du parc d'équipements clients, garanties, numéros de série, rattachement aux interventions et historique de maintenance. Maintenance préventive périodique et étiquettes QR (19B). | ✅ Réalisée (19 + 19B) |
 | **Session 20** | **Field Service Portal & Mobile Experience** | Espace client dédié suivi de chantier/intervention, signature électronique sur tablette/smartphone, validation des réceptions de travaux. | ⏳ Planifiée |
 
 ---

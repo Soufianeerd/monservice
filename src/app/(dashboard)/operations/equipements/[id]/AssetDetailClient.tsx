@@ -3,16 +3,18 @@
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, ClipboardList, MapPin, Pencil, User } from 'lucide-react';
-import { updateFieldServiceAssetAction } from '@/app/actions/field-service-assets.actions';
+import { ArrowLeft, Calendar, CalendarClock, ClipboardList, MapPin, Pencil, QrCode, User } from 'lucide-react';
+import { scheduleAssetMaintenanceAction, updateFieldServiceAssetAction } from '@/app/actions/field-service-assets.actions';
 import {
   FIELD_SERVICE_ASSET_CATEGORIES,
   FIELD_SERVICE_ASSET_CATEGORY_LABELS,
+  MAINTENANCE_INTERVAL_OPTIONS,
+  getMaintenanceState,
   getWarrantyState,
   type FieldServiceAssetCategory,
   type FieldServiceAssetStatus,
 } from '@/lib/workspaces/field-service/assets';
-import { AssetStatusBadge, WarrantyBadge, formatDateFr } from '../asset-badges';
+import { AssetStatusBadge, MaintenanceBadge, WarrantyBadge, formatDateFr, intervalLabel } from '../asset-badges';
 
 interface Intervention {
   workOrderId: string;
@@ -37,6 +39,8 @@ interface AssetDetail {
   warrantyEndsOn: string | null;
   status: FieldServiceAssetStatus;
   notes: string | null;
+  maintenanceIntervalMonths: number | null;
+  nextMaintenanceOn: string | null;
   clientName: string | null;
   siteLabel: string | null;
   siteAddressLine1: string | null;
@@ -73,6 +77,15 @@ export default function AssetDetailClient({ asset, sites, today }: { asset: Asse
     });
   };
 
+  const planMaintenance = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await scheduleAssetMaintenanceAction({ assetId: asset.id });
+      if (!result.ok) { setError(result.error); return; }
+      router.push(`/operations/${result.data.workOrderId}`);
+    });
+  };
+
   const changeStatus = (status: FieldServiceAssetStatus) => {
     if (status === 'decommissioned' && !window.confirm('Retirer définitivement cet équipement ? Sa fiche et son historique resteront consultables mais ne pourront plus être modifiés.')) return;
     save({ status });
@@ -95,10 +108,15 @@ export default function AssetDetailClient({ asset, sites, today }: { asset: Asse
             <div className="flex flex-wrap gap-2 mt-2">
               <AssetStatusBadge status={asset.status} />
               <WarrantyBadge state={getWarrantyState(asset.warrantyEndsOn, today)} endsOn={asset.warrantyEndsOn} />
+              {!readOnly && <MaintenanceBadge state={getMaintenanceState(asset.nextMaintenanceOn, today)} nextOn={asset.nextMaintenanceOn} />}
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/operations/equipements/${asset.id}/etiquette`} className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl" data-testid="asset-label-link">
+              <QrCode className="w-4 h-4 mr-1.5" />Étiquette QR
+            </Link>
           {!readOnly && (
-            <div className="flex flex-wrap gap-2">
+            <>
               <button type="button" onClick={() => setIsEditing((v) => !v)} className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl" data-testid="asset-edit-toggle">
                 <Pencil className="w-4 h-4 mr-1.5" />{isEditing ? 'Fermer' : 'Modifier'}
               </button>
@@ -114,8 +132,9 @@ export default function AssetDetailClient({ asset, sites, today }: { asset: Asse
               <button type="button" disabled={isPending} onClick={() => changeStatus('decommissioned')} className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl" data-testid="asset-decommission">
                 Retirer du parc
               </button>
-            </div>
+            </>
           )}
+          </div>
         </div>
 
         {readOnly && (
@@ -132,6 +151,21 @@ export default function AssetDetailClient({ asset, sites, today }: { asset: Asse
           <Info icon={Calendar} label="Mise en service" value={formatDateFr(asset.installedOn)} />
           <Info icon={Calendar} label="Fin de garantie" value={formatDateFr(asset.warrantyEndsOn)} />
         </dl>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-100 pt-4" data-testid="asset-maintenance">
+          <div className="text-sm">
+            <p className="font-medium text-gray-900 flex items-center"><CalendarClock className="w-4 h-4 mr-1.5 text-gray-400" />Entretien périodique : {intervalLabel(asset.maintenanceIntervalMonths)}</p>
+            <p className="text-gray-600">
+              Prochain entretien : <span data-testid="asset-next-maintenance">{formatDateFr(asset.nextMaintenanceOn)}</span>
+              {asset.maintenanceIntervalMonths ? ' · recalculé à la clôture de chaque opération d’entretien rattachée' : ''}
+            </p>
+          </div>
+          {!readOnly && (
+            <button type="button" disabled={isPending} onClick={planMaintenance} className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-xl" data-testid="asset-plan-maintenance">
+              Planifier l’entretien
+            </button>
+          )}
+        </div>
         {asset.notes && <p className="text-sm text-gray-700 whitespace-pre-line border-t border-gray-100 pt-3">{asset.notes}</p>}
 
         {isEditing && !readOnly && (
@@ -183,6 +217,8 @@ function EditAssetForm({ asset, sites, isPending, onSave }: { asset: AssetDetail
   const [installedOn, setInstalledOn] = useState(asset.installedOn ?? '');
   const [warrantyEndsOn, setWarrantyEndsOn] = useState(asset.warrantyEndsOn ?? '');
   const [notes, setNotes] = useState(asset.notes ?? '');
+  const [maintenanceInterval, setMaintenanceInterval] = useState(asset.maintenanceIntervalMonths ? String(asset.maintenanceIntervalMonths) : '');
+  const [nextMaintenanceOn, setNextMaintenanceOn] = useState(asset.nextMaintenanceOn ?? '');
 
   return (
     <form
@@ -194,6 +230,8 @@ function EditAssetForm({ asset, sites, isPending, onSave }: { asset: AssetDetail
           category, label, siteId: siteId || null,
           manufacturer: manufacturer || null, model: model || null, serialNumber: serialNumber || null,
           installedOn: installedOn || null, warrantyEndsOn: warrantyEndsOn || null, notes: notes || null,
+          maintenanceIntervalMonths: maintenanceInterval ? Number(maintenanceInterval) : null,
+          nextMaintenanceOn: nextMaintenanceOn || null,
         });
       }}
     >
@@ -219,6 +257,13 @@ function EditAssetForm({ asset, sites, isPending, onSave }: { asset: AssetDetail
           <input type="date" value={installedOn} onChange={(e) => setInstalledOn(e.target.value)} className={inputClass} /></label>
         <label className="block space-y-1.5"><span className="text-sm font-medium text-gray-700">Fin de garantie</span>
           <input type="date" value={warrantyEndsOn} min={installedOn || undefined} onChange={(e) => setWarrantyEndsOn(e.target.value)} className={inputClass} /></label>
+        <label className="block space-y-1.5"><span className="text-sm font-medium text-gray-700">Entretien périodique</span>
+          <select value={maintenanceInterval} onChange={(e) => setMaintenanceInterval(e.target.value)} className={inputClass} data-testid="asset-edit-interval">
+            <option value="">Aucun</option>
+            {MAINTENANCE_INTERVAL_OPTIONS.map((m) => <option key={m} value={m}>{intervalLabel(m)}</option>)}
+          </select></label>
+        <label className="block space-y-1.5"><span className="text-sm font-medium text-gray-700">Prochain entretien</span>
+          <input type="date" value={nextMaintenanceOn} onChange={(e) => setNextMaintenanceOn(e.target.value)} className={inputClass} data-testid="asset-edit-next-maintenance" /></label>
       </div>
       <label className="block space-y-1.5"><span className="text-sm font-medium text-gray-700">Notes</span>
         <textarea rows={3} maxLength={4000} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} /></label>

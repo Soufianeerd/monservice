@@ -4,6 +4,7 @@ import {
   updateFieldServiceAssetSchema,
   listFieldServiceAssetsSchema,
   workOrderAssetLinkSchema,
+  scheduleAssetMaintenanceSchema,
 } from '../../../src/lib/validation/field-service-assets.schemas';
 import {
   FIELD_SERVICE_ASSET_CATEGORIES,
@@ -11,6 +12,8 @@ import {
   FIELD_SERVICE_ASSET_STATUSES,
   FIELD_SERVICE_ASSET_STATUS_LABELS,
   getWarrantyState,
+  getMaintenanceState,
+  addMonthsIso,
 } from '../../../src/lib/workspaces/field-service/assets';
 import { AppError } from '../../../src/lib/errors';
 
@@ -19,6 +22,7 @@ const service = vi.hoisted(() => ({
   updateFieldServiceAsset: vi.fn(),
   linkAssetToWorkOrder: vi.fn(),
   unlinkAssetFromWorkOrder: vi.fn(),
+  scheduleAssetMaintenance: vi.fn(),
 }));
 const requireFieldServiceContext = vi.hoisted(() => vi.fn());
 
@@ -29,6 +33,7 @@ vi.mock('@/lib/services/field-service-assets.service', () => service);
 import {
   createFieldServiceAssetAction,
   linkAssetToWorkOrderAction,
+  scheduleAssetMaintenanceAction,
   unlinkAssetFromWorkOrderAction,
   updateFieldServiceAssetAction,
 } from '../../../src/app/actions/field-service-assets.actions';
@@ -46,6 +51,33 @@ describe('Session 19 — Customer assets', () => {
       expect(getWarrantyState('2026-11-09', '2026-11-09')).toBe('expiring');
       expect(getWarrantyState('2027-01-08', '2026-11-09')).toBe('expiring');
       expect(getWarrantyState('2027-01-09', '2026-11-09')).toBe('valid');
+    });
+  });
+
+  describe('preventive maintenance helpers (Session 19B)', () => {
+    it('adds months and clamps to the end of shorter months', () => {
+      expect(addMonthsIso('2026-01-31', 1)).toBe('2026-02-28');
+      expect(addMonthsIso('2024-01-31', 1)).toBe('2024-02-29');
+      expect(addMonthsIso('2026-11-09', 12)).toBe('2027-11-09');
+      expect(addMonthsIso('2026-11-30', 3)).toBe('2027-02-28');
+    });
+
+    it('classifies the next maintenance against a reference date', () => {
+      expect(getMaintenanceState(null, '2026-11-09')).toBe('none');
+      expect(getMaintenanceState('2026-11-08', '2026-11-09')).toBe('overdue');
+      expect(getMaintenanceState('2026-12-09', '2026-11-09')).toBe('due_soon');
+      expect(getMaintenanceState('2026-12-10', '2026-11-09')).toBe('scheduled');
+    });
+
+    it('validates intervals and scheduling payloads', () => {
+      const base = { clientId: 'c', category: 'heating', label: 'Chaudière' };
+      expect(createFieldServiceAssetSchema.parse({ ...base, maintenanceIntervalMonths: 12 }).maintenanceIntervalMonths).toBe(12);
+      expect(createFieldServiceAssetSchema.safeParse({ ...base, maintenanceIntervalMonths: 0 }).success).toBe(false);
+      expect(createFieldServiceAssetSchema.safeParse({ ...base, maintenanceIntervalMonths: 1.5 }).success).toBe(false);
+      expect(updateFieldServiceAssetSchema.parse({ id: 'a', nextMaintenanceOn: '2027-01-15' }).nextMaintenanceOn).toBe('2027-01-15');
+      expect(scheduleAssetMaintenanceSchema.safeParse({ assetId: 'a', scheduledStart: '2026-12-01T08:00:00.000Z' }).success).toBe(true);
+      expect(scheduleAssetMaintenanceSchema.safeParse({ assetId: 'a', scheduledStart: 'demain' }).success).toBe(false);
+      expect(scheduleAssetMaintenanceSchema.safeParse({ assetId: 'a', clientId: 'x' }).success).toBe(false);
     });
   });
 
@@ -130,6 +162,13 @@ describe('Session 19 — Customer assets', () => {
       const result = await unlinkAssetFromWorkOrderAction({ workOrderId: 'wo-1', assetId: 'asset-1' });
       expect(result).toEqual({ ok: false, error: 'Interdit', code: 'FIELD_SERVICE_ACCESS_FORBIDDEN' });
       expect(service.unlinkAssetFromWorkOrder).not.toHaveBeenCalled();
+    });
+
+    it('schedules maintenance with the session organization and user', async () => {
+      service.scheduleAssetMaintenance.mockResolvedValue({ workOrderId: 'wo-9' });
+      const result = await scheduleAssetMaintenanceAction({ assetId: 'asset-1' });
+      expect(result).toEqual({ ok: true, data: { workOrderId: 'wo-9' } });
+      expect(service.scheduleAssetMaintenance).toHaveBeenCalledWith('org-session', 'u1', 'asset-1', undefined);
     });
 
     it('rethrows unexpected failures so they are not disguised as user errors', async () => {
