@@ -11,6 +11,9 @@ export default defineConfig({
   // Real EU Auth/Postgres calls and the complete intervention lifecycle span
   // multiple transactions. Keep every assertion, allow remote round trips.
   timeout: 120_000,
+  // Each assertion may wait on several Auth/Postgres round trips to Frankfurt
+  // (GitHub runners are not in the EU). Assertions themselves are unchanged.
+  expect: { timeout: 20_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

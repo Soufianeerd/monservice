@@ -64,8 +64,8 @@ try {
     run(['npm','run','lint']);
     run(['npx','vitest','run','__tests__/unit','tests/unit','__tests__/compliance']);
     if (!browserOnly) {
-    run(['npm','run','test:db-constraints','--','--no-file-parallelism','--hookTimeout=180000']);
-    run(['npm','run','test:rls','--','--no-file-parallelism','--hookTimeout=180000']);
+    run(['npm','run','test:db-constraints','--','--no-file-parallelism','--hookTimeout=180000','--testTimeout=90000']);
+    run(['npm','run','test:rls','--','--no-file-parallelism','--hookTimeout=180000','--testTimeout=90000']);
     run(['npm','run','test:neon-boundaries']);
     // Restore only classifications changed by DB scenarios, without replaying data or Auth.
     run(['npx','tsx','scripts/e2e/seed-local.ts'],{NEON_SEED_WORKSPACE_ONLY:'true'});
