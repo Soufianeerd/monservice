@@ -2,136 +2,147 @@
 
 **MonSERVICE** est une plateforme SaaS B2B / Business Operating System multi-verticale conçue pour les professionnels indépendants, cabinets de santé paramédicaux et artisans du bâtiment/services de terrain.
 
+> État de référence et preuves : [`docs/database/neon-migration.md`](docs/database/neon-migration.md) (migration Supabase → Neon) et [`docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`](docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md) (bascule publique). Un README ne constitue pas une preuve : seuls les rapports de validation datés le sont.
+
 ---
 
 ## 1. Architecture Technique
 
-- **Framework Web & SSR :** Next.js 16 (App Router, Server Actions, Turbopack)
-- **Langage :** TypeScript (mode strict, typage contractuel fort, 0 lying cast toléré)
-- **Base de Données :** PostgreSQL 15+ géré via Supabase
-- **ORM & Schéma :** Drizzle ORM avec migrations versionnées et vérification de dérive (`drift-check`)
-- **Sécurité & Multi-Tenant :** Row Level Security (RLS) PostgreSQL, GoTrue Supabase Auth, rôles RBAC
-- **Stockage d'Objets :** Supabase Storage (bucket sécurisé `clinical-documents`)
-- **Paiements & Facturation :** Stripe (Abonnements, Stripe Connect, Webhooks certifiés)
-- **Communications :** Resend (E-mails transactionnels)
+- **Framework Web & SSR :** Next.js 16 (App Router, Server Actions, Turbopack), React 19
+- **Langage :** TypeScript strict (aucun nouveau `as any`, `as never`, `@ts-ignore`)
+- **Base de données :** PostgreSQL 18 sur **Neon** — projet `Monservice-Europe` (`misty-field-54835523`), région `aws-eu-central-1` (Frankfurt)
+- **ORM & schéma :** Drizzle ORM ; migrations SQL versionnées dans `drizzle/neon/` avec ledger à checksums ; 59 tables, toutes sous RLS
+- **Authentification :** Neon Managed Auth (Better Auth) via `@neondatabase/auth` — route `/api/auth/[...path]`, `src/proxy.ts`, cookies serveur signés, vérification e-mail par OTP en production
+- **Sécurité & multi-tenant :** session vérifiée → mapping d'identité stocké → transaction avec `SET LOCAL` → rôles restreints (`monservice_runtime`, `monservice_stripe`, `monservice_reminders` : NOSUPERUSER, NOBYPASSRLS) → politiques RLS
+- **Stockage d'objets :** Neon Object Storage (API S3), buckets privés `clinical-documents` et `einvoices`, URLs signées de 1 à 60 s
+- **Paiements :** Stripe, **uniquement pour les abonnements MonService** (Stripe Connect et paiement des honoraires patients retirés)
+- **Communications :** Resend (e-mails métier) ; e-mails Auth via le SMTP configuré dans Neon
+- **Hébergement cible :** Netlify (`monservicecrm`), non encore basculé
+
+Supabase n'est plus une dépendance runtime. Les migrations historiques `drizzle/postgres/0000–0023` (ère Supabase) sont **fermées** et conservées pour la traçabilité uniquement.
 
 ---
 
 ## 2. Workspaces Dédiés
 
-MonSERVICE propose des espaces de travail configurés dynamiquement selon le secteur et la profession de l'organisation :
-
 ### 2.1 Generic Workspace
-- Adapté aux prestataires de services, freelances, consultants, agences.
-- CRM complet : gestion des clients, opportunités d'affaires (deals), catalogue de produits/services.
-- Devis et facturation standard conforme (numérotation chronologique séquentielle stricte).
+- Prestataires de services, freelances, consultants, agences.
+- CRM : clients, contacts, opportunités (deals), catalogue produits/services, tâches.
+- Devis et facturation conformes (numérotation chronologique séquentielle stricte).
 
-### 2.2 Paramedical Workspace (V1 — Frozen)
-- Conçu spécifiquement pour les praticiens de santé paramédicaux (kinésithérapeutes, ostéopathes, orthophonistes, etc.).
-- Gestion de cabinet : praticiens, salles de consultation, ressources techniques.
-- Dossier patient électronique (DPE) : épisodes de soins, consultations, observations cliniques immuables, formulaires d'évaluation.
-- Portail patient dédié : accès aux rendez-vous, questionnaires, documents de santé partagés.
-- *Statut produit : V1 gelée et protégée contre toute régression.*
+### 2.2 Paramedical Workspace (V1 — gelée)
+- Praticiens paramédicaux (kinésithérapeutes, ostéopathes, orthophonistes…).
+- Cabinet : praticiens, lieux, salles, ressources ; agenda, disponibilités, liste d'attente.
+- Dossier patient : épisodes de soins, consultations, observations cliniques immuables, questionnaires.
+- Portail patient : rendez-vous, questionnaires, documents partagés, factures, messagerie.
+- *V1 gelée et protégée contre toute régression.*
+- ⚠️ **Hébergement HDS non démontré : aucune donnée de santé réelle ne doit être introduite.**
 
 ### 2.3 Field Service & BTP Workspace (Sessions 16–18)
-- Conçu pour les artisans, plombiers, électriciens, techniciens de maintenance et entreprises de rénovation/bâtiment.
-- Gestion des chantiers et sites d'intervention avec coordonnées géographiques et consignes d'accès.
-- Ordres de travail (Work Orders) : planification, assignation d'intervenants, cycle de statuts strict, comptes-rendus d'intervention signés et immuables.
-- Moteur de chiffrage professionnel Lead-to-Cash : devis structurés par lots/tranches, métrés et unités décimales, gestion multi-taux de TVA (5,5 %, 10 %, 20 %), remises et acomptes à la commande, signature électronique légale, génération de factures d'acompte et facturation du solde avec déduction automatique des acomptes payés.
-- *Statut produit : Sessions 16 à 18 complétées et durcies. Session 19 (Customer Assets & Equipment Tracking) non démarrée.*
+- Chantiers et sites d'intervention, ordres de travail, assignations, comptes-rendus signés et immuables.
+- Lead-to-Cash : devis par lots, métrés, multi-taux de TVA, remises, acomptes, signature, factures d'acompte et de solde.
+- *Sessions 16 à 18 terminées et durcies. Session 19 (Customer Assets & Equipment Tracking) non démarrée.*
 
 ---
 
-## 3. Configuration & Démarrage Local
+## 3. Démarrage local
 
 ### 3.1 Prérequis
-- Node.js version 22+
-- npm 10+
-- Supabase CLI (`brew install supabase/tap/supabase` ou binaire officiel)
-- Docker (pour exécuter l'émulateur Supabase en local)
+- Node.js 22+, npm 10+
+- CLI Neon `neon@8.0.7` (pour la CI locale et l'administration des branches)
+- Accès au projet Neon EU (clé API limitée au projet pour la CI)
 
-### 3.2 Installation des dépendances
+### 3.2 Installation
 ```bash
 npm install
 ```
 
-### 3.3 Supabase Local & Base de Données
+### 3.3 Base de données
+Le développement se fait sur une **branche Neon synthétique** (jamais sur la production) :
+
+- `.env.local` : runtime restreint de la branche de validation (`monservice_runtime`, connexion poolée).
+- `.env.neon-admin.local` (ignoré par Git) : connexion owner non poolée, réservée aux migrations.
+
 ```bash
-# Démarrer les conteneurs Supabase locaux
-supabase start
-
-# Appliquer l'ensemble des migrations fermées (0000 à 0022)
-npm run db:migrate
-
-# Injecter les jeux de données déterministes multi-verticales
-npm run seed:local
+npm run db:migrate        # applique drizzle/neon/* (refuse toute migration modifiée)
+npm run db:check-drift    # vérifie les checksums du ledger
+npm run seed:local        # données synthétiques — jamais sur la production
 ```
 
-### 3.4 Lancement du serveur de développement
+`npm run db:push` est volontairement bloqué.
+
+### 3.4 Serveur de développement
 ```bash
 npm run dev
 ```
-Accéder à l'application sur [http://localhost:3000](http://localhost:3000).
+Application sur [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 4. Variables d'Environnement
+## 4. Variables d'environnement
 
-Un fichier `.env.local` doit être configuré à la racine du projet. Consultez le guide complet dans [`docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`](docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md).
+Voir [`.env.example`](.env.example). Minimum runtime :
 
-Variables minimales :
 ```ini
-DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
-NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<supabase-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<supabase-service-role-key>
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+DATABASE_URL=            # login restreint monservice_runtime (pooled), jamais l'owner
+NEON_AUTH_BASE_URL=
+NEON_AUTH_COOKIE_SECRET=
+AWS_ENDPOINT_URL_S3=     # Neon Object Storage de la branche
+AWS_REGION=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+NEXT_PUBLIC_APP_URL=
 ```
 
----
+Optionnels : `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, variables Stripe (routes en 503 si absentes), `CRON_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`.
 
-## 5. Jeux de Données E2E (Comptes Déterministes)
-
-Le seed local configure des organisations et utilisateurs distincts et isolés pour chaque verticale :
-
-| Verticale | Organisation | Professionnel (Login) | Client / Patient (Login) | Mot de passe |
-| :--- | :--- | :--- | :--- | :--- |
-| **Generic** | Entreprise Générique A | `pro_generic_a@monservice.com` | `client_generic_a@monservice.com` | `password123` |
-| **Paramedical** | Cabinet Santé A | `pro_health_a@monservice.com` | `patient_health_a@monservice.com` | `password123` |
-| **Field Service** | Plomberie Chauffage Service | `pro_fs_a@monservice.com` | `client_fs_a@monservice.com` | `password123` |
-| **Field Service B**| Électricité Générale B | `pro_fs_b@monservice.com` | — | `password123` |
+Le build Next.js charge la configuration Auth : les variables runtime doivent être présentes au moment du build (cause de l'échec historique sur Netlify).
 
 ---
 
-## 6. Suites de Tests & Qualité
+## 5. Données de test
+
+`scripts/e2e/seed-local.ts` crée, sur une branche synthétique, des organisations et comptes isolés par verticale (`pro_generic_a@monservice.invalid`, `pro_health_a@monservice.invalid`, `pro_fs_a@monservice.invalid`, …) via Neon Managed Auth. Le mot de passe est fourni par `E2E_AUTH_PASSWORD` (généré aléatoirement à chaque run CI) ; aucun mot de passe n'est versionné.
+
+---
+
+## 6. Tests & qualité
 
 ```bash
-# Contrôles de qualité statique
-npm run lint
+# Statique
 npm run typecheck
+npm run lint
 npm run build
 
-# Intégrité du schéma PostgreSQL
-npm run db:check-drift        # Vérifie 0 dérive entre schema.ts et snapshots
-npm run db:check-contract     # Vérifie 100% de concordance des 57 tables DB
-npm run db:check-custom-objects # Vérifie les fonctions, triggers et RLS
-
-# Tests unitaires et d'intégration
+# Unitaires & conformité (sans base)
 npm run test:unit
 npm run test:security
-npm run test:db-constraints
+npm run test:compliance
 
-# Tests End-to-End Playwright
-npm run test:e2e:quote-to-cash # Cycle Lead-to-Cash persistant
-npm run test:e2e:field-service  # Parcours opérations Field Service
-npm run test:e2e               # Full régression multi-verticale
+# Schéma (branche Neon)
+npm run db:check-drift
+npm run db:check-contract
+npm run db:check-custom-objects
+
+# Intégration (écrivent des fixtures : branche synthétique uniquement)
+npm run test:db-constraints
+npm run test:rls
+npm run test:neon-boundaries
+
+# Navigateur
+npm run test:e2e
 ```
+
+**Validation de référence :** `node scripts/neon/ci-branch.mjs` rejoue l'intégralité du cycle sur une branche Neon jetable créée depuis le modèle vide (`ci-template`) : migrations, rôles, seed, contrôles de schéma, typecheck, lint, unitaires, contraintes, RLS, boundaries, build, Playwright ; puis suppression de la branche. C'est ce que fait la CI GitHub (`.github/workflows/test.yml`, secret `NEON_CI_API_KEY`).
 
 ---
 
-## 7. Règles d'Exploitation & Interdictions Absolues (Production Safety)
+## 7. Règles d'exploitation (Production Safety)
 
-1. **JAMAIS de `drizzle-kit push` sur une base distante ou de production :** Toutes les évolutions de structure doivent transiter par un fichier SQL horodaté et versionné dans `drizzle/postgres/`.
-2. **JAMAIS de `supabase db reset` sur une base distante :** Cette commande est réservée au développement local conteneurisé.
-3. **NE JAMAIS modifier les migrations fermées (`0000` à `0021`) :** Toute correction ou extension ultérieure nécessite une nouvelle migration incrémentale (ex: `0022_marketplace_request_location.sql`).
-4. **0 Casts Lying (`as any`, `as never`, `@ts-ignore`) :** Le typage TypeScript doit être rigoureusement respecté sur l'ensemble des fichiers modifiés.
+1. **Jamais de `drizzle-kit push`** : toute évolution passe par un nouveau fichier `drizzle/neon/NNNN_*.sql` (prochain : `0014`).
+2. **Jamais de modification d'une migration appliquée** : `drizzle/neon/*` est protégé par checksum ; `drizzle/postgres/*` est historique et fermé.
+3. **Jamais de seed, test d'intégration ou suppression sur la production** ; ne jamais réinitialiser ni supprimer une base ou une branche distante non jetable.
+4. **Aucun contournement de typage** (`as any`, `as never`, `@ts-ignore`) dans le code modifié.
+5. **Isolation multi-tenant et RLS** : toute nouvelle table est sous RLS avec tests anonymes et inter-tenants.
+6. **Aucune donnée de santé réelle** tant que la conformité HDS de toute la chaîne n'est pas démontrée.
+7. **Aucun déploiement public** sans le préflight de bascule au vert et une approbation explicite.
