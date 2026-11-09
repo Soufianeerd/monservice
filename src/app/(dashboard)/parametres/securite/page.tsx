@@ -1,9 +1,5 @@
 import { Metadata } from 'next';
 import { requireSession } from '@/lib/auth/session';
-import { MFASettings } from '@/components/settings/MFASettings';
-import { db } from '@/lib/db/server';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 
 export const metadata: Metadata = {
   title: 'Sécurité du compte | MonService',
@@ -11,8 +7,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SecurityPage() {
-  const session = await requireSession();
-  
+  await requireSession();
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
