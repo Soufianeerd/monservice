@@ -51,7 +51,7 @@
     "@hookform/resolvers": "^5.4.0",
     "@neon/config": "^1.8.6",
     "@neon/env": "^1.5.3",
-    "@neondatabase/auth": "^0.5.0-beta",
+    "@neondatabase/auth": "^0.7.0-beta",
     "@react-pdf/renderer": "^4.5.1",
     "@stripe/stripe-js": "^9.12.1",
     "bcryptjs": "^3.0.3",
@@ -59,7 +59,7 @@
     "drizzle-orm": "^0.45.2",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
-    "next": "16.4.0",
+    "next": "^16.4.5",
     "next-intl": "^4.13.6",
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
@@ -74,7 +74,7 @@
     "stripe": "^22.3.2",
     "uuid": "^14.0.1",
     "xmlbuilder2": "^4.0.3",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.0",
@@ -99,7 +99,7 @@
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.4.0",
+    "eslint-config-next": "^16.4.5",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "jsdom": "^30.0.1",
@@ -109,5 +109,18 @@
     "typescript": "^5",
     "undici": "^8.10.0",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "better-auth": "1.7.18",
+    "@better-auth/core": "1.7.18",
+    "@better-auth/drizzle-adapter": "1.7.18",
+    "@better-auth/kysely-adapter": "1.7.18",
+    "@better-auth/memory-adapter": "1.7.18",
+    "@better-auth/mongo-adapter": "1.7.18",
+    "@better-auth/oauth-provider": "1.7.18",
+    "@better-auth/passkey": "1.7.18",
+    "@better-auth/prisma-adapter": "1.7.18",
+    "@better-auth/telemetry": "1.7.18",
+    "zod": "$zod"
   }
 }
