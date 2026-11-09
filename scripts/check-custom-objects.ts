@@ -75,6 +75,8 @@ async function verifyCustomObjects() {
     patient_billing_links: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
     appointment_reminder_deliveries: { anon: [], monservice_runtime: [] },
     field_service_sites: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_assets: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_assets: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'DELETE'] },
     field_service_work_orders: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
     field_service_work_order_assignments: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
     field_service_work_reports: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
@@ -142,6 +144,8 @@ async function verifyCustomObjects() {
       'enforce_field_service_status_history_append_only',
       'enforce_field_service_assignment_invariants',
       'enforce_field_service_work_report_transition',
+      'enforce_field_service_asset_mutation',
+      'enforce_field_service_work_order_asset_link',
       'allocate_billing_document_number',
       'enforce_invoice_invariants',
       'enforce_invoice_child_immutability'
@@ -171,6 +175,8 @@ async function verifyCustomObjects() {
     enforce_field_service_status_history_append_only: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_assignment_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_asset_mutation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_work_order_asset_link: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_invoice_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_invoice_child_immutability: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
@@ -468,6 +474,9 @@ async function verifyCustomObjects() {
       'trg_field_service_status_history_append_only',
       'trg_field_service_assignment_invariants',
       'trg_field_service_work_report_transition',
+      'trg_field_service_asset_mutation',
+      'trg_field_service_work_order_asset_link',
+      'runtime_immutable_fields',
       'trg_enforce_invoice_invariants',
       'trg_enforce_invoice_lines_immutability',
       'trg_enforce_invoice_sections_immutability'
@@ -564,6 +573,29 @@ async function verifyCustomObjects() {
     },
   ];
 
+  requiredTriggers.push(
+    {
+      name: 'trg_field_service_asset_mutation',
+      table: 'field_service_assets',
+      requiredElements: ['before', 'update', 'for each row', 'enforce_field_service_asset_mutation'],
+    },
+    {
+      name: 'trg_field_service_work_order_asset_link',
+      table: 'field_service_work_order_assets',
+      requiredElements: ['before', 'insert', 'update', 'for each row', 'enforce_field_service_work_order_asset_link'],
+    },
+    {
+      name: 'runtime_immutable_fields',
+      table: 'field_service_assets',
+      requiredElements: ['before', 'update', 'protect_runtime_fields'],
+    },
+    {
+      name: 'runtime_immutable_fields',
+      table: 'field_service_work_order_assets',
+      requiredElements: ['before', 'update', 'protect_runtime_fields'],
+    },
+  );
+
   for (const rt of requiredTriggers) {
     const match = triggers.find(t => t.tgname === rt.name && (!rt.table || t.relname === rt.table));
     if (!match) {
@@ -600,6 +632,8 @@ async function verifyCustomObjects() {
     'field_service_work_order_assignments',
     'field_service_work_reports',
     'field_service_work_order_status_history',
+    'field_service_assets',
+    'field_service_work_order_assets',
     'billing_document_sequences',
     'invoice_sections'
   ];
@@ -972,6 +1006,22 @@ async function verifyCustomObjects() {
     {
       policyName: 'field_service_sites_professional_policy',
       tableName: 'field_service_sites',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_assets_professional_policy',
+      tableName: 'field_service_assets',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_work_order_assets_professional_policy',
+      tableName: 'field_service_work_order_assets',
       expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['is_current_field_service_professional'],

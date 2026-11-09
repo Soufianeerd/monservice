@@ -19,6 +19,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
+import type { FieldServiceAssetCategory, FieldServiceAssetStatus } from '@/lib/workspaces/field-service/assets';
 import type {
   InvoiceLineType,
   InvoiceUnitCode,
@@ -1650,6 +1651,7 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
 }, (t) => [
   uniqueIndex('field_service_work_orders_org_ref_unique').on(t.organizationId, t.reference),
   uniqueIndex('field_service_work_orders_id_org_unique').on(t.id, t.organizationId),
+  uniqueIndex('field_service_work_orders_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
   index('field_service_work_orders_org_status_idx').on(t.organizationId, t.status),
   index('field_service_work_orders_org_sched_start_idx').on(t.organizationId, t.scheduledStart),
   index('field_service_work_orders_org_client_idx').on(t.organizationId, t.clientId),
@@ -1776,6 +1778,76 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
     columns: [t.changedByUserId, t.organizationId],
     foreignColumns: [users.id, users.organizationId],
     name: 'field_service_status_history_changed_by_user_fk'
+  })
+]);
+
+// 6. Field Service Customer Assets (Session 19)
+export const fieldServiceAssets = sqliteTable('field_service_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  siteId: text('site_id'),
+  category: text('category').$type<FieldServiceAssetCategory>().notNull().default('other'),
+  label: text('label').notNull(),
+  manufacturer: text('manufacturer'),
+  model: text('model'),
+  serialNumber: text('serial_number'),
+  installedOn: date('installed_on'),
+  warrantyEndsOn: date('warranty_ends_on'),
+  status: text('status').$type<FieldServiceAssetStatus>().notNull().default('active'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_assets_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  uniqueIndex('field_service_assets_org_serial_unique')
+    .on(t.organizationId, t.manufacturer, t.serialNumber)
+    .where(sql`${t.serialNumber} IS NOT NULL`),
+  index('field_service_assets_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_assets_org_site_idx').on(t.organizationId, t.siteId),
+  index('field_service_assets_org_status_idx').on(t.organizationId, t.status),
+  index('field_service_assets_org_warranty_idx').on(t.organizationId, t.warrantyEndsOn),
+  check('field_service_assets_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
+  check('field_service_assets_category_check', sql`${t.category} IN ('heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other')`),
+  check('field_service_assets_status_check', sql`${t.status} IN ('active', 'out_of_service', 'decommissioned')`),
+  check('field_service_assets_serial_check', sql`${t.serialNumber} IS NULL OR (char_length(trim(${t.serialNumber})) >= 1 AND char_length(${t.serialNumber}) <= 120)`),
+  check('field_service_assets_manufacturer_check', sql`${t.manufacturer} IS NULL OR char_length(${t.manufacturer}) <= 120`),
+  check('field_service_assets_model_check', sql`${t.model} IS NULL OR char_length(${t.model}) <= 120`),
+  check('field_service_assets_notes_check', sql`${t.notes} IS NULL OR char_length(${t.notes}) <= 4000`),
+  check('field_service_assets_warranty_dates_check', sql`${t.installedOn} IS NULL OR ${t.warrantyEndsOn} IS NULL OR ${t.warrantyEndsOn} >= ${t.installedOn}`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_assets_client_fk'
+  }),
+  foreignKey({
+    columns: [t.siteId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
+    name: 'field_service_assets_site_fk'
+  })
+]);
+
+// 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
+export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  workOrderId: text('work_order_id').notNull(),
+  assetId: text('asset_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_work_order_assets_wo_asset_unique').on(t.workOrderId, t.assetId),
+  index('field_service_work_order_assets_org_asset_idx').on(t.organizationId, t.assetId),
+  index('field_service_work_order_assets_org_wo_idx').on(t.organizationId, t.workOrderId),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId, fieldServiceWorkOrders.clientId],
+    name: 'field_service_work_order_assets_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.assetId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceAssets.id, fieldServiceAssets.organizationId, fieldServiceAssets.clientId],
+    name: 'field_service_work_order_assets_asset_fk'
   })
 ]);
 

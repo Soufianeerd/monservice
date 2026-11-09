@@ -141,6 +141,10 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         href: '/operations',
         icon: 'operations',
         dataTour: 'operations-nav',
+        subItems: [
+          { name: workspace.terminology.workPlural || 'Opérations', href: '/operations' },
+          { name: 'Équipements clients', href: '/operations/equipements' },
+        ],
       },
       {
         id: 'clients',

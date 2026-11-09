@@ -50,6 +50,7 @@ const help: Record<string, PageHelp> = {
 const commonPages: Record<string, [string, string]> = {
   '/clients': ['Vos clients', 'Créez un client avant un devis, une facture ou une intervention. Ses coordonnées et celles de votre interlocuteur se conservent dans sa fiche.'],
   '/deals': ['Vos opportunités commerciales', 'Une opportunité suit une vente potentielle : client, montant estimé et étape du pipeline. Un devis chiffre la proposition ; une facture demande son règlement.'],
+  '/operations/equipements': ['Le parc d’équipements de vos clients', 'Enregistrez la chaudière, la climatisation ou le tableau électrique de chaque client avec sa marque, son numéro de série et sa garantie. Rattachez-les à vos interventions pour retrouver leur historique d’entretien.'],
   '/operations': ['Vos interventions et chantiers', 'Une intervention associe un client, son site et les travaux à réaliser. Planifiez les dates, attribuez les intervenants puis suivez l’avancement et les comptes rendus.'],
   '/messages': ['Votre messagerie', 'Choisissez une conversation, lisez les échanges puis composez votre message. Vérifiez le destinataire avant l’envoi.'],
   '/marketplace': ['Les demandes de services', 'Consultez les demandes disponibles et ouvrez une demande pour examiner les besoins avant de proposer une réponse.'],

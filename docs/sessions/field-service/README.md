@@ -11,7 +11,7 @@ Ce dossier regroupe les spécifications, blueprints, livrables et revues de conf
 | **Session 16** | **Multi-Vertical Foundation** | Résolution d'espace de travail dynamique, 9 familles métiers, 36 professions, contraintes DB sectorielles, enregistrement dynamique, navigation sans route fantôme, blueprint complet. | ✅ Réalisée |
 | **Session 17** | **Work Orders, Chantiers & Interventions** | Modèle de données universel d'intervention, statuts de chantier, assignation d'équipes, géolocalisation et rapports d'intervention. | ✅ Réalisée |
 | **Session 18** | **Estimates, Quotes & Line-Item Breakdown (BTP/Artisans)** | Devis détaillés BTP, métrés, tranches de travaux, acomptes, TVA multi-taux (5.5%, 10%, 20%), conversion devis-facture. | ✅ Réalisée |
-| **Session 19** | **Customer Asset & Equipment Tracking** | Suivi du parc d'équipements/véhicules/ouvrages clients, historique de maintenance préventive/curative, garanties et QR codes d'équipements. | ⏳ Planifiée |
+| **Session 19** | **Customer Asset & Equipment Tracking** | Suivi du parc d'équipements clients, garanties, numéros de série, rattachement aux interventions et historique de maintenance. QR codes et maintenance préventive planifiée reportés en 19B. | ✅ Réalisée (V1) |
 | **Session 20** | **Field Service Portal & Mobile Experience** | Espace client dédié suivi de chantier/intervention, signature électronique sur tablette/smartphone, validation des réceptions de travaux. | ⏳ Planifiée |
 
 ---
@@ -22,3 +22,4 @@ Ce dossier regroupe les spécifications, blueprints, livrables et revues de conf
 - [SESSION_16_FIELD_SERVICE_MULTI_VERTICAL_FOUNDATION.md](./SESSION_16_FIELD_SERVICE_MULTI_VERTICAL_FOUNDATION.md) : Rapport d'implémentation formel et journal d'audit de la Session 16.
 - [SESSION_17_WORK_ORDERS_CHANTIERS_INTERVENTIONS.md](./SESSION_17_WORK_ORDERS_CHANTIERS_INTERVENTIONS.md) : Rapport d'implémentation formel et journal d'audit de la Session 17.
 - [SESSION_18_ESTIMATES_QUOTES_LEAD_TO_CASH.md](./SESSION_18_ESTIMATES_QUOTES_LEAD_TO_CASH.md) : Rapport d'implémentation formel et journal d'audit de la Session 18.
+- [SESSION_19_CUSTOMER_ASSETS_EQUIPMENT.md](./SESSION_19_CUSTOMER_ASSETS_EQUIPMENT.md) : Rapport d'implémentation et preuves de validation de la Session 19 (V1).
