@@ -75,10 +75,10 @@ try {
     // Match production's mandatory verification policy without affecting the
     // historical unverified synthetic login fixtures or the production branch.
     cli(['api',`${endpoint}/email_and_password`,'-X','PATCH','-F','require_email_verification=true']);
-    command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','e2e/auth-recovery.spec.ts','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true',E2E_STRICT_AUTH:'true'},true);
+    command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','e2e/auth-recovery.spec.ts','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true',E2E_STRICT_AUTH:'true',DATABASE_POOL_MAX:'10'},true);
     if (!authOnly) {
       cli(['api',`${endpoint}/email_and_password`,'-X','PATCH','-F','require_email_verification=false']);
-      command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true'},true);
+      command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true',DATABASE_POOL_MAX:'10'},true);
     }
   }
   console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : browserOnly ? 'browser regression' : 'full validation'})`);

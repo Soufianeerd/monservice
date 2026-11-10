@@ -41,9 +41,15 @@ const globalForDb = globalThis as unknown as {
   postgresClient: postgres.Sql | undefined;
 };
 
+// One connection suits a serverless function instance. A long-running server
+// (`next start`, CI) needs several, otherwise every page, action and prefetch
+// queues on the same connection. Identity stays transaction-local (SET LOCAL).
+const configuredPoolMax = Number.parseInt(process.env.DATABASE_POOL_MAX ?? '', 10);
+const poolMax = Number.isInteger(configuredPoolMax) && configuredPoolMax > 0 ? configuredPoolMax : 1;
+
 const client = globalForDb.postgresClient ?? postgres(databaseUrl, {
   prepare: false,
-  max: Number(process.env.DATABASE_POOL_MAX ?? 1),
+  max: poolMax,
   idle_timeout: 20,
   connect_timeout: 10,
 });

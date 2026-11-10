@@ -31,17 +31,19 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     setMounted(true);
   }, []);
 
+  // Les actions serveur d'une page sont exécutées une par une : un appel
+  // inutile retarde toutes les saisies de l'utilisateur. Une seule génération
+  // par utilisateur et organisation, pas à chaque nouvel objet `user`.
+  const userId = user?.id;
+  const organizationId = organization?.id;
   useEffect(() => {
-    const initNotifications = async () => {
-      if (user && organization) {
-        // Générer les alertes métier dynamiquement (une fois par session)
-        await generateNotificationsAction(organization.id);
-        const fetched = await generateNotificationsAction(user.id);
-        setNotifications(fetched);
-      }
-    };
-    initNotifications();
-  }, [user, organization]);
+    if (!userId || !organizationId) return;
+    let cancelled = false;
+    generateNotificationsAction(organizationId).then((fetched) => {
+      if (!cancelled) setNotifications(fetched);
+    });
+    return () => { cancelled = true; };
+  }, [userId, organizationId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
