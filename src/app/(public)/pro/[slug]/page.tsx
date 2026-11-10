@@ -16,8 +16,8 @@ export default function PublicProfilePage({ params }: { params: Promise<{ slug: 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.resolve(null).then((org: any) => {
-      setOrganization(org as any);
+    Promise.resolve<Organization | null>(null).then((org) => {
+      setOrganization(org);
       setLoading(false);
     });
   }, [slug]);

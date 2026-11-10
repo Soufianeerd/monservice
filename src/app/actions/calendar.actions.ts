@@ -15,5 +15,9 @@ export async function getEventsAction(
   endDate?: string,
 ) {
   const { organizationId } = await requireProfessional();
-  return calendarService.getEvents(organizationId, startDate as never, endDate as never);
+  // Fenêtre par défaut identique à la page Calendrier : un an avant, deux ans après.
+  const now = new Date();
+  const from = startDate ?? new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const to = endDate ?? new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), now.getUTCDate())).toISOString();
+  return calendarService.getEvents(organizationId, from, to);
 }

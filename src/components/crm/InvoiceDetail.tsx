@@ -79,9 +79,19 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             <button
               onClick={async () => {
                 try {
+                  // Le PDF attend des champs absents plutôt que null.
+                  const pdfClient = {
+                    name: client.name,
+                    email: client.email ?? undefined,
+                    phone: client.phone ?? undefined,
+                    address: client.address ?? undefined,
+                    city: client.city ?? undefined,
+                    zipCode: client.zipCode ?? undefined,
+                    country: client.country ?? undefined,
+                  };
                   const blob = isQuote
-                    ? await generateQuotePDF(invoice as any, organization, client as any)
-                    : await generateInvoicePDF(invoice, organization, client as any);
+                    ? await generateQuotePDF(invoice, organization, pdfClient)
+                    : await generateInvoicePDF(invoice, organization, pdfClient);
                   downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
                 } catch (err) {
                   console.error(err);

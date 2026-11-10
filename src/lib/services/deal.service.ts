@@ -4,6 +4,14 @@ import { db } from '../db/server';
 import { deals } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { Deal } from '../data/interfaces';
+import type { DealStatus } from '../data/interfaces/deal.interface';
+
+const DEAL_STATUSES: readonly DealStatus[] = ['prospect', 'qualification', 'negotiation', 'proposal', 'won', 'lost'];
+
+/** Valeur stockée hors liste (donnée historique) : repli explicite sur « prospect ». */
+function toDealStatus(value: string): DealStatus {
+  return DEAL_STATUSES.find((status) => status === value) ?? 'prospect';
+}
 import { generateId } from '../utils/id-generator';
 import { dealSchema } from '../validation/schemas';
 import { AppError } from '@/lib/errors';
@@ -12,14 +20,14 @@ import { userService } from './user.service';
 export const dealService = {
   async findAll(organizationId: string): Promise<Deal[]> {
     const results = await db.select().from(deals).where(eq(deals.organizationId, organizationId));
-    return results.map(r => ({ ...r, status: r.status as any, description: r.description || undefined, signature: r.signature || undefined, signedAt: r.signedAt || undefined, signatureToken: r.signatureToken || undefined }));
+    return results.map(r => ({ ...r, status: toDealStatus(r.status), description: r.description || undefined, signature: r.signature || undefined, signedAt: r.signedAt || undefined, signatureToken: r.signatureToken || undefined }));
   },
 
   async findByClientId(clientId: string, organizationId: string): Promise<Deal[]> {
     const results = await db.select().from(deals).where(
       and(eq(deals.clientId, clientId), eq(deals.organizationId, organizationId))
     );
-    return results.map(r => ({ ...r, status: r.status as any, description: r.description || undefined, signature: r.signature || undefined, signedAt: r.signedAt || undefined, signatureToken: r.signatureToken || undefined }));
+    return results.map(r => ({ ...r, status: toDealStatus(r.status), description: r.description || undefined, signature: r.signature || undefined, signedAt: r.signedAt || undefined, signatureToken: r.signatureToken || undefined }));
   },
 
   async findById(id: string, organizationId: string): Promise<Deal | null> {
@@ -27,7 +35,7 @@ export const dealService = {
       and(eq(deals.id, id), eq(deals.organizationId, organizationId))
     );
     if (!result[0]) return null;
-    return { ...result[0], status: result[0].status as any, description: result[0].description || undefined, signature: result[0].signature || undefined, signedAt: result[0].signedAt || undefined, signatureToken: result[0].signatureToken || undefined };
+    return { ...result[0], status: toDealStatus(result[0].status), description: result[0].description || undefined, signature: result[0].signature || undefined, signedAt: result[0].signedAt || undefined, signatureToken: result[0].signatureToken || undefined };
   },
 
   async create(data: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Deal> {

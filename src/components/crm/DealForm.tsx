@@ -35,8 +35,8 @@ export default function DealForm({ initialData, organizationId, onSubmit, isSubm
     ? new Date(initialData.expectedCloseDate).toISOString().split('T')[0]
     : '';
 
-  const { register, handleSubmit, formState: { errors } } = useForm<DealFormData>({
-    resolver: zodResolver(dealSchema) as any,
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof dealSchema>, unknown, DealFormData>({
+    resolver: zodResolver(dealSchema),
     defaultValues: {
       name: initialData?.name || '',
       value: initialData?.value || 0,
