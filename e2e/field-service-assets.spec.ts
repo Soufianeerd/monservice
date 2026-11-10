@@ -26,6 +26,9 @@ test.describe('Field Service customer assets (Session 19)', () => {
   });
 
   test('ASSETS_01: register an asset, link it to an intervention and read its history', async ({ page }) => {
+    // Parcours long : la limite par défaut (120 s) est trop courte sur le runner CI
+    // (États-Unis → base de Francfort) ; ASSETS_01 n'y passait qu'au second essai.
+    test.setTimeout(300_000);
     const runId = Date.now();
     const assetLabel = `Chaudière E2E #${runId}`;
     const serial = `SN-E2E-${runId}`;
@@ -105,6 +108,9 @@ test.describe('Field Service customer assets (Session 19)', () => {
   });
 
   test('ASSETS_02: periodic maintenance becomes overdue, is planned in one click and the QR label opens the record', async ({ page }) => {
+    // Parcours long : la limite par défaut (120 s) est trop courte sur le runner CI
+    // (États-Unis → base de Francfort) ; ASSETS_01 n'y passait qu'au second essai.
+    test.setTimeout(300_000);
     const runId = Date.now();
     const assetLabel = `PAC E2E #${runId}`;
 
