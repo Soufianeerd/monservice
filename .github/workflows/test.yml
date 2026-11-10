@@ -33,3 +33,11 @@ jobs:
         with:
           name: neon-validation-evidence
           path: docs/database/artifacts/ci-validation-report.json
+      # Synthetic data only: the disposable branch and its random credentials
+      # are deleted by ci-branch.mjs before this step runs.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 3

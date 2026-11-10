@@ -18,7 +18,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: 'html',
+  // In CI, failures become GitHub annotations (file, line, message) and the log
+  // lists every test; the HTML report is uploaded as an artifact.
+  reporter: process.env.CI ? [['github'], ['list'], ['html', { open: 'never' }]] : 'html',
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3039',
     trace: 'on-first-retry',
