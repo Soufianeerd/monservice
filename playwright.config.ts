@@ -16,7 +16,7 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   // In CI, failures become GitHub annotations (file, line, message) and the log
   // lists every test; the HTML report is uploaded as an artifact.
