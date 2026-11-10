@@ -20,7 +20,9 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
   const password = process.env.E2E_AUTH_PASSWORD!;
 
   test('QUOTE_TO_CASH_FULL_PERSISTENT: Complete Lead-to-Cash Lifecycle with DB verification', async ({ page, request }) => {
-    test.setTimeout(180000);
+    // Parcours complet en 10 étapes : ~45 s en local, plus de 180 s sur un runner
+    // GitHub (États-Unis) qui parle à la base de Francfort.
+    test.setTimeout(480_000);
     const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
     try {
