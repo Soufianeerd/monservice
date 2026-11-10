@@ -35,6 +35,8 @@ const clientNavItems: NavItem[] = [
   { id: 'dashboard', name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
   { id: 'sante', name: 'Suivi Santé', href: '/client/sante', icon: HeartPulse },
   { id: 'requests', name: 'Mes demandes', href: '/client/requests', icon: FileText },
+  { id: 'interventions', name: 'Mes interventions', href: '/client/interventions', icon: Wrench },
+  { id: 'equipements', name: 'Mes équipements', href: '/client/equipements', icon: Wrench },
   { id: 'quotes', name: 'Devis reçus', href: '/client/quotes', icon: FileText },
   { id: 'invoices', name: 'Mes factures', href: '/client/invoices', icon: FileText },
   { id: 'messages', name: 'Messagerie', href: '/client/messages', icon: MessageSquare },

@@ -239,12 +239,17 @@ await fixture`DELETE FROM field_service_work_reports WHERE id = ${testReportIdA}
   // 3. Client & Anon Restrictions
   // ==========================================================================
   describe('Client & Anonymous Restricted Access', () => {
-    it('Client A sees 0 rows for field service sites', async () => {
+    // Session 20 : le client voit les sites de SA fiche client, et seulement ceux-là.
+    it('Client A sees only the field service sites of its own client record', async () => {
       const { data, error } = await clientAClient
         .from('field_service_sites')
-        .select('*');
+        .select('id, organization_id, client_id');
       expect(error).toBeNull();
-      expect(data).toHaveLength(0);
+      expect((data ?? []).some((row: { id: string }) => row.id === testSiteIdA)).toBe(true);
+      for (const row of (data ?? []) as Array<{ organization_id: string; client_id: string }>) {
+        expect(row.organization_id).toBe(orgA);
+        expect(row.client_id).toBe(clientIdA);
+      }
     });
 
     it('Client A sees 0 rows for field service work orders', async () => {

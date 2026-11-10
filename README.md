@@ -11,7 +11,7 @@
 - **Framework Web & SSR :** Next.js 16 (App Router, Server Actions, Turbopack), React 19
 - **Langage :** TypeScript strict (aucun nouveau `as any`, `as never`, `@ts-ignore`)
 - **Base de données :** PostgreSQL 18 sur **Neon** — projet `Monservice-Europe` (`misty-field-54835523`), région `aws-eu-central-1` (Frankfurt)
-- **ORM & schéma :** Drizzle ORM ; migrations SQL versionnées dans `drizzle/neon/` avec ledger à checksums ; 61 tables, toutes sous RLS
+- **ORM & schéma :** Drizzle ORM ; migrations SQL versionnées dans `drizzle/neon/` avec ledger à checksums ; 62 tables, toutes sous RLS
 - **Authentification :** Neon Managed Auth (Better Auth) via `@neondatabase/auth` — route `/api/auth/[...path]`, `src/proxy.ts`, cookies serveur signés, vérification e-mail par OTP en production
 - **Sécurité & multi-tenant :** session vérifiée → mapping d'identité stocké → transaction avec `SET LOCAL` → rôles restreints (`monservice_runtime`, `monservice_stripe`, `monservice_reminders` : NOSUPERUSER, NOBYPASSRLS) → politiques RLS
 - **Stockage d'objets :** Neon Object Storage (API S3), buckets privés `clinical-documents` et `einvoices`, URLs signées de 1 à 60 s
@@ -42,7 +42,8 @@ Supabase n'est plus une dépendance runtime. Les migrations historiques `drizzle
 - Chantiers et sites d'intervention, ordres de travail, assignations, comptes-rendus signés et immuables.
 - Lead-to-Cash : devis par lots, métrés, multi-taux de TVA, remises, acomptes, signature, factures d'acompte et de solde.
 - Équipements clients (Session 19) : parc par client et par site, garanties, numéros de série, rattachement aux interventions, historique d'entretien, maintenance préventive périodique et étiquettes QR.
-- *Sessions 16 à 19B terminées. Session 20 (portail client terrain) planifiée.*
+- Portail client (Session 20) : le client suit ses interventions, lit les comptes rendus finalisés, consulte ses équipements et signe la réception des travaux.
+- *Sessions 16 à 20 (V1) terminées.*
 
 ---
 
@@ -140,7 +141,7 @@ npm run test:e2e
 
 ## 7. Règles d'exploitation (Production Safety)
 
-1. **Jamais de `drizzle-kit push`** : toute évolution passe par un nouveau fichier `drizzle/neon/NNNN_*.sql` (prochain : `0016`).
+1. **Jamais de `drizzle-kit push`** : toute évolution passe par un nouveau fichier `drizzle/neon/NNNN_*.sql` (prochain : `0017`).
 2. **Jamais de modification d'une migration appliquée** : `drizzle/neon/*` est protégé par checksum ; `drizzle/postgres/*` est historique et fermé.
 3. **Jamais de seed, test d'intégration ou suppression sur la production** ; ne jamais réinitialiser ni supprimer une base ou une branche distante non jetable.
 4. **Aucun contournement de typage** (`as any`, `as never`, `@ts-ignore`) dans le code modifié.

@@ -997,6 +997,8 @@ async function verifyContract() {
     'field_service_work_order_assets_wo_asset_unique',
     'field_service_work_order_assets_org_asset_idx',
     'field_service_work_order_assets_org_wo_idx',
+    'field_service_report_ack_report_unique',
+    'field_service_report_ack_org_idx',
     'deals_id_org_unique',
     'invoices_id_org_unique',
     'invoices_id_org_client_unique',
@@ -1213,6 +1215,16 @@ async function verifyContract() {
       name: 'field_service_assets_category_check',
       table: 'field_service_assets',
       elements: ['category', 'heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other'],
+    },
+    {
+      name: 'field_service_report_ack_decision_check',
+      table: 'field_service_work_report_acknowledgements',
+      elements: ['decision', 'accepted', 'accepted_with_reservations'],
+    },
+    {
+      name: 'field_service_report_ack_reservations_check',
+      table: 'field_service_work_report_acknowledgements',
+      elements: ['decision', 'comment', 'is not null', 'trim', '3'],
     },
     {
       name: 'field_service_assets_maintenance_interval_check',

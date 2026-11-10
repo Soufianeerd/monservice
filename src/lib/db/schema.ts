@@ -1831,6 +1831,33 @@ export const fieldServiceAssets = sqliteTable('field_service_assets', {
   })
 ]);
 
+// 8. Client acknowledgement of a finalized work report (Session 20)
+export const FIELD_SERVICE_REPORT_ACK_DECISIONS = ['accepted', 'accepted_with_reservations'] as const;
+export type FieldServiceReportAckDecision = (typeof FIELD_SERVICE_REPORT_ACK_DECISIONS)[number];
+
+export const fieldServiceWorkReportAcknowledgements = sqliteTable('field_service_work_report_acknowledgements', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workReportId: text('work_report_id').notNull().references(() => fieldServiceWorkReports.id),
+  acknowledgedByUserId: text('acknowledged_by_user_id').notNull(),
+  signerName: text('signer_name').notNull(),
+  decision: text('decision').$type<FieldServiceReportAckDecision>().notNull().default('accepted'),
+  comment: text('comment'),
+  acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_report_ack_report_unique').on(t.workReportId),
+  index('field_service_report_ack_org_idx').on(t.organizationId, t.acknowledgedAt),
+  check('field_service_report_ack_signer_check', sql`char_length(trim(${t.signerName})) >= 2 AND char_length(${t.signerName}) <= 120`),
+  check('field_service_report_ack_decision_check', sql`${t.decision} IN ('accepted', 'accepted_with_reservations')`),
+  check('field_service_report_ack_comment_check', sql`${t.comment} IS NULL OR char_length(${t.comment}) <= 2000`),
+  check('field_service_report_ack_reservations_check', sql`${t.decision} = 'accepted' OR (${t.comment} IS NOT NULL AND char_length(trim(${t.comment})) >= 3)`),
+  foreignKey({
+    columns: [t.acknowledgedByUserId],
+    foreignColumns: [users.id],
+    name: 'field_service_report_ack_user_fk'
+  })
+]);
+
 // 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
 export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
   id: text('id').primaryKey(),

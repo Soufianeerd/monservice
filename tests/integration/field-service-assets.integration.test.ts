@@ -255,12 +255,17 @@ describe('Field Service customer assets (Session 19)', () => {
       expect(link.error).not.toBeNull();
     });
 
-    it('hides assets from clients and anonymous sessions', async () => {
-      const client = await clientUserA.from('field_service_assets').select('id');
+    // Session 20 : le client relié voit ses propres équipements (lecture seule),
+    // jamais ceux d'une autre fiche, ni les liens d'une opération en brouillon.
+    it('limits a client to its own assets and hides anonymous sessions', async () => {
+      const client = await clientUserA.from('field_service_assets').select('id, client_id');
       expect(client.error).toBeNull();
-      expect(client.data).toHaveLength(0);
-      const clientLinks = await clientUserA.from('field_service_work_order_assets').select('id');
-      expect(clientLinks.data ?? []).toHaveLength(0);
+      expect((client.data ?? []).some((row: { id: string }) => row.id === assetA)).toBe(true);
+      for (const row of (client.data ?? []) as Array<{ client_id: string }>) expect(row.client_id).toBe(clientA);
+      const otherClientAsset = await clientUserA.from('field_service_assets').select('id').eq('client_id', clientA2);
+      expect(otherClientAsset.data ?? []).toHaveLength(0);
+      const draftLinks = await clientUserA.from('field_service_work_order_assets').select('id').eq('work_order_id', workOrderA);
+      expect(draftLinks.data ?? []).toHaveLength(0);
       const anonymous = await anon.from('field_service_assets').select('id');
       expect(anonymous.data ?? []).toHaveLength(0);
     });
