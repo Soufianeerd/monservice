@@ -17,6 +17,7 @@ const PUBLIC_EXACT = new Set([
   '/mentions-legales',
   '/robots.txt',
   '/sitemap.xml',
+  '/invitation/portail', // la page gère elle-même l'absence de session
 ]);
 
 /** Chemins publics comparés par préfixe (jamais `'/'`). */

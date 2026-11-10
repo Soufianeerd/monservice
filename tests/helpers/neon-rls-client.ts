@@ -52,6 +52,19 @@ export class NeonRlsClient {
       } catch { return { data: null, error: { code: 'AUTH_FAILED', message: 'Verified synthetic login failed' } }; }
     },
   };
+  /** Appel d'une fonction SQL publique avec l'identité de la session. */
+  async rpc(fn: string, args: Array<string | number | boolean | null> = []): Promise<Result> {
+    quote(fn);
+    const params = [...args];
+    try {
+      const rows = await this.connection.unsafe(`select * from public.${quote(fn)}(${params.map((_, i) => '$' + (i + 1)).join(',')})`, params);
+      return { data: [...rows], error: null };
+    } catch (error: unknown) {
+      const code = typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' ? error.code : 'DATABASE_ERROR';
+      const message = error instanceof Error ? error.message : 'Restricted database operation denied';
+      return { data: null, error: { code, message } };
+    }
+  }
   from(table: string) {
     quote(table);
     let operation = 'select';

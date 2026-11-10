@@ -1858,6 +1858,36 @@ export const fieldServiceWorkReportAcknowledgements = sqliteTable('field_service
   })
 ]);
 
+// Invitation d'un client au portail (0017). Le jeton n'est jamais stocké :
+// seule son empreinte SHA-256 l'est. Liaison via accept_client_portal_invitation.
+export const clientPortalInvitations = sqliteTable('client_portal_invitations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('client_portal_invitations_token_hash_unique').on(t.tokenHash),
+  uniqueIndex('client_portal_invitations_pending_unique').on(t.clientId).where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  index('client_portal_invitations_org_client_idx').on(t.organizationId, t.clientId, t.createdAt),
+  check('client_portal_invitations_email_check', sql`${t.email} = lower(btrim(${t.email})) AND char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('client_portal_invitations_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('client_portal_invitations_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('client_portal_invitations_accepted_check', sql`(${t.acceptedAt} IS NULL) = (${t.acceptedByUserId} IS NULL)`),
+  check('client_portal_invitations_final_state_check', sql`${t.acceptedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'client_portal_invitations_client_fk'
+  })
+]);
+
 // 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
 export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
   id: text('id').primaryKey(),
