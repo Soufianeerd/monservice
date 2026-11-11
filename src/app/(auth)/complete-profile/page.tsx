@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { completeProfileAction, getAccountRecoveryAction } from '@/app/actions/auth';
-import { REGISTRATION_SECTOR_CODES, REGISTRATION_SECTORS } from '@/lib/registration/options';
+import { openRegistrationSectorCodes, REGISTRATION_SECTORS } from '@/lib/registration/options';
 import { PARAMEDICAL_PROFESSION_CODES, PARAMEDICAL_PROFESSIONS } from '@/lib/workspaces/paramedical/professions';
 import { FIELD_SERVICE_PROFESSION_CODES, FIELD_SERVICE_PROFESSIONS } from '@/lib/workspaces/field-service/professions';
 
@@ -36,7 +36,7 @@ export default function CompleteProfilePage() {
       {!account.hasProfile && <label className="block">Profil<select value={profileType} onChange={e=>setProfileType(e.target.value as 'client' | 'professional')} className="block border p-2 rounded"><option value="client">Particulier</option><option value="professional">Professionnel</option></select></label>}
       {profileType === 'professional' && <>
         <label className="block">Nom de votre entreprise<input required maxLength={200} value={orgName} onChange={e=>setOrgName(e.target.value)} className="block w-full border p-2 rounded" /></label>
-        <label className="block">Secteur<select value={sector} onChange={e=>{ setSector(e.target.value);setProfession(''); }} className="block border p-2 rounded">{REGISTRATION_SECTOR_CODES.map(code=><option key={code} value={code}>{REGISTRATION_SECTORS[code].label}</option>)}</select></label>
+        <label className="block">Secteur<select value={sector} onChange={e=>{ setSector(e.target.value);setProfession(''); }} className="block border p-2 rounded">{openRegistrationSectorCodes().map(code=><option key={code} value={code}>{REGISTRATION_SECTORS[code].label}</option>)}</select></label>
         {(sector === 'health' || sector === 'field_services') && <label className="block">Profession<select required value={profession} onChange={e=>setProfession(e.target.value)} className="block border p-2 rounded"><option value="">Choisissez votre profession</option>{sector === 'health' ? PARAMEDICAL_PROFESSION_CODES.map(code=><option key={code} value={code}>{PARAMEDICAL_PROFESSIONS[code].label}</option>) : FIELD_SERVICE_PROFESSION_CODES.map(code=><option key={code} value={code}>{FIELD_SERVICE_PROFESSIONS[code].label}</option>)}</select></label>}
       </>}
       <button disabled={loading} className="bg-primary-600 text-white p-2 rounded">Continuer</button>

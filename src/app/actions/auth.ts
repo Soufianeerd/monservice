@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm';
 import { provisionSignupIdentity } from '@/lib/auth/provisioning';
 import { getSessionContext } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
+import { CLOSED_SECTOR_MESSAGE, isSectorOpenForRegistration } from '@/lib/registration/options';
 
 /** Provider credentials and stable application IDs are provisioned separately. */
 export async function registerAction(data: {
@@ -15,6 +16,7 @@ export async function registerAction(data: {
   const parsed = registerSchema.safeParse(data);
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? 'Données invalides.' };
   const input = parsed.data;
+  if (input.profileType === 'professional' && !isSectorOpenForRegistration(input.sector)) return { success: false, error: CLOSED_SECTOR_MESSAGE };
   try {
     const { data: created, error } = await auth.signUp.email({
       email: input.email.trim().toLowerCase(), name: input.name, password: input.password,
@@ -48,6 +50,7 @@ export async function completeProfileAction(input: {
     password: 'RecoveryValidation1!', profileType: profile?.profileType ?? input.profileType });
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? 'Données invalides.');
   const values = parsed.data;
+  if (values.profileType === 'professional' && !isSectorOpenForRegistration(values.sector)) throw new Error(CLOSED_SECTOR_MESSAGE);
   // NULL resolves exclusively to the verified transaction context in PostgreSQL.
   await db.execute(sql`select public.provision_app_user(null,${values.profileType},${values.orgName ?? null},${values.sector ?? null},${values.profession ?? null})`);
   const current = await getSessionContext();

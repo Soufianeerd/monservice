@@ -39,7 +39,7 @@ import {
   FieldServiceBusinessFamilyCode,
 } from '@/lib/workspaces/field-service/families';
 import {
-  REGISTRATION_SECTOR_CODES,
+  openRegistrationSectorCodes,
   REGISTRATION_SECTORS,
   RegistrationSectorCode,
 } from '@/lib/registration/options';
@@ -205,7 +205,7 @@ export default function RegisterForm() {
     other: <MoreHorizontalIcon className="w-5 h-5" />,
   };
 
-  const sectors = REGISTRATION_SECTOR_CODES.map((code) => ({
+  const sectors = openRegistrationSectorCodes().map((code) => ({
     id: code,
     name: REGISTRATION_SECTORS[code].label,
     icon: sectorIcons[code],
