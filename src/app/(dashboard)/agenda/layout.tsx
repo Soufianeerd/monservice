@@ -34,6 +34,7 @@ export default async function AgendaLayout({ children }: { children: React.React
   }
 
   tabs.push({ name: 'Tâches', href: '/agenda/taches' });
+  if (workspace.type === 'paramedical') tabs.push({ name: 'Statistiques', href: '/agenda/statistiques' });
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">

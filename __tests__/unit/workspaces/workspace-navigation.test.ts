@@ -115,6 +115,7 @@ describe('Workspace Navigation', () => {
       { name: 'Types de séances', href: '/agenda/types-seances' },
       { name: "Liste d'attente", href: '/agenda/liste-attente' },
       { name: 'Tâches', href: '/agenda/taches' },
+      { name: 'Statistiques', href: '/agenda/statistiques' },
     ]);
   });
 
