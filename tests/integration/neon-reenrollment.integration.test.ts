@@ -25,9 +25,19 @@ describe('Controlled source identity recovery with managed Auth',()=>{
     if (!process.env.NEON_BRANCH || process.env.NEON_BRANCH==='production')throw new Error('Synthetic branch required');
     // Match the production import: a management-created account has no
     // transferred password and starts with an unverified email.
-    const branchResult=spawnSync('neon',['branches','get',process.env.NEON_BRANCH!,'--project-id','misty-field-54835523','-o','json'],{encoding:'utf8'});
-    if(branchResult.status!==0)throw new Error('Synthetic branch lookup unavailable');
-    const branch=JSON.parse(branchResult.stdout);
+    // The CI replay hands over the branch id it just created. The CLI lookup by
+    // name is only a fallback: its JSON shape is not a stable contract (run
+    // 43222732950 ended in "branch not found" on the id it returned).
+    const resolveBranchId=():string=>{
+      if(process.env.NEON_BRANCH_ID)return process.env.NEON_BRANCH_ID;
+      const branchResult=spawnSync('neon',['branches','get',process.env.NEON_BRANCH!,'--project-id','misty-field-54835523','-o','json'],{encoding:'utf8'});
+      if(branchResult.status!==0)throw new Error('Synthetic branch lookup unavailable');
+      const parsed=JSON.parse(branchResult.stdout);
+      const id=parsed?.id??parsed?.branch?.id;
+      if(typeof id!=='string'||!id.startsWith('br-'))throw new Error('Synthetic branch lookup returned no branch id');
+      return id;
+    };
+    const branch={id:resolveBranchId()};
     // The management API occasionally refuses the first call on a branch whose
     // Auth service was provisioned minutes ago: retry, and report why it failed.
     const createAccount=()=>spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branch.id}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});

@@ -47,7 +47,7 @@ try {
     const [existing] = await sql`select count(*)::int as count from pg_tables where schemaname='public'`;
     if (existing.count !== 0) throw new Error('CI template is not empty');
   } finally { await sql.end(); }
-  Object.assign(admin,{ NEON_BRANCH:name, NEON_AUTH_COOKIE_SECRET:crypto.randomBytes(48).toString('hex'), E2E_AUTH_PASSWORD:crypto.randomBytes(32).toString('hex')+'Aa1!', NEXT_PUBLIC_APP_URL:'http://localhost:3039' });
+  Object.assign(admin,{ NEON_BRANCH:name, NEON_BRANCH_ID:branchId, NEON_AUTH_COOKIE_SECRET:crypto.randomBytes(48).toString('hex'), E2E_AUTH_PASSWORD:crypto.randomBytes(32).toString('hex')+'Aa1!', NEXT_PUBLIC_APP_URL:'http://localhost:3039' });
   const save = (path, env) => fs.writeFileSync(path,Object.entries(env).map(([key,value])=>`${key}=${JSON.stringify(value)}`).join('\n')+'\n',{mode:0o600});
   save(adminFile,admin);
   save(runtimeFile,admin);
