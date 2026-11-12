@@ -28,8 +28,15 @@ describe('Controlled source identity recovery with managed Auth',()=>{
     const branchResult=spawnSync('neon',['branches','get',process.env.NEON_BRANCH!,'--project-id','misty-field-54835523','-o','json'],{encoding:'utf8'});
     if(branchResult.status!==0)throw new Error('Synthetic branch lookup unavailable');
     const branch=JSON.parse(branchResult.stdout);
-    const created=spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branch.id}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});
-    if(created.status!==0)throw new Error('Synthetic management account creation unavailable');
+    // The management API occasionally refuses the first call on a branch whose
+    // Auth service was provisioned minutes ago: retry, and report why it failed.
+    const createAccount=()=>spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branch.id}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});
+    let created=createAccount();
+    for(let attempt=1;created.status!==0&&attempt<3;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,10_000));
+      created=createAccount();
+    }
+    if(created.status!==0)throw new Error(`Synthetic management account creation unavailable: ${String(created.stderr||created.stdout||created.error?.message||'no output').replace(/\s+/g,' ').slice(0,300)}`);
     providerId=JSON.parse(created.stdout).id;
     const [provider]=await admin`select "emailVerified" from neon_auth."user" where id=${providerId}`;
     expect(provider.emailVerified).toBe(false);
