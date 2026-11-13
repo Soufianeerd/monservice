@@ -35,8 +35,8 @@ export default function DealForm({ initialData, organizationId, onSubmit, isSubm
     ? new Date(initialData.expectedCloseDate).toISOString().split('T')[0]
     : '';
 
-  const { register, handleSubmit, formState: { errors } } = useForm<DealFormData>({
-    resolver: zodResolver(dealSchema) as any,
+  const { register, handleSubmit, formState: { errors } } = useForm<z.input<typeof dealSchema>, unknown, DealFormData>({
+    resolver: zodResolver(dealSchema),
     defaultValues: {
       name: initialData?.name || '',
       value: initialData?.value || 0,
@@ -48,7 +48,7 @@ export default function DealForm({ initialData, organizationId, onSubmit, isSubm
   });
 
   return (
-    <form onSubmit={handleSubmit(data => onSubmit(data))} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="opportunite" onSubmit={handleSubmit(data => onSubmit(data))} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom du deal *</label>
         <input

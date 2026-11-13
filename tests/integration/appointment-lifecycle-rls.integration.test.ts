@@ -1,28 +1,24 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import { SEED_SCHEDULING_IDS, SEED_PATIENT_IDS, SEED_PRACTICE_IDS } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
-describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () => {
+describe('Appointment Lifecycle RLS & restricted SQL Invariants (Session 10C)', () => {
   let sql: postgres.Sql;
-  let proAClient: SupabaseClient;
+  let proAClient: NeonRlsClient;
   let proAUserId: string;
   const createdAppointmentIds: string[] = [];
 
   beforeAll(async () => {
     sql = postgres(DATABASE_URL);
 
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
 
     const { data: authData, error: authError } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
@@ -33,7 +29,7 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
       throw new Error(`Failed to login Pro A: ${authError?.message || 'No user returned'}`);
     }
 
-    proAUserId = authData.user.id;
+    proAUserId = authData.appUserId;
   });
 
   afterAll(async () => {
@@ -43,14 +39,14 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
     await sql.end();
   });
 
-  it('P0: direct PostgREST authenticated professional cannot mark a future appointment no_show', async () => {
+  it('P0: direct restricted SQL authenticated professional cannot mark a future appointment no_show', async () => {
     const futureApptId = randomUUID();
     createdAppointmentIds.push(futureApptId);
 
     const futureStartsAt = '2028-11-20T10:00:00.000Z';
     const futureEndsAt = '2028-11-20T10:30:00.000Z';
 
-    // 1. Insert future scheduled appointment via PostgREST
+    // 1. Insert future scheduled appointment via restricted SQL
     const { error: insertError } = await proAClient
       .from('appointments')
       .insert({
@@ -72,7 +68,7 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
 
     expect(insertError).toBeNull();
 
-    // 2. Direct PostgREST UPDATE attempting to mark future appointment as no_show
+    // 2. Direct restricted SQL UPDATE attempting to mark future appointment as no_show
     const { error: updateError } = await proAClient
       .from('appointments')
       .update({ status: 'no_show' })
@@ -80,7 +76,7 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
 
     expect(updateError).not.toBeNull();
     expect(updateError?.code).toBe('23514');
-    expect(updateError?.message).toContain('Cannot mark a future appointment as no_show');
+    expect(updateError?.message).toBe('Restricted database operation denied');
 
     // 3. Atomicity & Row Integrity verification: row must remain scheduled with null no_show metadata
     const { data: rows, error: selectError } = await proAClient
@@ -97,14 +93,14 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
     expect(new Date(rows?.[0]?.starts_at).toISOString()).toBe(new Date(futureStartsAt).toISOString());
   });
 
-  it('authenticated professional can mark a past appointment no_show through PostgREST', async () => {
+  it('authenticated professional can mark a past appointment no_show through restricted SQL', async () => {
     const pastApptId = randomUUID();
     createdAppointmentIds.push(pastApptId);
 
     const pastStartsAt = '2026-08-01T09:00:00.000Z';
     const pastEndsAt = '2026-08-01T09:30:00.000Z';
 
-    // 1. Insert past scheduled appointment via PostgREST
+    // 1. Insert past scheduled appointment via restricted SQL
     const { error: insertError } = await proAClient
       .from('appointments')
       .insert({
@@ -126,7 +122,7 @@ describe('Appointment Lifecycle RLS & PostgREST Invariants (Session 10C)', () =>
 
     expect(insertError).toBeNull();
 
-    // 2. Direct PostgREST UPDATE to mark past appointment as no_show
+    // 2. Direct restricted SQL UPDATE to mark past appointment as no_show
     const { error: updateError } = await proAClient
       .from('appointments')
       .update({ status: 'no_show' })

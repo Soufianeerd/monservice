@@ -1,8 +1,10 @@
 'use server';
 
 import { invoiceService } from '@/lib/services/invoice.service';
-import { requireProfessional, requireSession } from '@/lib/auth/session';
+import { requireProfessional, requireSession, requireProfileType } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
+import { requireBillingReadAuthority, requireClientBillingAuthority } from '@/lib/billing/authorization';
+import { toClientBillingDTO, type ClientBillingDTO } from '@/lib/data/dto/client-billing.dto';
 import { assertQuota } from '@/lib/billing/quota';
 import type { Invoice, InvoiceLine, InvoiceStatus } from '@/lib/data/interfaces';
 
@@ -27,9 +29,11 @@ export async function findByIdAction(id: string, _legacyOrganizationId?: unknown
 /**
  * Documents adressés au client connecté.
  */
-export async function findByClientAction(_legacyClientId?: unknown): Promise<Invoice[]> {
-  const { userId } = await requireSession();
-  return invoiceService.findByClient(userId);
+export async function findByClientAction(_legacyClientId?: unknown): Promise<ClientBillingDTO[]> {
+  const { userId } = await requireProfileType('client');
+  const documents = await invoiceService.findByClient(userId);
+  for (const document of documents) await requireClientBillingAuthority(document, userId);
+  return documents.map(toClientBillingDTO);
 }
 
 /**
@@ -44,27 +48,12 @@ export async function findByProfessionalAction(_legacyProfessionalId?: unknown):
  * Accès à un document par identifiant.
  * Réservé au professionnel émetteur ou au client destinataire légitime.
  */
-export async function getByIdAction(id: string): Promise<Invoice | null> {
+export async function getByIdAction(id: string): Promise<ClientBillingDTO | null> {
   const ctx = await requireSession();
   const invoice = await invoiceService.getById(id);
   if (!invoice) return null;
-
-  const isOwner = Boolean(ctx.organizationId && invoice.organizationId === ctx.organizationId);
-  let isRecipient = invoice.recipientUserId === ctx.userId || invoice.professionalId === ctx.userId;
-
-  if (!isRecipient && ctx.profileType === 'client' && invoice.clientId) {
-    const { clientService } = await import('@/lib/services/client.service');
-    const client = await clientService.findById(invoice.clientId, invoice.organizationId);
-    if (client?.userId === ctx.userId) {
-      isRecipient = true;
-    }
-  }
-
-  if (!isOwner && !isRecipient) {
-    throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-  }
-
-  return invoice;
+  await requireBillingReadAuthority(invoice, ctx.userId);
+  return toClientBillingDTO(invoice);
 }
 
 export async function generateNumberAction(type: 'invoice' | 'quote', _legacyOrganizationId?: unknown): Promise<string> {

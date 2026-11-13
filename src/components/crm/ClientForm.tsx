@@ -45,7 +45,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
   const selectedIndustry = watch('industry');
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="client" onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
       {/* Informations Générales */}
       <div>

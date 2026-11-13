@@ -2,14 +2,14 @@
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientQuoteDTO } from '@/lib/data/dto/client-billing.dto';
 import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useEffect, useState } from 'react';
 import QuoteList from '@/components/client/QuoteList';
 
 export default function ClientQuotesPage() {
   const { user } = useAuth();
-  const [quotes, setQuotes] = useState<Invoice[]>([]);
+  const [quotes, setQuotes] = useState<ClientQuoteDTO[]>([]);
 
   useEffect(() => {
     if (user?.id) {

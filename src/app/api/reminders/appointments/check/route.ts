@@ -1,7 +1,9 @@
+import { withWorkerDatabase } from '@/lib/db/worker-context';
 import { NextResponse } from 'next/server';
 import { appointmentReminderService } from '@/lib/services/appointment-reminder.service';
 import { getSessionContext } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/api-response';
+import { isValidCronSecret } from '@/lib/utils/cron-secret';
 
 /**
  * Route CRON pour le traitement des rappels de rendez-vous par email (24h et 2h).
@@ -9,12 +11,10 @@ import { toErrorResponse } from '@/lib/utils/api-response';
  */
 export async function GET(req: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-    const providedSecret = req.headers.get('x-cron-secret');
-    const isCron = Boolean(cronSecret && cronSecret.length > 0) && providedSecret === cronSecret;
+    const isCron = isValidCronSecret(req.headers.get('x-cron-secret'), process.env.CRON_SECRET);
 
     if (isCron) {
-      const result = await appointmentReminderService.processAppointmentReminders();
+      const result = await withWorkerDatabase({ kind: 'reminders' }, () => appointmentReminderService.processAppointmentReminders());
       return NextResponse.json({ success: true, ...result });
     }
 

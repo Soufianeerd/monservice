@@ -30,8 +30,7 @@ interface FieldServiceDashboardProps {
     activeDeals: number;
     ongoingTasks: number;
     revenue: number;
-    totalInvoiced: number;
-    totalUnpaid: number;
+    paidInvoicesCount: number;
   };
   operationsMetrics?: {
     total: number;
@@ -94,7 +93,7 @@ export default function FieldServiceDashboard({
             Nouvelle {opSingular.toLowerCase()}
           </Link>
           <Link
-            href="/facturation/devis"
+            href="/facturation/devis/nouveau"
             className="inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors"
           >
             <FileText className="w-4 h-4 mr-1.5" />
@@ -106,7 +105,7 @@ export default function FieldServiceDashboard({
       {/* Operations Highlights (if available) */}
       {operationsMetrics && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div data-guide-title="Interventions en cours" data-guide-text="Interventions démarrées. Le lien ouvre les opérations filtrées en cours." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 {opPlural} en cours
@@ -125,7 +124,7 @@ export default function FieldServiceDashboard({
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div data-guide-title="Interventions planifiées" data-guide-text="Interventions programmées. Ouvrez la liste pour vérifier leurs dates." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Planifiées
@@ -144,7 +143,7 @@ export default function FieldServiceDashboard({
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div data-guide-title="Interventions du jour" data-guide-text="Interventions prévues aujourd’hui. Ouvrez les opérations pour préparer votre journée." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Aujourd&apos;hui
@@ -163,7 +162,7 @@ export default function FieldServiceDashboard({
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div data-guide-title="Interventions terminées" data-guide-text="Interventions clôturées. Ouvrez leur dossier pour consulter leurs comptes rendus et documents." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Terminées
@@ -187,7 +186,7 @@ export default function FieldServiceDashboard({
       {/* KPI Cards (Clients, Deals, Revenue, Tasks) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Clients */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div data-guide-title="Clients" data-guide-text="Nombre de clients. Ouvrez le répertoire pour créer ou consulter une fiche." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
               {terminology.customerPlural || 'Clients'}
@@ -207,10 +206,10 @@ export default function FieldServiceDashboard({
         </div>
 
         {/* Opportunités / Deals */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div data-guide-title="Affaires commerciales" data-guide-text="L’indicateur actuel compte les affaires gagnées. Le lien ouvre le pipeline pour retrouver les opportunités." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Opportunités en cours
+              Affaires gagnées
             </span>
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Briefcase className="w-5 h-5" />
@@ -227,7 +226,7 @@ export default function FieldServiceDashboard({
         </div>
 
         {/* Chiffre d'affaires encaissé */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div data-guide-title="Chiffre d’affaires encaissé" data-guide-text="Somme des montants TTC des factures marquées payées. Le lien ouvre les factures." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
               Chiffre d&apos;affaires
@@ -249,10 +248,10 @@ export default function FieldServiceDashboard({
         </div>
 
         {/* Tâches / Planning */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        <div data-guide-title="Rappels administratifs" data-guide-text="Nombre de tâches en attente. Le calendrier permet de consulter le planning de travail." className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Tâches & Rendez-vous
+              Tâches en attente
             </span>
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Calendar className="w-5 h-5" />
@@ -270,7 +269,7 @@ export default function FieldServiceDashboard({
       </div>
 
       {/* Evolution Chart */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+      <div data-guide-title="Évolution de l’activité" data-guide-text="Ce graphique répartit les montants des affaires gagnées sur les six derniers mois, selon leur date de mise à jour. Il est distinct du chiffre d’affaires des factures payées." className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Activité & Chiffre d&apos;affaires</h2>

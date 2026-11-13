@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -223,13 +224,20 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
     loadCalendarData();
   };
 
+  const canBook = Boolean(selectedLocationId && bootstrap.practitioners.some(p => p.assignedLocationIds.includes(selectedLocationId)) && bootstrap.appointmentTypes.length);
+
   // Hours to display in week/day grid (08:00 to 20:00)
   const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
 
   return (
     <div className="space-y-6">
+      {!canBook && <section data-tour="calendar-setup" className="rounded-xl border border-indigo-200 bg-white p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900">Préparez votre premier rendez-vous</h2>
+        <p className="text-sm text-gray-600">Il faut un lieu de consultation, un praticien associé à ce lieu et un type de séance. Définissez ensuite vos horaires pour proposer des créneaux.</p>
+        <div className="flex flex-wrap gap-4 text-sm font-medium text-indigo-600"><Link href="/parametres/cabinet">1. Configurer les lieux et l’équipe</Link><Link href="/agenda/types-seances">2. Définir les types de séances</Link><Link href="/agenda/disponibilites">3. Ajouter vos horaires</Link></div>
+      </section>}
       {/* HEADER CONTROLS */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+      <div data-tour="calendar-controls" className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           {/* Location & Timezone banner */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -238,10 +246,12 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
                 Lieu de consultation
               </label>
               <select
+                aria-label="Lieu de consultation"
                 value={selectedLocationId}
                 onChange={(e) => setSelectedLocationId(e.target.value)}
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
               >
+                {!bootstrap.locations.length && <option value="">Aucun lieu configuré</option>}
                 {bootstrap.locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -255,6 +265,7 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
                 Praticien
               </label>
               <select
+                aria-label="Praticien"
                 value={selectedPractitionerId}
                 onChange={(e) => setSelectedPractitionerId(e.target.value)}
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -303,8 +314,10 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
             </div>
 
             <button
+              data-tour="new-appointment"
+              disabled={!canBook}
               onClick={() => openNewAppointmentModal()}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               + Nouvelle séance
             </button>

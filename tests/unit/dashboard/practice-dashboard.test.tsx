@@ -42,15 +42,11 @@ describe('ParamedicalPracticeDashboard', () => {
     // Label humain
     expect(screen.getByText('Masseur-Kinésithérapeute')).toBeInTheDocument();
     
-    // Links
-    const patientsLink = screen.getByRole('link', { name: /patients/i });
-    expect(patientsLink).toBeInTheDocument();
-    expect(patientsLink).toHaveAttribute('href', '/patients');
-    expect(screen.getByText('Agenda')).toBeInTheDocument();
-    expect(screen.getByText('Tâches')).toBeInTheDocument();
-    expect(screen.getByText('Facturation')).toBeInTheDocument();
-    expect(screen.getByText('Organisation')).toBeInTheDocument();
-    
+    expect(screen.getByRole('link', { name: /Ajouter un patient/i })).toHaveAttribute('href', '/patients/new');
+    expect(screen.getByRole('link', { name: /Planifier un rendez-vous/i })).toHaveAttribute('href', '/agenda/calendrier');
+    expect(screen.getByRole('link', { name: /Créer une facture/i })).toHaveAttribute('href', '/facturation/factures/new');
+    expect(screen.getByRole('link', { name: /Configurer les lieux et l’équipe/i })).toHaveAttribute('href', '/parametres/cabinet');
+
     // Tours
     const overview = document.querySelector('[data-tour="dashboard-overview"]');
     expect(overview).toBeInTheDocument();
@@ -124,6 +120,6 @@ describe('ParamedicalPracticeDashboard', () => {
     );
     
     expect(screen.getByText('Diététicien')).toBeInTheDocument();
-    expect(screen.getByText(dietitianWs.terminology.customerPlural)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ajouter un patient/i })).toBeInTheDocument();
   });
 });

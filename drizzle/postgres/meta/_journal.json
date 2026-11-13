@@ -162,6 +162,13 @@
       "when": 1790596545227,
       "tag": "0022_marketplace_request_location",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791453704939,
+      "tag": "0023_account_lifecycle",
+      "breakpoints": true
     }
   ]
 }

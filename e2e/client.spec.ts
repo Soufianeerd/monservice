@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 
 async function dismissSetupGuideIfPresent(page: Page) {
   try {
-    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"], button[aria-label="Réduire l’aide"]');
     if (await closeBtn.isVisible({ timeout: 1000 })) {
       await closeBtn.click({ force: true });
     }
@@ -16,8 +16,8 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Client Management', () => {
-  const testEmail = 'pro_generic_a@monservice.com';
-  const password = 'password123';
+  const testEmail = 'pro_generic_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   // Use a predefined logged-in state if possible, or login before each
   // For now, we assume we need to login before each test

@@ -1,12 +1,11 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies } from 'next/headers';
 
-export const locales = ['fr', 'de', 'nl', 'en'];
+export const locales = ['fr'];
 export const defaultLocale = 'fr';
 
 export default getRequestConfig(async () => {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get('NEXT_LOCALE')?.value || defaultLocale;
+  // Une seule langue source, y compris pour les anciens cookies de langue.
+  const locale = defaultLocale;
 
   return {
     locale,

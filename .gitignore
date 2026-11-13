@@ -37,6 +37,12 @@ npm_audit.json
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# Neon local credentials and installed agent tooling
+.neon
+.agents/
+skills-lock.json
 
 # vercel
 .vercel

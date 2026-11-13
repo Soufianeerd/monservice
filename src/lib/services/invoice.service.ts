@@ -1,3 +1,5 @@
+import { invoiceUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { invoices, invoiceLines, invoiceSections, clients } from '../db/schema';
 import { eq, and, sql, desc, or, inArray, asc } from 'drizzle-orm';
@@ -9,6 +11,7 @@ import { userService } from './user.service';
 import { TaxService } from './tax.service';
 import { InvoiceTaxData } from './tax.types';
 import { calculateDocumentTotals, calculateLine } from './billing-calculator';
+import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 import { allocateBillingNumber } from './quote.service';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -102,38 +105,19 @@ export const invoiceService = {
   },
 
   async updateStatusAsClient(id: string, clientUserId: string, status: InvoiceStatus): Promise<void> {
+    // Compatibility commands only. Never forward caller status to an UPDATE.
+    if (!['viewed', 'rejected', 'cancelled'].includes(status)) {
+      throw new AppError('Transition client interdite', 403, 'FORBIDDEN_TRANSITION');
+    }
     const inv = await this.getById(id);
-    if (!inv) throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-
-    let isAuthorized = inv.recipientUserId === clientUserId;
-    if (!isAuthorized) {
-      const [crmClient] = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.id, inv.clientId), eq(clients.userId, clientUserId)))
-        .limit(1);
-      if (crmClient) isAuthorized = true;
+    if (!inv) throw new AppError('Document introuvable', 404);
+    await requireClientBillingAuthority(inv, clientUserId);
+    if (inv.type !== 'quote') {
+      throw new AppError('Transition client interdite pour une facture', 403, 'FORBIDDEN_TRANSITION');
     }
-
-    if (!isAuthorized) {
-      throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-    }
-
-    // Clients can only mark quotes as viewed or cancelled/rejected, not arbitrary status
-    if (inv.type === 'quote') {
-      if (status === 'viewed') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.markQuoteViewed(id, clientUserId);
-        return;
-      }
-      if (status === 'cancelled' || status === 'rejected') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
-        return;
-      }
-    }
-
-    await db.update(invoices).set({ status, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
+    const { quoteService } = await import('./quote.service');
+    if (status === 'viewed') await quoteService.markQuoteViewed(id, clientUserId);
+    else await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
   },
 
   async signInvoice(
@@ -215,9 +199,9 @@ export const invoiceService = {
     return await db.transaction(async (tx) => allocateBillingNumber(tx, organizationId, type));
   },
 
-  async calculateTotals(invoiceId: string, organizationId: string) {
+  async calculateTotals(invoiceId: string, organizationId: string, connection: typeof db | DbTx = db) {
     // Tenant check first
-    const [inv] = await db
+    const [inv] = await connection
       .select()
       .from(invoices)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
@@ -225,7 +209,7 @@ export const invoiceService = {
 
     if (!inv) throw new AppError('Document introuvable dans cette organisation', 404);
 
-    const lines = await db
+    const lines = await connection
       .select()
       .from(invoiceLines)
       .where(and(eq(invoiceLines.invoiceId, invoiceId), eq(invoiceLines.organizationId, organizationId)))
@@ -240,7 +224,7 @@ export const invoiceService = {
 
     for (const l of totals.lines) {
       if (l.id) {
-        await db
+        await connection
           .update(invoiceLines)
           .set({
             totalHT: l.totalHT,
@@ -252,7 +236,7 @@ export const invoiceService = {
       }
     }
 
-    await db
+    await connection
       .update(invoices)
       .set({
         totalHT: totals.totalHT,
@@ -369,7 +353,7 @@ export const invoiceService = {
         });
       }
 
-      const created = await this.findById(invoiceId, validated.organizationId);
+      const created = await this.findById(invoiceId, validated.organizationId, tx);
       if (!created) throw new AppError('Erreur de création de document', 500);
       return created;
     });
@@ -381,24 +365,20 @@ export const invoiceService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const existing = await this.findById(id, organizationId);
-    if (!existing) {
-      throw new AppError('Document not found', 404);
-    }
-    if (existing.lockedAt) {
-      throw new AppError('Cannot modify a locked document', 403);
-    }
-
+    const { lines, ...validated } = invoiceUpdateSchema.parse(data);
     return await db.transaction(async (tx) => {
-      const { lines, signature, ...invoiceData } = data;
-      
-      const partialSchema = invoiceSchema.partial();
-      const validated = partialSchema.parse(invoiceData);
-      
+      await requireCoreUpdateActor(tx,organizationId,userId);
+      const [existing] = await tx.select().from(invoices).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) throw new AppError('Document not found',404);
+      if (existing.lockedAt || existing.status !== 'draft') throw new AppError('Cannot modify an issued document',403);
+      if (validated.clientId) await requireCoreRelation(tx,organizationId,'client',validated.clientId);
+      const [client] = await tx.select({ userId: clients.userId }).from(clients).where(and(eq(clients.id,validated.clientId ?? existing.clientId),eq(clients.organizationId,organizationId))).limit(1).for('share');
+      for (const line of lines ?? []) if (line.productId) await requireCoreRelation(tx,organizationId,'product',line.productId);
       const updated = {
         ...validated,
-        status: validated.status ? (validated.status as InvoiceStatus) : undefined,
-        signature: signature !== undefined ? (signature ? JSON.stringify(signature) : null) : undefined,
+        recipientUserId: validated.clientId && validated.clientId !== existing.clientId
+          ? client?.userId ?? null : existing.recipientUserId,
+        status: undefined,
         updatedAt: new Date().toISOString(),
       };
       
@@ -412,7 +392,7 @@ export const invoiceService = {
         for (let i = 0; i < calculatedLines.length; i++) {
           const line = calculatedLines[i];
           await tx.insert(invoiceLines).values({
-            id: line.id || generateId(),
+            id: generateId(),
             organizationId,
             invoiceId: id,
             productId: line.productId || null,
@@ -432,14 +412,15 @@ export const invoiceService = {
         }
       }
 
-      await this.calculateTotals(id, organizationId);
+      await this.calculateTotals(id, organizationId, tx);
 
-      if (validated.status === 'sent' || validated.status === 'paid') {
+      if (validated.status) await tx.update(invoices).set({ status: validated.status }).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId)));
+      if (validated.status === 'sent') {
         const { retentionService } = await import('./retention.service');
-        await retentionService.lockDocument(id, existing.type);
+        await retentionService.lockDocument(id, existing.type === 'quote' ? 'quote' : 'invoice', tx);
       }
 
-      const updatedDoc = await this.findById(id, organizationId);
+      const updatedDoc = await this.findById(id, organizationId, tx);
       if (!updatedDoc) throw new AppError('Erreur de mise à jour du document', 500);
       return updatedDoc;
     });

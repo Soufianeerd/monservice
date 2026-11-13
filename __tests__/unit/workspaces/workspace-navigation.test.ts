@@ -16,7 +16,7 @@ describe('Workspace Navigation', () => {
     expect(navNames).toEqual([
       'Tableau de bord',
       'Clients',
-      'Deals',
+      'Opportunités',
       'Facturation',
       'Agenda',
       'Marketplace',
@@ -84,14 +84,14 @@ describe('Workspace Navigation', () => {
     
     // Modules exclus
     expect(navNames).not.toContain('Clients');
-    expect(navNames).not.toContain('Deals');
+    expect(navNames).not.toContain('Opportunités');
     expect(navNames).not.toContain('Marketplace');
     expect(navNames).not.toContain('Messagerie');
 
     // Modules inclus
     expect(navNames).toContain('Tableau de bord');
     expect(navNames).toContain('Patients');
-    expect(navNames).toContain('Facturation');
+    expect(navNames).toContain('Factures patients');
     expect(navNames).toContain('Agenda');
     expect(navNames).toContain('Paramètres');
 
@@ -100,21 +100,22 @@ describe('Workspace Navigation', () => {
 
     // Paramedical settings contient exactement une entrée Cabinet (/parametres/cabinet)
     const settings = nav.find(n => n.id === 'settings');
-    const cabinetItems = settings?.subItems?.filter(s => s.href === '/parametres/cabinet' && s.name === 'Cabinet') || [];
+    const cabinetItems = settings?.subItems?.filter(s => s.href === '/parametres/cabinet' && s.name === 'Lieux et équipe') || [];
     expect(cabinetItems).toHaveLength(1);
 
     // Produit le label à partir de servicePlural du Profession Pack
     const facturation = nav.find(n => n.id === 'billing');
-    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Séances de kinésithérapie');
+    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Prestations et tarifs');
 
     // Agenda subItems paramédical
     const agenda = nav.find(n => n.id === 'agenda');
     expect(agenda?.subItems).toEqual([
-      { name: 'Calendrier', href: '/agenda/calendrier' },
-      { name: 'Disponibilités', href: '/agenda/disponibilites' },
+      { name: 'Rendez-vous', href: '/agenda/calendrier' },
+      { name: 'Horaires et absences', href: '/agenda/disponibilites' },
       { name: 'Types de séances', href: '/agenda/types-seances' },
       { name: "Liste d'attente", href: '/agenda/liste-attente' },
       { name: 'Tâches', href: '/agenda/taches' },
+      { name: 'Statistiques', href: '/agenda/statistiques' },
     ]);
   });
 
@@ -123,13 +124,13 @@ describe('Workspace Navigation', () => {
     const dietConfig = resolveWorkspace({ sector: 'health', profession: 'dietitian' });
     const dietNav = buildProfessionalNavigation(dietConfig);
     const dietBilling = dietNav.find(n => n.id === 'billing');
-    expect(dietBilling?.subItems?.map(sub => sub.name)).toContain('Consultations diététiques');
+    expect(dietBilling?.subItems?.map(sub => sub.name)).toContain('Prestations et tarifs');
 
     // Orthophoniste
     const speechConfig = resolveWorkspace({ sector: 'health', profession: 'speech_therapist' });
     const speechNav = buildProfessionalNavigation(speechConfig);
     const speechBilling = speechNav.find(n => n.id === 'billing');
-    expect(speechBilling?.subItems?.map(sub => sub.name)).toContain('Séances d’orthophonie');
+    expect(speechBilling?.subItems?.map(sub => sub.name)).toContain('Prestations et tarifs');
   });
 
   it('gère le paramédical de base (health sans profession connue) avec fallback vers la terminologie par défaut', () => {
@@ -145,7 +146,7 @@ describe('Workspace Navigation', () => {
     
     // Le label par défaut est issu de PARAMEDICAL_TERMINOLOGY de base
     const facturation = nav.find(n => n.id === 'billing');
-    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Consultations');
+    expect(facturation?.subItems?.map(sub => sub.name)).toContain('Prestations et tarifs');
   });
   
   it('ne crée aucune route future automatique à partir des capabilities', () => {

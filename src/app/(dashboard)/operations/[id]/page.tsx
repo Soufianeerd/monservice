@@ -6,6 +6,10 @@ import { db } from '@/lib/db/server';
 import { users } from '@/lib/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import OperationDetailClient from './OperationDetailClient';
+import WorkOrderAssetsPanel from './WorkOrderAssetsPanel';
+import ClientAcknowledgementsPanel from './ClientAcknowledgementsPanel';
+import { listWorkOrderAcknowledgements } from '@/lib/services/field-service-client-portal.service';
+import { listAssetsForWorkOrder, listFieldServiceAssets } from '@/lib/services/field-service-assets.service';
 
 interface OperationPageProps {
   params: Promise<{ id: string }>;
@@ -38,6 +42,19 @@ export default async function OperationDetailPage({ params }: OperationPageProps
     notFound();
   }
 
+  const [linkedAssets, clientAssets, acknowledgements] = await Promise.all([
+    listAssetsForWorkOrder(ctx.organizationId, id),
+    listFieldServiceAssets(ctx.organizationId, { clientId: rawOperation.clientId }),
+    listWorkOrderAcknowledgements(ctx.organizationId, id),
+  ]);
+  const linkedIds = new Set(linkedAssets.map(a => a.id));
+  const toOption = (a: { id: string; label: string; category: (typeof linkedAssets)[number]['category']; serialNumber: string | null }) => ({
+    id: a.id,
+    label: a.label,
+    category: a.category,
+    serialNumber: a.serialNumber,
+  });
+
   const operation = {
     ...rawOperation,
     scheduledStart: rawOperation.scheduledStart ? rawOperation.scheduledStart.toISOString() : null,
@@ -64,10 +81,21 @@ export default async function OperationDetailPage({ params }: OperationPageProps
   };
 
   return (
-    <OperationDetailClient
-      workspace={workspace}
-      initialOperation={operation}
-      orgProfessionals={orgProfessionals}
-    />
+    <>
+      <OperationDetailClient
+        workspace={workspace}
+        initialOperation={operation}
+        orgProfessionals={orgProfessionals}
+      />
+      <WorkOrderAssetsPanel
+        workOrderId={id}
+        isClosed={rawOperation.status === 'completed' || rawOperation.status === 'cancelled'}
+        linkedAssets={linkedAssets.map(toOption)}
+        availableAssets={clientAssets.filter(a => a.status !== 'decommissioned' && !linkedIds.has(a.id)).map(toOption)}
+      />
+      <ClientAcknowledgementsPanel
+        acknowledgements={acknowledgements.map(a => ({ ...a, acknowledgedAt: a.acknowledgedAt.toISOString() }))}
+      />
+    </>
   );
 }

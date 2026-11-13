@@ -1,69 +1,40 @@
-import { createClient } from '@/utils/supabase/server';
-import fs from 'fs';
-import path from 'path';
+import 'server-only';
+import { randomUUID } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/lib/db/server';
+import { invoices } from '@/lib/db/schema';
+import { requireSession, requireProfessional } from '@/lib/auth/session';
+import { requireClientBillingAuthority } from '@/lib/billing/authorization';
+import { AppError } from '@/lib/errors';
+import { objectStore } from './neon-object-store';
+
+async function authorizePath(storagePath: string) {
+  const actor = await requireSession();
+  const [document] = await db.select().from(invoices).where(eq(invoices.structuredInvoicePath, storagePath)).limit(1);
+  if (!document) throw new AppError('Document introuvable', 404);
+  if (actor.profileType === 'client') await requireClientBillingAuthority(document, actor.userId);
+  else if (actor.profileType !== 'professional' || actor.organizationId !== document.organizationId) throw new AppError('Accès refusé', 403);
+  if (!storagePath.startsWith(`${document.organizationId}/${document.id}/`)) throw new AppError('Clé de stockage invalide', 403);
+}
 
 export const storageService = {
-  async save(fileName: string, content: string | Buffer): Promise<string> {
-    const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
-    const bucket = 'einvoices';
-    const filePath = `${new Date().getFullYear()}/${new Date().getMonth() + 1}/${fileName}`;
-    
-    // In local development, save to the file system
-    if (process.env.NODE_ENV === 'development') {
-      const dir = path.join(process.cwd(), 'storage', bucket, `${new Date().getFullYear()}`, `${new Date().getMonth() + 1}`);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      const fullPath = path.join(dir, fileName);
-      fs.writeFileSync(fullPath, buffer);
-      return fullPath;
-    }
-    
-    // In production, use Supabase Storage
-    const supabase = await createClient();
-    const { data, error } = await supabase.storage.from(bucket).upload(filePath, buffer, {
-      contentType: fileName.endsWith('.xml') ? 'application/xml' : (fileName.endsWith('.zip') ? 'application/zip' : 'application/pdf'),
-      upsert: true, // Replace if exists
-    });
-
-    if (error) {
-      console.error('Supabase upload error:', error);
-      throw new Error(`Failed to upload: ${error.message}`);
-    }
-
-    return filePath;
+  async save(fileName: string, content: string | Buffer, resource: { organizationId: string; documentId: string }): Promise<string> {
+    const actor = await requireProfessional();
+    if (resource.organizationId !== actor.organizationId) throw new AppError('Accès refusé', 403);
+    const [document] = await db.select({ id: invoices.id }).from(invoices).where(and(eq(invoices.id, resource.documentId), eq(invoices.organizationId, actor.organizationId)));
+    if (!document) throw new AppError('Document introuvable', 404);
+    const suffix = fileName.endsWith('.xml') ? 'xml' : fileName.endsWith('.zip') ? 'zip' : 'pdf';
+    const key = `${actor.organizationId}/${document.id}/${randomUUID()}.${suffix}`;
+    const bytes = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+    await objectStore.put('einvoices', key, bytes, suffix === 'xml' ? 'application/xml' : suffix === 'zip' ? 'application/zip' : 'application/pdf');
+    return key;
   },
-
-  async getDownloadUrl(filePath: string): Promise<string> {
-    if (process.env.NODE_ENV === 'development') {
-      // For local development, this would ideally return a route that reads the file
-      // In this app, we will handle this in the API route. We just return the path.
-      return filePath;
-    }
-    
-    const supabase = await createClient();
-    const { data, error } = await supabase.storage.from('einvoices').createSignedUrl(filePath, 3600); // 1 hour expiry
-    if (error) {
-      throw new Error(`Failed to create download url: ${error.message}`);
-    }
-    return data.signedUrl;
+  async getDownloadUrl(storagePath: string): Promise<string> {
+    await authorizePath(storagePath);
+    return objectStore.presign('einvoices', storagePath);
   },
-  
-  async getFileBuffer(filePath: string): Promise<Buffer> {
-    if (process.env.NODE_ENV === 'development') {
-      if (fs.existsSync(filePath)) {
-        return fs.readFileSync(filePath);
-      }
-      throw new Error('File not found');
-    }
-    
-    const supabase = await createClient();
-    const { data, error } = await supabase.storage.from('einvoices').download(filePath);
-    if (error || !data) {
-       throw new Error('File not found in storage');
-    }
-    
-    const arrayBuffer = await data.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  }
+  async getFileBuffer(storagePath: string): Promise<Buffer> {
+    await authorizePath(storagePath);
+    return objectStore.read('einvoices', storagePath);
+  },
 };

@@ -37,15 +37,15 @@ export default async function CabinetPage() {
       <div className="bg-white shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Structure du Cabinet
+            Lieux et équipe
           </h3>
           <div className="mt-2 max-w-xl text-sm text-gray-500">
             <p>
-              Gérez les lieux de consultation, les salles, les praticiens et les équipements.
+              Commencez par ajouter un lieu de consultation, puis votre fiche de praticien. Associez le praticien à son lieu pour préparer le planning. Les salles et les équipements sont facultatifs.
             </p>
           </div>
           
-          <div className="mt-5">
+          <div data-tour="practice-structure" className="mt-5">
             <PracticeStructureManager overview={overview} />
           </div>
         </div>

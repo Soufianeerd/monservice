@@ -1,3 +1,5 @@
+import { clientUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { clients, contacts, deals, invoices, tasks } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -45,15 +47,13 @@ export const clientService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    // Partial validation
-    const partialSchema = clientSchema.partial();
-    const validated = partialSchema.parse(data);
-
-    await db.update(clients).set({
-      ...validated,
-      updatedAt: new Date().toISOString()
-    }).where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)));
-    
+    const validated = clientUpdateSchema.parse(data);
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx.select().from(clients).where(and(eq(clients.id,id),eq(clients.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) return null;
+      await tx.update(clients).set({ ...validated, updatedAt: new Date().toISOString() }).where(and(eq(clients.id,id),eq(clients.organizationId,organizationId)));
+    });
     return this.findById(id, organizationId);
   },
 

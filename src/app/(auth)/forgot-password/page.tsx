@@ -1,32 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { authClient } from '@/lib/auth/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     
-    const supabase = createClient();
-    // IMPORTANT : L'URL de callback doit être ajoutée dans Supabase Dashboard (URL Configuration)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    });
+    try {
+      const { error } = await authClient.requestPasswordReset({
+        email: email.trim().toLowerCase(),
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
-    setLoading(false);
-    if (error) {
-      setMessage({ text: 'Erreur lors de l\'envoi. Vérifiez votre email.', type: 'error' });
-    } else {
-      setMessage({ text: 'Si ce compte existe, un email de réinitialisation a été envoyé.', type: 'success' });
-    }
+      if (error) {
+        setMessage({ text: 'Envoi indisponible. Réessayez dans quelques instants.', type: 'error' });
+      } else {
+        setMessage({ text: 'Si ce compte existe, un email de réinitialisation a été envoyé.', type: 'success' });
+      }
+    } catch {
+      setMessage({ text: 'Envoi indisponible. Réessayez dans quelques instants.', type: 'error' });
+    } finally { setLoading(false); }
   };
 
   return (

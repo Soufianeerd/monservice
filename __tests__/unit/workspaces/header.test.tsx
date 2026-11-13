@@ -29,9 +29,6 @@ vi.mock('@/app/actions/notification', () => ({
   generateNotificationsAction: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('@/components/layout/LanguageSwitcher', () => ({
-  LanguageSwitcher: () => <div data-testid="language-switcher">Lang</div>,
-}));
 
 describe('Header Workspace Dynamic', () => {
   beforeEach(() => {

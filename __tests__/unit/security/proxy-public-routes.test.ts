@@ -23,6 +23,7 @@ const PUBLIC_EXACT = new Set([
   '/mentions-legales',
   '/robots.txt',
   '/sitemap.xml',
+  '/invitation/portail',
 ]);
 
 const PUBLIC_PREFIXES = ['/pro/', '/api/auth/', '/api/stripe/webhook'];
@@ -46,13 +47,15 @@ describe('Middleware — routes publiques', () => {
     '/api/stripe/checkout',
     '/api/stripe/connect/onboarding',
     '/api/reminders/check',
+    '/invitation/portail/autre',
+    '/invitation',
   ];
 
   it.each(privateRoutes)('%s ne doit jamais être considérée comme publique', (route) => {
     expect(isPublic(route)).toBe(false);
   });
 
-  const publicRoutes = ['/', '/login', '/register', '/pro/mon-artisan', '/api/stripe/webhook'];
+  const publicRoutes = ['/', '/login', '/register', '/pro/mon-artisan', '/api/stripe/webhook', '/invitation/portail'];
 
   it.each(publicRoutes)('%s doit rester publique', (route) => {
     expect(isPublic(route)).toBe(true);

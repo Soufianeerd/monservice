@@ -1,0 +1,94 @@
+{
+  "verifiedAt": "2026-10-11T00:41:14.955Z",
+  "project": "misty-field-54835523",
+  "branch": "br-little-surf-b1l5wgni",
+  "region": "aws-eu-central-1",
+  "readOnly": true,
+  "structure": {
+    "tables": 59,
+    "rls_tables": 59
+  },
+  "constraints": {
+    "count": 722,
+    "unvalidated": 0
+  },
+  "indexes": 223,
+  "triggers": 68,
+  "policies": 204,
+  "roles": [
+    {
+      "rolname": "monservice_reminders",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolinherit": false
+    },
+    {
+      "rolname": "monservice_runtime",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolinherit": false
+    },
+    {
+      "rolname": "monservice_stripe",
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "rolinherit": false
+    }
+  ],
+  "ownedTables": 0,
+  "auth": {
+    "users": 16,
+    "verified": 0,
+    "passwords": 0,
+    "managed": true
+  },
+  "mappings": {
+    "total": 5,
+    "source": 5,
+    "neon": 0
+  },
+  "reenrollments": {
+    "total": 5,
+    "pending": 5
+  },
+  "unauthenticatedRuntimeDeniedTables": [
+    "users",
+    "organizations",
+    "clients",
+    "invoices",
+    "clinical_documents",
+    "patient_profiles",
+    "audit_logs",
+    "consent_events",
+    "data_subject_requests",
+    "processing_activities"
+  ],
+  "storage": [
+    {
+      "bucket": "clinical-documents",
+      "objects": 0,
+      "bytes": 0,
+      "access": "private"
+    },
+    {
+      "bucket": "einvoices",
+      "objects": 0,
+      "bytes": 0,
+      "access": "private"
+    }
+  ],
+  "checks": [
+    {
+      "check": "scripts/neon/check-migrations.mjs",
+      "passed": true
+    },
+    {
+      "check": "scripts/check-schema-contract.ts",
+      "passed": true
+    },
+    {
+      "check": "scripts/check-custom-objects.ts",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "verifiedAt": "2026-10-11T00:05:06.843Z",
+  "source": {
+    "tables": 57,
+    "functions": 213,
+    "triggers": 18,
+    "policies": 61,
+    "indexes": 219,
+    "constraints": 278,
+    "extensions": [
+      {
+        "extname": "btree_gist",
+        "extversion": "1.7"
+      },
+      {
+        "extname": "pg_stat_statements",
+        "extversion": "1.11"
+      },
+      {
+        "extname": "pgcrypto",
+        "extversion": "1.3"
+      },
+      {
+        "extname": "plpgsql",
+        "extversion": "1.0"
+      },
+      {
+        "extname": "supabase_vault",
+        "extversion": "0.3.1"
+      },
+      {
+        "extname": "uuid-ossp",
+        "extversion": "1.1"
+      }
+    ],
+    "schemas": [
+      "auth",
+      "drizzle",
+      "extensions",
+      "graphql",
+      "graphql_public",
+      "information_schema",
+      "pg_catalog",
+      "pg_temp_1",
+      "pg_temp_10",
+      "pg_temp_13",
+      "pg_temp_14",
+      "pg_temp_16",
+      "pg_temp_17",
+      "pg_temp_18",
+      "pg_temp_19",
+      "pg_temp_2",
+      "pg_temp_22",
+      "pg_temp_23",
+      "pg_temp_24",
+      "pg_temp_25",
+      "pg_temp_26",
+      "pg_temp_28",
+      "pg_temp_29",
+      "pg_temp_3",
+      "pg_temp_31",
+      "pg_temp_32",
+      "pg_temp_33",
+      "pg_temp_4",
+      "pg_temp_40",
+      "pg_temp_41",
+      "pg_temp_43",
+      "pg_temp_46",
+      "pg_temp_49",
+      "pg_temp_50",
+      "pg_temp_51",
+      "pg_temp_53",
+      "pg_temp_54",
+      "pg_temp_56",
+      "pg_temp_57",
+      "pg_temp_58",
+      "pg_temp_59",
+      "pg_temp_7",
+      "pg_temp_9",
+      "pg_toast",
+      "pg_toast_temp_1",
+      "pg_toast_temp_10",
+      "pg_toast_temp_13",
+      "pg_toast_temp_14",
+      "pg_toast_temp_16",
+      "pg_toast_temp_17",
+      "pg_toast_temp_18",
+      "pg_toast_temp_19",
+      "pg_toast_temp_2",
+      "pg_toast_temp_22",
+      "pg_toast_temp_23",
+      "pg_toast_temp_24",
+      "pg_toast_temp_25",
+      "pg_toast_temp_26",
+      "pg_toast_temp_28",
+      "pg_toast_temp_29",
+      "pg_toast_temp_3",
+      "pg_toast_temp_31",
+      "pg_toast_temp_32",
+      "pg_toast_temp_33",
+      "pg_toast_temp_4",
+      "pg_toast_temp_40",
+      "pg_toast_temp_41",
+      "pg_toast_temp_43",
+      "pg_toast_temp_46",
+      "pg_toast_temp_49",
+      "pg_toast_temp_50",
+      "pg_toast_temp_51",
+      "pg_toast_temp_53",
+      "pg_toast_temp_54",
+      "pg_toast_temp_56",
+      "pg_toast_temp_57",
+      "pg_toast_temp_58",
+      "pg_toast_temp_59",
+      "pg_toast_temp_7",
+      "pg_toast_temp_9",
+      "pgbouncer",
+      "public",
+      "realtime",
+      "storage",
+      "vault"
+    ],
+    "authProviders": [
+      {
+        "provider": "email",
+        "count": 11
+      }
+    ],
+    "mfaFactors": 0
+  },
+  "target": {
+    "functions": 252,
+    "constraintTypes": [
+      {
+        "contype": "c",
+        "count": 88
+      },
+      {
+        "contype": "f",
+        "count": 131
+      },
+      {
+        "contype": "n",
+        "count": 436
+      },
+      {
+        "contype": "p",
+        "count": 58
+      },
+      {
+        "contype": "u",
+        "count": 6
+      },
+      {
+        "contype": "x",
+        "count": 3
+      }
+    ],
+    "extensions": [
+      {
+        "extname": "btree_gist",
+        "extversion": "1.8"
+      },
+      {
+        "extname": "plpgsql",
+        "extversion": "1.0"
+      }
+    ]
+  }
+}

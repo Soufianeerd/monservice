@@ -1,0 +1,33 @@
+{
+  "completedAt": "2026-10-11T00:41:47.229Z",
+  "project": "misty-field-54835523",
+  "region": "aws-eu-central-1",
+  "template": "br-icy-morning-b1317ev6",
+  "validatedBranch": "br-round-dust-b1658brf",
+  "branchDeleted": true,
+  "syntheticOnly": true,
+  "workers": 1,
+  "gitHead": "96543ea41027dbfbed715192ec0da7f4c3b04ff0",
+  "worktreeCleanAtStart": true,
+  "validationScope": "mandatory-email-verification-browser-within-full-CI",
+  "sourceEvidence": "ci-validation-report.json",
+  "commands": [
+    {
+      "command": "node scripts/neon/run-tests.mjs npm run build",
+      "passed": true
+    },
+    {
+      "command": "node scripts/neon/run-tests.mjs npx playwright test e2e/auth-recovery.spec.ts --workers=1",
+      "passed": true
+    }
+  ],
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "managedProviderAndSdk": true,
+  "emailVerificationRequired": true,
+  "managedResetCallbackFollowed": true,
+  "mailboxDeliveryVerified": false
+}

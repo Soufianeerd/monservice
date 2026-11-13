@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientQuoteDTO } from '@/lib/data/dto/client-billing.dto';
 import * as invoiceActions from '@/app/actions/invoice.actions';
 import SignaturePad from '@/components/crm/SignaturePad';
 
@@ -11,7 +11,7 @@ export default function QuoteSignPage({ params }: { params: Promise<{ id: string
   const id = resolvedParams.id;
   const router = useRouter();
 
-  const [quote, setQuote] = useState<Invoice | null>(null);
+  const [quote, setQuote] = useState<ClientQuoteDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

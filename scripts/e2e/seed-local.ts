@@ -1,7 +1,8 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
-import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { sql as sqlExpression } from 'drizzle-orm';
 import postgres from 'postgres';
 import { 
   organizations, 
@@ -35,7 +36,7 @@ import {
   deals,
   fieldServiceSites
 } from '../../src/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 export const SEED_GENERIC_IDS = {
@@ -119,47 +120,15 @@ export const SEED_PATIENT_PORTAL_IDS = {
 };
 
 async function seed() {
-  const dbUrl = process.env.DATABASE_URL;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  if (!dbUrl) {
-    console.error('ERROR: DATABASE_URL missing.');
-    process.exit(1);
-  }
-  const dbHostname = new URL(dbUrl).hostname;
-  if (process.env.ALLOW_REMOTE_SEED !== 'true' && dbHostname !== 'localhost' && dbHostname !== '127.0.0.1') {
-    console.error('ERROR: DATABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
-    process.exit(1);
-  }
-
-  if (!supabaseUrl) {
-    console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL missing.');
-    process.exit(1);
-  }
-  const sbHostname = new URL(supabaseUrl).hostname;
-  if (process.env.ALLOW_REMOTE_SEED !== 'true' && sbHostname !== 'localhost' && sbHostname !== '127.0.0.1') {
-    console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL must point to localhost or 127.0.0.1 for local seeding.');
-    process.exit(1);
-  }
-
-  const sql = postgres(dbUrl);
+  const dbUrl = process.env.DATABASE_URL_UNPOOLED;
+  const authUrl = process.env.NEON_AUTH_BASE_URL;
+  const password = process.env.E2E_AUTH_PASSWORD;
+  if (!dbUrl || !authUrl || !password || !process.env.NEON_BRANCH || process.env.NEON_BRANCH === 'production') throw new Error('Isolated Neon branch and private fixture credential required');
+  if (process.env.NEON_SEED_WORKSPACE_ONLY === 'true' && !process.env.NEON_BRANCH.startsWith('ci-')) throw new Error('Workspace refresh is restricted to disposable CI branches');
+  if (!new URL(dbUrl).hostname.endsWith('.neon.tech')) throw new Error('Neon validation database required');
+  const sql = postgres(dbUrl, { max: 1 });
   const db = drizzle(sql, { schema: { organizations, users, clients, invoices, requests, practiceLocations, practicePractitioners, practitionerLocations, practiceRooms, practiceResources } });
-
-  // Load SERVICE_ROLE_KEY
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
-    console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY is required to seed users.');
-    process.exit(1);
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    }
-  });
-
-  console.log('Seeding local database...');
+  console.log('Seeding synthetic fixtures on isolated Neon branch');
 
   // 1. Create Organizations (distinct, deterministic per vertical)
   await db.insert(organizations).values([
@@ -172,29 +141,41 @@ async function seed() {
     // Field Service
     { id: SEED_FIELD_SERVICE_IDS.orgA, name: 'Plomberie Chauffage Service', slug: 'org-fs-a', sector: 'field_services', profession: 'plumber', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: SEED_FIELD_SERVICE_IDS.orgB, name: 'Électricité Générale B', slug: 'org-fs-b', sector: 'field_services', profession: 'electrician', profileType: 'professional', isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-  ]).onConflictDoNothing();
+  ]).onConflictDoUpdate({
+    target: organizations.id,
+    // Des suites DB changent volontairement la verticale de ces fixtures.
+    // Restaurer uniquement leur classification avant les parcours navigateur.
+    set: { sector: sqlExpression`excluded.sector`, profession: sqlExpression`excluded.profession` },
+  });
+
+  if (process.env.NEON_SEED_WORKSPACE_ONLY === 'true') {
+    console.log('Synthetic workspace classifications restored; no Auth, user or patient writes');
+    await sql.end();
+    return;
+  }
 
   const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string) => {
-    const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    if (listError) {
-      console.error('Error listing users:', listError);
-      throw listError;
-    }
-    let existingUser = usersData.users.find(u => u.email === email);
-
-    if (!existingUser) {
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password: 'password123',
-        email_confirm: true,
-        user_metadata: { name, profileType }
-      });
-      if (error) {
-        console.error(`Error creating user ${email}:`, error);
-        throw error;
+    let [provider] = await sql`select id::text as id from neon_auth."user" where email=${email}`;
+    if (!provider) {
+      let response: Response | undefined;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        response = await fetch(`${authUrl}/sign-up/email`, {
+          method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:3039' },
+          body: JSON.stringify({ email, name, password }), signal: AbortSignal.timeout(20000),
+        });
+        if (response.status !== 429) break;
+        await new Promise(resolve => setTimeout(resolve, Math.min(60000, Math.max(15000, Number(response?.headers.get('retry-after') ?? 30) * 1000))));
       }
-      existingUser = data.user;
+      if (!response) throw new Error('Synthetic Auth unavailable');
+      const result = await response.json();
+      if (!response.ok || !result.user?.id) throw new Error(`Synthetic Auth provisioning failed: HTTP ${response.status}`);
+      provider = { id: result.user.id };
     }
+    const stableId = createHash('sha256').update('monservice-synthetic-v1:' + email).digest('hex');
+    const appId = `${stableId.slice(0,8)}-${stableId.slice(8,12)}-4${stableId.slice(13,16)}-a${stableId.slice(17,20)}-${stableId.slice(20,32)}`;
+    const existingUser = { id: appId };
+    await sql`insert into public.user_identities(app_user_id,provider,provider_user_id,verified_at,linkage_method)
+      select ${appId},'neon',${provider.id},now(),'synthetic_fixture' where exists(select 1 from public.users where id=${appId}) on conflict do nothing`;
 
     if (existingUser) {
       await db
@@ -222,30 +203,32 @@ async function seed() {
             updatedAt: new Date().toISOString(),
           },
         });
+      await sql`insert into public.user_identities(app_user_id,provider,provider_user_id,verified_at,linkage_method) values(${appId},'neon',${provider.id},now(),'synthetic_fixture') on conflict do nothing`;
       return existingUser.id;
     }
   };
 
   // 2. Create Users
   // Generic
-  const proGenericAId = await createAuthUser('pro_generic_a@monservice.com', 'Professional Generic A', 'professional', SEED_GENERIC_IDS.orgA);
-  const cliGenericAId = await createAuthUser('client_generic_a@monservice.com', 'Client Generic A', 'client', SEED_GENERIC_IDS.orgA);
-  await createAuthUser('pro_generic_b@monservice.com', 'Professional Generic B', 'professional', SEED_GENERIC_IDS.orgB);
-  await createAuthUser('client_generic_b@monservice.com', 'Client Generic B', 'client', SEED_GENERIC_IDS.orgB);
+  const proGenericAId = await createAuthUser('pro_generic_a@monservice.invalid', 'Professional Generic A', 'professional', SEED_GENERIC_IDS.orgA);
+  const cliGenericAId = await createAuthUser('client_generic_a@monservice.invalid', 'Client Generic A', 'client', SEED_GENERIC_IDS.orgA);
+  await createAuthUser('pro_generic_b@monservice.invalid', 'Professional Generic B', 'professional', SEED_GENERIC_IDS.orgB);
+  await createAuthUser('client_generic_b@monservice.invalid', 'Client Generic B', 'client', SEED_GENERIC_IDS.orgB);
 
   // Paramedical
-  await createAuthUser('pro_health_a@monservice.com', 'Dr. Jane Doe', 'professional', SEED_PRACTICE_IDS.orgA);
-  const patientHealthAId = await createAuthUser('patient_health_a@monservice.com', 'Alice Dupont', 'client', SEED_PRACTICE_IDS.orgA);
-  const proAId = await createAuthUser('pro_a@monservice.com', 'Professional A', 'professional', SEED_PRACTICE_IDS.orgA);
-  const cliAId = await createAuthUser('client_a@monservice.com', 'Client A', 'client', SEED_PRACTICE_IDS.orgA);
-  await createAuthUser('staff_a@monservice.com', 'Staff A', 'professional', SEED_PRACTICE_IDS.orgA);
-  const proBId = await createAuthUser('pro_b@monservice.com', 'Professional B', 'professional', SEED_PRACTICE_IDS.orgB);
-  const cliBId = await createAuthUser('client_b@monservice.com', 'Client B', 'client', SEED_PRACTICE_IDS.orgB);
+  await createAuthUser('pro_health_a@monservice.invalid', 'Dr. Jane Doe', 'professional', SEED_PRACTICE_IDS.orgA);
+  const patientHealthAId = await createAuthUser('patient_health_a@monservice.invalid', 'Alice Dupont', 'client', SEED_PRACTICE_IDS.orgA);
+  const proAId = await createAuthUser('pro_a@monservice.invalid', 'Professional A', 'professional', SEED_PRACTICE_IDS.orgA);
+  await createAuthUser('pro_a2@monservice.invalid', 'Dr. Second Pro', 'professional', SEED_PRACTICE_IDS.orgA);
+  const cliAId = await createAuthUser('client_a@monservice.invalid', 'Client A', 'client', SEED_PRACTICE_IDS.orgA);
+  await createAuthUser('staff_a@monservice.invalid', 'Staff A', 'professional', SEED_PRACTICE_IDS.orgA);
+  const proBId = await createAuthUser('pro_b@monservice.invalid', 'Professional B', 'professional', SEED_PRACTICE_IDS.orgB);
+  const cliBId = await createAuthUser('client_b@monservice.invalid', 'Client B', 'client', SEED_PRACTICE_IDS.orgB);
 
   // Field Service
-  await createAuthUser('pro_fs_a@monservice.com', 'Artisan Plombier A', 'professional', SEED_FIELD_SERVICE_IDS.orgA);
-  const cliFsAId = await createAuthUser('client_fs_a@monservice.com', 'Client Field Service A', 'client', SEED_FIELD_SERVICE_IDS.orgA);
-  await createAuthUser('pro_fs_b@monservice.com', 'Artisan Électricien B', 'professional', SEED_FIELD_SERVICE_IDS.orgB);
+  await createAuthUser('pro_fs_a@monservice.invalid', 'Artisan Plombier A', 'professional', SEED_FIELD_SERVICE_IDS.orgA);
+  const cliFsAId = await createAuthUser('client_fs_a@monservice.invalid', 'Client Field Service A', 'client', SEED_FIELD_SERVICE_IDS.orgA);
+  await createAuthUser('pro_fs_b@monservice.invalid', 'Artisan Électricien B', 'professional', SEED_FIELD_SERVICE_IDS.orgB);
 
   console.log('Users seeded successfully');
   
@@ -261,7 +244,7 @@ async function seed() {
     { id: clientIdA, organizationId: SEED_PRACTICE_IDS.orgA, userId: cliAId!, name: 'Client A Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: clientIdB, organizationId: SEED_PRACTICE_IDS.orgB, userId: cliBId!, name: 'Client B Record', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     // Field Service
-    { id: SEED_FIELD_SERVICE_IDS.clientA, organizationId: SEED_FIELD_SERVICE_IDS.orgA, userId: cliFsAId!, name: 'Client Field Service A', email: 'client_fs_a@monservice.com', address: '15 Avenue des Artisans', city: 'Lyon', zipCode: '69001', country: 'France', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: SEED_FIELD_SERVICE_IDS.clientA, organizationId: SEED_FIELD_SERVICE_IDS.orgA, userId: cliFsAId!, name: 'Client Field Service A', email: 'client_fs_a@monservice.invalid', address: '15 Avenue des Artisans', city: 'Lyon', zipCode: '69001', country: 'France', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { id: SEED_FIELD_SERVICE_IDS.clientB, organizationId: SEED_FIELD_SERVICE_IDS.orgB, name: 'Client Field Service B', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
   ]).onConflictDoNothing();
 
@@ -757,7 +740,7 @@ async function seed() {
 
   await db.update(clinicalNotes)
     .set({ status: 'finalized' })
-    .where(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteA));
+    .where(and(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteA), eq(clinicalNotes.status, 'draft')));
 
   // 11. Clinical Records Org B
   await db.insert(careEpisodes).values([
@@ -798,7 +781,7 @@ async function seed() {
 
   await db.update(clinicalNotes)
     .set({ status: 'finalized' })
-    .where(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteB));
+    .where(and(eq(clinicalNotes.id, SEED_CLINICAL_IDS.clinicalNoteB), eq(clinicalNotes.status, 'draft')));
 
   // 12. Clinical Documents Org A & Org B
   await db.insert(clinicalDocuments).values([
@@ -897,7 +880,7 @@ async function seed() {
   // Finalize Form Response A
   await db.update(clinicalFormResponses)
     .set({ status: 'finalized', finalizedAt: new Date() })
-    .where(eq(clinicalFormResponses.id, SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA));
+    .where(and(eq(clinicalFormResponses.id, SEED_CLINICAL_EXPANSION_IDS.clinicalFormResponseA), eq(clinicalFormResponses.status, 'draft')));
 
   // 15. Clinical Measurements Org A & Org B
   await db.insert(clinicalMeasurements).values([

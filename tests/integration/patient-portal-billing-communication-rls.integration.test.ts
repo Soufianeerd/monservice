@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import {
   SEED_PRACTICE_IDS,
@@ -8,25 +8,23 @@ import {
 } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_A2_EMAIL = 'pro_a2@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLIENT_A_EMAIL = 'client_a@monservice.com';
-const STAFF_A_EMAIL = 'staff_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_A2_EMAIL = 'pro_a2@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLIENT_A_EMAIL = 'client_a@monservice.invalid';
+const STAFF_A_EMAIL = 'staff_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
 describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', () => {
   let sql: postgres.Sql;
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proA2Client: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
-  let staffAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proA2Client: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
+  let staffAClient: NeonRlsClient;
 
   let proAUserId: string;
   let proA2UserId: string;
@@ -48,14 +46,10 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
   beforeAll(async () => {
     sql = postgres(DATABASE_URL);
 
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
     // 1. Authenticate Pro A
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { data: authA, error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
@@ -63,12 +57,10 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (errA || !authA?.user) {
       throw new Error(`Failed to authenticate Pro A: ${errA?.message || 'No user'}`);
     }
-    proAUserId = authA.user.id;
+    proAUserId = authA.appUserId;
 
     // 2. Authenticate Pro B
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { data: authB, error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
@@ -78,9 +70,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     }
 
     // 3. Authenticate Client A
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     const { data: authClientA, error: errClientA } = await clientAClient.auth.signInWithPassword({
       email: CLIENT_A_EMAIL,
       password: PASSWORD,
@@ -88,12 +78,10 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (errClientA || !authClientA?.user) {
       throw new Error(`Failed to authenticate Client A: ${errClientA?.message || 'No user'}`);
     }
-    clientAUserId = authClientA.user.id;
+    clientAUserId = authClientA.appUserId;
 
     // 4. Authenticate Staff A (unlinked professional in Org A)
-    staffAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    staffAClient = createRlsTestClient();
     const { data: authStaffA, error: errStaffA } = await staffAClient.auth.signInWithPassword({
       email: STAFF_A_EMAIL,
       password: PASSWORD,
@@ -101,34 +89,10 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (errStaffA || !authStaffA?.user) {
       throw new Error(`Failed to authenticate Staff A: ${errStaffA?.message || 'No user'}`);
     }
-    staffAUserId = authStaffA.user.id;
+    staffAUserId = authStaffA.appUserId;
 
     // 5. Ensure and Authenticate Pro A2 (active practitioner in Org A, without care episode for Patient A1)
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-    if (serviceRoleKey) {
-      const adminClient = createClient(SUPABASE_URL, serviceRoleKey, { auth: { persistSession: false } });
-      const { data: usersData } = await adminClient.auth.admin.listUsers();
-      let existingA2 = usersData?.users.find(u => u.email === PRO_A2_EMAIL);
-      if (!existingA2) {
-        const { data: created } = await adminClient.auth.admin.createUser({
-          email: PRO_A2_EMAIL,
-          password: PASSWORD,
-          email_confirm: true,
-          user_metadata: { name: 'Dr. Second Pro', profileType: 'professional' },
-        });
-        if (created?.user) {
-          existingA2 = created.user;
-        }
-      }
-      if (existingA2) {
-        proA2UserId = existingA2.id;
-        await sql`UPDATE users SET organization_id = ${SEED_PRACTICE_IDS.orgA} WHERE id = ${proA2UserId}`;
-      }
-    }
-
-    proA2Client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proA2Client = createRlsTestClient();
     const { data: authA2, error: errA2 } = await proA2Client.auth.signInWithPassword({
       email: PRO_A2_EMAIL,
       password: PASSWORD,
@@ -136,7 +100,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     if (errA2 || !authA2?.user) {
       throw new Error(`Failed to authenticate Pro A2: ${errA2?.message || 'No user'}`);
     }
-    proA2UserId = authA2.user.id;
+    proA2UserId = authA2.appUserId;
 
     // Seed Practice Practitioner for Pro A2 in Org A
     await sql`
@@ -216,7 +180,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
   // =========================================================================
   describe('patient_portal_access RLS Matrix', () => {
     it('anon cannot read patient_portal_access', async () => {
-      const { data } = await anonClient
+      const { data  } = await anonClient
         .from('patient_portal_access')
         .select('*');
       expect(data?.length ?? 0).toBe(0);
@@ -415,7 +379,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     });
 
     it('anon CANNOT read or mutate questionnaire assignments', async () => {
-      const { data } = await anonClient
+      const { data  } = await anonClient
         .from('patient_questionnaire_assignments')
         .select('*')
         .eq('id', assignmentA1Id);
@@ -474,7 +438,7 @@ describe('Patient Portal, Billing & Communication RLS Policies (Session 14)', ()
     });
 
     it('anon CANNOT read or mutate billing links', async () => {
-      const { data } = await anonClient
+      const { data  } = await anonClient
         .from('patient_billing_links')
         .select('*')
         .eq('id', billingLinkA1Id);

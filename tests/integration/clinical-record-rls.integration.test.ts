@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import {
   SEED_PRACTICE_IDS,
@@ -8,23 +8,21 @@ import {
 } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLIENT_A_EMAIL = 'client_a@monservice.com';
-const STAFF_A_EMAIL = 'staff_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLIENT_A_EMAIL = 'client_a@monservice.invalid';
+const STAFF_A_EMAIL = 'staff_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
 describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () => {
   let sql: postgres.Sql;
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
-  let staffAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
+  let staffAClient: NeonRlsClient;
 
   const dynamicCreatedEpisodeIds: string[] = [];
   const dynamicCreatedEncounterIds: string[] = [];
@@ -33,14 +31,10 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
   beforeAll(async () => {
     sql = postgres(DATABASE_URL);
 
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
     // 1. Pro A Client
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { data: authA, error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
@@ -50,9 +44,7 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
     }
 
     // 2. Pro B Client
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { data: authB, error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
@@ -62,9 +54,7 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
     }
 
     // 3. Client A Client
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     const { data: authCliA, error: errCliA } = await clientAClient.auth.signInWithPassword({
       email: CLIENT_A_EMAIL,
       password: PASSWORD,
@@ -74,9 +64,7 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
     }
 
     // 4. Staff A Client (unlinked professional in Org A)
-    staffAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    staffAClient = createRlsTestClient();
     const { data: authStaffA, error: errStaffA } = await staffAClient.auth.signInWithPassword({
       email: STAFF_A_EMAIL,
       password: PASSWORD,
@@ -262,14 +250,14 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
   // 5. ANONYMOUS ACCESS (ZERO ACCESS)
   // ==========================================
   it('Anon client cannot read or write any clinical table', async () => {
-    const { data: episodes } = await anonClient.from('care_episodes').select('id');
-    expect(episodes).toBeNull(); // Permission denied by grant
+    const { data: episodes  } = await anonClient.from('care_episodes').select('id');
+    expect(episodes).toEqual([]); // Permission denied by grant
 
-    const { data: encounters } = await anonClient.from('clinical_encounters').select('id');
-    expect(encounters).toBeNull();
+    const { data: encounters  } = await anonClient.from('clinical_encounters').select('id');
+    expect(encounters).toEqual([]);
 
-    const { data: notes } = await anonClient.from('clinical_notes').select('id');
-    expect(notes).toBeNull();
+    const { data: notes  } = await anonClient.from('clinical_notes').select('id');
+    expect(notes).toEqual([]);
   });
 
   // ==========================================
@@ -301,15 +289,14 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
   // ==========================================
   // 7. FINALIZED NOTE IMMUTABILITY DIRECT BYPASS
   // ==========================================
-  it('P0: direct PostgREST UPDATE on finalized note is rejected by DB trigger (23514)', async () => {
+  it('P0: direct restricted SQL UPDATE on finalized note is rejected by DB trigger (23514)', async () => {
     const dynamicNoteId = randomUUID();
     dynamicCreatedNoteIds.push(dynamicNoteId);
 
-    // 1. Pro A creates draft note via PostgREST
+    // 1. Pro A creates draft note via restricted SQL
     const { error: insertErr } = await proAClient.from('clinical_notes').insert({
       id: dynamicNoteId,
       organization_id: SEED_PRACTICE_IDS.orgA,
-      encounterId: undefined, // Drizzle vs Supabase column name
       encounter_id: SEED_CLINICAL_IDS.clinicalEncounterA,
       patient_id: SEED_PATIENT_IDS.patientA,
       author_practitioner_id: SEED_PRACTICE_IDS.practitionerA,
@@ -318,7 +305,7 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
     });
     expect(insertErr).toBeNull();
 
-    // 2. Pro A finalizes note via PostgREST
+    // 2. Pro A finalizes note via restricted SQL
     const { error: finalizeErr } = await proAClient
       .from('clinical_notes')
       .update({ status: 'finalized' })
@@ -328,12 +315,14 @@ describe('Clinical Record RLS & Practitioner-Bound Security (Session 11)', () =>
     // 3. Pro A attempts direct UPDATE on finalized note content
     const { error: directUpdateErr } = await proAClient
       .from('clinical_notes')
-      .update({ content: 'Contournement direct PostgREST interdit' })
+      .update({ content: 'Contournement direct restricted SQL interdit' })
       .eq('id', dynamicNoteId);
 
     expect(directUpdateErr).not.toBeNull();
     expect(directUpdateErr?.code).toBe('23514');
-    expect(directUpdateErr?.message).toContain('Finalized clinical notes are immutable');
+    expect(directUpdateErr?.message).toBe('Restricted database operation denied');
+    const { data: retained } = await proAClient.from('clinical_notes').select('content,status').eq('id', dynamicNoteId).single();
+    expect(retained).toMatchObject({ content: 'Contenu brouillon pour test finalisation', status: 'finalized' });
   });
 
   // ==========================================

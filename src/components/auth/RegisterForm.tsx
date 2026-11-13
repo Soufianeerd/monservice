@@ -39,7 +39,7 @@ import {
   FieldServiceBusinessFamilyCode,
 } from '@/lib/workspaces/field-service/families';
 import {
-  REGISTRATION_SECTOR_CODES,
+  openRegistrationSectorCodes,
   REGISTRATION_SECTORS,
   RegistrationSectorCode,
 } from '@/lib/registration/options';
@@ -182,7 +182,7 @@ export default function RegisterForm() {
     if (result.requiresEmailConfirmation) {
       setIsSubmitting(false);
       toast.success('Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse.');
-      router.push('/login');
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       return;
     }
 
@@ -205,7 +205,7 @@ export default function RegisterForm() {
     other: <MoreHorizontalIcon className="w-5 h-5" />,
   };
 
-  const sectors = REGISTRATION_SECTOR_CODES.map((code) => ({
+  const sectors = openRegistrationSectorCodes().map((code) => ({
     id: code,
     name: REGISTRATION_SECTORS[code].label,
     icon: sectorIcons[code],
@@ -408,7 +408,7 @@ export default function RegisterForm() {
             {formData.sector === 'health' && (
               <div className="mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Votre profession paramédicale *</label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {PARAMEDICAL_PROFESSION_CODES.map((code) => {
                     const prof: ParamedicalProfession = PARAMEDICAL_PROFESSIONS[code];
                     return (
@@ -416,11 +416,12 @@ export default function RegisterForm() {
                         key={code}
                         type="button"
                         onClick={() => setFormData({ ...formData, profession: code })}
-                        className={`flex items-center p-3 border-2 rounded-xl focus:outline-none transition-all text-left ${
+                        aria-pressed={formData.profession === code}
+                        className={`flex min-w-0 items-center p-3 border-2 rounded-xl focus:outline-none transition-all text-left ${
                           formData.profession === code ? 'border-primary-600 bg-primary-50' : 'border-gray-200 hover:border-primary-200 bg-white'
                         }`}
                       >
-                        <span className={`text-sm font-semibold ${formData.profession === code ? 'text-primary-900' : 'text-gray-700'}`}>
+                        <span className={`text-sm font-semibold break-words hyphens-auto ${formData.profession === code ? 'text-primary-900' : 'text-gray-700'}`}>
                           {prof.shortLabel || prof.label}
                         </span>
                       </button>

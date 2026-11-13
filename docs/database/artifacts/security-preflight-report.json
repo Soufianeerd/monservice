@@ -1,0 +1,34 @@
+{
+  "verifiedAt": "2026-10-11T00:06:19.787Z",
+  "checkedTrackedFiles": 858,
+  "currentPrivateCredentialsFound": [],
+  "privatePermissionsCorrect": true,
+  "gate1CommitsPreserved": true,
+  "localBranch": "migration-validation",
+  "localSupabaseVariables": 0,
+  "productionRuntimeRole": "monservice_runtime",
+  "productionOwnerUrlPresent": false,
+  "runtimeNpmAudit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "fullNpmAudit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 23,
+    "high": 5,
+    "critical": 0,
+    "total": 28
+  },
+  "knownHistoricalSourceCredential": {
+    "removedFromCurrentCode": true,
+    "historyPreserved": true,
+    "rotationPendingAfterCutover": true
+  },
+  "publicGitPush": false,
+  "publicDeployment": false
+}

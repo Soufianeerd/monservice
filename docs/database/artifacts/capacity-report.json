@@ -1,0 +1,23 @@
+{
+  "project": "misty-field-54835523",
+  "region": "aws-eu-central-1",
+  "postgresVersion": 18,
+  "historyRetentionSeconds": 21600,
+  "sourceDatabaseBytes": 18574483,
+  "sourceBusinessProfiles": 5,
+  "sourceAuthUsers": 16,
+  "sourceStorageBytes": 0,
+  "sourceStorageObjects": 0,
+  "documentation": "https://neon.com/docs/introduction/plans",
+  "decision": "Free capacity accommodates this empty-business source. Production recovery beyond six hours or sustained traffic requires paid plan/budget decision; no truncation or upgrade performed.",
+  "branchLogicalSizeLimitBytes": 1073741824,
+  "planObserved": "free_v3",
+  "documentedLimits": {
+    "postgresBytesPerProject": 1000000000,
+    "branchesPerProject": 10,
+    "authMonthlyActiveUsers": 60000,
+    "objectStorageBytes": 5000000000,
+    "computeCuHoursPerMonth": 100
+  },
+  "observedComputeSeconds": 1005
+}

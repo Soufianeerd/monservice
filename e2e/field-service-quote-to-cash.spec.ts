@@ -1,9 +1,11 @@
+import Stripe from 'stripe';
+import { randomUUID } from 'node:crypto';
 import { test, expect, Page } from '@playwright/test';
 import postgres from 'postgres';
 
 async function dismissSetupGuideIfPresent(page: Page) {
   try {
-    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"], button[aria-label="Réduire l’aide"]');
     if (await closeBtn.isVisible({ timeout: 1000 })) {
       await closeBtn.click({ force: true });
     }
@@ -13,12 +15,14 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)', () => {
-  const proEmail = 'pro_fs_a@monservice.com';
-  const clientEmail = 'client_fs_a@monservice.com';
-  const password = 'password123';
+  const proEmail = 'pro_fs_a@monservice.invalid';
+  const clientEmail = 'client_fs_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test('QUOTE_TO_CASH_FULL_PERSISTENT: Complete Lead-to-Cash Lifecycle with DB verification', async ({ page, request }) => {
-    test.setTimeout(180000);
+    // Parcours complet en 10 étapes : ~45 s en local, plus de 180 s sur un runner
+    // GitHub (États-Unis) qui parle à la base de Francfort.
+    test.setTimeout(480_000);
     const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
     try {
@@ -247,12 +251,12 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       // 8. Simulate Stripe Payment Webhook
       // ==============================================================
       const depositAmountCents = Math.round(Number(depositInvDb.total_ttc) * 100);
-      const webhookRes = await request.post('/api/stripe/webhook/simulate', {
-        data: {
-          invoiceId: depositInvoiceId,
-          amountPaidCents: depositAmountCents,
-        },
-      });
+      const webhookBody = JSON.stringify({ id: `evt_e2e_${randomUUID()}`, type: 'checkout.session.completed',
+        data: { object: { mode: 'payment', metadata: { invoiceId: depositInvoiceId }, payment_intent: `pi_e2e_${randomUUID()}`, amount_total: depositAmountCents } } });
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+      const signature = stripe.webhooks.generateTestHeaderString({ payload: webhookBody, secret: process.env.STRIPE_WEBHOOK_SECRET! });
+      const webhookRes = await request.post('/api/stripe/webhook', { data: webhookBody,
+        headers: { 'content-type': 'application/json', 'stripe-signature': signature } });
       expect(webhookRes.status()).toBe(200);
 
       // Verify Deposit Invoice is Paid in DB

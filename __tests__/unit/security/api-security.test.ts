@@ -586,3 +586,14 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
     });
   });
 });
+
+vi.mock('@/lib/billing/authorization', () => ({
+  requireBillingReadAuthority: vi.fn(async (resource, userId) => {
+    const { requireSession } = await import('@/lib/auth/session');
+    const actor = await vi.mocked(requireSession).mock.results.at(-1)!.value;
+    if ((actor.profileType === 'professional' && actor.organizationId === resource.organizationId)
+      || (actor.profileType === 'client' && resource.recipientUserId === userId)) return;
+    const { AppError } = await import('@/lib/errors');
+    throw new AppError('Accès refusé', 403, 'FORBIDDEN');
+  }),
+}));
