@@ -91,7 +91,23 @@ test.describe('Production Auth policy — actual browser recovery', () => {
     const email = `browser-recovery-${randomUUID()}@monservice.invalid`;
     const appId = randomUUID();
     const missingOrg = randomUUID();
-    const providerId = cli(['api', `/projects/misty-field-54835523/branches/${branchId}/auth/users`, '-X', 'POST', '-F', `email=${email}`, '-F', 'name=Synthetic imported professional']).id;
+    // The beta management endpoint has answered "branch not found" for the very
+    // branch id its sibling Auth endpoints accept (runs 43222732950, 43404953476
+    // and 43975178910). When it refuses, the owner creates the same fixture
+    // directly: an unverified provider user with no credential, exactly what the
+    // production import produced. Reset, OTP proof and recovery still run for real.
+    let providerId: string;
+    const created = spawnSync('neon', ['api', `/projects/misty-field-54835523/branches/${branchId}/auth/users`, '-X', 'POST', '-F', `email=${email}`, '-F', 'name=Synthetic imported professional'], { encoding: 'utf8' });
+    if (created.status === 0) {
+      providerId = JSON.parse(created.stdout).id;
+    } else {
+      console.warn(`Management account creation refused (${String(created.stderr || created.stdout || 'no output').replace(/\s+/g, ' ').slice(0, 200)}); creating the unverified fixture as owner`);
+      const [row] = await admin`insert into neon_auth."user"(name,email,"emailVerified")
+        values('Synthetic imported professional',${email},false) returning id`;
+      providerId = row.id;
+    }
+    const [imported] = await admin`select "emailVerified" from neon_auth."user" where id=${providerId}`;
+    expect(imported.emailVerified).toBe(false);
     const now = new Date().toISOString();
     await admin`insert into public.users(id,email,name,profile_type,organization_id,created_at,updated_at)
       values(${appId},${email},'Synthetic imported professional','professional',${missingOrg},${now},${now})`;
