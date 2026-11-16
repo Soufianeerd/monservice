@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -134,6 +136,7 @@ export function WaitlistForm({
             preferredStartTime: preferredStartTime || null,
             preferredEndTime: preferredEndTime || null,
           });
+          announceGuideSaved('La demande en liste d’attente est enregistrée.');
           onSuccess(updated);
         } else {
           const created = await createWaitlistEntryAction({
@@ -146,6 +149,7 @@ export function WaitlistForm({
             preferredStartTime: preferredStartTime || null,
             preferredEndTime: preferredEndTime || null,
           });
+          announceGuideSaved('La demande en liste d’attente est enregistrée.');
           onSuccess(created);
         }
       } catch (err: unknown) {
@@ -179,7 +183,7 @@ export function WaitlistForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form data-guide-form="liste-attente" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SELECTION */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Patient *</label>

@@ -51,7 +51,7 @@ export default function CalendarView({ initialEvents = [] }: { initialEvents?: a
 
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+    <div data-guide-title="Le calendrier des échéances" data-guide-text="Ce calendrier affiche les échéances des tâches et des factures, ainsi que les dates prévues de clôture des opportunités. Cliquez sur un événement pour lire son résumé. Déplacer un événement modifie sa date ; les interventions BTP se planifient actuellement dans Opérations." className="bg-white p-6 rounded-lg shadow border border-gray-200">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"

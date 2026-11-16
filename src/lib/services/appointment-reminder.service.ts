@@ -58,13 +58,13 @@ export class AppointmentReminderService {
 
       const matchingAppointments = await db
         .select({
-          appointment: appointments,
-          patient: patientProfiles,
-          type: appointmentTypes,
-          location: practiceLocations,
-          room: practiceRooms,
-          practitioner: practicePractitioners,
-          org: organizations,
+          appointment: { id: appointments.id, organizationId: appointments.organizationId, startsAt: appointments.startsAt, timezone: appointments.timezone },
+          patient: { id: patientProfiles.id, email: patientProfiles.email, usedFirstName: patientProfiles.usedFirstName, firstBirthName: patientProfiles.firstBirthName, usedName: patientProfiles.usedName, birthName: patientProfiles.birthName },
+          type: { name: appointmentTypes.name },
+          location: { name: practiceLocations.name, address: practiceLocations.address, city: practiceLocations.city },
+          room: { name: practiceRooms.name },
+          practitioner: { displayName: practicePractitioners.displayName },
+          org: { name: organizations.name },
         })
         .from(appointments)
         .innerJoin(
@@ -116,7 +116,7 @@ export class AppointmentReminderService {
           // Check for active representative with billing or legal contact
           const repLinks = await db
             .select({
-              rep: patientRepresentatives,
+              rep: { email: patientRepresentatives.email, firstName: patientRepresentatives.firstName, lastName: patientRepresentatives.lastName },
             })
             .from(patientRepresentativeLinks)
             .innerJoin(

@@ -61,11 +61,30 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[data-theme="dark"] {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  color-scheme: dark;
+}
+html[data-theme="light"] { color-scheme: light; }
+
+/* Adaptation des surfaces existantes à la préférence explicite de l'utilisateur. */
+html[data-theme="dark"] :is(.bg-white, input, select, textarea) { background-color: #1e293b; }
+html[data-theme="dark"] :is(.bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100, .bg-zinc-50, .bg-zinc-100) { background-color: #172033; }
+html[data-theme="dark"] :is(.bg-gray-200, .bg-slate-200, .bg-zinc-200) { background-color: #334155; }
+html[data-theme="dark"] :is(.text-gray-900, .text-gray-800, .text-gray-700, .text-slate-900, .text-slate-800, .text-slate-700) { color: #f1f5f9; }
+html[data-theme="dark"] :is(.text-gray-600, .text-gray-500, .text-gray-400, .text-slate-600, .text-slate-500, .text-slate-400) { color: #b8c5d6; }
+html[data-theme="dark"] :is(.border-gray-100, .border-gray-200, .border-gray-300, .border-slate-100, .border-slate-200, .border-slate-300) { border-color: #475569; }
+html[data-theme="dark"] :is(.divide-gray-100, .divide-gray-200) > :not(:last-child) { border-color: #475569; }
+html[data-theme="dark"] :is(.hover\:bg-gray-50, .hover\:bg-gray-100):hover { background-color: #334155; }
+html[data-theme="dark"] :is(.bg-indigo-50, .bg-indigo-100, .bg-primary-50, .bg-primary-100, .bg-blue-50, .bg-blue-100) { background-color: #252d52; }
+html[data-theme="dark"] :is(.text-indigo-600, .text-indigo-700, .text-indigo-900, .text-primary-900, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: #a5b4fc; }
+html[data-theme="dark"] :is(input, select, textarea) { color: #f1f5f9 !important; }
+html[data-theme="dark"] :is(input, textarea)::placeholder { color: #94a3b8 !important; }
+html[data-theme="dark"] button:is(.text-gray-400, .text-gray-500) { color: #cbd5e1 !important; }
+@media print {
+  html[data-theme="dark"] { --background: #fff; --foreground: #111827; color-scheme: light; }
+  html[data-theme="dark"] :is(.bg-white, .bg-gray-50, input, select, textarea) { background: white; color: #111827 !important; }
 }
 
 body {

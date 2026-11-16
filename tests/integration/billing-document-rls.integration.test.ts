@@ -1,19 +1,18 @@
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+const DATABASE_URL = process.env.NEON_ADMIN_DATABASE_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLIENT_A_EMAIL = 'client_a@monservice.com';
-const CLIENT_B_EMAIL = 'client_b@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLIENT_A_EMAIL = 'client_a@monservice.invalid';
+const CLIENT_B_EMAIL = 'client_b@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
-async function signInOrThrow(client: SupabaseClient, email: string): Promise<string> {
+async function signInOrThrow(client: NeonRlsClient, email: string): Promise<string> {
   const { data, error } = await client.auth.signInWithPassword({
     email,
     password: PASSWORD,
@@ -21,16 +20,16 @@ async function signInOrThrow(client: SupabaseClient, email: string): Promise<str
   if (error || !data?.user) {
     throw new Error(`Mandatory authentication failed for ${email}: ${error?.message || 'No user session returned'}`);
   }
-  return data.user.id;
+  return data.appUserId;
 }
 
 describe('Billing Document RLS & Multi-Tenant Authority (Session 18)', () => {
   let sql: postgres.Sql;
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
-  let clientBClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
+  let clientBClient: NeonRlsClient;
 
   let proAUserId: string;
   let proBUserId: string;
@@ -53,23 +52,22 @@ describe('Billing Document RLS & Multi-Tenant Authority (Session 18)', () => {
     sql = postgres(DATABASE_URL);
 
     // Initialize Supabase Auth clients with sign-in-or-throw
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    anonClient = createRlsTestClient();
 
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    proAClient = createRlsTestClient();
     proAUserId = await signInOrThrow(proAClient, PRO_A_EMAIL);
 
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    proBClient = createRlsTestClient();
     proBUserId = await signInOrThrow(proBClient, PRO_B_EMAIL);
 
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    clientAClient = createRlsTestClient();
     clientAUserId = await signInOrThrow(clientAClient, CLIENT_A_EMAIL);
 
-    clientBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+    clientBClient = createRlsTestClient();
     clientBUserId = await signInOrThrow(clientBClient, CLIENT_B_EMAIL);
 
     // Seed test data via DB
-    await sql.begin(async (tx) => {
-      await tx`SET LOCAL session_replication_role = 'replica'`;
+    await withFixtureMaintenance(sql, async tx => {
 
       // Org A Quote
       await tx`
@@ -125,8 +123,7 @@ describe('Billing Document RLS & Multi-Tenant Authority (Session 18)', () => {
 
   afterAll(async () => {
     if (sql) {
-      await sql.begin(async (tx) => {
-        await tx`SET LOCAL session_replication_role = 'replica'`;
+      await withFixtureMaintenance(sql, async tx => {
         await tx`DELETE FROM invoice_lines WHERE id = ${testLineIdA}`;
         await tx`DELETE FROM invoice_sections WHERE id IN (${testSectionIdA}, ${testSectionIdB})`;
         await tx`DELETE FROM invoices WHERE id IN (${testQuoteIdA}, ${testQuoteIdB})`;

@@ -32,11 +32,11 @@ describe('MFAService', () => {
     mfaService = new MFAService();
   });
 
-  it('should throw an error for generating secret since MFA is managed by Supabase', async () => {
-    await expect(mfaService.generateSecret('user1')).rejects.toThrow('MFA is now managed by Supabase Auth');
+  it('should throw an error for generating secret while no supported provider flow is enabled', async () => {
+    await expect(mfaService.generateSecret('user1')).rejects.toThrow('MFA is unavailable');
   });
 
-  it('should throw an error for verifyCode since MFA is managed by Supabase', async () => {
-    await expect(mfaService.verifyCode('user1', '000000')).rejects.toThrow('MFA is now managed by Supabase Auth');
+  it('should throw an error for verifyCode while no supported provider flow is enabled', async () => {
+    await expect(mfaService.verifyCode('user1', '000000')).rejects.toThrow('MFA is unavailable');
   });
 });

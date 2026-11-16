@@ -1,3 +1,4 @@
+import { withWorkerDatabase } from '@/lib/db/worker-context';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripe, isStripeConfigured } from '@/lib/stripe';
@@ -42,6 +43,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Signature invalide' }, { status: 400 });
   }
 
+  const object = event.data.object as { metadata?: Record<string, string> };
+  return withWorkerDatabase({ kind: 'stripe', eventId: event.id, subjectId: object.metadata?.invoiceId ?? object.metadata?.userId }, async () => {
   // Idempotence : Stripe rejoue les événements en cas de timeout ou d'erreur.
   const alreadyProcessed = await stripeEventService.markProcessedIfNew(event.id, event.type);
   if (alreadyProcessed) {
@@ -142,4 +145,5 @@ export async function POST(req: Request) {
     console.error('[stripe] échec du traitement du webhook', { eventId: event.id, error });
     return NextResponse.json({ error: 'Traitement en échec' }, { status: 500 });
   }
+  });
 }

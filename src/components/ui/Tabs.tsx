@@ -17,7 +17,7 @@ export function Tabs({ tabs }: TabsProps) {
 
   return (
     <div className="border-b border-gray-200 mb-6">
-      <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+      <nav className="flex flex-wrap gap-x-6 gap-y-1" aria-label="Rubriques">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           return (

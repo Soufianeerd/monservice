@@ -178,3 +178,23 @@ export function accountDeletionTemplate(params: { name: string; deletionDate: st
     }),
   };
 }
+
+export function clientPortalInvitationTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  url: string;
+  expiresAt: string;
+}) {
+  return {
+    subject: `${params.organizationName} vous invite à votre espace client`,
+    html: layout({
+      title: 'Votre espace client',
+      body: `<p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>${escapeHtml(params.organizationName)} vous invite à suivre vos devis, factures et interventions dans votre espace client MonService.</p>
+        <p>Connectez-vous ou créez votre compte avec <strong>cette adresse e-mail</strong>, puis acceptez l'invitation. Le lien est valable jusqu'au ${formatDate(params.expiresAt)} et ne sert qu'une fois.</p>
+        <p style="font-size:13px;color:#6b7280;">Si vous n'attendiez pas cette invitation, ignorez simplement ce message.</p>`,
+      ctaLabel: 'Accepter l’invitation',
+      ctaUrl: params.url,
+    }),
+  };
+}

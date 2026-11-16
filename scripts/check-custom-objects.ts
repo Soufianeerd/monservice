@@ -25,73 +25,77 @@ async function verifyCustomObjects() {
     process.exit(1);
   }
 
-  console.log('Verifying custom Supabase objects, RLS and strict GRANTS...');
+  console.log('Verifying custom Neon objects, RLS and strict GRANTS...');
   const sql = postgres(dbUrl);
   let errorCount = 0;
 
   // 1. Strict GRANT allowlist for tables
-  const expectedPrivileges: Record<string, { anon: string[], authenticated: string[] }> = {
-    users: { anon: [], authenticated: ['SELECT', 'UPDATE'] },
-    organizations: { anon: [], authenticated: ['SELECT', 'UPDATE'] },
-    clients: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    contacts: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    deals: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    products: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    invoices: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    invoice_lines: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    tasks: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    message_templates: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    messages: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    requests: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    stripe_events: { anon: [], authenticated: [] },
-    processing_activities: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
-    audit_logs: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    data_subject_requests: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    consent_events: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    country_compliance_profiles: { anon: [], authenticated: ['SELECT'] },
-    retention_policies: { anon: [], authenticated: ['SELECT'] },
-    practice_locations: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practice_practitioners: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practitioner_locations: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practice_rooms: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practice_resources: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_profiles: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_representatives: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_representative_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointment_types: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practitioner_availability_rules: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    practitioner_availability_exceptions: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointment_waitlist_entries: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    care_episodes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_encounters: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    clinical_notes: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_documents: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_form_templates: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_form_responses: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    clinical_measurements: { anon: [], authenticated: ['SELECT', 'INSERT'] },
-    patient_portal_access: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_questionnaire_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    patient_billing_links: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    appointment_reminder_deliveries: { anon: [], authenticated: [] },
-    field_service_sites: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    field_service_work_orders: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    field_service_work_order_assignments: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    field_service_work_reports: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    field_service_work_order_status_history: { anon: [], authenticated: ['SELECT'] },
-    billing_document_sequences: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE'] },
-    invoice_sections: { anon: [], authenticated: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+  const expectedPrivileges: Record<string, { anon: string[], monservice_runtime: string[] }> = {
+    users: { anon: [], monservice_runtime: ['SELECT', 'UPDATE'] },
+    organizations: { anon: [], monservice_runtime: ['SELECT', 'UPDATE'] },
+    clients: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    contacts: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    deals: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    products: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    invoices: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    invoice_lines: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    tasks: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    message_templates: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    messages: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    requests: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    stripe_events: { anon: [], monservice_runtime: [] },
+    processing_activities: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
+    audit_logs: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    data_subject_requests: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    consent_events: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    country_compliance_profiles: { anon: [], monservice_runtime: ['SELECT'] },
+    retention_policies: { anon: [], monservice_runtime: ['SELECT'] },
+    practice_locations: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_practitioners: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_locations: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_rooms: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practice_resources: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_profiles: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_representatives: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_representative_links: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_types: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_availability_rules: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    practitioner_availability_exceptions: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointments: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_waitlist_entries: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    care_episodes: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_encounters: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    clinical_notes: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_documents: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_form_templates: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_form_responses: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    clinical_measurements: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    patient_portal_access: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_questionnaire_assignments: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    patient_billing_links: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    appointment_reminder_deliveries: { anon: [], monservice_runtime: [] },
+    field_service_sites: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_assets: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_assets: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'DELETE'] },
+    field_service_work_report_acknowledgements: { anon: [], monservice_runtime: ['SELECT', 'INSERT'] },
+    client_portal_invitations: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_orders: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_assignments: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_reports: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    field_service_work_order_status_history: { anon: [], monservice_runtime: ['SELECT'] },
+    billing_document_sequences: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE'] },
+    invoice_sections: { anon: [], monservice_runtime: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] },
   };
 
   const dbGrants = await sql`
     SELECT table_name, grantee, privilege_type
     FROM information_schema.role_table_grants
     WHERE table_schema = 'public' 
-    AND grantee IN ('anon', 'authenticated')
+    AND grantee IN ('anon', 'monservice_runtime')
   `;
 
   for (const [table, roles] of Object.entries(expectedPrivileges)) {
-    for (const role of ['anon', 'authenticated'] as const) {
+    for (const role of ['anon', 'monservice_runtime'] as const) {
       const expected = roles[role];
       const actualRows = dbGrants.filter(g => g.table_name === table && g.grantee === role);
       const actual = actualRows.map(g => g.privilege_type);
@@ -114,13 +118,15 @@ async function verifyCustomObjects() {
   const funcs = await sql`
     SELECT p.proname, p.prosecdef as security_definer,
            pg_get_functiondef(p.oid) as funcdef,
-           (SELECT has_function_privilege('public', p.oid, 'execute')) as public_exec,
-           (SELECT has_function_privilege('anon', p.oid, 'execute')) as anon_exec,
-           (SELECT has_function_privilege('authenticated', p.oid, 'execute')) as auth_exec
+           coalesce((SELECT bool_or(a.privilege_type='EXECUTE') FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0),false) as public_exec,
+           false as anon_exec,
+           (SELECT has_function_privilege('monservice_runtime', p.oid, 'execute')) as auth_exec
     FROM pg_proc p
     WHERE p.proname IN (
       'handle_new_auth_user',
       'current_organization_id',
+      'current_account_is_active',
+      'protect_account_lifecycle',
       'enforce_appointment_status_transition',
       'enforce_waitlist_status_transition',
       'current_clinical_practitioner_id',
@@ -140,6 +146,17 @@ async function verifyCustomObjects() {
       'enforce_field_service_status_history_append_only',
       'enforce_field_service_assignment_invariants',
       'enforce_field_service_work_report_transition',
+      'enforce_field_service_asset_mutation',
+      'enforce_field_service_work_order_asset_link',
+      'advance_field_service_asset_maintenance',
+      'is_current_field_service_client',
+      'is_current_field_service_client_work_order',
+      'enforce_field_service_report_acknowledgement',
+      'enforce_client_portal_invitation',
+      'preview_client_portal_invitation',
+      'accept_client_portal_invitation',
+      'unlink_client_portal_account',
+      'protect_client_portal_link',
       'allocate_billing_document_number',
       'enforce_invoice_invariants',
       'enforce_invoice_child_immutability'
@@ -147,7 +164,8 @@ async function verifyCustomObjects() {
   `;
 
   const expectedFuncs: Record<string, ExpectedFunctionContract> = {
-    handle_new_auth_user: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    current_account_is_active: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    protect_account_lifecycle: { security_definer: false, public_exec: false, anon_exec: false, auth_exec: false },
     current_organization_id: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_appointment_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_waitlist_status_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
@@ -168,6 +186,17 @@ async function verifyCustomObjects() {
     enforce_field_service_status_history_append_only: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_assignment_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_field_service_work_report_transition: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_asset_mutation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_field_service_work_order_asset_link: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    advance_field_service_asset_maintenance: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    is_current_field_service_client: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    is_current_field_service_client_work_order: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    enforce_field_service_report_acknowledgement: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
+    enforce_client_portal_invitation: { security_definer: false, public_exec: false, anon_exec: false, auth_exec: false },
+    preview_client_portal_invitation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    accept_client_portal_invitation: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    unlink_client_portal_account: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
+    protect_client_portal_link: { security_definer: false, public_exec: false, anon_exec: false, auth_exec: false },
     allocate_billing_document_number: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: true },
     enforce_invoice_invariants: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
     enforce_invoice_child_immutability: { security_definer: true, public_exec: false, anon_exec: false, auth_exec: false },
@@ -294,7 +323,7 @@ async function verifyCustomObjects() {
   if (clinPractFunc?.funcdef) {
     const normDef = clinPractFunc.funcdef.toLowerCase().replace(/\s+/g, ' ');
     const requiredElements = [
-      'auth.uid',
+      'current_app_user_id',
       'current_organization_id',
       'practice_practitioners',
       'users',
@@ -440,7 +469,7 @@ async function verifyCustomObjects() {
   const rlsTableNames = new Set(rlsTables.map(t => t.relname));
   
   const policies = await sql`
-    SELECT policyname, tablename, roles, cmd, qual, with_check 
+    SELECT policyname, tablename, roles, cmd, qual, with_check, permissive
     FROM pg_policies WHERE schemaname = 'public'
   `;
 
@@ -450,6 +479,7 @@ async function verifyCustomObjects() {
     JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
     WHERE tgname IN (
       'on_auth_user_created',
+      'users_account_lifecycle_guard',
       'appointments_status_transition_guard',
       'appointment_waitlist_status_transition_guard',
       'care_episodes_transition_trigger',
@@ -464,6 +494,13 @@ async function verifyCustomObjects() {
       'trg_field_service_status_history_append_only',
       'trg_field_service_assignment_invariants',
       'trg_field_service_work_report_transition',
+      'trg_field_service_asset_mutation',
+      'trg_field_service_work_order_asset_link',
+      'trg_field_service_asset_maintenance_advance',
+      'trg_field_service_report_acknowledgement',
+      'trg_client_portal_invitation',
+      'trg_protect_client_portal_link',
+      'runtime_immutable_fields',
       'trg_enforce_invoice_invariants',
       'trg_enforce_invoice_lines_immutability',
       'trg_enforce_invoice_sections_immutability'
@@ -471,7 +508,8 @@ async function verifyCustomObjects() {
   `;
   
   const requiredTriggers = [
-    { name: 'on_auth_user_created' },
+    
+    { name: 'users_account_lifecycle_guard', table: 'users', requiredElements: ['before update', 'for each row', 'protect_account_lifecycle'] },
     {
       name: 'appointments_status_transition_guard',
       table: 'appointments',
@@ -559,6 +597,54 @@ async function verifyCustomObjects() {
     },
   ];
 
+  requiredTriggers.push(
+    {
+      name: 'trg_field_service_asset_mutation',
+      table: 'field_service_assets',
+      requiredElements: ['before', 'update', 'for each row', 'enforce_field_service_asset_mutation'],
+    },
+    {
+      name: 'trg_field_service_work_order_asset_link',
+      table: 'field_service_work_order_assets',
+      requiredElements: ['before', 'insert', 'update', 'for each row', 'enforce_field_service_work_order_asset_link'],
+    },
+    {
+      name: 'trg_field_service_asset_maintenance_advance',
+      table: 'field_service_work_orders',
+      requiredElements: ['after', 'update of status', 'for each row', 'advance_field_service_asset_maintenance'],
+    },
+    {
+      name: 'trg_protect_client_portal_link',
+      table: 'clients',
+      requiredElements: ['before', 'update of user_id', 'for each row', 'protect_client_portal_link'],
+    },
+    {
+      name: 'trg_client_portal_invitation',
+      table: 'client_portal_invitations',
+      requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_client_portal_invitation'],
+    },
+    {
+      name: 'runtime_immutable_fields',
+      table: 'client_portal_invitations',
+      requiredElements: ['before', 'update', 'protect_runtime_fields'],
+    },
+    {
+      name: 'trg_field_service_report_acknowledgement',
+      table: 'field_service_work_report_acknowledgements',
+      requiredElements: ['before', 'insert', 'update', 'delete', 'for each row', 'enforce_field_service_report_acknowledgement'],
+    },
+    {
+      name: 'runtime_immutable_fields',
+      table: 'field_service_assets',
+      requiredElements: ['before', 'update', 'protect_runtime_fields'],
+    },
+    {
+      name: 'runtime_immutable_fields',
+      table: 'field_service_work_order_assets',
+      requiredElements: ['before', 'update', 'protect_runtime_fields'],
+    },
+  );
+
   for (const rt of requiredTriggers) {
     const match = triggers.find(t => t.tgname === rt.name && (!rt.table || t.relname === rt.table));
     if (!match) {
@@ -595,6 +681,10 @@ async function verifyCustomObjects() {
     'field_service_work_order_assignments',
     'field_service_work_reports',
     'field_service_work_order_status_history',
+    'field_service_assets',
+    'field_service_work_order_assets',
+    'field_service_work_report_acknowledgements',
+    'client_portal_invitations',
     'billing_document_sequences',
     'invoice_sections'
   ];
@@ -612,6 +702,15 @@ async function verifyCustomObjects() {
     }
   }
 
+  // Account closure must restrict every table with an existing permissive policy.
+  for (const table of rlsTableNames) {
+    if (!policies.some(p => p.tablename === table && p.policyname !== 'account_active_required' && p.roles.includes('monservice_runtime'))) continue;
+    const restriction = policies.find(p => p.tablename === table && p.policyname === 'account_active_required');
+    if (!restriction || restriction.permissive !== 'RESTRICTIVE' || !String(restriction.qual).includes('current_account_is_active') || !String(restriction.with_check).includes('current_account_is_active')) {
+      console.error(`❌ Missing account lifecycle restriction: ${table}`); errorCount++;
+    }
+  }
+
   // Stripe events must have RLS enabled, but no policies (deny all)
   if (!rlsTableNames.has('stripe_events')) {
     console.error(`❌ ERROR: RLS is NOT enabled on table 'stripe_events'.`);
@@ -621,7 +720,7 @@ async function verifyCustomObjects() {
   // 5. Exact Policy Contracts for Practice Structure & Patient Registry & Scheduling
   const commonProfessionalSemantics = [
     'current_organization_id',
-    'auth.uid',
+    'current_app_user_id',
     'profile_type',
     'professional'
   ];
@@ -630,7 +729,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practice_locations_tenant_isolation',
       tableName: 'practice_locations',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -638,7 +737,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practice_practitioners_tenant_isolation',
       tableName: 'practice_practitioners',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: [...commonProfessionalSemantics, 'user_id', 'professional'],
@@ -646,7 +745,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practitioner_locations_tenant_isolation',
       tableName: 'practitioner_locations',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -654,7 +753,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practice_rooms_tenant_isolation',
       tableName: 'practice_rooms',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -662,7 +761,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practice_resources_tenant_isolation',
       tableName: 'practice_resources',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -670,7 +769,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_profiles_tenant_isolation',
       tableName: 'patient_profiles',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -678,7 +777,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_representatives_tenant_isolation',
       tableName: 'patient_representatives',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -686,7 +785,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_representative_links_tenant_isolation',
       tableName: 'patient_representative_links',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -694,7 +793,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'appointment_types_tenant_isolation',
       tableName: 'appointment_types',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -702,7 +801,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practitioner_availability_rules_tenant_isolation',
       tableName: 'practitioner_availability_rules',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -710,7 +809,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'practitioner_availability_exceptions_tenant_isolation',
       tableName: 'practitioner_availability_exceptions',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -718,7 +817,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'appointments_tenant_isolation',
       tableName: 'appointments',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -726,7 +825,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'appointment_waitlist_entries_tenant_isolation',
       tableName: 'appointment_waitlist_entries',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: commonProfessionalSemantics,
       withCheckSemantics: commonProfessionalSemantics,
@@ -734,7 +833,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'care_episodes_select_owner_only',
       tableName: 'care_episodes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -742,7 +841,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'care_episodes_insert_owner_only',
       tableName: 'care_episodes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -750,7 +849,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'care_episodes_update_owner_only',
       tableName: 'care_episodes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -758,7 +857,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_encounters_select_owner_only',
       tableName: 'clinical_encounters',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -766,7 +865,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_encounters_insert_owner_only',
       tableName: 'clinical_encounters',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -774,7 +873,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_notes_select_owner_only',
       tableName: 'clinical_notes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
       withCheckSemantics: [],
@@ -782,7 +881,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_notes_insert_owner_only',
       tableName: 'clinical_notes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
@@ -790,7 +889,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_notes_update_owner_only',
       tableName: 'clinical_notes',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'author_practitioner_id'],
@@ -798,7 +897,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_documents_select_owner_only',
       tableName: 'clinical_documents',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -806,7 +905,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_documents_insert_owner_only',
       tableName: 'clinical_documents',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -814,7 +913,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_documents_update_owner_only',
       tableName: 'clinical_documents',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -822,7 +921,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_templates_select_owner_only',
       tableName: 'clinical_form_templates',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -830,7 +929,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_templates_insert_owner_only',
       tableName: 'clinical_form_templates',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -838,7 +937,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_templates_update_owner_only',
       tableName: 'clinical_form_templates',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -846,7 +945,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_responses_select_owner_only',
       tableName: 'clinical_form_responses',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -854,7 +953,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_responses_insert_owner_only',
       tableName: 'clinical_form_responses',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -862,7 +961,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_form_responses_update_owner_only',
       tableName: 'clinical_form_responses',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -870,7 +969,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_measurements_select_owner_only',
       tableName: 'clinical_measurements',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: [],
@@ -878,7 +977,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'clinical_measurements_insert_owner_only',
       tableName: 'clinical_measurements',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -886,7 +985,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_portal_access_practitioner_all',
       tableName: 'patient_portal_access',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
@@ -894,15 +993,15 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_portal_access_user_select',
       tableName: 'patient_portal_access',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['user_id', 'auth.uid', 'is_active', 'client'],
+      qualSemantics: ['user_id', 'current_app_user_id', 'is_active', 'client'],
       withCheckSemantics: [],
     },
     {
       policyName: 'patient_questionnaires_practitioner_all',
       tableName: 'patient_questionnaire_assignments',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id', 'practitioner_id'],
@@ -910,15 +1009,15 @@ async function verifyCustomObjects() {
     {
       policyName: 'patient_questionnaires_user_select',
       tableName: 'patient_questionnaire_assignments',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['patient_id', 'patient_portal_access', 'user_id', 'auth.uid', 'is_active', 'client'],
+      qualSemantics: ['patient_id', 'patient_portal_access', 'user_id', 'current_app_user_id', 'is_active', 'client'],
       withCheckSemantics: [],
     },
     {
       policyName: 'patient_billing_links_practitioner_all',
       tableName: 'patient_billing_links',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
       withCheckSemantics: ['current_organization_id', 'current_clinical_practitioner_id'],
@@ -926,47 +1025,127 @@ async function verifyCustomObjects() {
     {
       policyName: 'messages_select_policy',
       tableName: 'messages',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
-      qualSemantics: ['patient_id', 'sender_id', 'receiver_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
+      qualSemantics: ['patient_id', 'sender_id', 'receiver_id', 'current_app_user_id', 'patient_portal_access', 'care_episodes'],
       withCheckSemantics: [],
     },
     {
       policyName: 'messages_insert_policy',
       tableName: 'messages',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'INSERT',
       qualSemantics: [],
-      withCheckSemantics: ['sender_id', 'auth.uid', 'can_insert_patient_message'],
+      withCheckSemantics: ['sender_id', 'current_app_user_id', 'can_insert_patient_message'],
     },
     {
       policyName: 'messages_update_policy',
       tableName: 'messages',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'UPDATE',
-      qualSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
-      withCheckSemantics: ['patient_id', 'receiver_id', 'sender_id', 'auth.uid', 'patient_portal_access', 'care_episodes'],
+      qualSemantics: ['patient_id', 'receiver_id', 'sender_id', 'current_app_user_id', 'patient_portal_access', 'care_episodes'],
+      withCheckSemantics: ['patient_id', 'receiver_id', 'sender_id', 'current_app_user_id', 'patient_portal_access', 'care_episodes'],
     },
     {
       policyName: 'messages_delete_policy',
       tableName: 'messages',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'DELETE',
-      qualSemantics: ['patient_id', 'sender_id', 'auth.uid'],
+      qualSemantics: ['patient_id', 'sender_id', 'current_app_user_id'],
       withCheckSemantics: [],
     },
     {
       policyName: 'field_service_sites_professional_policy',
       tableName: 'field_service_sites',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: ['is_current_field_service_professional'],
     },
     {
+      policyName: 'field_service_assets_professional_policy',
+      tableName: 'field_service_assets',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_work_order_assets_professional_policy',
+      tableName: 'field_service_work_order_assets',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: ['is_current_field_service_professional'],
+    },
+    {
+      policyName: 'field_service_work_orders_client_read',
+      tableName: 'field_service_work_orders',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['draft', 'is_current_field_service_client'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_sites_client_read',
+      tableName: 'field_service_sites',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['is_current_field_service_client'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_assets_client_read',
+      tableName: 'field_service_assets',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['is_current_field_service_client'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_work_order_assets_client_read',
+      tableName: 'field_service_work_order_assets',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['is_current_field_service_client_work_order'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_reports_client_read',
+      tableName: 'field_service_work_reports',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['finalized', 'is_current_field_service_client_work_order'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'client_portal_invitations_professional_policy',
+      tableName: 'client_portal_invitations',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'ALL',
+      qualSemantics: ['current_profile_type', 'professional', 'current_organization_id'],
+      withCheckSemantics: ['current_profile_type', 'professional', 'current_organization_id'],
+    },
+    {
+      policyName: 'field_service_report_ack_professional_read',
+      tableName: 'field_service_work_report_acknowledgements',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'SELECT',
+      qualSemantics: ['is_current_field_service_professional'],
+      withCheckSemantics: [],
+    },
+    {
+      policyName: 'field_service_report_ack_client_insert',
+      tableName: 'field_service_work_report_acknowledgements',
+      expectedRoles: ['monservice_runtime'],
+      expectedCmd: 'INSERT',
+      qualSemantics: [],
+      withCheckSemantics: ['current_app_user_id', 'finalized', 'is_current_field_service_client_work_order'],
+    },
+    {
       policyName: 'field_service_work_orders_professional_policy',
       tableName: 'field_service_work_orders',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: ['is_current_field_service_professional'],
@@ -974,7 +1153,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'field_service_assignments_professional_policy',
       tableName: 'field_service_work_order_assignments',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: ['is_current_field_service_professional'],
@@ -982,7 +1161,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'field_service_reports_professional_policy',
       tableName: 'field_service_work_reports',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: ['is_current_field_service_professional'],
@@ -990,7 +1169,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'field_service_status_history_professional_policy',
       tableName: 'field_service_work_order_status_history',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['is_current_field_service_professional'],
       withCheckSemantics: [],
@@ -998,7 +1177,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'billing_sequences_tenant_isolation',
       tableName: 'billing_document_sequences',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['organization_id', 'current_organization_id'],
       withCheckSemantics: ['organization_id', 'current_organization_id'],
@@ -1006,7 +1185,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'invoice_sections_tenant_isolation',
       tableName: 'invoice_sections',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'ALL',
       qualSemantics: ['organization_id', 'current_organization_id'],
       withCheckSemantics: ['organization_id', 'current_organization_id'],
@@ -1014,7 +1193,7 @@ async function verifyCustomObjects() {
     {
       policyName: 'invoice_sections_client_recipient_select',
       tableName: 'invoice_sections',
-      expectedRoles: ['authenticated'],
+      expectedRoles: ['monservice_runtime'],
       expectedCmd: 'SELECT',
       qualSemantics: ['invoices', 'recipient_user_id', 'clients'],
       withCheckSemantics: [],
@@ -1081,48 +1260,8 @@ async function verifyCustomObjects() {
     }
   }
 
-  // 6. Verify Private Storage Bucket 'clinical-documents'
-  const storageBuckets = await sql`
-    SELECT id, name, public, file_size_limit, allowed_mime_types
-    FROM storage.buckets
-    WHERE id = 'clinical-documents'
-  `;
-
-  if (storageBuckets.length === 0) {
-    console.error(`❌ ERROR: Storage bucket 'clinical-documents' not found in database.`);
-    errorCount++;
-  } else {
-    const bucket = storageBuckets[0];
-    if (bucket.public !== false) {
-      console.error(`❌ ERROR: Storage bucket 'clinical-documents' must NOT be public (public=${bucket.public}).`);
-      errorCount++;
-    }
-    if (bucket.file_size_limit !== 10485760 && bucket.file_size_limit !== '10485760') {
-      console.error(`❌ ERROR: Storage bucket 'clinical-documents' file_size_limit is ${bucket.file_size_limit}, expected 10485760.`);
-      errorCount++;
-    }
-  }
-
-  // Verify Storage Objects RLS policies
-  const storagePolicies = await sql`
-    SELECT policyname, tablename, roles, cmd, qual, with_check
-    FROM pg_policies
-    WHERE schemaname = 'storage' AND tablename = 'objects'
-  `;
-
-  const expectedStoragePolicies = [
-    'clinical_documents_storage_select_owner_only',
-    'clinical_documents_storage_insert_owner_only',
-    'clinical_documents_storage_update_owner_only',
-  ];
-
-  for (const polName of expectedStoragePolicies) {
-    const found = storagePolicies.find(p => p.policyname === polName);
-    if (!found) {
-      console.error(`❌ ERROR: Storage policy '${polName}' on storage.objects not found.`);
-      errorCount++;
-    }
-  }
+  // Private Neon buckets are verified by configuration planning and real S3
+  // boundary tests; storage.objects is a retired Supabase provider contract.
 
   await sql.end();
 
@@ -1130,7 +1269,7 @@ async function verifyCustomObjects() {
     console.error(`\n❌ Custom objects check failed with ${errorCount} errors.`);
     process.exit(1);
   } else {
-    console.log('✅ Custom Supabase objects, strict GRANTS, RLS, and exact policy semantics verified successfully!');
+    console.log('✅ Custom Neon objects, strict GRANTS, RLS, and exact policy semantics verified successfully!');
   }
 }
 

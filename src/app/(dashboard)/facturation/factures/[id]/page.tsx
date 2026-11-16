@@ -50,20 +50,6 @@ export default function InvoiceDetailPage(props: { params: Promise<{ id: string 
     if (user) loadData();
   }, [params.id, user, router]);
 
-  const handleMarkAsPaid = async () => {
-    if (!user?.organizationId || !invoice) return;
-    if (window.confirm("Marquer cette facture comme payée ?")) {
-      await invoiceActions.updateAction(invoice.id, user.organizationId, {
-        status: 'paid',
-        paidAt: new Date().toISOString(),
-      });
-      alert('Facture payée');
-      router.refresh();
-      const inv = await invoiceActions.findByIdAction(invoice.id, user.organizationId);
-      setInvoice(inv);
-    }
-  };
-
   const handleDelete = async () => {
     if (!user?.organizationId || !invoice) return;
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
@@ -82,7 +68,6 @@ export default function InvoiceDetailPage(props: { params: Promise<{ id: string 
         invoice={invoice} 
         client={client || undefined} 
         products={products} 
-        onMarkAsPaid={handleMarkAsPaid}
         onDelete={handleDelete}
       />
     </div>

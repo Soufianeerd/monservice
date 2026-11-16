@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   description: "Plateforme CRM moderne",
 };
 
+import { cookies } from "next/headers";
 import { Toaster } from "react-hot-toast";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
@@ -28,22 +29,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const theme = (await cookies()).get("monservice_theme")?.value === "dark" ? "dark" : "light";
   const messages = await getMessages();
   const locale = await getLocale();
 
   return (
     <html
       lang={locale}
+      data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <link rel="alternate" hrefLang="fr" href="/fr" />
-        <link rel="alternate" hrefLang="de" href="/de" />
-        <link rel="alternate" hrefLang="nl" href="/nl" />
-        <link rel="alternate" hrefLang="en" href="/en" />
-        <link rel="alternate" hrefLang="x-default" href="/" />
-      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages} locale={locale}>
           <AuthProvider>

@@ -29,7 +29,7 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
     render(<Sidebar />);
     
     expect(screen.getByText('Clients')).toBeInTheDocument();
-    expect(screen.getByText('Deals')).toBeInTheDocument();
+    expect(screen.getByText('Opportunités')).toBeInTheDocument();
     expect(screen.getByText('Marketplace')).toBeInTheDocument();
     expect(screen.getByText('Messagerie')).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
     render(<Sidebar />);
     
     expect(screen.queryByText('Clients')).not.toBeInTheDocument();
-    expect(screen.queryByText('Deals')).not.toBeInTheDocument();
+    expect(screen.queryByText('Opportunités')).not.toBeInTheDocument();
     expect(screen.queryByText('Marketplace')).not.toBeInTheDocument();
     expect(screen.queryByText('Messagerie')).not.toBeInTheDocument();
     
@@ -50,7 +50,7 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
 
     // Et affiche les autres modules restants
     expect(screen.getByText('Tableau de bord')).toBeInTheDocument();
-    expect(screen.getByText('Facturation')).toBeInTheDocument();
+    expect(screen.getByText('Factures patients')).toBeInTheDocument();
     expect(screen.getByText('Agenda')).toBeInTheDocument();
     expect(screen.getByText('Paramètres')).toBeInTheDocument();
   });
@@ -65,7 +65,7 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
     render(<Sidebar />);
     
     // Au lieu de "Produits", on doit voir "Séances de psychomotricité" dans le menu déroulant
-    expect(screen.getByText('Séances de psychomotricité')).toBeInTheDocument();
+    expect(screen.getByText('Prestations et tarifs')).toBeInTheDocument();
   });
 
   it('affiche la terminologie par défaut Consultations pour un espace santé sans profession spécifique', () => {
@@ -76,7 +76,7 @@ describe('Sidebar Workspace Dynamic Navigation', () => {
 
     render(<Sidebar />);
     
-    expect(screen.getByText('Consultations')).toBeInTheDocument();
+    expect(screen.getByText('Prestations et tarifs')).toBeInTheDocument();
   });
 
   it('affiche la navigation client sans utiliser le workspace', () => {

@@ -68,7 +68,7 @@ describe('PatientList Component', () => {
   it('renders title, actions and patient rows correctly', () => {
     render(<PatientList initialData={initialData} />);
 
-    expect(screen.getByText('Registre des Patients')).toBeInTheDocument();
+    expect(screen.getByText('Patients')).toBeInTheDocument();
     expect(screen.getByText('Nouveau patient')).toBeInTheDocument();
 
     // Patient 1

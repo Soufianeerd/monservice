@@ -1,11 +1,11 @@
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientInvoiceDTO } from '@/lib/data/dto/client-billing.dto';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { EyeIcon, DownloadIcon } from 'lucide-react';
 import { generateInvoicePDF } from '@/lib/utils/pdf-generator';
 
-export default function InvoiceList({ invoices }: { invoices: Invoice[] }) {
+export default function InvoiceList({ invoices }: { invoices: ClientInvoiceDTO[] }) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid': return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Payée</span>;
@@ -15,7 +15,7 @@ export default function InvoiceList({ invoices }: { invoices: Invoice[] }) {
     }
   };
 
-  const handleDownload = async (invoice: Invoice) => {
+  const handleDownload = async (invoice: ClientInvoiceDTO) => {
     try {
       alert('Génération PDF (Simulée) pour ' + invoice.number);
     } catch (error) {

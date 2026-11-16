@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { invoiceService } from '@/lib/services/invoice.service';
-import { isStripeConfigured } from '@/lib/stripe';
 import { requireSession } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/api-response';
-import { AppError } from '@/lib/errors';
+import { requireBillingReadAuthority } from '@/lib/billing/authorization';
 
 /**
- * Crée une session de paiement Stripe pour une facture.
+ * Ancien accès de paiement : les honoraires sont réglés au professionnel.
+ * Les contrôles de lecture restent actifs ; aucune session Stripe n’est créée.
  *
  * L'ancienne version acceptait n'importe quel `invoiceId` sans
  * authentification : elle permettait d'énumérer les factures et d'en lire les
@@ -14,10 +14,6 @@ import { AppError } from '@/lib/errors';
  * module, ce qui faisait échouer le build (MS-010).
  */
 export async function POST(req: Request) {
-  if (!isStripeConfigured()) {
-    return NextResponse.json({ error: 'Stripe non configuré' }, { status: 503 });
-  }
-
   try {
     const ctx = await requireSession();
 
@@ -40,28 +36,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Seuls le professionnel émetteur de l'organisation ou le client destinataire
-    // (recipientUserId ou clients.userId) peuvent déclencher un paiement pour cette facture.
-    const isIssuer =
-      ctx.profileType === 'professional' &&
-      Boolean(ctx.organizationId) &&
-      invoice.organizationId === ctx.organizationId;
-    
-    let isRecipient =
-      ctx.profileType === 'client' &&
-      invoice.recipientUserId === ctx.userId;
-
-    if (!isRecipient && ctx.profileType === 'client' && invoice.clientId) {
-      const { clientService } = await import('@/lib/services/client.service');
-      const client = await clientService.findById(invoice.clientId, invoice.organizationId);
-      if (client?.userId === ctx.userId) {
-        isRecipient = true;
-      }
-    }
-
-    if (!isIssuer && !isRecipient) {
-      throw new AppError('Accès refusé à cette facture', 403, 'FORBIDDEN');
-    }
+    await requireBillingReadAuthority(invoice, ctx.userId);
 
     if (invoice.status === 'paid') {
       return NextResponse.json({ error: 'Facture déjà payée' }, { status: 409 });
@@ -75,15 +50,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Aucun montant restant dû sur cette facture' }, { status: 400 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const { createInvoicePaymentSession } = await import('@/lib/stripe/payment');
-    const paymentUrl = await createInvoicePaymentSession(
-      invoice,
-      `${baseUrl}/client/invoices/${invoice.id}?payment=success`,
-      `${baseUrl}/client/invoices/${invoice.id}?payment=cancel`,
+    return NextResponse.json(
+      { error: 'Le règlement de cette facture se fait directement auprès du professionnel.' },
+      { status: 410 },
     );
-
-    return NextResponse.json({ url: paymentUrl });
   } catch (error) {
     return toErrorResponse(error, 'Erreur lors de la création de la session de paiement');
   }

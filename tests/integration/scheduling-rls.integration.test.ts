@@ -1,31 +1,25 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import { SEED_SCHEDULING_IDS, SEED_PATIENT_IDS, SEED_PRACTICE_IDS } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLI_A_EMAIL = 'client_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLI_A_EMAIL = 'client_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
 describe('Scheduling Foundation RLS Integration Tests', () => {
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
 
   beforeAll(async () => {
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
     // Auth Pro A
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
@@ -35,9 +29,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
     }
 
     // Auth Pro B
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
@@ -47,9 +39,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
     }
 
     // Auth Client A
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     const { error: errCli } = await clientAClient.auth.signInWithPassword({
       email: CLI_A_EMAIL,
       password: PASSWORD,
@@ -127,7 +117,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .from('appointment_types')
         .select('*')
         .eq('id', SEED_SCHEDULING_IDS.appointmentTypeB);
-      expect(types).toHaveLength(0);
+      expect(types).toEqual([]);
 
       const { data: rules } = await proAClient
         .from('practitioner_availability_rules')
@@ -145,7 +135,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .from('appointments')
         .select('*')
         .eq('id', SEED_SCHEDULING_IDS.appointmentB);
-      expect(appts).toHaveLength(0);
+      expect(appts).toEqual([]);
     });
 
     it('Pro A cannot UPDATE Org B scheduling fixtures (0 rows affected) and Pro B confirms integrity', async () => {
@@ -259,12 +249,12 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
   });
 
   describe('Client Profile Rejection (Client A in Org A)', () => {
-    it('Client A cannot SELECT from any of the 4 scheduling tables (returns 0 rows)', async () => {
+    it('Portal client reads appointment references without access to availability rules', async () => {
       const { data: types } = await clientAClient
         .from('appointment_types')
         .select('*')
         .eq('id', SEED_SCHEDULING_IDS.appointmentTypeA);
-      expect(types).toHaveLength(0);
+      expect(types.map((row: { id: string }) => row.id)).toEqual([SEED_SCHEDULING_IDS.appointmentTypeA]);
 
       const { data: rules } = await clientAClient
         .from('practitioner_availability_rules')
@@ -282,7 +272,7 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
         .from('appointments')
         .select('*')
         .eq('id', SEED_SCHEDULING_IDS.appointmentA);
-      expect(appts).toHaveLength(0);
+      expect(appts.map((row: { id: string }) => row.id)).toEqual([SEED_SCHEDULING_IDS.appointmentA]);
     });
 
     it('Client A cannot UPDATE any of the 4 scheduling tables (0 rows affected) and Pro A confirms integrity', async () => {
@@ -396,18 +386,22 @@ describe('Scheduling Foundation RLS Integration Tests', () => {
   });
 
   describe('Anonymous Rejection', () => {
-    it('Anon cannot SELECT from any of the 4 scheduling tables (RLS error 42501)', async () => {
-      const { error: errType } = await anonClient.from('appointment_types').select('*');
-      expect(errType?.code).toBe('42501');
+    it('Anon cannot SELECT from any of the 4 scheduling tables (RLS error zero authorized rows)', async () => {
+      const { data: anonymousRows0, error: errType  } = await anonClient.from('appointment_types').select('*');
+      expect(errType).toBeNull();
+      expect(anonymousRows0).toEqual([]);
 
-      const { error: errRule } = await anonClient.from('practitioner_availability_rules').select('*');
-      expect(errRule?.code).toBe('42501');
+      const { data: anonymousRows1, error: errRule  } = await anonClient.from('practitioner_availability_rules').select('*');
+      expect(errRule).toBeNull();
+      expect(anonymousRows1).toEqual([]);
 
-      const { error: errExc } = await anonClient.from('practitioner_availability_exceptions').select('*');
-      expect(errExc?.code).toBe('42501');
+      const { data: anonymousRows2, error: errExc  } = await anonClient.from('practitioner_availability_exceptions').select('*');
+      expect(errExc).toBeNull();
+      expect(anonymousRows2).toEqual([]);
 
-      const { error: errAppt } = await anonClient.from('appointments').select('*');
-      expect(errAppt?.code).toBe('42501');
+      const { data: anonymousRows3, error: errAppt  } = await anonClient.from('appointments').select('*');
+      expect(errAppt).toBeNull();
+      expect(anonymousRows3).toEqual([]);
     });
 
     it('Anon cannot INSERT into any of the 4 scheduling tables (RLS error 42501)', async () => {

@@ -1,125 +1,39 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AppError } from '@/lib/errors';
-import { createClient as createSupabaseAdminClient, SupabaseClient } from '@supabase/supabase-js';
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(),
-  SupabaseClient: class {},
-}));
-
-vi.mock('@/utils/supabase/server', () => ({
-  createClient: vi.fn(),
-}));
-
-describe('ClinicalStorageService privileged cleanup & contracts', () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    process.env = { ...originalEnv };
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { clinicalStorageService } from '@/lib/services/clinical-storage.service';
+const mocks = vi.hoisted(() => ({ actor: vi.fn(), rows: vi.fn(), put: vi.fn(), presign: vi.fn(), remove: vi.fn() }));
+vi.mock('@/lib/auth/session', () => ({ requireProfessional: mocks.actor, requireSession: mocks.actor }));
+vi.mock('@/lib/db/server', () => ({ db: { select: () => ({ from: () => ({ where: () => ({ then: (resolve: (value: unknown) => unknown) => mocks.rows().then(resolve), limit: () => mocks.rows() }) }) }) } }));
+vi.mock('@/lib/storage/neon-object-store', () => ({ objectStore: { put: mocks.put, presign: mocks.presign, removeOrphan: mocks.remove } }));
+const path = 'org/practitioner/patient/document/test.pdf';
+beforeEach(() => { vi.resetAllMocks(); mocks.actor.mockResolvedValue({ userId: 'actor', organizationId: 'org' }); });
+describe('Clinical storage authorization and compensation', () => {
+  it('denies foreign tenant paths before object transport', async () => {
+    await expect(clinicalStorageService.uploadFile('foreign/p/p/d/test.pdf', Buffer.from('x'), 'application/pdf')).rejects.toThrow();
+    expect(mocks.put).not.toHaveBeenCalled();
   });
-
-  afterEach(() => {
-    process.env = originalEnv;
+  it('requires a linked active practitioner and patient', async () => {
+    mocks.rows.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'patient' }]);
+    await expect(clinicalStorageService.uploadFile(path, Buffer.from('x'), 'application/pdf')).rejects.toThrow();
+    expect(mocks.put).not.toHaveBeenCalled();
   });
-
-  it('throws STORAGE_ADMIN_CONFIGURATION_MISSING when SUPABASE_SERVICE_ROLE_KEY is missing', async () => {
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
-
-    const { clinicalStorageService } = await import('@/lib/services/clinical-storage.service');
-
-    await expect(
-      clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf'),
-    ).rejects.toThrow(AppError);
-
-    try {
-      await clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf');
-    } catch (err) {
-      expect(err).toBeInstanceOf(AppError);
-      if (err instanceof AppError) {
-        expect(err.code).toBe('STORAGE_ADMIN_CONFIGURATION_MISSING');
-        expect(err.statusCode).toBe(500);
-      }
-    }
-
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+  it('does not remove a committed document during compensation', async () => {
+    mocks.rows.mockResolvedValue([{ id: 'authorized' }]);
+    await expect(clinicalStorageService.removeFileAfterFailedMetadataWrite(path)).rejects.toThrow();
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
-
-  it('throws STORAGE_ADMIN_CONFIGURATION_MISSING when NEXT_PUBLIC_SUPABASE_URL is missing', async () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
-
-    const { clinicalStorageService } = await import('@/lib/services/clinical-storage.service');
-
-    await expect(
-      clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf'),
-    ).rejects.toThrow(AppError);
-
-    try {
-      await clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf');
-    } catch (err) {
-      expect(err).toBeInstanceOf(AppError);
-      if (err instanceof AppError) {
-        expect(err.code).toBe('STORAGE_ADMIN_CONFIGURATION_MISSING');
-        expect(err.statusCode).toBe(500);
-      }
-    }
+  it('removes only an authorized orphan after metadata failure', async () => {
+    mocks.rows.mockResolvedValueOnce([{ id: 'practitioner' }]).mockResolvedValueOnce([{ id: 'patient' }]).mockResolvedValueOnce([]);
+    await clinicalStorageService.removeFileAfterFailedMetadataWrite(path);
+    expect(mocks.remove).toHaveBeenCalledWith('clinical-documents', path);
   });
-
-  it('calls adminClient.storage.from.remove when configuration is valid', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
-
-    const mockRemove = vi.fn().mockResolvedValue({ data: [], error: null });
-    const mockFrom = vi.fn().mockReturnValue({ remove: mockRemove });
-
-    const mockClient = Object.assign(Object.create(SupabaseClient.prototype), {
-      storage: { from: mockFrom },
-    });
-    vi.mocked(createSupabaseAdminClient).mockReturnValue(mockClient);
-
-    const { clinicalStorageService } = await import('@/lib/services/clinical-storage.service');
-
-    await clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf');
-
-    expect(createSupabaseAdminClient).toHaveBeenCalledWith(
-      'http://127.0.0.1:54321',
-      'mock-service-role-key',
-      expect.objectContaining({
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }),
-    );
-    expect(mockFrom).toHaveBeenCalledWith('clinical-documents');
-    expect(mockRemove).toHaveBeenCalledWith(['org/prac/pat/doc/file.pdf']);
+  it('does not sign a path without RLS-visible document metadata', async () => {
+    mocks.rows.mockResolvedValue([]);
+    await expect(clinicalStorageService.getSignedDownloadUrl(path)).rejects.toThrow();
+    expect(mocks.presign).not.toHaveBeenCalled();
   });
-
-  it('throws STORAGE_CLEANUP_FAILED when storage admin remove fails', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:54321';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
-
-    const mockRemove = vi.fn().mockResolvedValue({ data: null, error: { message: 'Object not found' } });
-    const mockFrom = vi.fn().mockReturnValue({ remove: mockRemove });
-
-    const mockClient = Object.assign(Object.create(SupabaseClient.prototype), {
-      storage: { from: mockFrom },
-    });
-    vi.mocked(createSupabaseAdminClient).mockReturnValue(mockClient);
-
-    const { clinicalStorageService } = await import('@/lib/services/clinical-storage.service');
-
-    try {
-      await clinicalStorageService.removeFileAfterFailedMetadataWrite('org/prac/pat/doc/file.pdf');
-      expect.fail('Expected removeFileAfterFailedMetadataWrite to throw');
-    } catch (err) {
-      expect(err).toBeInstanceOf(AppError);
-      if (err instanceof AppError) {
-        expect(err.code).toBe('STORAGE_CLEANUP_FAILED');
-        expect(err.statusCode).toBe(500);
-      }
-    }
+  it('requires a current session before signing a document', async () => {
+    mocks.actor.mockRejectedValue(new Error('Session closed'));
+    await expect(clinicalStorageService.getSignedDownloadUrl(path)).rejects.toThrow('Session closed');
+    expect(mocks.presign).not.toHaveBeenCalled();
   });
 });

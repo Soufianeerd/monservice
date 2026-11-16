@@ -14,9 +14,12 @@ import {
   check,
   jsonb,
   foreignKey,
+  primaryKey,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
+import type { FieldServiceAssetCategory, FieldServiceAssetStatus } from '@/lib/workspaces/field-service/assets';
 import type {
   InvoiceLineType,
   InvoiceUnitCode,
@@ -73,6 +76,7 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   password: text('password'),
+  accountClosedAt: timestamp('account_closed_at', { withTimezone: true }),
   name: text('name'),
   profileType: text('profile_type').notNull(), // 'client' | 'professional'
   organizationId: text('organization_id'),
@@ -557,6 +561,28 @@ export const stripeEvents = sqliteTable('stripe_events', {
   id: text('id').primaryKey(), // event.id fourni par Stripe
   type: text('type').notNull(),
   processedAt: text('processed_at').notNull(),
+});
+
+// Provider credentials never replace stable application foreign keys.
+export const userIdentities = pgTable('user_identities', {
+  appUserId: text('app_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  provider: text('provider').notNull(),
+  providerUserId: text('provider_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull(),
+  linkageMethod: text('linkage_method').notNull(),
+}, table => [
+  primaryKey({ columns: [table.provider,table.providerUserId] }),
+  unique('user_identities_app_user_id_provider_key').on(table.appUserId,table.provider),
+  check('user_identities_provider_check',sql`${table.provider} IN ('neon','supabase')`),
+  check('user_identities_linkage_method_check',sql`${table.linkageMethod} IN ('provider_signup','verified_reenrollment','source_import','synthetic_fixture')`),
+]);
+export const identityReenrollments = pgTable('identity_reenrollments', {
+  appUserId: text('app_user_id').primaryKey().references(() => users.id, { onDelete: 'restrict' }),
+  verifiedSourceEmail: text('verified_source_email').notNull().unique(),
+  sourceProviderUserId: text('source_provider_user_id'),
+  importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
 });
 
 // Legal Entities
@@ -1625,6 +1651,7 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
 }, (t) => [
   uniqueIndex('field_service_work_orders_org_ref_unique').on(t.organizationId, t.reference),
   uniqueIndex('field_service_work_orders_id_org_unique').on(t.id, t.organizationId),
+  uniqueIndex('field_service_work_orders_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
   index('field_service_work_orders_org_status_idx').on(t.organizationId, t.status),
   index('field_service_work_orders_org_sched_start_idx').on(t.organizationId, t.scheduledStart),
   index('field_service_work_orders_org_client_idx').on(t.organizationId, t.clientId),
@@ -1754,4 +1781,134 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
   })
 ]);
 
+// 6. Field Service Customer Assets (Session 19)
+export const fieldServiceAssets = sqliteTable('field_service_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  siteId: text('site_id'),
+  category: text('category').$type<FieldServiceAssetCategory>().notNull().default('other'),
+  label: text('label').notNull(),
+  manufacturer: text('manufacturer'),
+  model: text('model'),
+  serialNumber: text('serial_number'),
+  installedOn: date('installed_on'),
+  warrantyEndsOn: date('warranty_ends_on'),
+  status: text('status').$type<FieldServiceAssetStatus>().notNull().default('active'),
+  notes: text('notes'),
+  maintenanceIntervalMonths: integer('maintenance_interval_months'),
+  nextMaintenanceOn: date('next_maintenance_on'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_assets_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  uniqueIndex('field_service_assets_org_serial_unique')
+    .on(t.organizationId, t.manufacturer, t.serialNumber)
+    .where(sql`${t.serialNumber} IS NOT NULL`),
+  index('field_service_assets_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_assets_org_site_idx').on(t.organizationId, t.siteId),
+  index('field_service_assets_org_status_idx').on(t.organizationId, t.status),
+  index('field_service_assets_org_warranty_idx').on(t.organizationId, t.warrantyEndsOn),
+  index('field_service_assets_org_next_maintenance_idx').on(t.organizationId, t.nextMaintenanceOn),
+  check('field_service_assets_maintenance_interval_check', sql`${t.maintenanceIntervalMonths} IS NULL OR (${t.maintenanceIntervalMonths} >= 1 AND ${t.maintenanceIntervalMonths} <= 120)`),
+  check('field_service_assets_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
+  check('field_service_assets_category_check', sql`${t.category} IN ('heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other')`),
+  check('field_service_assets_status_check', sql`${t.status} IN ('active', 'out_of_service', 'decommissioned')`),
+  check('field_service_assets_serial_check', sql`${t.serialNumber} IS NULL OR (char_length(trim(${t.serialNumber})) >= 1 AND char_length(${t.serialNumber}) <= 120)`),
+  check('field_service_assets_manufacturer_check', sql`${t.manufacturer} IS NULL OR char_length(${t.manufacturer}) <= 120`),
+  check('field_service_assets_model_check', sql`${t.model} IS NULL OR char_length(${t.model}) <= 120`),
+  check('field_service_assets_notes_check', sql`${t.notes} IS NULL OR char_length(${t.notes}) <= 4000`),
+  check('field_service_assets_warranty_dates_check', sql`${t.installedOn} IS NULL OR ${t.warrantyEndsOn} IS NULL OR ${t.warrantyEndsOn} >= ${t.installedOn}`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_assets_client_fk'
+  }),
+  foreignKey({
+    columns: [t.siteId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
+    name: 'field_service_assets_site_fk'
+  })
+]);
+
+// 8. Client acknowledgement of a finalized work report (Session 20)
+export const FIELD_SERVICE_REPORT_ACK_DECISIONS = ['accepted', 'accepted_with_reservations'] as const;
+export type FieldServiceReportAckDecision = (typeof FIELD_SERVICE_REPORT_ACK_DECISIONS)[number];
+
+export const fieldServiceWorkReportAcknowledgements = sqliteTable('field_service_work_report_acknowledgements', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workReportId: text('work_report_id').notNull().references(() => fieldServiceWorkReports.id),
+  acknowledgedByUserId: text('acknowledged_by_user_id').notNull(),
+  signerName: text('signer_name').notNull(),
+  decision: text('decision').$type<FieldServiceReportAckDecision>().notNull().default('accepted'),
+  comment: text('comment'),
+  acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_report_ack_report_unique').on(t.workReportId),
+  index('field_service_report_ack_org_idx').on(t.organizationId, t.acknowledgedAt),
+  check('field_service_report_ack_signer_check', sql`char_length(trim(${t.signerName})) >= 2 AND char_length(${t.signerName}) <= 120`),
+  check('field_service_report_ack_decision_check', sql`${t.decision} IN ('accepted', 'accepted_with_reservations')`),
+  check('field_service_report_ack_comment_check', sql`${t.comment} IS NULL OR char_length(${t.comment}) <= 2000`),
+  check('field_service_report_ack_reservations_check', sql`${t.decision} = 'accepted' OR (${t.comment} IS NOT NULL AND char_length(trim(${t.comment})) >= 3)`),
+  foreignKey({
+    columns: [t.acknowledgedByUserId],
+    foreignColumns: [users.id],
+    name: 'field_service_report_ack_user_fk'
+  })
+]);
+
+// Invitation d'un client au portail (0017). Le jeton n'est jamais stocké :
+// seule son empreinte SHA-256 l'est. Liaison via accept_client_portal_invitation.
+export const clientPortalInvitations = sqliteTable('client_portal_invitations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('client_portal_invitations_token_hash_unique').on(t.tokenHash),
+  uniqueIndex('client_portal_invitations_pending_unique').on(t.clientId).where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  index('client_portal_invitations_org_client_idx').on(t.organizationId, t.clientId, t.createdAt),
+  check('client_portal_invitations_email_check', sql`${t.email} = lower(btrim(${t.email})) AND char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('client_portal_invitations_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('client_portal_invitations_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('client_portal_invitations_accepted_check', sql`(${t.acceptedAt} IS NULL) = (${t.acceptedByUserId} IS NULL)`),
+  check('client_portal_invitations_final_state_check', sql`${t.acceptedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'client_portal_invitations_client_fk'
+  })
+]);
+
+// 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
+export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  workOrderId: text('work_order_id').notNull(),
+  assetId: text('asset_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_work_order_assets_wo_asset_unique').on(t.workOrderId, t.assetId),
+  index('field_service_work_order_assets_org_asset_idx').on(t.organizationId, t.assetId),
+  index('field_service_work_order_assets_org_wo_idx').on(t.organizationId, t.workOrderId),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId, fieldServiceWorkOrders.clientId],
+    name: 'field_service_work_order_assets_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.assetId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceAssets.id, fieldServiceAssets.organizationId, fieldServiceAssets.clientId],
+    name: 'field_service_work_order_assets_asset_fk'
+  })
+]);
 

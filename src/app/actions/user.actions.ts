@@ -18,7 +18,7 @@ import { profileUpdateSchema } from '@/lib/validation/schemas';
  * membres de l'organisation de l'appelant, sans mot de passe.
  *
  * La recherche d'utilisateur par e-mail n'est plus exposée non plus : depuis
- * la bascule vers Supabase Auth, les identifiants vivent dans `auth.users` et
+ * la bascule vers Neon Auth, les identifiants vivent dans le fournisseur Auth et
  * l'application n'a plus à les manipuler.
  */
 

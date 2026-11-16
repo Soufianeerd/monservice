@@ -5,7 +5,7 @@ import { QuotePDF, type QuotePDFProps } from '@/components/crm/QuotePDF';
 import type { Invoice, Organization } from '@/lib/data/interfaces';
 
 export async function generateInvoicePDF(
-  invoice: Invoice,
+  invoice: InvoicePDFProps['invoice'],
   organization: Organization,
   client: InvoicePDFProps['client'],
   site?: InvoicePDFProps['site']

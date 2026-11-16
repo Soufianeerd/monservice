@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -146,6 +148,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(updated);
         } else {
           const created = await createAppointmentAction({
@@ -157,6 +160,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(created);
         }
       } catch (err: unknown) {
@@ -184,7 +188,7 @@ export function AppointmentForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form data-guide-form="rendez-vous" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SEARCH */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Patient *</label>
@@ -341,7 +345,7 @@ export function AppointmentForm({
             </div>
             {(selectedType.bufferBeforeMinutes > 0 || selectedType.bufferAfterMinutes > 0) && (
               <div className="flex justify-between text-gray-500">
-                <span>Plage d&apos;occupation praticien (buffers inclus) :</span>
+                <span>Temps réservé au praticien, préparation et pause incluses :</span>
                 <span>
                   +{selectedType.bufferBeforeMinutes}m avant / +{selectedType.bufferAfterMinutes}m après
                 </span>

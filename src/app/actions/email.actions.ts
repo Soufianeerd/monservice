@@ -88,7 +88,7 @@ export async function sendDocumentByEmailAction(
     await invoiceService.update(
       invoice.id,
       ctx.organizationId,
-      { status: 'sent' } as never,
+      { status: 'sent' },
       ctx.userId,
     );
   }

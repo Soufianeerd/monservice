@@ -1,16 +1,8 @@
 import 'server-only';
 import { z } from 'zod';
 
-/**
- * Validation des variables d'environnement au démarrage.
- *
- * Les helpers Supabase lisaient auparavant une variable (`...ANON_KEY`) que
- * `.env.production` ne définissait pas : l'assertion `!` masquait le problème
- * au typage et, en production, chaque page authentifiée renvoyait 500
- * (anomalie MS-009).
- *
- * Un démarrage qui échoue bruyamment vaut mieux qu'une erreur 500 silencieuse.
- */
+/** Fail at startup when the managed Auth, restricted DB or private storage
+ * configuration is missing. Provider credentials remain server-only. */
 const serverEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -19,12 +11,12 @@ const serverEnvSchema = z.object({
     .min(1, 'DATABASE_URL est requise')
     .startsWith('postgres', 'DATABASE_URL doit pointer vers PostgreSQL'),
 
-  // Supabase Auth est la source d'identité : aucun secret d'authentification
-  // applicatif n'est nécessaire côté serveur.
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL doit être une URL valide'),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
-    .string()
-    .min(20, 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY est requise'),
+  NEON_AUTH_BASE_URL: z.string().url(),
+  NEON_AUTH_COOKIE_SECRET: z.string().min(32),
+  AWS_ENDPOINT_URL_S3: z.string().url(),
+  AWS_REGION: z.string().min(1),
+  AWS_ACCESS_KEY_ID: z.string().min(1),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1),
 
   // Stripe est optionnel : l'application doit démarrer sans, avec les
   // fonctionnalités de paiement désactivées (503).

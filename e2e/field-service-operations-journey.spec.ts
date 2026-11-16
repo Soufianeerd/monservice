@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 
 async function dismissSetupGuideIfPresent(page: Page) {
   try {
-    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"], button[aria-label="Réduire l’aide"]');
     if (await closeBtn.isVisible({ timeout: 1500 })) {
       await closeBtn.click({ force: true });
     }
@@ -12,8 +12,8 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Field Service Operations Journey E2E (Session 17)', () => {
-  const proEmail = 'pro_fs_a@monservice.com';
-  const password = 'password123';
+  const proEmail = 'pro_fs_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test.beforeEach(async ({ page }) => {
     // Login as professional

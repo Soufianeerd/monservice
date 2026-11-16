@@ -48,32 +48,12 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleMarkAsPaid = async (id: string) => {
-    if (!user?.organizationId) return;
-    if (window.confirm("Marquer cette facture comme payée ?")) {
-      await invoiceActions.updateAction(id, user.organizationId, {
-        status: 'paid',
-        paidAt: new Date().toISOString(),
-      }, user.id);
-      alert('Facture payée');
-      loadData();
-    }
-  };
-
   const handleConvertQuote = async (id: string) => {
     if (!user?.organizationId) return;
     if (window.confirm("Convertir ce devis en facture ?")) {
-      const quote = await invoiceActions.findByIdAction(id, user.organizationId);
-      if (!quote) return;
-      
-      const newNumber = await invoiceActions.getNextInvoiceNumberAction(user.organizationId, 'invoice');
-      
-      await invoiceActions.updateAction(id, user.organizationId, {
-        type: 'invoice',
-        number: newNumber,
-        status: 'draft',
-      }, user.id);
-      
+      const { convertQuoteToInvoiceAction } = await import('@/app/actions/quote.actions');
+      await convertQuoteToInvoiceAction({ quoteId: id });
+
       alert('Devis converti en facture !');
       loadData();
     }
@@ -94,7 +74,6 @@ export default function InvoicesPage() {
           invoices={invoices} 
           clients={clients} 
           onDelete={handleDelete}
-          onMarkAsPaid={handleMarkAsPaid}
           onConvertQuote={handleConvertQuote}
         />
       )}
