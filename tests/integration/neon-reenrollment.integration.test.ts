@@ -9,10 +9,16 @@ const runtime=postgres(process.env.NEON_RUNTIME_DATABASE_URL!,{max:1,prepare:fal
 const base=process.env.NEON_AUTH_BASE_URL!;
 const headers={'content-type':'application/json',origin:'http://localhost:3039'};
 const appId=randomUUID();const ghost=randomUUID();const email=`reenrollment-${randomUUID()}@monservice.invalid`;
-let providerId='';let recoveredOrg='';
+let providerId='';let recoveredOrg='';let createdAsOwner=false;
 const scoped=createSecurityScopedClient(runtime,async()=>providerId);
 const request=async(path: string,body: object)=>fetch(base+path,{method:'POST',headers,body:JSON.stringify(body)});
 afterAll(async()=>{
+  if(createdAsOwner&&providerId){
+    await admin`delete from neon_auth.session where "userId"=${providerId}`;
+    await admin`delete from neon_auth.account where "userId"=${providerId}`;
+    await admin`delete from neon_auth.verification where identifier like ${'%'+email+'%'} or value=${providerId}`;
+    await admin`delete from neon_auth."user" where id=${providerId}`;
+  }
   await admin`delete from public.user_identities where app_user_id=${appId}`;
   await admin`delete from public.identity_reenrollments where app_user_id=${appId}`;
   await admin`delete from public.users where id=${appId}`;
@@ -37,17 +43,25 @@ describe('Controlled source identity recovery with managed Auth',()=>{
       if(typeof id!=='string'||!id.startsWith('br-'))throw new Error('Synthetic branch lookup returned no branch id');
       return id;
     };
-    const branch={id:resolveBranchId()};
-    // The management API occasionally refuses the first call on a branch whose
-    // Auth service was provisioned minutes ago: retry, and report why it failed.
-    const createAccount=()=>spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branch.id}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});
-    let created=createAccount();
-    for(let attempt=1;created.status!==0&&attempt<3;attempt++){
-      await new Promise(resolve=>setTimeout(resolve,10_000));
-      created=createAccount();
+    // The management endpoint (beta) has answered "branch not found" for the
+    // very branch id its sibling Auth endpoints accept (runs 43222732950 and
+    // 43404953476). When it refuses, the owner creates the same fixture
+    // directly: an unverified provider user with no credential, which is
+    // exactly what the production import produced. Everything this test
+    // protects (OTP proof, identity recovery, reset) still runs for real.
+    const createAccount=()=>{
+      let branchId='';
+      try{branchId=resolveBranchId();}catch(error){return {status:1,stdout:'',stderr:error instanceof Error?error.message:'branch lookup failed'};}
+      return spawnSync('neon',['api',`/projects/misty-field-54835523/branches/${branchId}/auth/users`,'-X','POST','-F',`email=${email}`,'-F','name=Synthetic migrated professional'],{encoding:'utf8'});
+    };
+    const created=createAccount();
+    if(created.status===0){
+      providerId=JSON.parse(created.stdout).id;
+    }else{
+      console.warn(`Management account creation refused (${String(created.stderr||created.stdout||'no output').replace(/\s+/g,' ').slice(0,200)}); creating the unverified fixture as owner`);
+      const [row]=await admin`insert into neon_auth."user"(name,email,"emailVerified") values('Synthetic migrated professional',${email},false) returning id`;
+      providerId=row.id;createdAsOwner=true;
     }
-    if(created.status!==0)throw new Error(`Synthetic management account creation unavailable: ${String(created.stderr||created.stdout||created.error?.message||'no output').replace(/\s+/g,' ').slice(0,300)}`);
-    providerId=JSON.parse(created.stdout).id;
     const [provider]=await admin`select "emailVerified" from neon_auth."user" where id=${providerId}`;
     expect(provider.emailVerified).toBe(false);
     expect((await admin`select id from neon_auth.account where "userId"=${providerId} and password is not null`)).toHaveLength(0);
