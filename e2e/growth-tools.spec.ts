@@ -60,9 +60,13 @@ test.describe('Croissance — règlement, avis vérifié, vitrine, trésorerie',
     await page.goto(`/facturation/factures/${invoiceId}`);
     await expect(page.getByTestId('record-payment')).toBeVisible();
     await page.getByRole('button', { name: 'Marquer comme réglée' }).click();
-    await expect(page.getByTestId('invoice-paid')).toContainText('Virement');
-    const [paid] = await sql`select status, payment_method from invoices where id = ${invoiceId}`;
-    expect(paid).toMatchObject({ status: 'paid', payment_method: 'transfer' });
+    // D'abord la base (source de vérité), puis l'écran, rechargé en entier et
+    // dont les données arrivent côté client : lent sur la CI distante.
+    await expect.poll(async () => {
+      const [row] = await sql`select status, payment_method from invoices where id = ${invoiceId}`;
+      return `${row?.status}/${row?.payment_method}`;
+    }, { timeout: 60_000 }).toBe('paid/transfer');
+    await expect(page.getByTestId('invoice-paid')).toContainText('Virement', { timeout: 60_000 });
 
     // Demande d'avis : sans service d'e-mail en CI, le lien est affiché.
     await page.getByRole('button', { name: 'Demander un avis au client' }).click();
