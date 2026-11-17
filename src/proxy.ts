@@ -19,6 +19,7 @@ const PUBLIC_EXACT = new Set([
   '/sitemap.xml',
   '/invitation/portail', // la page gère elle-même l'absence de session
   '/acces-clients', // information V1 : espaces clients fermés, aucune donnée lue
+  '/invitation/equipe', // la page gère elle-même l'absence de session
   '/cookies',
 ]);
 

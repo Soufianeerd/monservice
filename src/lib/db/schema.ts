@@ -1888,6 +1888,42 @@ export const clientPortalInvitations = sqliteTable('client_portal_invitations', 
   })
 ]);
 
+// Équipe d'une organisation (0019). Invitation d'un collaborateur : le jeton
+// n'est jamais stocké, seule son empreinte SHA-256. Rattachement uniquement
+// via accept_organization_invitation (adresse vérifiée = adresse invitée).
+export const organizationInvitations = sqliteTable('organization_invitations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('member'),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('organization_invitations_token_hash_unique').on(t.tokenHash),
+  uniqueIndex('organization_invitations_pending_unique').on(t.organizationId, t.email).where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  index('organization_invitations_email_idx').on(t.email, t.createdAt),
+  check('organization_invitations_role_check', sql`${t.role} IN ('admin', 'member')`),
+  check('organization_invitations_email_check', sql`${t.email} = lower(btrim(${t.email})) AND char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('organization_invitations_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('organization_invitations_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('organization_invitations_accepted_check', sql`(${t.acceptedAt} IS NULL) = (${t.acceptedByUserId} IS NULL)`),
+  check('organization_invitations_final_state_check', sql`${t.acceptedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+]);
+
+// Retrait d'un membre (0019) : le compte garde son rattachement historique
+// mais current_account_is_active() le refuse partout. Aucun accès runtime.
+export const organizationMemberRemovals = sqliteTable('organization_member_removals', {
+  userId: text('user_id').primaryKey().references(() => users.id),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  removedByUserId: text('removed_by_user_id').notNull().references(() => users.id),
+  removedAt: timestamp('removed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
 export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
   id: text('id').primaryKey(),

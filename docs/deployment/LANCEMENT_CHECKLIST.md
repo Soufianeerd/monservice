@@ -26,7 +26,7 @@ Validation : la CI exécute les parcours des portails avec l'indicateur activé 
 |---|---|
 | Code validé (CI Neon verte, 42 parcours navigateur) | Fait — runs `fd326d2` et `197a3ee` |
 | Base de production Neon (rôles restreints, RLS, stockage privé) | Prête, migrations 0000–0013 |
-| Migrations 0014–0018 sur la production | **À rejouer** à la bascule (`NEON_PRODUCTION_REPLAY=validated npm run db:migrate` avec `.env.neon-production-admin.local`) |
+| Migrations 0014–0019 sur la production | **À rejouer** à la bascule (`NEON_PRODUCTION_REPLAY=validated npm run db:migrate` avec `.env.neon-production-admin.local`) |
 | Variables Netlify (contexte production uniquement) | **À installer** depuis `.env.neon-production.local` |
 | E-mails de connexion (code de vérification, mot de passe oublié) | **Bloquant** — fournisseur « partagé » Neon, prévu pour les essais |
 | E-mails métier (invitations, devis, factures) | **Bloquant** — aucun expéditeur vérifié |
@@ -59,7 +59,7 @@ Jamais dans Netlify : connexion owner/unpooled, clé API Neon, clé CI, mot de p
    les variables manquent il **échoue** et rien n'est publié.
 2. Domaine + Resend vérifié + SMTP Neon Auth ; test de réception (code et lien de
    réinitialisation) sur une boîte de Soufiane.
-3. Rejouer 0014–0018 sur la production, puis `db:check-drift`, `db:check-contract`,
+3. Rejouer 0014–0019 sur la production, puis `db:check-drift`, `db:check-contract`,
    `db:check-custom-objects` en lecture seule.
 4. Installer les variables Netlify (production uniquement).
 5. `node scripts/neon/cutover-preflight.mjs` : doit sortir au vert.
@@ -69,7 +69,7 @@ Jamais dans Netlify : connexion owner/unpooled, clé API Neon, clé CI, mot de p
 
 ## Retour arrière
 Republier le déploiement Netlify précédent (ou dépublier le site). Les migrations
-0014–0018 sont additives : l'ancien code fonctionne avec le nouveau schéma. Supabase
+0014–0019 sont additives : l'ancien code fonctionne avec le nouveau schéma. Supabase
 reste intact et inutilisé. Aucune suppression de base ni de branche.
 
 ## Hors lancement

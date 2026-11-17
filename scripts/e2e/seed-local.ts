@@ -154,7 +154,7 @@ async function seed() {
     return;
   }
 
-  const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string) => {
+  const createAuthUser = async (email: string, name: string, profileType: 'professional' | 'client', orgId: string | null) => {
     let [provider] = await sql`select id::text as id from neon_auth."user" where email=${email}`;
     if (!provider) {
       let response: Response | undefined;
@@ -229,6 +229,10 @@ async function seed() {
   await createAuthUser('pro_fs_a@monservice.invalid', 'Artisan Plombier A', 'professional', SEED_FIELD_SERVICE_IDS.orgA);
   const cliFsAId = await createAuthUser('client_fs_a@monservice.invalid', 'Client Field Service A', 'client', SEED_FIELD_SERVICE_IDS.orgA);
   await createAuthUser('pro_fs_b@monservice.invalid', 'Artisan Électricien B', 'professional', SEED_FIELD_SERVICE_IDS.orgB);
+  // Équipe (0019) : professionnels sans organisation, destinataires d'invitations.
+  // Un compte par suite pour que les tests base et navigateur restent indépendants.
+  await createAuthUser('pro_team_db@monservice.invalid', 'Collaborateur Invité DB', 'professional', null);
+  await createAuthUser('pro_team_e2e@monservice.invalid', 'Collaborateur Invité E2E', 'professional', null);
 
   console.log('Users seeded successfully');
   

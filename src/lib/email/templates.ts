@@ -198,3 +198,24 @@ export function clientPortalInvitationTemplate(params: {
     }),
   };
 }
+
+export function teamInvitationTemplate(params: {
+  organizationName: string;
+  inviterName: string;
+  roleLabel: string;
+  url: string;
+  expiresAt: string;
+}) {
+  return {
+    subject: `${params.organizationName} vous invite à rejoindre son espace MonService`,
+    html: layout({
+      title: 'Rejoindre une équipe',
+      body: `<p>Bonjour,</p>
+        <p>${escapeHtml(params.inviterName)} vous invite à rejoindre ${escapeHtml(params.organizationName)} sur MonService, en tant que ${escapeHtml(params.roleLabel.toLowerCase())}.</p>
+        <p>Créez votre compte ou connectez-vous avec <strong>cette adresse e-mail</strong>, puis acceptez l'invitation. Le lien est valable jusqu'au ${formatDate(params.expiresAt)} et ne sert qu'une fois.</p>
+        <p style="font-size:13px;color:#6b7280;">Si vous n'attendiez pas cette invitation, ignorez simplement ce message.</p>`,
+      ctaLabel: 'Rejoindre l’équipe',
+      ctaUrl: params.url,
+    }),
+  };
+}

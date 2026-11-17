@@ -70,6 +70,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
+          { name: 'Équipe', href: '/parametres/equipe' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
@@ -124,6 +125,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
           { name: 'Mon compte', href: '/parametres/profil' },
           { name: 'Coordonnées du cabinet', href: '/parametres/organisation' },
           { name: 'Lieux et équipe', href: '/parametres/cabinet' },
+          { name: 'Comptes utilisateurs', href: '/parametres/equipe' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
@@ -186,6 +188,7 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
         subItems: [
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
+          { name: 'Équipe', href: '/parametres/equipe' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
