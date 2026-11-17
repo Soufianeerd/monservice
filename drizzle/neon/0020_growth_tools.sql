@@ -742,3 +742,7 @@ GRANT EXECUTE ON FUNCTION public.issue_automatic_review_request(text, text) TO m
 -- L'ancien service de relance lisait les factures directement ; ces lectures
 -- passent désormais par due_automation_items().
 REVOKE SELECT ON public.invoices, public.clients FROM monservice_reminders;
+
+-- Le webhook Stripe (rôle restreint monservice_stripe, droits par colonne)
+-- renseigne aussi le mode de règlement.
+GRANT UPDATE (payment_method) ON public.invoices TO monservice_stripe;

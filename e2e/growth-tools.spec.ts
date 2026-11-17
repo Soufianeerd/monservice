@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+
+// Le panneau d'aide contextuelle s'ouvre par défaut en bas à droite et
+// recouvre les boutons de formulaire alignés à droite (constaté en CI sur
+// « Envoyer l'invitation ») : on le ferme comme le ferait l'utilisateur.
+const closeContextualHelp = () => window.localStorage.setItem('monservice_contextual_help', 'off');
 import postgres from 'postgres';
 import { signInFixture } from './helpers/sign-in-fixture';
 
@@ -43,6 +48,7 @@ test.describe('Croissance — règlement, avis vérifié, vitrine, trésorerie',
 
   test('facture réglée, avis demandé puis publié, visible sur la vitrine', async ({ browser }) => {
     const context = await browser.newContext();
+    await context.addInitScript(closeContextualHelp);
     const page = await context.newPage();
     await signInFixture(page, adminEmail, /\/dashboard/);
 
@@ -74,6 +80,7 @@ test.describe('Croissance — règlement, avis vérifié, vitrine, trésorerie',
 
     // Le client dépose son avis, sans compte.
     const visitorContext = await browser.newContext();
+    await visitorContext.addInitScript(closeContextualHelp);
     const visitor = await visitorContext.newPage();
     const url = new URL(link);
     await visitor.goto(url.pathname + url.search);

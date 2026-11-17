@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test';
+
+// Le panneau d'aide contextuelle s'ouvre par défaut en bas à droite et
+// recouvre les boutons de formulaire alignés à droite (constaté en CI sur
+// « Envoyer l'invitation ») : on le ferme comme le ferait l'utilisateur.
+const closeContextualHelp = () => window.localStorage.setItem('monservice_contextual_help', 'off');
 import postgres from 'postgres';
 import { signInFixture } from './helpers/sign-in-fixture';
 
@@ -34,6 +39,7 @@ test.describe('Équipe — invitation, rattachement et retrait', () => {
 
   test('un collaborateur invité rejoint l’équipe puis perd l’accès quand il est retiré', async ({ browser }) => {
     const adminContext = await browser.newContext();
+    await adminContext.addInitScript(closeContextualHelp);
     const admin = await adminContext.newPage();
     await signInFixture(admin, adminEmail, /\/dashboard/);
     await admin.goto('/parametres/equipe');
@@ -48,6 +54,7 @@ test.describe('Équipe — invitation, rattachement et retrait', () => {
 
     // Sans session : la page présente l'invitation sans rien rattacher.
     const anonymousContext = await browser.newContext();
+    await anonymousContext.addInitScript(closeContextualHelp);
     const anonymous = await anonymousContext.newPage();
     await anonymous.goto(new URL(link).pathname + new URL(link).search);
     await expect(anonymous.getByTestId('team-invitation')).toContainText(inviteeEmail);
@@ -55,6 +62,7 @@ test.describe('Équipe — invitation, rattachement et retrait', () => {
     await anonymousContext.close();
 
     const inviteeContext = await browser.newContext();
+    await inviteeContext.addInitScript(closeContextualHelp);
     const invitee = await inviteeContext.newPage();
     await signInFixture(invitee, inviteeEmail, /\/complete-profile/);
     await invitee.goto(new URL(link).pathname + new URL(link).search);
