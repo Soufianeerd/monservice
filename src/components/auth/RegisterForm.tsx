@@ -46,7 +46,7 @@ import {
 
 type SelectedProfession = ParamedicalProfessionCode | FieldServiceProfessionCode | '';
 
-export default function RegisterForm() {
+export default function RegisterForm({ clientRegistrationOpen = false }: { clientRegistrationOpen?: boolean }) {
   const [step, setStep] = useState(1);
   const [professionSearch, setProfessionSearch] = useState('');
   const [formData, setFormData] = useState({
@@ -327,7 +327,8 @@ export default function RegisterForm() {
             <label className="block text-sm font-medium text-gray-700 text-center mb-4">
               Sélectionnez votre type de profil *
             </label>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className={`grid grid-cols-1 gap-4 ${clientRegistrationOpen ? 'sm:grid-cols-2' : ''}`}>
+              {clientRegistrationOpen && (
               <button
                 type="button"
                 onClick={() => setFormData((prev) => ({ ...prev, profileType: 'client', orgName: '', sector: '', profession: '' }))}
@@ -341,6 +342,7 @@ export default function RegisterForm() {
                 <span className={`block text-sm font-bold ${formData.profileType === 'client' ? 'text-primary-900' : 'text-gray-900'}`}>Je suis un particulier</span>
                 <span className="block mt-2 text-xs text-gray-500 text-center">Je recherche des professionnels et souhaite suivre mes demandes</span>
               </button>
+              )}
 
               <button
                 type="button"

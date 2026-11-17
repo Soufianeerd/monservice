@@ -4,6 +4,7 @@ import { getSessionContext } from '@/lib/auth/session';
 import { isWellFormedInvitationToken } from '@/lib/client-portal/invitation-token';
 import { previewClientPortalInvitation } from '@/lib/services/client-portal-invitation.service';
 import AcceptInvitationForm from './AcceptInvitationForm';
+import { CLIENT_ACCESS_CLOSED_MESSAGE, isClientAccessEnabled } from '@/lib/launch/client-access';
 
 export const metadata: Metadata = { title: 'Invitation à votre espace client', robots: { index: false, follow: false } };
 
@@ -20,6 +21,13 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export default async function ClientPortalInvitationPage(props: { searchParams: Promise<{ token?: string | string[] }> }) {
   const { token } = await props.searchParams;
+  if (!isClientAccessEnabled()) {
+    return (
+      <Card title="Espace client indisponible">
+        <p className="text-sm text-gray-600">{CLIENT_ACCESS_CLOSED_MESSAGE} Votre prestataire reste joignable directement.</p>
+      </Card>
+    );
+  }
   if (!isWellFormedInvitationToken(token)) {
     return (
       <Card title="Lien invalide">

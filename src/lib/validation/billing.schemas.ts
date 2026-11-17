@@ -109,6 +109,35 @@ export const rejectQuoteSchema = z
   })
   .strict();
 
+/**
+ * Décision du client consignée par le professionnel émetteur (accord reçu en
+ * personne, par e-mail, par téléphone ou sur document signé). En V1 aucun
+ * client ne dispose de compte : c'est la seule voie d'acceptation d'un devis.
+ */
+export const QUOTE_DECISION_METHODS = ['in_person', 'email', 'phone', 'signed_document'] as const;
+export type QuoteDecisionMethod = (typeof QUOTE_DECISION_METHODS)[number];
+export const QUOTE_DECISION_METHOD_LABELS: Record<QuoteDecisionMethod, string> = {
+  in_person: 'en personne',
+  email: 'par e-mail',
+  phone: 'par téléphone',
+  signed_document: 'sur document signé',
+};
+
+export const recordQuoteDecisionSchema = z
+  .object({
+    quoteId: z.string().min(1, 'Identifiant du devis requis'),
+    decision: z.enum(['accepted', 'rejected']),
+    method: z.enum(QUOTE_DECISION_METHODS),
+    /** Date de l'accord ou du refus (AAAA-MM-JJ), jamais dans le futur. */
+    decidedOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date invalide')
+      .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)), 'Date invalide')
+      .refine((value) => Date.parse(`${value}T00:00:00.000Z`) <= Date.now(), 'La date ne peut pas être dans le futur'),
+    note: z.string().trim().max(500, 'Note trop longue (500 caractères maximum)').nullable().optional(),
+  })
+  .strict();
+
 export const createQuoteRevisionSchema = z
   .object({
     quoteId: z.string().min(1, 'Identifiant du devis requis'),
@@ -149,6 +178,7 @@ export type SendQuoteInput = z.input<typeof sendQuoteSchema>;
 export type MarkQuoteViewedInput = z.input<typeof markQuoteViewedSchema>;
 export type AcceptQuoteInput = z.input<typeof acceptQuoteSchema>;
 export type RejectQuoteInput = z.input<typeof rejectQuoteSchema>;
+export type RecordQuoteDecisionInput = z.input<typeof recordQuoteDecisionSchema>;
 export type CreateQuoteRevisionInput = z.input<typeof createQuoteRevisionSchema>;
 export type CreateDepositInvoiceInput = z.input<typeof createDepositInvoiceSchema>;
 export type ConvertQuoteToInvoiceInput = z.input<typeof convertQuoteToInvoiceSchema>;

@@ -6,6 +6,21 @@ ouverture **Générique + Artisans/BTP**, paramédical fermé aux inscriptions, 
 Référence technique détaillée : [`PRODUCTION_DEPLOYMENT_RUNBOOK.md`](PRODUCTION_DEPLOYMENT_RUNBOOK.md).
 Dernier préflight enregistré (11 octobre 2026) : 12 contrôles sur 14 au vert ; les 2 bloquants sont les e-mails.
 
+## Périmètre V1 (décision du 17 novembre 2026) : professionnels uniquement
+Aucun compte client ou patient en V1, dans les trois secteurs. Le code des portails est conservé pour la version suivante.
+
+| Réglage | Valeur en production | Effet |
+|---|---|---|
+| `CLIENT_ACCESS_ENABLED` | **ne pas définir** | Inscription « particulier » refusée par le serveur, `/client/*`, `/invitation/portail` et `/devis/[id]/sign` fermés, panneau d'invitation masqué. Un compte client existant arrive sur `/acces-clients` |
+| `LAUNCH_INCLUDED_PLAN` | `pro` | Tant que Stripe est désactivé, tout compte dispose des droits du plan Pro. Sans cette variable, le plan gratuit plafonne à 10 devis et 10 factures par mois |
+| `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` | `health`, ou vide pour ouvrir les trois secteurs | Voir l'avertissement ci-dessous |
+
+Acceptation d'un devis : le professionnel consigne la réponse de son client depuis la fiche du devis (« Le client a accepté », mode de réception et date). L'acompte, la facture et l'ordre de travail s'enchaînent ensuite. Aucune signature électronique n'est attribuée au client.
+
+**Ouverture du paramédical.** Retirer `health` de `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` ouvre les inscriptions du secteur. Ce réglage ne change rien à l'obligation légale : des données de santé réelles exigent un hébergement certifié HDS de bout en bout, non démontré pour la chaîne actuelle. Décision et responsabilité de l'éditeur ; voir `docs/audits/launch-readiness-2026-11/09_COMPLIANCE.md`.
+
+Validation : la CI exécute les parcours des portails avec l'indicateur activé (version suivante), puis `e2e/v1-professional-only.spec.ts` sans l'indicateur, comme en production.
+
 ## État
 | Étape | État |
 |---|---|

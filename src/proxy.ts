@@ -18,6 +18,8 @@ const PUBLIC_EXACT = new Set([
   '/robots.txt',
   '/sitemap.xml',
   '/invitation/portail', // la page gère elle-même l'absence de session
+  '/acces-clients', // information V1 : espaces clients fermés, aucune donnée lue
+  '/cookies',
 ]);
 
 /** Chemins publics comparés par préfixe (jamais `'/'`). */

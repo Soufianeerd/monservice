@@ -23,7 +23,7 @@ const faqData: FAQItem[] = [
   },
   {
     question: 'Comment sont protégées mes données ?',
-    answer: 'Vos données sont sécurisées, chiffrées et sauvegardées régulièrement. Nous utilisons les mêmes standards de sécurité que les applications bancaires pour garantir la confidentialité de vos informations.',
+    answer: 'Vos données sont hébergées dans l\'Union européenne et chiffrées pendant leur transport. Chaque organisation est cloisonnée : personne d\'autre que vous et vos collaborateurs autorisés n\'accède à vos clients, devis et factures.',
   },
   {
     question: 'Puis-je résilier mon abonnement à tout moment ?',

@@ -19,6 +19,8 @@ export default function ClientPortalAccessPanel({ clientId, defaultEmail }: { cl
   const [email, setEmail] = useState(defaultEmail ?? '');
   const [link, setLink] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Espaces clients fermés (périmètre V1) : le serveur refuse, le panneau disparaît.
+  const [unavailable, setUnavailable] = useState(false);
 
   const load = useCallback(async () => {
     const result = await getClientPortalStatusAction({ clientId });
@@ -31,6 +33,7 @@ export default function ClientPortalAccessPanel({ clientId, defaultEmail }: { cl
     getClientPortalStatusAction({ clientId }).then((result) => {
       if (cancelled) return;
       if (result.ok) setStatus(result.data);
+      else if (result.code === 'CLIENT_ACCESS_DISABLED') setUnavailable(true);
       else toast.error(result.error);
     });
     return () => { cancelled = true; };
@@ -85,6 +88,8 @@ export default function ClientPortalAccessPanel({ clientId, defaultEmail }: { cl
       toast.error('Copie impossible : sélectionnez le lien manuellement');
     }
   }
+
+  if (unavailable) return null;
 
   return (
     <section className="bg-white shadow sm:rounded-lg" data-testid="client-portal-access">

@@ -26,6 +26,8 @@ import {
   createQuoteSchema,
   updateDraftQuoteSchema,
   createWorkOrderFromQuoteSchema,
+  QUOTE_DECISION_METHOD_LABELS,
+  type QuoteDecisionMethod,
 } from '../validation/billing.schemas';
 import { z } from 'zod';
 import { toClientQuoteDTO, ClientQuoteDTO } from '../data/dto/client-billing.dto';
@@ -647,6 +649,62 @@ export const quoteService = {
       }
 
       return (await this.getQuoteById(quoteId, quote.organizationId, tx))!;
+    });
+  },
+
+  /**
+   * Décision du client consignée par le professionnel émetteur.
+   *
+   * En V1 les clients n'ont pas de compte : l'accord (ou le refus) est reçu
+   * hors application et enregistré par un professionnel de l'organisation
+   * émettrice. Aucune signature électronique n'est inventée : `signature`
+   * reste vide, l'auteur et le mode de réception sont tracés.
+   */
+  async recordClientDecisionByIssuer(
+    quoteId: string,
+    organizationId: string,
+    userId: string,
+    input: { decision: 'accepted' | 'rejected'; method: QuoteDecisionMethod; decidedOn: string; note?: string | null },
+  ): Promise<Invoice> {
+    return await db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(invoices)
+        .where(and(eq(invoices.id, quoteId), eq(invoices.organizationId, organizationId), eq(invoices.type, 'quote')))
+        .limit(1).for('update');
+
+      if (!quote) throw new AppError('Devis introuvable', 404);
+      if (quote.status !== 'sent' && quote.status !== 'viewed') {
+        throw new AppError(`La décision du client ne peut pas être enregistrée dans le statut actuel (${quote.status})`, 400);
+      }
+
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+      // Une décision du jour garde l'heure réelle ; une date passée est posée à midi UTC.
+      const decidedAt = input.decidedOn === today ? now : `${input.decidedOn}T12:00:00.000Z`;
+      const [year, month, day] = input.decidedOn.split('-');
+      const trace = `${input.decision === 'accepted' ? 'Accord' : 'Refus'} du client reçu ${QUOTE_DECISION_METHOD_LABELS[input.method]} le ${day}/${month}/${year}, enregistré par le professionnel.${input.note ? ` ${input.note}` : ''}`;
+      const message = quote.message ? `${quote.message}\n${trace}` : trace;
+
+      await tx
+        .update(invoices)
+        .set(input.decision === 'accepted'
+          ? { status: 'accepted', acceptedAt: decidedAt, acceptedByUserId: userId, message, updatedAt: now }
+          : { status: 'rejected', rejectedAt: decidedAt, rejectedByUserId: userId, message, updatedAt: now })
+        .where(and(eq(invoices.id, quoteId), eq(invoices.organizationId, organizationId)));
+
+      if (quote.dealId) {
+        await tx
+          .update(deals)
+          .set({ status: input.decision === 'accepted' ? 'won' : 'lost', updatedAt: now })
+          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, organizationId)));
+      }
+
+      console.info('[audit] quote.decision_recorded_by_issuer', {
+        quoteId, decision: input.decision, method: input.method, recordedBy: userId, decidedOn: input.decidedOn, at: now,
+      });
+
+      return (await this.getQuoteById(quoteId, organizationId, tx))!;
     });
   },
 

@@ -7,7 +7,13 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   // Verification-required recovery runs separately on a disposable branch.
-  testIgnore: process.env.E2E_STRICT_AUTH === 'true' ? undefined : '**/auth-recovery.spec.ts',
+  testIgnore: process.env.E2E_V1_SCOPE === 'true'
+    ? undefined
+    : process.env.E2E_STRICT_AUTH === 'true'
+      ? '**/v1-professional-only.spec.ts'
+      : ['**/auth-recovery.spec.ts', '**/v1-professional-only.spec.ts'],
+  // V1 scope (client spaces closed, as in production) runs as its own pass.
+  testMatch: process.env.E2E_V1_SCOPE === 'true' ? '**/v1-professional-only.spec.ts' : undefined,
   // Real EU Auth/Postgres calls and the complete intervention lifecycle span
   // multiple transactions. Keep every assertion, allow remote round trips.
   timeout: 120_000,

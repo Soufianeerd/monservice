@@ -2,7 +2,7 @@ import { StethoscopeIcon, LaptopIcon, HammerIcon, SparklesIcon } from 'lucide-re
 
 export default function Sectors() {
   const sectors = [
-    { title: 'Santé & Bien-être', icon: <StethoscopeIcon className="w-8 h-8 text-indigo-600" />, desc: 'Médecins, thérapeutes, coachs...' },
+    { title: 'Santé & Bien-être', icon: <StethoscopeIcon className="w-8 h-8 text-indigo-600" />, desc: 'Ostéopathes, kinésithérapeutes, praticiens du bien-être...' },
     { title: 'Consultants & Freelances', icon: <LaptopIcon className="w-8 h-8 text-indigo-600" />, desc: 'Développeurs, designers, marketeurs...' },
     { title: 'Artisans & Bâtiment', icon: <HammerIcon className="w-8 h-8 text-indigo-600" />, desc: 'Plombiers, électriciens, peintres...' },
     { title: 'Et bien d\'autres', icon: <SparklesIcon className="w-8 h-8 text-indigo-600" />, desc: 'Rejoignez-nous quel que soit votre domaine.' },

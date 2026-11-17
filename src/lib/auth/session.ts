@@ -1,3 +1,4 @@
+import { CLIENT_ACCESS_CLOSED_MESSAGE, isClientAccessEnabled } from '@/lib/launch/client-access';
 import 'server-only';
 import { cache } from 'react';
 import { db } from '@/lib/db/server';
@@ -56,6 +57,11 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
 export async function requireSession(): Promise<SessionContext> {
   const ctx = await getSessionContext();
   if (!ctx) throw new AppError('Authentification requise', 401, 'UNAUTHENTICATED');
+  // Périmètre V1 : un compte client existant ne peut exécuter aucune action
+  // serveur tant que les espaces clients sont fermés (voir lib/launch).
+  if (ctx.profileType === 'client' && !isClientAccessEnabled()) {
+    throw new AppError(CLIENT_ACCESS_CLOSED_MESSAGE, 403, 'CLIENT_ACCESS_DISABLED');
+  }
   return ctx;
 }
 

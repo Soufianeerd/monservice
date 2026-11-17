@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { ZodError } from 'zod';
 import { requireProfessional, requireProfileType } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
+import { assertClientAccessEnabled } from '@/lib/launch/client-access';
 import {
   clientPortalClientIdSchema,
   clientPortalTokenSchema,
@@ -41,6 +42,7 @@ async function appBaseUrl(): Promise<string> {
 
 export async function getClientPortalStatusAction(rawInput: unknown): Promise<ClientPortalActionResult<ClientPortalStatus>> {
   try {
+    assertClientAccessEnabled();
     const { organizationId } = await requireProfessional();
     const { clientId } = clientPortalClientIdSchema.parse(rawInput);
     return { ok: true, data: await getClientPortalStatus(organizationId, clientId) };
@@ -51,6 +53,7 @@ export async function getClientPortalStatusAction(rawInput: unknown): Promise<Cl
 
 export async function inviteClientToPortalAction(rawInput: unknown): Promise<ClientPortalActionResult<CreatedClientPortalInvitation>> {
   try {
+    assertClientAccessEnabled();
     const { organizationId } = await requireProfessional();
     const input = createClientPortalInvitationSchema.parse(rawInput);
     const created = await createClientPortalInvitation(organizationId, input, await appBaseUrl());
@@ -63,6 +66,7 @@ export async function inviteClientToPortalAction(rawInput: unknown): Promise<Cli
 
 export async function revokeClientPortalInvitationAction(rawInput: unknown): Promise<ClientPortalActionResult<{ revoked: boolean }>> {
   try {
+    assertClientAccessEnabled();
     const { organizationId } = await requireProfessional();
     const { clientId } = clientPortalClientIdSchema.parse(rawInput);
     const revoked = await revokeClientPortalInvitation(organizationId, clientId);
@@ -75,6 +79,7 @@ export async function revokeClientPortalInvitationAction(rawInput: unknown): Pro
 
 export async function unlinkClientPortalAccountAction(rawInput: unknown): Promise<ClientPortalActionResult<{ unlinked: boolean }>> {
   try {
+    assertClientAccessEnabled();
     const { organizationId } = await requireProfessional();
     const { clientId } = clientPortalClientIdSchema.parse(rawInput);
     const unlinked = await unlinkClientPortalAccount(organizationId, clientId);
