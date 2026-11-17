@@ -34,6 +34,7 @@ describe('Growth tools (0020)', () => {
   let adminB: NeonRlsClient;
   let clientA: NeonRlsClient;
   let health: NeonRlsClient;
+  let healthOrgBefore: { sector: string | null; profession: string | null } | undefined;
 
   const cleanup = async () => {
     await sql`DELETE FROM client_reviews WHERE invoice_id = ANY(${invoiceIds})`;
@@ -61,6 +62,10 @@ describe('Growth tools (0020)', () => {
     await signIn(clientA, 'client_generic_a@monservice.invalid');
     health = createRlsTestClient();
     await signIn(health, 'pro_health_a@monservice.invalid');
+    // Les tests d'intégration précédents (Field Service) font passer cette
+    // organisation en BTP sans la rétablir : on la remet en santé le temps du test.
+    [healthOrgBefore] = await sql<{ sector: string | null; profession: string | null }[]>`SELECT sector, profession FROM organizations WHERE id = ${orgHealth}`;
+    await sql`UPDATE organizations SET sector = 'health', profession = 'physiotherapist' WHERE id = ${orgHealth}`;
     await cleanup();
     const now = new Date().toISOString();
     await sql`INSERT INTO clients (id, organization_id, name, email, contact_first_name, contact_last_name, created_at, updated_at)
@@ -75,6 +80,9 @@ describe('Growth tools (0020)', () => {
 
   afterAll(async () => {
     await cleanup();
+    if (healthOrgBefore) {
+      await sql`UPDATE organizations SET sector = ${healthOrgBefore.sector}, profession = ${healthOrgBefore.profession} WHERE id = ${orgHealth}`;
+    }
     await sql.end();
     await workerConnection.end();
   });

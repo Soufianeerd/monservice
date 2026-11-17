@@ -16,7 +16,9 @@ export default defineConfig({
   testMatch: process.env.E2E_V1_SCOPE === 'true' ? '**/v1-professional-only.spec.ts' : undefined,
   // Real EU Auth/Postgres calls and the complete intervention lifecycle span
   // multiple transactions. Keep every assertion, allow remote round trips.
-  timeout: 120_000,
+  // Les parcours complets (invitation portail, cycle d'intervention, équipe)
+  // prenaient déjà 1,9 à 2,0 min sur une CI verte : 120 s ne laissait aucune marge.
+  timeout: 240_000,
   // Each assertion may wait on several Auth/Postgres round trips to Frankfurt
   // (GitHub runners are not in the EU). Assertions themselves are unchanged.
   expect: { timeout: 20_000 },
