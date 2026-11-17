@@ -10,6 +10,7 @@ export default async function FacturationLayout({ children }: { children: React.
     { name: 'Factures', href: '/facturation/factures' },
     { name: 'Devis', href: '/facturation/devis' },
     { name: isPractice ? 'Prestations et tarifs' : 'Produits et services', href: '/facturation/produits' },
+    { name: 'Trésorerie', href: '/facturation/tresorerie' },
   ];
 
   return (

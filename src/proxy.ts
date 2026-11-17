@@ -20,6 +20,7 @@ const PUBLIC_EXACT = new Set([
   '/invitation/portail', // la page gère elle-même l'absence de session
   '/acces-clients', // information V1 : espaces clients fermés, aucune donnée lue
   '/invitation/equipe', // la page gère elle-même l'absence de session
+  '/laisser-un-avis', // lien d'avis à usage unique, sans compte
   '/cookies',
 ]);
 

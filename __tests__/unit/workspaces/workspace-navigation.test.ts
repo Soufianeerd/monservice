@@ -18,6 +18,7 @@ describe('Workspace Navigation', () => {
       'Clients',
       'Opportunités',
       'Facturation',
+      'Avis clients',
       'Agenda',
       'Marketplace',
       'Messagerie',

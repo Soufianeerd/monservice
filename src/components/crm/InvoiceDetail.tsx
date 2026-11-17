@@ -1,5 +1,5 @@
 'use client';
-import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
+import { getByIdAction } from '@/app/actions/organization.actions';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -9,16 +9,17 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import DocumentPDF from './DocumentPDF';
 import { generateInvoicePDF, generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
+import InvoicePaymentPanel from '@/components/growth/InvoicePaymentPanel';
+import { isGrowthAvailable } from '@/lib/growth/availability';
 
 interface InvoiceDetailProps {
   invoice: Invoice;
   client: Client | undefined;
   products: Product[];
-  onMarkAsPaid?: () => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
-export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid, onDelete }: InvoiceDetailProps) {
+export default function InvoiceDetail({ invoice, client, products, onDelete }: InvoiceDetailProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -32,18 +33,6 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
     }
     loadOrg();
   }, [user]);
-
-  const handleSendEmail = () => {
-    alert('Document envoyé par email avec succès ! (Simulation)');
-  };
-
-  const handleDuplicate = () => {
-    alert('Fonctionnalité de duplication à venir.');
-  };
-
-  const handleConvertToInvoice = () => {
-    alert('Devis converti en facture avec succès ! (Simulation)');
-  };
 
   const getProductName = (productId?: string) => {
     if (!productId) return '';
@@ -104,43 +93,6 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             </button>
           )}
 
-          <button
-            onClick={handleSendEmail}
-            className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Envoyer par email
-          </button>
-
-          <button
-            onClick={handleDuplicate}
-            className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Dupliquer
-          </button>
-
-          {isQuote && (
-            <button
-              onClick={handleConvertToInvoice}
-              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-            >
-              Convertir en facture
-            </button>
-          )}
-
-          {invoice.status === 'sent' && !isQuote && onMarkAsPaid && (
-            <button
-              onClick={async () => {
-                await onMarkAsPaid();
-                alert('Facture marquée comme payée');
-              }}
-              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-            >
-              Marquer comme payée
-            </button>
-          )}
-
-
-
           {invoice.status === 'draft' && (
             <Link
               href={`/invoices/${invoice.id}/edit`}
@@ -155,9 +107,12 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
       <div className="border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Émetteur</h3>
-          <p className="font-semibold text-gray-900">MonService</p>
-          <p className="text-sm text-gray-600">123 Rue de la République</p>
-          <p className="text-sm text-gray-600">75001 Paris, France</p>
+          <p className="font-semibold text-gray-900">{organization?.name ?? '…'}</p>
+          {organization?.address && <p className="text-sm text-gray-600">{organization.address}</p>}
+          {(organization?.postalCode || organization?.city) && (
+            <p className="text-sm text-gray-600">{[organization?.postalCode, organization?.city].filter(Boolean).join(' ')}</p>
+          )}
+          {organization?.email && <p className="text-sm text-gray-600 mt-1">{organization.email}</p>}
         </div>
         <div>
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Adressé à</h3>
@@ -167,6 +122,10 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
           {client?.email && <p className="text-sm text-gray-600 mt-1">{client.email}</p>}
         </div>
       </div>
+
+      {!isQuote && organization && (
+        <InvoicePaymentPanel invoice={invoice} reviewsAvailable={isGrowthAvailable(organization.sector)} />
+      )}
 
       {/* Table */}
       <div className="border-t border-gray-200 pt-6">
@@ -224,7 +183,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
         </div>
       </div>
 
-      <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
+      {invoice.status === 'draft' && <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
         <button
           onClick={async () => {
             if (window.confirm('Voulez-vous vraiment supprimer ce document ?')) {
@@ -237,7 +196,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
         >
           Supprimer
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

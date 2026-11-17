@@ -13,6 +13,7 @@ import { InvoiceTaxData } from './tax.types';
 import { calculateDocumentTotals, calculateLine } from './billing-calculator';
 import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 import { allocateBillingNumber } from './quote.service';
+import { isOpenInvoiceStatus, validatePaymentDate, type ManualPaymentMethod } from '@/lib/growth/payment';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -185,6 +186,7 @@ export const invoiceService = {
         status: 'paid',
         paidAt: now,
         paymentIntentId,
+        paymentMethod: 'stripe',
         amountDue: 0,
         updatedAt: now,
       })
@@ -193,6 +195,42 @@ export const invoiceService = {
     console.info('[audit] invoice.paid', { invoiceId: id, paymentIntentId, at: now });
 
     return this.getById(id);
+  },
+
+  /**
+   * Règlement reçu hors ligne (virement, chèque, espèces…), saisi par le
+   * professionnel. Sans cette saisie, une facture ne passait « payée » que par
+   * le webhook Stripe, désactivé au lancement : trésorerie, relances et avis
+   * restaient faux.
+   */
+  async recordManualPayment(
+    id: string,
+    organizationId: string,
+    userId: string,
+    input: { paidOn: string; method: ManualPaymentMethod },
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx
+        .select({ type: invoices.type, status: invoices.status, date: invoices.date })
+        .from(invoices)
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
+        .limit(1)
+        .for('update');
+      if (!existing || existing.type !== 'invoice') throw new AppError('Facture introuvable', 404, 'INVOICE_NOT_FOUND');
+      if (existing.status === 'paid') throw new AppError('Cette facture est déjà réglée.', 409, 'INVOICE_ALREADY_PAID');
+      if (!isOpenInvoiceStatus(existing.status)) {
+        throw new AppError('Seule une facture émise et non annulée peut être réglée.', 409, 'INVOICE_NOT_OPEN');
+      }
+      const dateError = validatePaymentDate(input.paidOn, existing.date);
+      if (dateError) throw new AppError(dateError, 400, 'INVALID_PAYMENT_DATE');
+      const now = new Date().toISOString();
+      await tx
+        .update(invoices)
+        .set({ status: 'paid', paidAt: `${input.paidOn}T12:00:00.000Z`, paymentMethod: input.method, amountDue: 0, updatedAt: now })
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+      console.info('[audit] invoice.paid.manual', { invoiceId: id, organizationId, userId, method: input.method, at: now });
+    });
   },
 
   async generateNumber(type: 'invoice' | 'quote', organizationId: string): Promise<string> {

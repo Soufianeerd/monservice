@@ -48,7 +48,7 @@ Aujourd'hui : plan gratuit, 6 heures d'historique. Une erreur découverte le len
 
 1. **Récupérer la branche** : `git fetch && git checkout launch/v1-professional-only && npm ci`.
 2. **CI verte** sur la PR #2 : vérifier sur GitHub que le dernier run « CI Neon » est vert.
-3. **Rejouer les migrations 0014 à 0019 sur la production** (additives : rien n'est supprimé) :
+3. **Rejouer les migrations 0014 à 0020 sur la production** (additives : rien n'est supprimé) :
    ```sh
    NEON_ADMIN_ENV_FILE=.env.neon-production-admin.local NEON_PRODUCTION_REPLAY=validated npm run db:migrate
    NEON_ADMIN_ENV_FILE=.env.neon-production-admin.local npm run db:check-drift
@@ -74,6 +74,7 @@ Aujourd'hui : plan gratuit, 6 heures d'historique. Une erreur découverte le len
    - inscription d'un compte professionnel avec ta vraie adresse, code reçu (preuve du point 1) ;
    - création d'un client, d'un devis, « Le client a accepté », facture ;
    - Paramètres → Équipe : inviter une deuxième adresse à toi, accepter, puis la retirer ;
+   - sur la facture : « Marquer comme réglée », puis « Demander un avis au client » vers une de tes adresses ; déposer l'avis ; publier la vitrine (Paramètres → Vitrine publique) et vérifier qu'il s'y affiche ;
    - avec un deuxième compte d'une autre entreprise : il ne voit pas les clients du premier.
 
 **Retour arrière** : Netlify → *Deploys* → dépublier (ou republier une page de maintenance). Les migrations étant additives, rien n'est à défaire en base.

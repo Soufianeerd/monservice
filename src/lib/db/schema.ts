@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  smallint,
   real,
   doublePrecision,
   numeric,
@@ -70,6 +71,8 @@ export const quantityNumeric = customType<{ data: number; driverData: string }>(
 
 /** Helper : conserve la signature `integer(name, { mode: 'boolean' })`. */
 const sqliteTable = pgTable;
+
+export type InvoicePaymentMethod = 'transfer' | 'check' | 'cash' | 'card' | 'direct_debit' | 'other' | 'stripe';
 
 // Users
 export const users = sqliteTable('users', {
@@ -338,6 +341,8 @@ export const invoices = sqliteTable('invoices', {
   depositAmount: moneyNumeric('deposit_amount').notNull().default(0),
   prepaidAmount: moneyNumeric('prepaid_amount').notNull().default(0),
   amountDue: moneyNumeric('amount_due').notNull().default(0),
+  // Mode de règlement saisi par le professionnel (0020), hors Stripe.
+  paymentMethod: text('payment_method').$type<InvoicePaymentMethod>(),
 
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -360,6 +365,7 @@ export const invoices = sqliteTable('invoices', {
   check('invoices_deposit_amount_check', sql`${t.depositAmount} >= 0`),
   check('invoices_prepaid_amount_check', sql`${t.prepaidAmount} >= 0`),
   check('invoices_amount_due_check', sql`${t.amountDue} >= 0`),
+  check('invoices_payment_method_check', sql`${t.paymentMethod} IS NULL OR ${t.paymentMethod} IN ('transfer', 'check', 'cash', 'card', 'direct_debit', 'other', 'stripe')`),
   foreignKey({
     columns: [t.clientId, t.organizationId],
     foreignColumns: [clients.id, clients.organizationId],
@@ -1948,3 +1954,128 @@ export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order
   })
 ]);
 
+
+// Outils de croissance (0020). Toutes les écritures passent par des fonctions
+// SQL bornées ; le rôle runtime ne fait que lire, filtré par organisation.
+export const organizationAutomationSettings = sqliteTable('organization_automation_settings', {
+  organizationId: text('organization_id').primaryKey().references(() => organizations.id),
+  invoiceRemindersEnabled: boolean('invoice_reminders_enabled').notNull().default(false),
+  quoteFollowupsEnabled: boolean('quote_followups_enabled').notNull().default(false),
+  quoteFollowupDays: integer('quote_followup_days').notNull().default(7),
+  reviewRequestsEnabled: boolean('review_requests_enabled').notNull().default(false),
+  reviewRequestDelayDays: integer('review_request_delay_days').notNull().default(3),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id),
+}, (t) => [
+  check('organization_automation_settings_quote_days_check', sql`${t.quoteFollowupDays} BETWEEN 3 AND 30`),
+  check('organization_automation_settings_review_delay_check', sql`${t.reviewRequestDelayDays} BETWEEN 0 AND 30`),
+]);
+
+export const automationDeliveries = sqliteTable('automation_deliveries', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull(),
+  documentId: text('document_id').notNull(),
+  kind: text('kind').notNull(),
+  level: integer('level').notNull().default(1),
+  status: text('status').notNull().default('claimed'),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('automation_deliveries_once').on(t.documentId, t.kind, t.level),
+  index('automation_deliveries_org_idx').on(t.organizationId, t.claimedAt),
+  check('automation_deliveries_kind_check', sql`${t.kind} IN ('invoice_overdue', 'quote_followup', 'review_request')`),
+  check('automation_deliveries_level_check', sql`${t.level} BETWEEN 1 AND 3`),
+  check('automation_deliveries_status_check', sql`${t.status} IN ('claimed', 'sent', 'failed', 'skipped')`),
+  foreignKey({ columns: [t.documentId, t.organizationId], foreignColumns: [invoices.id, invoices.organizationId], name: 'automation_deliveries_document_fk' }),
+]);
+
+export const clientReviewRequests = sqliteTable('client_review_requests', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  invoiceId: text('invoice_id').notNull(),
+  clientId: text('client_id').notNull(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('client_review_requests_token_unique').on(t.tokenHash),
+  uniqueIndex('client_review_requests_invoice_live').on(t.invoiceId).where(sql`${t.revokedAt} IS NULL`),
+  index('client_review_requests_org_idx').on(t.organizationId, t.createdAt),
+  check('client_review_requests_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('client_review_requests_email_check', sql`char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('client_review_requests_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('client_review_requests_final_state_check', sql`${t.usedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+  foreignKey({ columns: [t.invoiceId, t.organizationId, t.clientId], foreignColumns: [invoices.id, invoices.organizationId, invoices.clientId], name: 'client_review_requests_invoice_fk' }),
+]);
+
+export const clientReviews = sqliteTable('client_reviews', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  requestId: text('request_id').notNull().references(() => clientReviewRequests.id),
+  invoiceId: text('invoice_id').notNull(),
+  rating: smallint('rating').notNull(),
+  comment: text('comment'),
+  authorDisplayName: text('author_display_name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  reply: text('reply'),
+  repliedAt: timestamp('replied_at', { withTimezone: true }),
+  repliedByUserId: text('replied_by_user_id').references(() => users.id),
+  reportedAt: timestamp('reported_at', { withTimezone: true }),
+  reportReason: text('report_reason'),
+  hiddenAt: timestamp('hidden_at', { withTimezone: true }),
+  hiddenReason: text('hidden_reason'),
+}, (t) => [
+  uniqueIndex('client_reviews_request_unique').on(t.requestId),
+  index('client_reviews_org_idx').on(t.organizationId, t.createdAt),
+  check('client_reviews_rating_check', sql`${t.rating} BETWEEN 1 AND 5`),
+  check('client_reviews_comment_check', sql`${t.comment} IS NULL OR char_length(${t.comment}) <= 2000`),
+  check('client_reviews_author_check', sql`char_length(btrim(${t.authorDisplayName})) BETWEEN 1 AND 60`),
+  check('client_reviews_reply_check', sql`${t.reply} IS NULL OR char_length(${t.reply}) BETWEEN 1 AND 2000`),
+  check('client_reviews_report_check', sql`${t.reportReason} IS NULL OR ${t.reportReason} IN ('abusive', 'personal_data', 'not_a_client', 'off_topic')`),
+  foreignKey({ columns: [t.invoiceId, t.organizationId], foreignColumns: [invoices.id, invoices.organizationId], name: 'client_reviews_invoice_fk' }),
+]);
+
+export const organizationPublicProfiles = sqliteTable('organization_public_profiles', {
+  organizationId: text('organization_id').primaryKey().references(() => organizations.id),
+  slug: text('slug').notNull(),
+  published: boolean('published').notNull().default(false),
+  headline: text('headline'),
+  about: text('about'),
+  serviceArea: text('service_area'),
+  interventionCities: text('intervention_cities').array().notNull().default(sql`'{}'::text[]`),
+  services: text('services').array().notNull().default(sql`'{}'::text[]`),
+  showPhone: boolean('show_phone').notNull().default(false),
+  showEmail: boolean('show_email').notNull().default(false),
+  website: text('website'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id),
+}, (t) => [
+  uniqueIndex('organization_public_profiles_slug_unique').on(t.slug),
+  check('organization_public_profiles_slug_check', sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(${t.slug}) BETWEEN 3 AND 60`),
+  check('organization_public_profiles_headline_check', sql`${t.headline} IS NULL OR char_length(${t.headline}) <= 120`),
+  check('organization_public_profiles_about_check', sql`${t.about} IS NULL OR char_length(${t.about}) <= 4000`),
+  check('organization_public_profiles_area_check', sql`${t.serviceArea} IS NULL OR char_length(${t.serviceArea}) <= 300`),
+  check('organization_public_profiles_cities_check', sql`cardinality(${t.interventionCities}) <= 30`),
+  check('organization_public_profiles_services_check', sql`cardinality(${t.services}) <= 20`),
+  check('organization_public_profiles_website_check', sql`${t.website} IS NULL OR (${t.website} ~ '^https://[^\\s<>"]+$' AND char_length(${t.website}) <= 300)`),
+]);
+
+export const organizationPortfolioItems = sqliteTable('organization_portfolio_items', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  city: text('city'),
+  completedOn: date('completed_on'),
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('organization_portfolio_items_org_idx').on(t.organizationId, t.position),
+  check('organization_portfolio_items_title_check', sql`char_length(btrim(${t.title})) BETWEEN 1 AND 120`),
+  check('organization_portfolio_items_description_check', sql`${t.description} IS NULL OR char_length(${t.description}) <= 1000`),
+  check('organization_portfolio_items_city_check', sql`${t.city} IS NULL OR char_length(${t.city}) <= 80`),
+]);

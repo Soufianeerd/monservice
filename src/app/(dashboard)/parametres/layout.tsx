@@ -33,6 +33,14 @@ export default async function ParametresLayout({ children }: { children: React.R
 
   tabs.push(
     { name: workspace.type === 'paramedical' ? 'Comptes utilisateurs' : 'Équipe', href: '/parametres/equipe' },
+  );
+  if (workspace.type !== 'paramedical') {
+    tabs.push(
+      { name: 'Relances et avis', href: '/parametres/relances' },
+      { name: 'Vitrine publique', href: '/parametres/vitrine' },
+    );
+  }
+  tabs.push(
     { name: 'Abonnement MonService', href: '/parametres/facturation' },
     { name: 'Notifications', href: '/parametres/notifications' }
   );

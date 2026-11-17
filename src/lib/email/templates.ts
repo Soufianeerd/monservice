@@ -119,29 +119,80 @@ export function invoiceReminderTemplate(params: {
   clientName: string;
   organizationName: string;
   invoiceNumber: string;
-  totalTTC: number;
+  amount: number;
   dueDate: string;
   daysOverdue: number;
-  url: string;
+  level: 1 | 2 | 3;
+  paymentDetails?: string | null;
 }) {
   // Ton mesuré : une relance automatique trop sèche abîme la relation
-  // commerciale de l'utilisateur avec son propre client.
-  const tone =
-    params.daysOverdue <= 0
-      ? `arrive à échéance le <strong>${formatDate(params.dueDate)}</strong>`
-      : `est échue depuis <strong>${params.daysOverdue} jour${params.daysOverdue > 1 ? 's' : ''}</strong>`;
+  // commerciale de l'utilisateur avec son propre client. Aucun lien : les
+  // espaces clients sont fermés en V1, le client répond directement au
+  // professionnel (adresse de réponse).
+  const opening =
+    params.level === 1
+      ? 'Sauf erreur de notre part, nous n’avons pas encore reçu le règlement de la facture'
+      : params.level === 2
+        ? 'Nous revenons vers vous au sujet de la facture'
+        : 'Malgré nos précédents rappels, nous restons sans règlement de la facture';
+  const details = params.paymentDetails?.trim()
+    ? `<p style="font-size:14px;color:#374151;"><strong>Coordonnées de règlement</strong><br>${escapeHtml(params.paymentDetails.trim()).replace(/\n/g, '<br>')}</p>`
+    : '';
 
   return {
-    subject: `Rappel — facture ${params.invoiceNumber}`,
+    subject: params.level === 3
+      ? `Dernier rappel — facture ${params.invoiceNumber}`
+      : `Rappel — facture ${params.invoiceNumber}`,
     html: layout({
-      title: `Rappel de règlement`,
+      title: params.level === 3 ? 'Dernier rappel de règlement' : 'Rappel de règlement',
       body: `
         <p>Bonjour ${escapeHtml(params.clientName)},</p>
-        <p>Sauf erreur de notre part, la facture <strong>${escapeHtml(params.invoiceNumber)}</strong>
-           d'un montant de <strong>${formatAmount(params.totalTTC)} TTC</strong> ${tone}.</p>
-        <p>Si le règlement a déjà été effectué, merci de ne pas tenir compte de ce message.</p>
+        <p>${opening} <strong>${escapeHtml(params.invoiceNumber)}</strong>
+           de ${escapeHtml(params.organizationName)}, d'un montant de <strong>${formatAmount(params.amount)} TTC</strong>,
+           échue depuis le ${formatDate(params.dueDate)} (${params.daysOverdue} jour${params.daysOverdue > 1 ? 's' : ''}).</p>
+        ${details}
+        <p>Si le règlement a déjà été effectué, merci de ne pas tenir compte de ce message. Pour toute question, répondez simplement à cet e-mail.</p>
       `,
-      ctaLabel: 'Consulter la facture',
+    }),
+  };
+}
+
+export function quoteFollowupTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  quoteNumber: string;
+  amount: number;
+  sentOn: string;
+}) {
+  return {
+    subject: `Votre devis ${params.quoteNumber} — ${params.organizationName}`,
+    html: layout({
+      title: 'Avez-vous pu étudier notre devis ?',
+      body: `
+        <p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>Le ${formatDate(params.sentOn)}, ${escapeHtml(params.organizationName)} vous a adressé le devis
+           <strong>${escapeHtml(params.quoteNumber)}</strong> d'un montant de <strong>${formatAmount(params.amount)} TTC</strong>.</p>
+        <p>Avez-vous des questions ou souhaitez-vous l'ajuster ? Répondez simplement à cet e-mail : votre demande arrivera directement chez ${escapeHtml(params.organizationName)}.</p>
+      `,
+    }),
+  };
+}
+
+export function reviewRequestTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  url: string;
+}) {
+  return {
+    subject: `Votre avis sur ${params.organizationName}`,
+    html: layout({
+      title: 'Comment s’est passée la prestation ?',
+      body: `
+        <p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>Merci d'avoir fait confiance à ${escapeHtml(params.organizationName)}. Votre avis aide d'autres clients à choisir, et l'entreprise à s'améliorer.</p>
+        <p>Cela prend moins d'une minute, sans création de compte. Le lien est personnel, valable 30 jours et ne sert qu'une fois.</p>
+      `,
+      ctaLabel: 'Donner mon avis',
       ctaUrl: params.url,
     }),
   };

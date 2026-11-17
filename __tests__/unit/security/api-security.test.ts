@@ -37,8 +37,7 @@ vi.mock('@/lib/services/delivery.service', () => ({
 // Mock reminder service
 vi.mock('@/lib/services/reminder.service', () => ({
   reminderService: {
-    checkAndSendRemindersForAllOrganizations: vi.fn().mockResolvedValue({ sent: 5 }),
-    checkAndSendReminders: vi.fn().mockResolvedValue({ sent: 2 }),
+    checkAndSendRemindersForAllOrganizations: vi.fn().mockResolvedValue({ sent: 5, errors: 0, skipped: 0 }),
   },
 }));
 
@@ -384,7 +383,7 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
       expect(data.count).toBe(5);
     });
 
-    it('allows professional session for own organization', async () => {
+    it('refuses on-demand sending from a professional session (403)', async () => {
       process.env.CRON_SECRET = 'valid_cron_secret_123';
       vi.mocked(getSessionContext).mockResolvedValueOnce({
         userId: 'pro_a',
@@ -395,9 +394,7 @@ describe('API Security Baseline & Authorization Matrix (Session 15)', () => {
 
       const req = new Request('http://localhost/api/reminders/check');
       const res = await remindersCheckHandler(req);
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.count).toBe(2);
+      expect(res.status).toBe(403);
     });
 
     it('denies client user (403)', async () => {

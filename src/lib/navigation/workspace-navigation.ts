@@ -8,6 +8,7 @@ export type NavigationIconKey =
   | 'billing'
   | 'agenda'
   | 'marketplace'
+  | 'reviews'
   | 'messages'
   | 'settings';
 
@@ -47,8 +48,10 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
           { name: 'Factures', href: '/facturation/factures' },
           { name: 'Devis', href: '/facturation/devis' },
           { name: 'Produits', href: '/facturation/produits' },
+          { name: 'Trésorerie', href: '/facturation/tresorerie' },
         ],
       },
+      { id: 'reviews', name: 'Avis clients', href: '/avis-clients', icon: 'reviews' },
       {
         id: 'agenda',
         name: 'Agenda',
@@ -71,6 +74,8 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
           { name: 'Équipe', href: '/parametres/equipe' },
+          { name: 'Relances et avis', href: '/parametres/relances' },
+          { name: 'Vitrine publique', href: '/parametres/vitrine' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
@@ -166,8 +171,10 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
           { name: 'Devis', href: '/facturation/devis' },
           { name: 'Factures', href: '/facturation/factures' },
           { name: workspace.terminology.servicePlural || 'Catalogue', href: '/facturation/produits' },
+          { name: 'Trésorerie', href: '/facturation/tresorerie' },
         ],
       },
+      { id: 'reviews', name: 'Avis clients', href: '/avis-clients', icon: 'reviews' },
       {
         id: 'agenda',
         name: 'Planning',
@@ -189,6 +196,8 @@ export function buildProfessionalNavigation(workspace: WorkspaceConfig): Workspa
           { name: 'Profil', href: '/parametres/profil' },
           { name: 'Organisation', href: '/parametres/organisation' },
           { name: 'Équipe', href: '/parametres/equipe' },
+          { name: 'Relances et avis', href: '/parametres/relances' },
+          { name: 'Vitrine publique', href: '/parametres/vitrine' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },

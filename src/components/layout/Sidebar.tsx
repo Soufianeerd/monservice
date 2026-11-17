@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench, Star } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { buildProfessionalNavigation, NavigationIconKey } from '@/lib/navigation/workspace-navigation';
@@ -16,6 +16,7 @@ const iconMap: Record<NavigationIconKey, React.ElementType> = {
   billing: FileText,
   agenda: Calendar,
   marketplace: Store,
+  reviews: Star,
   messages: MessageSquare,
   settings: Settings,
 };

@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
       // Les espaces authentifiés ne doivent jamais être indexés ni mis en cache
       // par un intermédiaire partagé.
       {
-        source: '/(dashboard|client|clients|deals|facturation|agenda|parametres|messages|patients|operations|marketplace|templates|activity|search|settings|admin|devis|invitation|acces-clients|api)/:path*',
+        source: '/(dashboard|client|clients|deals|facturation|agenda|parametres|messages|patients|operations|marketplace|templates|activity|search|settings|admin|devis|invitation|acces-clients|laisser-un-avis|avis-clients|api)/:path*',
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
           { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
@@ -69,6 +69,7 @@ const nextConfig: NextConfig = {
       { source: '/profile', destination: '/parametres/profil', permanent: true },
       { source: '/settings/organization', destination: '/parametres/organisation', permanent: true },
       { source: '/settings/billing', destination: '/parametres/facturation', permanent: true },
+      { source: '/settings/reminders', destination: '/parametres/relances', permanent: true },
       { source: '/notifications', destination: '/parametres/notifications', permanent: true },
       { source: '/contacts', destination: '/clients', permanent: true },
       { source: '/reports', destination: '/deals/rapports', permanent: true },

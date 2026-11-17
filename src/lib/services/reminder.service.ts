@@ -1,177 +1,156 @@
 import 'server-only';
+import { sql } from 'drizzle-orm';
 import { db } from '../db/server';
-import { invoices, clients, organizations } from '../db/schema';
-import { and, eq, lt, ne, isNotNull } from 'drizzle-orm';
 import { sendEmail, isEmailConfigured } from '../email';
-import { invoiceReminderTemplate } from '../email/templates';
+import { invoiceReminderTemplate, quoteFollowupTemplate, reviewRequestTemplate } from '../email/templates';
+import { buildReviewUrl, generateReviewToken, hashReviewToken } from '../growth/review';
 
 /**
- * Relances automatiques des factures impayées.
+ * Automatisations quotidiennes : relances de factures échues, relance des devis
+ * sans réponse, demandes d'avis après règlement (migration 0020).
  *
- * L'ancienne version était une classe vide renvoyant `{ sent: 0, errors: 0 }`,
- * alors que l'écran « Relances » était présent dans l'interface
- * (anomalie MS-018).
- *
- * Règles appliquées :
- *  - relance à J+7, J+15 et J+30 après l'échéance, jamais plus de trois fois ;
- *  - jamais avant l'échéance, jamais sur un brouillon, une facture annulée ou
- *    déjà réglée ;
- *  - un plafond par exécution évite qu'une base mal configurée ne déclenche
- *    des centaines d'envois — et n'abîme la réputation du domaine.
+ * Exécuté uniquement par la tâche planifiée, sous le rôle restreint
+ * `monservice_reminders` : la sélection (réglages de chaque organisation,
+ * seuils, exclusions) est faite en SQL par due_automation_items(), et chaque
+ * envoi est réservé avant de partir (claim_automation_delivery) — deux
+ * exécutions concurrentes ou répétées n'envoient jamais deux fois la même
+ * relance. L'ancienne version relançait trois jours de suite autour de chaque
+ * seuil et pointait vers l'espace client, fermé en V1.
  */
 
-/** Jours de retard déclenchant une relance. */
-const REMINDER_DAYS = [7, 15, 30] as const;
-
-/** Plafond d'envois par exécution et par organisation. */
-const MAX_REMINDERS_PER_RUN = 50;
-
-/** Tolérance : la tâche planifiée ne tourne pas à la seconde près. */
-const DAY_TOLERANCE = 1;
+/** Plafond d'envois par exécution : protège la réputation du domaine. */
+const MAX_ITEMS_PER_RUN = 200;
 
 export type ReminderResult = { sent: number; errors: number; skipped: number };
 
-function daysOverdue(dueDate: string, now: Date): number {
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return -1;
-  return Math.floor((now.getTime() - due.getTime()) / 86_400_000);
+type DueItem = {
+  kind: 'invoice_overdue' | 'quote_followup' | 'review_request';
+  level: number;
+  organizationName: string;
+  organizationEmail: string | null;
+  paymentDetails: string | null;
+  documentId: string;
+  documentNumber: string;
+  clientName: string | null;
+  clientEmail: string;
+  totalTTC: number;
+  amountDue: number;
+  referenceDate: string;
+  daysLate: number;
+};
+
+function appBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  return configured && URL.canParse(configured) ? configured : 'http://localhost:3000';
 }
 
-/** Une relance est-elle due aujourd'hui pour ce niveau de retard ? */
-function shouldRemindToday(days: number): boolean {
-  return REMINDER_DAYS.some((d) => Math.abs(days - d) <= DAY_TOLERANCE);
+function asDateString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return typeof value === 'string' ? value.slice(0, 10) : '';
 }
 
-function appUrl(path: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return `${base}${path}`;
+function toDueItem(row: Record<string, unknown>): DueItem | null {
+  const kind = row.kind;
+  if (kind !== 'invoice_overdue' && kind !== 'quote_followup' && kind !== 'review_request') return null;
+  if (typeof row.client_email !== 'string' || !row.client_email) return null;
+  return {
+    kind,
+    level: Number(row.level),
+    organizationName: String(row.organization_name ?? ''),
+    organizationEmail: typeof row.organization_email === 'string' && row.organization_email ? row.organization_email : null,
+    paymentDetails: typeof row.payment_details === 'string' ? row.payment_details : null,
+    documentId: String(row.document_id),
+    documentNumber: String(row.document_number),
+    clientName: typeof row.client_name === 'string' ? row.client_name : null,
+    clientEmail: row.client_email,
+    totalTTC: Number(row.total_ttc ?? 0),
+    amountDue: Number(row.amount_due ?? 0),
+    referenceDate: asDateString(row.reference_date),
+    daysLate: Number(row.days_late ?? 0),
+  };
+}
+
+function compose(item: DueItem, reviewUrl: string | null) {
+  const clientName = item.clientName?.trim() || 'Madame, Monsieur';
+  const organizationName = item.organizationName || 'Votre prestataire';
+  if (item.kind === 'invoice_overdue') {
+    return invoiceReminderTemplate({
+      clientName,
+      organizationName,
+      invoiceNumber: item.documentNumber,
+      amount: item.amountDue > 0 ? item.amountDue : item.totalTTC,
+      dueDate: item.referenceDate,
+      daysOverdue: item.daysLate,
+      level: item.level === 3 ? 3 : item.level === 2 ? 2 : 1,
+      paymentDetails: item.paymentDetails,
+    });
+  }
+  if (item.kind === 'quote_followup') {
+    return quoteFollowupTemplate({
+      clientName,
+      organizationName,
+      quoteNumber: item.documentNumber,
+      amount: item.totalTTC,
+      sentOn: item.referenceDate,
+    });
+  }
+  return reviewRequestTemplate({ clientName, organizationName, url: reviewUrl ?? appBaseUrl() });
 }
 
 export class ReminderService {
-  /** Relances pour une organisation. */
-  async checkAndSendReminders(organizationId: string): Promise<ReminderResult> {
+  /** Toutes les organisations ayant activé une automatisation. */
+  async checkAndSendRemindersForAllOrganizations(): Promise<ReminderResult> {
     const result: ReminderResult = { sent: 0, errors: 0, skipped: 0 };
-
-    if (!organizationId) return result;
-
     if (!isEmailConfigured()) {
-      console.warn('[reminder] e-mail non configuré — aucune relance envoyée', {
-        organizationId,
-      });
+      console.warn('[automation] e-mail non configuré — exécution planifiée sans effet');
       return result;
     }
 
-    const now = new Date();
-    const todayIso = now.toISOString();
+    const rows = await db.execute(sql`select * from public.due_automation_items(${MAX_ITEMS_PER_RUN})`);
+    for (const row of rows) {
+      const item = toDueItem(row);
+      if (!item) {
+        result.skipped++;
+        continue;
+      }
+      const claimed = await db.execute(
+        sql`select public.claim_automation_delivery(${item.documentId}, ${item.kind}, ${item.level}) as id`,
+      );
+      const deliveryId = claimed[0]?.id;
+      if (typeof deliveryId !== 'string') {
+        result.skipped++;
+        continue;
+      }
 
-    try {
-      const organization = await db
-        .select({ name: organizations.name, email: organizations.email })
-        .from(organizations)
-        .where(eq(organizations.id, organizationId));
-
-      const overdue = await db
-        .select({
-          id: invoices.id,
-          number: invoices.number,
-          dueDate: invoices.dueDate,
-          totalTTC: invoices.totalTTC,
-          clientName: clients.name,
-          clientEmail: clients.email,
-        })
-        .from(invoices)
-        .leftJoin(clients, eq(clients.id, invoices.clientId))
-        .where(
-          and(
-            eq(invoices.organizationId, organizationId),
-            eq(invoices.type, 'invoice'),
-            ne(invoices.status, 'paid'),
-            ne(invoices.status, 'cancelled'),
-            ne(invoices.status, 'draft'),
-            isNotNull(invoices.dueDate),
-            lt(invoices.dueDate, todayIso),
-          ),
-        )
-        .limit(MAX_REMINDERS_PER_RUN * 3);
-
-      for (const invoice of overdue) {
-        if (result.sent >= MAX_REMINDERS_PER_RUN) {
-          console.warn('[reminder] plafond par exécution atteint', { organizationId });
-          break;
+      let status: 'sent' | 'failed' | 'skipped' = 'failed';
+      try {
+        let reviewUrl: string | null = null;
+        if (item.kind === 'review_request') {
+          const token = generateReviewToken();
+          await db.execute(sql`select public.issue_automatic_review_request(${item.documentId}, ${hashReviewToken(token)})`);
+          reviewUrl = buildReviewUrl(appBaseUrl(), token);
         }
-
-        if (!invoice.dueDate) continue;
-
-        const days = daysOverdue(invoice.dueDate, now);
-        if (!shouldRemindToday(days)) {
-          result.skipped++;
-          continue;
-        }
-
-        if (!invoice.clientEmail) {
-          result.skipped++;
-          continue;
-        }
-
-        const template = invoiceReminderTemplate({
-          clientName: invoice.clientName ?? 'Madame, Monsieur',
-          organizationName: organization[0]?.name ?? 'Votre prestataire',
-          invoiceNumber: invoice.number,
-          totalTTC: invoice.totalTTC,
-          dueDate: invoice.dueDate,
-          daysOverdue: days,
-          url: appUrl(`/client/invoices/${invoice.id}`),
-        });
-
-        const sendResult = await sendEmail({
-          to: invoice.clientEmail,
+        const template = compose(item, reviewUrl);
+        const sent = await sendEmail({
+          to: item.clientEmail,
           subject: template.subject,
           html: template.html,
-          replyTo: organization[0]?.email ?? undefined,
-          tag: 'invoice.reminder',
+          replyTo: item.organizationEmail ?? undefined,
+          tag: `automation.${item.kind}`,
         });
-
-        if (sendResult.sent) {
-          result.sent++;
-          console.info('[audit] invoice.reminder.sent', {
-            invoiceId: invoice.id,
-            organizationId,
-            daysOverdue: days,
-            at: todayIso,
-          });
-        } else {
-          result.errors++;
-        }
+        status = sent.sent ? 'sent' : 'failed';
+      } catch (err) {
+        console.error('[automation] échec d’un envoi', { documentId: item.documentId, kind: item.kind, error: err });
+        status = 'failed';
       }
-    } catch (err) {
-      console.error('[reminder] échec du traitement', { organizationId, error: err });
-      result.errors++;
+
+      await db.execute(sql`select public.complete_automation_delivery(${deliveryId}, ${status})`);
+      if (status === 'sent') result.sent++;
+      else result.errors++;
     }
 
+    console.info('[audit] automations.cron.completed', { ...result, at: new Date().toISOString() });
     return result;
-  }
-
-  /** Relances pour toutes les organisations — appelé par la tâche planifiée. */
-  async checkAndSendRemindersForAllOrganizations(): Promise<ReminderResult> {
-    const total: ReminderResult = { sent: 0, errors: 0, skipped: 0 };
-
-    if (!isEmailConfigured()) {
-      console.warn('[reminder] e-mail non configuré — exécution planifiée sans effet');
-      return total;
-    }
-
-    const allOrganizations = await db.select({ id: organizations.id }).from(organizations);
-
-    for (const org of allOrganizations) {
-      const result = await this.checkAndSendReminders(org.id);
-      total.sent += result.sent;
-      total.errors += result.errors;
-      total.skipped += result.skipped;
-    }
-
-    console.info('[audit] reminders.cron.completed', { ...total, at: new Date().toISOString() });
-
-    return total;
   }
 }
 
