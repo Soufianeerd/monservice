@@ -4,7 +4,7 @@ Version du 18 novembre 2026. État vérifié aujourd'hui sur ton compte Neon :
 - projet de production **Monservice-Europe** (`misty-field-54835523`, Francfort), branche `production` ;
 - plan **Free** : historique de restauration de **6 heures**, branche `production` **non protégée** ;
 - e-mails de connexion envoyés par l'expéditeur partagé de Neon (`auth@mail.myneon.app`) ;
-- le projet **Monservice** (Ohio, `snowy-heart-26768144`) est l'ancien projet : aucun fichier du code ne l'utilise.
+- l'ancien projet **Monservice** (Ohio), vide, a été supprimé le 18 novembre.
 
 Le guide a deux parties :
 - **Partie A — maintenant**, dans l'ordre, sans attendre de code de ma part.
@@ -94,14 +94,9 @@ rm .env.neon-production-admin.local.bak
 
 ---
 
-## Étape 2 — Neutraliser l'ancien projet de l'Ohio (3 min)
+## Étape 2 — Ancien projet de l'Ohio : ✅ fait
 
-**Pourquoi :** son mot de passe a aussi été collé. Aucun fichier du code ne l'utilise.
-
-1. **https://console.neon.tech** → projet **Monservice** (celui marqué *AWS US East 2 (Ohio)*).
-2. Menu de gauche → **Roles** → ligne **neondb_owner** → **⋯** → **Reset password** → **Reset**. Ferme la fenêtre sans copier.
-
-Optionnel, si tu es sûr de ne jamais t'en servir : **Settings** → tout en bas **Delete project**. C'est définitif ; je ne le fais pas à ta place.
+Projet **Monservice** (Ohio) vérifié vide (0 table) puis supprimé le 18 novembre 2026 à 19 h 16, à ta demande. Récupérable jusqu'au 25 novembre. Rien à faire.
 
 ---
 
