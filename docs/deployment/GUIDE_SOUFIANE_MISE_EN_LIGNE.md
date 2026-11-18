@@ -79,12 +79,12 @@ open(path, "w").write("\n".join(lines))
 print("Fichier mis a jour")
 PY
 ```
-Vérification, en lecture seule :
+Vérification de la connexion, en lecture seule (copie la ligne entière) :
 ```sh
-NEON_ADMIN_ENV_FILE=.env.neon-production-admin.local npm run db:check-drift
+node --input-type=module -e "import fs from 'node:fs'; import dotenv from 'dotenv'; import postgres from 'postgres'; const env = dotenv.parse(fs.readFileSync('.env.neon-production-admin.local')); for (const key of ['DATABASE_URL', 'DATABASE_URL_UNPOOLED']) { const sql = postgres(env[key], { max: 1 }); const rows = await sql.unsafe('select current_user'); console.log(key, 'OK', rows[0].current_user); await sql.end(); }"
 ```
 
-**Résultat attendu :** `Fichier mis a jour`, puis la vérification se termine sans `password authentication failed`. Si c'est bon, supprime la sauvegarde (elle contient l'ancien mot de passe) :
+**Résultat attendu :** `Fichier mis a jour`, puis deux lignes `DATABASE_URL OK neondb_owner` et `DATABASE_URL_UNPOOLED OK neondb_owner`. (N'utilise pas `npm run db:check-drift` ici : il signale normalement un écart tant que les migrations 0014 à 0020 ne sont pas appliquées, à l'étape 8.) Si c'est bon, supprime la sauvegarde (elle contient l'ancien mot de passe) :
 ```sh
 rm .env.neon-production-admin.local.bak
 ```
