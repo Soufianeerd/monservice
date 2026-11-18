@@ -18,7 +18,8 @@ const authOnly = process.env.NEON_CI_AUTH_ONLY === 'true';
 // Rejeu ciblé après une correction de tests navigateur : rapport distinct,
 // sans présenter comme rejouées les matrices DB du mode complet par défaut.
 const browserOnly = process.env.NEON_CI_BROWSER_ONLY === 'true';
-if (authOnly && browserOnly) throw new Error('Choose exactly one targeted validation scope');
+const recette = process.env.NEON_CI_RECETTE === 'true';
+if ([authOnly, browserOnly, recette].filter(Boolean).length > 1) throw new Error('Choose exactly one targeted validation scope');
 const validatedCommands=[];
 function command(binary, args, env = environment, visible = false) {
   const result = spawnSync(binary, args, { env, encoding: 'utf8', stdio: visible ? 'inherit' : 'pipe' });
@@ -55,7 +56,13 @@ try {
   command('node',['scripts/neon/runtime-credentials.mjs'],environment,true);
   const run = (args, extraEnvironment = {}) => command('node',['scripts/neon/run-tests.mjs',...args],{...environment,...extraEnvironment},true);
   if (!authOnly) run(['npx','tsx','scripts/e2e/seed-local.ts']);
-  if (process.env.NEON_CI_SETUP_ONLY !== 'true') {
+  if (recette) {
+    // Recette visuelle, réglages de production V1 : espaces clients fermés,
+    // secteur santé fermé à l'inscription (variable lue à la compilation).
+    const v1 = { NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS:'health', CLIENT_ACCESS_ENABLED:'false', LAUNCH_INCLUDED_PLAN:'pro', DATABASE_POOL_MAX:'10' };
+    run(['npm','run','build'],v1);
+    run(['npx','playwright','test','--config','playwright.recette.config.ts'],v1);
+  } else if (process.env.NEON_CI_SETUP_ONLY !== 'true') {
     if (!authOnly) {
     run(['npm','run','db:check-drift']);
     run(['npm','run','db:check-contract']);
@@ -84,8 +91,8 @@ try {
       command('node',['scripts/neon/run-tests.mjs','npx','playwright','test','--workers=1'],{...environment,E2E_PRODUCTION_BUILD:'true',E2E_V1_SCOPE:'true',CLIENT_ACCESS_ENABLED:'false',DATABASE_POOL_MAX:'10'},true);
     }
   }
-  console.log(`Synthetic CI replay succeeded (${process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : browserOnly ? 'browser regression' : 'full validation'})`);
-  validationSucceeded=process.env.NEON_CI_SETUP_ONLY!=='true';
+  console.log(`Synthetic CI replay succeeded (${recette ? 'visual acceptance' : process.env.NEON_CI_SETUP_ONLY === 'true' ? 'setup only' : authOnly ? 'strict Auth browser validation' : browserOnly ? 'browser regression' : 'full validation'})`);
+  validationSucceeded=process.env.NEON_CI_SETUP_ONLY!=='true'&&!recette;
 } catch (error) {
   console.error(error.message);
   process.exitCode=1;

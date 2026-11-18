@@ -1,0 +1,44 @@
+name: Recette visuelle
+# Un compte réel par métier ouvert, chaque page du menu capturée, sur une
+# branche Neon jetable (données synthétiques). Rien n'est écrit en production.
+on:
+  workflow_dispatch:
+  push:
+    branches: [launch/v1-professional-only]
+    paths: ['recette/**', 'playwright.recette.config.ts', '.github/workflows/recette.yml']
+permissions:
+  contents: read
+concurrency:
+  group: monservice-neon-validation
+  cancel-in-progress: false
+jobs:
+  recette:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_CI_API_KEY }}
+      NEON_CI_RECETTE: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: test -n "$NEON_API_KEY"
+      - run: npm ci
+      - run: npm install --global neon@8.0.7
+      - name: Install Chromium with retries
+        run: |
+          for attempt in 1 2 3; do
+            timeout 240 npx playwright install --with-deps chromium && exit 0
+            sleep 15
+          done
+          exit 1
+      - name: Recette sur branche jetable
+        run: node scripts/neon/ci-branch.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recette-visuelle
+          path: recette-output/
+          retention-days: 7
