@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: monservice-neon-validation
+  group: monservice-recette
   cancel-in-progress: false
 jobs:
   recette:
