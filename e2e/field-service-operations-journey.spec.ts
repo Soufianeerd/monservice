@@ -142,7 +142,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     // 12. Verify Timeline History entries
     const timeline = page.locator('[data-testid="timeline-list"]');
     await expect(timeline).toBeVisible();
-    await expect(timeline).toContainText(/in_progress|completed/i);
+    await expect(timeline).toContainText(/En cours|Terminé/);
 
     // 13. Reload Browser and Verify DB/UI Persistence
     await page.reload();
@@ -152,7 +152,7 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await expect(page.locator('text=' + uniqueSiteLabel)).toBeVisible();
     await expect(page.locator('text=' + uniqueReportSummary)).toBeVisible();
     await expect(page.locator('text=Finalisé (Immuable)')).toBeVisible();
-    await expect(page.locator('[data-testid="timeline-list"]')).toContainText(/completed/i);
+    await expect(page.locator('[data-testid="timeline-list"]')).toContainText('Terminé');
   });
 
   test('FIELD_SERVICE_E2E_02: Mobile Viewport Smoke (390x844) - Responsiveness & Access', async ({ page }) => {
