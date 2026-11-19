@@ -116,6 +116,13 @@ export const organizations = sqliteTable('organizations', {
   legalNotice: text('legal_notice'),
   paymentTerms: text('payment_terms'),
   bankDetails: text('bank_details'),
+  // Identité légale et banque (0022) : reprises sur les factures et devis.
+  legalForm: text('legal_form'),
+  siret: text('siret'),
+  vatNumber: text('vat_number'),
+  vatExempt: boolean('vat_exempt').notNull().default(false),
+  iban: text('iban'),
+  bic: text('bic'),
   // Colonnes référencées par Stripe Connect et la facturation, jusqu'ici
   // absentes du schéma (dérive constatée à l'audit).
   email: text('email'),

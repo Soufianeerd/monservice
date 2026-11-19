@@ -45,4 +45,10 @@ export interface Organization {
   legalNotice?: string;
   paymentTerms?: string;
   bankDetails?: string;
+  legalForm?: string | null;
+  siret?: string | null;
+  vatNumber?: string | null;
+  vatExempt?: boolean;
+  iban?: string | null;
+  bic?: string | null;
 }

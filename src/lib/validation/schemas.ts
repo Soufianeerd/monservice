@@ -169,6 +169,13 @@ export const organizationUpdateSchema = z
     legalNotice: z.string().max(2000).optional(),
     paymentTerms: z.string().max(2000).optional(),
     bankDetails: z.string().max(500).optional(),
+    legalForm: z.string().trim().max(80).nullable().optional(),
+    // Saisie libre (espaces, minuscules), stockage normalisé : contrôlé aussi en base (0022).
+    siret: z.string().transform((value) => value.replace(/\s/g, '')).pipe(z.string().regex(/^[0-9]{14}$/, 'Le SIRET compte 14 chiffres')).nullable().optional(),
+    vatNumber: z.string().transform((value) => value.replace(/\s/g, '').toUpperCase()).pipe(z.string().regex(/^[A-Z]{2}[A-Z0-9]{2,13}$/, 'Numéro de TVA invalide (ex. FR12345678901)')).nullable().optional(),
+    vatExempt: z.boolean().optional(),
+    iban: z.string().transform((value) => value.replace(/\s/g, '').toUpperCase()).pipe(z.string().regex(/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/, 'IBAN invalide')).nullable().optional(),
+    bic: z.string().transform((value) => value.replace(/\s/g, '').toUpperCase()).pipe(z.string().regex(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/, 'BIC invalide')).nullable().optional(),
   })
   .strict();
 

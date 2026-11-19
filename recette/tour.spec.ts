@@ -92,6 +92,11 @@ async function fillOrganisation(page: Page) {
   await page.locator('#address').fill('12 rue de la Recette');
   await page.locator('#zipCode').fill('57000');
   await page.locator('#city').fill('Metz');
+  await page.locator('#legalForm').selectOption('Entrepreneur individuel (micro-entreprise)');
+  await page.locator('#siret').fill('123 456 789 00012');
+  await page.locator('#vatExempt').check();
+  await page.locator('#iban').fill('FR76 3000 6000 0112 3456 7890 189');
+  await page.locator('#bic').fill('AGRIFRPP');
   await page.getByRole('button', { name: 'Enregistrer les coordonnées' }).click();
   await page.getByText(/enregistr/i).first().waitFor({ timeout: 20_000 });
 }

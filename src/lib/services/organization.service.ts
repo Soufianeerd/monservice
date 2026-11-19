@@ -27,6 +27,12 @@ const UPDATABLE_FIELDS = [
   'legalNotice',
   'paymentTerms',
   'bankDetails',
+  'legalForm',
+  'siret',
+  'vatNumber',
+  'vatExempt',
+  'iban',
+  'bic',
 ] as const;
 
 export const organizationService = {

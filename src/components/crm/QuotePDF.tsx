@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Invoice, Organization } from '@/lib/data/interfaces';
 import { legalService } from '@/lib/services/legal.service';
+import { issuerFooterLine, issuerLegalLines, issuerPostalLine } from '@/lib/legal/issuer';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
 
 const styles = StyleSheet.create({
@@ -105,12 +106,12 @@ export async function QuotePDF({ quote, organization, client, site }: QuotePDFPr
             <Text style={styles.companyTitle}>{organization.name}</Text>
             {organization.address && <Text style={styles.partyText}>{organization.address}</Text>}
             <Text style={styles.partyText}>
-              {[organization.zipCode, organization.city].filter(Boolean).join(' ')}
+              {issuerPostalLine(organization)}
             </Text>
             {organization.country && <Text style={styles.partyText}>{organization.country}</Text>}
             {organization.email && <Text style={styles.partyText}>Email : {organization.email}</Text>}
             {organization.phone && <Text style={styles.partyText}>Tél : {organization.phone}</Text>}
-            {organization.taxId && <Text style={styles.partyText}>N° TVA : {organization.taxId}</Text>}
+            {issuerLegalLines(organization).map((line) => <Text key={line} style={styles.partyText}>{line}</Text>)}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.docTitle}>DEVIS</Text>
@@ -338,7 +339,7 @@ export async function QuotePDF({ quote, organization, client, site }: QuotePDFPr
           <Text>{mentions.validity}</Text>
           <Text>{mentions.acceptance}</Text>
           <Text style={{ marginTop: 2 }}>
-            {organization.name} - SIREN / N° TVA : {organization.taxId || 'N/A'} - Devis N° {quote.number}
+            {issuerFooterLine(organization, `Devis N° ${quote.number}`)}
           </Text>
         </View>
       </Page>

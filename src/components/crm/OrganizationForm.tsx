@@ -38,6 +38,13 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
       website: initialData.website || '',
       taxId: initialData.taxId || '',
       currency: initialData.currency || 'EUR',
+      legalForm: initialData.legalForm || '',
+      siret: initialData.siret || '',
+      vatNumber: initialData.vatNumber || '',
+      vatExempt: initialData.vatExempt ?? false,
+      iban: initialData.iban || '',
+      bic: initialData.bic || '',
+      paymentTerms: initialData.paymentTerms || '',
     }
   });
 
@@ -207,6 +214,94 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
           </div>
 
 
+        </div>
+      </div>
+
+      {/* Mentions obligatoires des factures et devis (S-02) */}
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900">Informations légales et bancaires</h3>
+        <p className="mt-1 mb-4 text-sm text-gray-500">Reprises sur vos devis, vos factures et vos relances de paiement.</p>
+        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="legalForm" className="block text-sm font-medium text-gray-700">Forme juridique</label>
+            <select
+              id="legalForm"
+              {...register('legalForm')}
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
+            >
+              <option value="">Sélectionner…</option>
+              <option value="Entrepreneur individuel (micro-entreprise)">Entrepreneur individuel (micro-entreprise)</option>
+              <option value="Entrepreneur individuel">Entrepreneur individuel</option>
+              <option value="EURL">EURL</option>
+              <option value="SARL">SARL</option>
+              <option value="SASU">SASU</option>
+              <option value="SAS">SAS</option>
+              <option value="SA">SA</option>
+              <option value="SCI">SCI</option>
+              <option value="Association">Association</option>
+              <option value="Profession libérale (BNC)">Profession libérale (BNC)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="siret" className="block text-sm font-medium text-gray-700">SIRET</label>
+            <input
+              type="text"
+              id="siret"
+              {...register('siret')}
+              placeholder="123 456 789 00012"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.siret && <p className="mt-1 text-sm text-red-600">{errors.siret.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700">N° de TVA intracommunautaire</label>
+            <input
+              type="text"
+              id="vatNumber"
+              {...register('vatNumber')}
+              placeholder="FR12345678901"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.vatNumber && <p className="mt-1 text-sm text-red-600">{errors.vatNumber.message}</p>}
+          </div>
+          <div className="flex items-start gap-3 sm:col-span-2">
+            <input type="checkbox" id="vatExempt" {...register('vatExempt')} className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+            <label htmlFor="vatExempt" className="text-sm text-gray-700">
+              Je ne facture pas la TVA (franchise en base) : la mention « TVA non applicable, article 293 B du CGI » figurera sur mes factures.
+            </label>
+          </div>
+          <div>
+            <label htmlFor="iban" className="block text-sm font-medium text-gray-700">IBAN</label>
+            <input
+              type="text"
+              id="iban"
+              {...register('iban')}
+              placeholder="FR76 3000 6000 0112 3456 7890 189"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.iban && <p className="mt-1 text-sm text-red-600">{errors.iban.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="bic" className="block text-sm font-medium text-gray-700">BIC</label>
+            <input
+              type="text"
+              id="bic"
+              {...register('bic')}
+              placeholder="AGRIFRPP"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.bic && <p className="mt-1 text-sm text-red-600">{errors.bic.message}</p>}
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="paymentTerms" className="block text-sm font-medium text-gray-700">Conditions de paiement</label>
+            <textarea
+              id="paymentTerms"
+              rows={2}
+              {...register('paymentTerms')}
+              placeholder="Paiement à 30 jours à réception de facture, par virement."
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
         </div>
       </div>
 

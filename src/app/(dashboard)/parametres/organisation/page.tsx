@@ -48,6 +48,13 @@ export default function OrganizationSettingsPage() {
         phone: data.phone || undefined,
         currency: data.currency || undefined,
         logo: logo || currentOrg.logo || undefined,
+        legalForm: data.legalForm || null,
+        siret: data.siret?.trim() ? data.siret : null,
+        vatNumber: data.vatNumber?.trim() ? data.vatNumber : null,
+        vatExempt: Boolean(data.vatExempt),
+        iban: data.iban?.trim() ? data.iban : null,
+        bic: data.bic?.trim() ? data.bic : null,
+        paymentTerms: data.paymentTerms?.trim() || undefined,
       };
       for (const k of Object.keys(updatePayload)) {
         if (updatePayload[k] === undefined) delete updatePayload[k];
