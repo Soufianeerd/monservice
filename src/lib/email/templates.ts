@@ -72,7 +72,8 @@ export function quoteSentTemplate(params: {
   organizationName: string;
   quoteNumber: string;
   totalTTC: number;
-  url: string;
+  /** Lien de consultation ; absent en V1 (le devis est joint en PDF). */
+  url?: string;
   message?: string;
 }) {
   return {
@@ -84,8 +85,9 @@ export function quoteSentTemplate(params: {
         <p><strong>${escapeHtml(params.organizationName)}</strong> vous a adressé un devis
            d'un montant de <strong>${formatAmount(params.totalTTC)} TTC</strong>.</p>
         ${params.message ? `<p style="background:#f9fafb;padding:12px;border-radius:6px;">${escapeHtml(params.message)}</p>` : ''}
+        ${params.url ? '' : '<p>Le devis est joint à cet e-mail au format PDF. Pour l’accepter, répondez simplement à ce message.</p>'}
       `,
-      ctaLabel: 'Consulter le devis',
+      ctaLabel: params.url ? 'Consulter le devis' : undefined,
       ctaUrl: params.url,
     }),
   };
@@ -97,7 +99,9 @@ export function invoiceSentTemplate(params: {
   invoiceNumber: string;
   totalTTC: number;
   dueDate?: string | null;
-  url: string;
+  /** Lien de consultation ; absent en V1 (la facture est jointe en PDF). */
+  url?: string;
+  paymentDetails?: string | null;
 }) {
   return {
     subject: `Facture ${params.invoiceNumber} de ${params.organizationName}`,
@@ -108,8 +112,10 @@ export function invoiceSentTemplate(params: {
         <p>Veuillez trouver votre facture d'un montant de
            <strong>${formatAmount(params.totalTTC)} TTC</strong>.</p>
         ${params.dueDate ? `<p>Échéance de paiement : <strong>${formatDate(params.dueDate)}</strong>.</p>` : ''}
+        ${params.paymentDetails?.trim() ? `<p><strong>Coordonnées de règlement</strong><br>${escapeHtml(params.paymentDetails.trim())}</p>` : ''}
+        ${params.url ? '' : '<p>La facture est jointe à cet e-mail au format PDF.</p>'}
       `,
-      ctaLabel: 'Consulter et régler la facture',
+      ctaLabel: params.url ? 'Consulter et régler la facture' : undefined,
       ctaUrl: params.url,
     }),
   };

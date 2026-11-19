@@ -1,6 +1,7 @@
 'use client';
 import { getByIdAction } from '@/app/actions/organization.actions';
 import { updateAction as updateInvoiceAction } from '@/app/actions/invoice.actions';
+import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -26,6 +27,27 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [issuing, setIssuing] = useState(false);
   const [issueError, setIssueError] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
+
+  // Envoi réel (S-04) : la facture part en PDF joint ; un brouillon est émis d'abord.
+  const emailInvoice = async () => {
+    setIssuing(true);
+    setIssueError(null);
+    setEmailNotice(null);
+    try {
+      const result = await sendDocumentByEmailAction(invoice.id);
+      if (result.sent) {
+        setEmailNotice(result.message);
+        router.refresh();
+      } else {
+        setIssueError(result.message);
+      }
+    } catch (error) {
+      setIssueError(error instanceof Error ? error.message : 'Envoi impossible.');
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   // Émission (S-03) : verrouille la facture, attribue son numéro définitif et
   // sa date. Elle peut ensuite être réglée, relancée et suivie en trésorerie.
@@ -112,6 +134,18 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
             </button>
           )}
 
+          {invoice.type !== 'quote' && invoice.status !== 'cancelled' && (
+            <button
+              type="button"
+              onClick={emailInvoice}
+              disabled={issuing}
+              data-testid="email-invoice-button"
+              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Envoyer par e-mail
+            </button>
+          )}
+
           {invoice.status === 'draft' && invoice.type !== 'quote' && (
             <button
               type="button"
@@ -136,6 +170,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
       </div>
 
       {issueError && <p role="alert" className="text-sm text-red-600">{issueError}</p>}
+      {emailNotice && <p className="text-sm text-emerald-700">{emailNotice}</p>}
 
       <div className="border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>

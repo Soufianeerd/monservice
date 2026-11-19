@@ -33,6 +33,7 @@ import {
 } from '@/app/actions/quote.actions';
 import { generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { getByIdAction } from '@/app/actions/organization.actions';
+import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
 import type { Invoice } from '@/lib/data/interfaces';
 import { QUOTE_DECISION_METHODS, QUOTE_DECISION_METHOD_LABELS, type QuoteDecisionMethod } from '@/lib/validation/billing.schemas';
 
@@ -82,7 +83,30 @@ export default function ProfessionalQuoteDetailPage({
     try {
       const updated = await sendQuoteAction({ quoteId: quote.id });
       setQuote(updated);
-      setSuccessMsg('Devis envoyé au client avec succès !');
+      setSuccessMsg('Devis marqué comme envoyé.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Envoi réel (S-04) : e-mail au client avec le devis en PDF joint ; la
+  // réponse du client arrive directement dans la boîte de l'entreprise.
+  const handleEmail = async () => {
+    if (!quote) return;
+    setActionLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const result = await sendDocumentByEmailAction(quote.id);
+      if (!result.sent) {
+        setError(result.message);
+        return;
+      }
+      setSuccessMsg(result.message);
+      router.refresh();
+      if (quote.status === 'draft') setQuote({ ...quote, status: 'sent' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
     } finally {
@@ -283,6 +307,18 @@ export default function ProfessionalQuoteDetailPage({
             PDF
           </button>
 
+          {(isDraft || isSent || isViewed) && (
+            <button
+              onClick={handleEmail}
+              disabled={actionLoading}
+              data-testid="email-quote-button"
+              className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+            >
+              <Send className="w-4 h-4 mr-1.5" />
+              Envoyer par e-mail
+            </button>
+          )}
+
           {isDraft && (
             <>
               <button
@@ -292,7 +328,7 @@ export default function ProfessionalQuoteDetailPage({
                 className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
               >
                 <Send className="w-4 h-4 mr-1.5" />
-                Envoyer au client
+                Marquer comme envoyé
               </button>
               <button
                 onClick={handleDelete}
