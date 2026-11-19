@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { resetRateLimitStoreForTesting, sensitiveRateLimit } from '@/middleware/rate-limit';
 
@@ -7,7 +7,17 @@ function post(path: string, ip = '203.0.113.7') {
 }
 
 describe('sensitiveRateLimit', () => {
-  beforeEach(() => resetRateLimitStoreForTesting());
+  beforeEach(() => {
+    resetRateLimitStoreForTesting();
+    // La CI désactive la limite pour ses parcours automatisés ; on la teste activée.
+    vi.stubEnv('RATE_LIMIT_DISABLED', '');
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('se désactive seulement par RATE_LIMIT_DISABLED=true', () => {
+    vi.stubEnv('RATE_LIMIT_DISABLED', 'true');
+    for (let i = 0; i < 20; i += 1) expect(sensitiveRateLimit(post('/api/auth/sign-up/email'))).toBeNull();
+  });
 
   it('limite les créations de compte par adresse IP', () => {
     for (let i = 0; i < 5; i += 1) expect(sensitiveRateLimit(post('/api/auth/sign-up/email'))).toBeNull();
