@@ -13,11 +13,11 @@ Aucun compte client ou patient en V1, dans les trois secteurs. Le code des porta
 |---|---|---|
 | `CLIENT_ACCESS_ENABLED` | **ne pas définir** | Inscription « particulier » refusée par le serveur, `/client/*`, `/invitation/portail` et `/devis/[id]/sign` fermés, panneau d'invitation masqué. Un compte client existant arrive sur `/acces-clients` |
 | `LAUNCH_INCLUDED_PLAN` | `pro` | Tant que Stripe est désactivé, tout compte dispose des droits du plan Pro. Sans cette variable, le plan gratuit plafonne à 10 devis et 10 factures par mois |
-| `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` | `health`, ou vide pour ouvrir les trois secteurs | Voir l'avertissement ci-dessous |
+| `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` | **ne pas définir** | Les trois secteurs (généraliste, artisans, paramédical) sont ouverts aux professionnels |
 
 Acceptation d'un devis : le professionnel consigne la réponse de son client depuis la fiche du devis (« Le client a accepté », mode de réception et date). L'acompte, la facture et l'ordre de travail s'enchaînent ensuite. Aucune signature électronique n'est attribuée au client.
 
-**Ouverture du paramédical.** Retirer `health` de `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` ouvre les inscriptions du secteur. Ce réglage ne change rien à l'obligation légale : des données de santé réelles exigent un hébergement certifié HDS de bout en bout, non démontré pour la chaîne actuelle. Décision et responsabilité de l'éditeur ; voir `docs/audits/launch-readiness-2026-11/09_COMPLIANCE.md`.
+**Paramédical ouvert au lancement** (décision du 17 novembre 2026). Rappel légal : des données de santé réelles exigent un hébergement certifié HDS de bout en bout, non démontré pour la chaîne actuelle. Décision et responsabilité de l'éditeur ; voir `docs/audits/launch-readiness-2026-11/09_COMPLIANCE.md`.
 
 Validation : la CI exécute les parcours des portails avec l'indicateur activé (version suivante), puis `e2e/v1-professional-only.spec.ts` sans l'indicateur, comme en production.
 
@@ -31,7 +31,7 @@ Validation : la CI exécute les parcours des portails avec l'indicateur activé 
 | E-mails de connexion (code de vérification, mot de passe oublié) | **Bloquant** — fournisseur « partagé » Neon, prévu pour les essais |
 | E-mails métier (invitations, devis, factures) | **Bloquant** — aucun expéditeur vérifié |
 | Abonnements Stripe | Désactivés au lancement (routes en 503 sans clés) |
-| Paramédical | Fermé : `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS=health` |
+| Paramédical | Ouvert aux professionnels (aucun compte patient en V1) |
 
 ## Le point bloquant : les e-mails
 Rester sur `monservicecrm.netlify.app` convient pour le **site**. Les **e-mails** exigent
@@ -47,8 +47,7 @@ SMTP Neon Auth (`smtp.resend.com`, port 465, utilisateur `resend`), `RESEND_API_
 ## Variables Netlify — contexte production
 Obligatoires : `DATABASE_URL` (rôle `monservice_runtime`, pooled), `NEON_AUTH_BASE_URL`,
 `NEON_AUTH_COOKIE_SECRET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, `NEXT_PUBLIC_APP_URL=https://monservicecrm.netlify.app`,
-`NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS=health`.
+`AWS_SECRET_ACCESS_KEY`, `NEXT_PUBLIC_APP_URL=https://monservicecrm.netlify.app`.
 Workers : `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, `CRON_SECRET`.
 E-mails : `RESEND_API_KEY`, `EMAIL_FROM`.
 Ne pas définir `DATABASE_POOL_MAX` (1 par défaut, adapté au serverless).

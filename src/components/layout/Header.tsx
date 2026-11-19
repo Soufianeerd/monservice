@@ -12,6 +12,7 @@ import {
 import { Notification } from '@/lib/data/interfaces';
 import ThemeSwitcher from './ThemeSwitcher';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { REGISTRATION_SECTORS, type RegistrationSectorCode } from '@/lib/registration/options';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -55,25 +56,21 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = async (id: string) => {
+  // Les notifications sont recalculées à partir des données (relances dues,
+  // tâches en retard…) : « lu » ne vaut que pour la session en cours.
+  const handleMarkAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await /* markAsRead removed */(id);
-    if (user) {
-      generateNotificationsAction(user.id).then(setNotifications);
-    }
   };
 
-  const handleMarkAllAsRead = async () => {
+  const handleMarkAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    if (user && organization) {
-      await /* markAllAsRead removed */(organization.id, user.id);
-      generateNotificationsAction(user.id).then(setNotifications);
-    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const showGlobalSearch = user?.profileType === 'professional' && (!workspace || workspace.type === 'generic');
+  // Recherche ouverte aux espaces générique et terrain ; l'espace paramédical
+  // (V1 gelée) garde son propre accès aux dossiers patients.
+  const showGlobalSearch = user?.profileType === 'professional' && workspace?.type !== 'paramedical';
   
   const getWorkspaceLabel = () => {
     if (workspace && workspace.type === 'paramedical') {
@@ -82,7 +79,11 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     if (workspace && workspace.type === 'field_service') {
       return workspace.label || 'Espace Artisans & Services Techniques';
     }
-    return organization?.industry || 'CRM';
+    const industry = organization?.industry;
+    if (industry && industry in REGISTRATION_SECTORS) {
+      return REGISTRATION_SECTORS[industry as RegistrationSectorCode].label;
+    }
+    return industry || 'CRM';
   };
 
   return (

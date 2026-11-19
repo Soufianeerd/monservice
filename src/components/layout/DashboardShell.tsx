@@ -5,12 +5,12 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import ProtectedLayout from '../auth/ProtectedLayout';
 
-export default function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function DashboardShell({ children, clientAccess = true }: { children: React.ReactNode; clientAccess?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} clientAccess={clientAccess} />
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />

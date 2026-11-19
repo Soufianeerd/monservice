@@ -18,6 +18,12 @@ export default function ContextualHelp() {
   const help = useMemo(() => getPageHelp(pathname, type), [pathname, type]);
   const workflows = useMemo(() => getHelpWorkflows(type), [type]);
   const [open, setOpen] = useState(false);
+  // Fermé par défaut pour ne pas masquer les formulaires ; l'espace
+  // paramédical (V1 gelée) garde son ouverture d'origine.
+  const startsOpen = useCallback(() => {
+    const preference = localStorage.getItem('monservice_contextual_help');
+    return type === 'paramedical' ? preference !== 'off' : preference === 'on';
+  }, [type]);
   const [running, setRunning] = useState(false);
   const [workflow, setWorkflow] = useState<HelpWorkflow | null>(null);
   const [elements, setElements] = useState<GuideElement[]>([]);
@@ -42,8 +48,8 @@ export default function ContextualHelp() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOpen(localStorage.getItem('monservice_contextual_help') !== 'off');
-  }, []);
+    setOpen(startsOpen());
+  }, [startsOpen]);
 
   useEffect(() => {
     if (pathRef.current === pathname) return;
@@ -51,9 +57,9 @@ export default function ContextualHelp() {
     scopeRef.current = null; currentKeyRef.current = null; entryRef.current = false;
     queueMicrotask(() => {
       setIndex(0); setTargetRect(null);
-      if (!workflow) { setRunning(false); setOpen(localStorage.getItem('monservice_contextual_help') !== 'off'); }
+      if (!workflow) { setRunning(false); setOpen(startsOpen()); }
     });
-  }, [pathname, workflow]);
+  }, [pathname, workflow, startsOpen]);
 
   useEffect(() => {
     if (!running || saved) return;
@@ -162,7 +168,7 @@ export default function ContextualHelp() {
   }
 
   return <>
-    <button data-guide-ui ref={launcherRef} type="button" onClick={() => { setOpen(true); setRunning(false); setWorkflow(null); setSaved(null); setTargetRect(null); localStorage.setItem('monservice_contextual_help', 'on'); }} aria-expanded={open || running} aria-label="Comprendre cette page" className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-lg"><CircleHelp className="h-5 w-5 text-indigo-600" />Aide de cette page</button>
+    <button data-guide-ui ref={launcherRef} type="button" onClick={() => { setOpen(true); setRunning(false); setWorkflow(null); setSaved(null); setTargetRect(null); }} aria-expanded={open || running} aria-label="Comprendre cette page" className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-lg"><CircleHelp className="h-5 w-5 text-indigo-600" />Aide de cette page</button>
     {open && !running && <aside data-guide-ui aria-label="Aide contextuelle" className="fixed bottom-20 right-4 z-50 max-h-[calc(100dvh-7rem)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
       <div className="flex items-start justify-between gap-3"><h2 className="text-base font-semibold text-gray-900">{help.title}</h2><button type="button" aria-label="Réduire l’aide" onClick={close} className="p-1 text-gray-500"><X className="h-4 w-4" /></button></div>
       <p className="mt-3 text-sm leading-relaxed text-gray-600">{help.text}</p>

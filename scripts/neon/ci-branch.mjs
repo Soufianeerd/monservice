@@ -58,8 +58,8 @@ try {
   if (!authOnly) run(['npx','tsx','scripts/e2e/seed-local.ts']);
   if (recette) {
     // Recette visuelle, réglages de production V1 : espaces clients fermés,
-    // secteur santé fermé à l'inscription (variable lue à la compilation).
-    const v1 = { NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS:'health', CLIENT_ACCESS_ENABLED:'false', LAUNCH_INCLUDED_PLAN:'pro', DATABASE_POOL_MAX:'10' };
+    // trois secteurs ouverts à l'inscription (variable lue à la compilation).
+    const v1 = { NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS:'', CLIENT_ACCESS_ENABLED:'false', LAUNCH_INCLUDED_PLAN:'pro', DATABASE_POOL_MAX:'10' };
     run(['npm','run','build'],v1);
     run(['npx','playwright','test','--config','playwright.recette.config.ts'],v1);
   } else if (process.env.NEON_CI_SETUP_ONLY !== 'true') {

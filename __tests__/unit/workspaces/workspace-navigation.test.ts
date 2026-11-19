@@ -187,3 +187,16 @@ describe('Workspace Navigation', () => {
     });
   });
 });
+
+describe('Navigation V1 sans comptes clients', () => {
+  it('masque Marketplace et Messagerie quand les espaces clients sont fermés', () => {
+    for (const [sector, profession] of [['other', null], ['field_services', 'plumber']] as const) {
+      const workspace = resolveWorkspace({ sector, profession });
+      const open = buildProfessionalNavigation(workspace).map((item) => item.id);
+      const closed = buildProfessionalNavigation(workspace, { clientAccess: false }).map((item) => item.id);
+      expect(closed).not.toContain('marketplace');
+      expect(closed).not.toContain('messages');
+      expect(open.filter((id) => id !== 'marketplace' && id !== 'messages')).toEqual(closed);
+    }
+  });
+});

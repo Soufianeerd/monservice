@@ -50,7 +50,7 @@ export class SearchService {
           title: fullName,
           subtitle: contact.email || 'Contact',
           type: 'CONTACT',
-          url: `/contacts/${contact.id}`,
+          url: `/clients/${contact.clientId}`,
           score: this.calculateScore(normalizedQuery, fullName, contact.email),
         });
       }

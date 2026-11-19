@@ -4,6 +4,7 @@ import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider';
 import { getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { currentTeamRemoval } from '@/lib/services/team.service';
+import { isClientAccessEnabled } from '@/lib/launch/client-access';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Source d'identité unique : le socle `lib/auth/session`. Ne jamais
@@ -24,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <OnboardingProvider>
-      <DashboardShell>
+      <DashboardShell clientAccess={isClientAccessEnabled()}>
         {children}
         <OnboardingGuide />
       </DashboardShell>

@@ -257,7 +257,7 @@ read -s "RESEND_KEY?Colle la cle Resend puis Entree : "
 ```
 Remplace `mail.monservice-pro.fr` par ton domaine :
 ```sh
-printf '\nRESEND_API_KEY="%s"\nEMAIL_FROM="MonService <noreply@mail.monservice-pro.fr>"\nCRON_SECRET="%s"\nLAUNCH_INCLUDED_PLAN="pro"\nNEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS="health"\n' "$RESEND_KEY" "$(openssl rand -hex 32)" >> .env.neon-production.local
+printf '\nRESEND_API_KEY="%s"\nEMAIL_FROM="MonService <noreply@mail.monservice-pro.fr>"\nCRON_SECRET="%s"\nLAUNCH_INCLUDED_PLAN="pro"\n' "$RESEND_KEY" "$(openssl rand -hex 32)" >> .env.neon-production.local
 ```
 ```sh
 unset RESEND_KEY
@@ -270,7 +270,7 @@ unset RESEND_KEY
    ```
 2. **https://app.netlify.com** → projet **monservicecrm** → **Project configuration** → **Environment variables** → **Add a variable** → **Add a single variable**.
 3. Pour **chaque ligne** du fichier affiché, sauf `NEON_BRANCH` et `NEON_BRANCH_ID` : *Key* = le nom avant `=`, *Value* = la valeur **sans les guillemets**, *Deploy contexts* = **Production** seulement → **Create variable**.
-4. Vérifie que ces noms sont tous présents dans Netlify : `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `LAUNCH_INCLUDED_PLAN`, `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS`.
+4. Vérifie que ces noms sont tous présents dans Netlify : `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `LAUNCH_INCLUDED_PLAN`.
 
 **Ne crée jamais dans Netlify :** `CLIENT_ACCESS_ENABLED`, `DATABASE_POOL_MAX`, une variable `STRIPE_…`, ni rien qui vienne de `.env.neon-production-admin.local`.
 
@@ -299,5 +299,7 @@ Netlify → projet **monservicecrm** → **Project configuration** → **Cloud c
 
 ---
 
-## Décision qui t'appartient : le paramédical
-Par défaut il reste **fermé** (`NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS=health`). L'ouvrir avec de vrais patients exige un hébergement certifié HDS sur toute la chaîne (base, fichiers, application, e-mails) : plusieurs semaines de travail, à planifier après le lancement. Ne retire pas `health` sans en avoir parlé avec moi.
+## Les trois secteurs sont ouverts au lancement
+Généraliste, artisans et paramédical sont ouverts à l'inscription des **professionnels** (décision du 17 novembre 2026). La seule fermeture V1 : aucun compte client ni patient. Ne définis pas `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS`.
+
+À savoir pour le paramédical : en France, héberger des données de santé de vrais patients exige un hébergement certifié HDS sur toute la chaîne (base, fichiers, application, e-mails). La conformité de la chaîne actuelle (Neon, Netlify, Resend) n'est pas démontrée. C'est ta décision d'éditeur ; voir `docs/audits/launch-readiness-2026-11/09_COMPLIANCE.md`.

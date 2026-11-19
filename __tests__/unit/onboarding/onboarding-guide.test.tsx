@@ -14,8 +14,11 @@ describe('OnboardingGuide pour tous les univers', () => {
     vi.mocked(useAuth).mockReturnValue({ user: { onboardingCompleted: true, profileType: 'professional' }, organization: { sector }, isLoading: false } as unknown as ReturnType<typeof useAuth>);
     render(<OnboardingGuide />);
     expect(screen.getByLabelText('Comprendre cette page')).toBeVisible();
-    expect(screen.getByLabelText('Aide contextuelle')).toBeVisible();
-    fireEvent.click(screen.getByLabelText('Réduire l’aide'));
+    // Fermée par défaut hors paramédical : elle ne recouvre pas les formulaires.
+    if (sector === 'health') {
+      expect(screen.getByLabelText('Aide contextuelle')).toBeVisible();
+      fireEvent.click(screen.getByLabelText('Réduire l’aide'));
+    }
     expect(screen.queryByLabelText('Aide contextuelle')).toBeNull();
     fireEvent.click(screen.getByLabelText('Comprendre cette page'));
     expect(screen.getByLabelText('Aide contextuelle')).toBeVisible();

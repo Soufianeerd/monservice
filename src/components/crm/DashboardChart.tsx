@@ -12,6 +12,14 @@ interface DashboardChartProps {
   data: ChartDataPoint[];
 }
 
+// Axe lisible pour tout montant, y compris un compte encore vide (0 €).
+export function formatRevenueTick(value: number): string {
+  if (Math.abs(value) >= 1000) {
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(value / 1000)} k€`;
+  }
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value)} €`;
+}
+
 export default function DashboardChart({ data }: DashboardChartProps) {
   const formatTooltip = (value: number) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
@@ -35,7 +43,9 @@ export default function DashboardChart({ data }: DashboardChartProps) {
               axisLine={false} 
               tickLine={false} 
               tick={{ fill: '#6B7280', fontSize: 12 }} 
-              tickFormatter={(value) => `${value / 1000}k€`}
+              allowDecimals={false}
+              domain={[0, (dataMax: number) => Math.max(dataMax, 1000)]}
+              tickFormatter={(value: number) => formatRevenueTick(value)}
             />
             <Tooltip 
               formatter={(value) => [formatTooltip(value as number), 'CA']}

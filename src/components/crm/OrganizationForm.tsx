@@ -9,6 +9,7 @@ import { organizationSchema } from '@/utils/validation';
 import { countries } from '@/lib/constants/countries';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { industries } from '@/lib/constants/industries';
+import { REGISTRATION_SECTORS, type RegistrationSectorCode } from '@/lib/registration/options';
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
@@ -109,6 +110,12 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
           >
             <option value="">Sélectionner un secteur...</option>
+            {initialData.industry && !industries.includes(initialData.industry) && (
+              // Valeur posée à l'inscription (code du secteur) : affichée avec son libellé.
+              <option value={initialData.industry}>
+                {initialData.industry in REGISTRATION_SECTORS ? REGISTRATION_SECTORS[initialData.industry as RegistrationSectorCode].label : initialData.industry}
+              </option>
+            )}
             {industries.map(ind => (
               <option key={ind} value={ind}>{ind}</option>
             ))}

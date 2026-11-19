@@ -73,7 +73,7 @@ Gravité : C critique, É élevée, M moyenne, F faible. Effort en jours.
 - [ ] LR-025 : comptes existants comptés par type.
 - [ ] LR-029 : migrations rejouées, dérive, contrat et objets vérifiés.
 - [ ] Variables Netlify de production installées, préflight au vert.
-- [ ] Secteur santé fermé (`NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS=health`).
+- [ ] Trois secteurs ouverts aux professionnels (`NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS` non défini).
 - [ ] Feu vert explicite de Soufiane.
 
 ### Avant le premier pilote

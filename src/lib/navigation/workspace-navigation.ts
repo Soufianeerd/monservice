@@ -32,7 +32,18 @@ export type WorkspaceNavItem = {
  * 
  * Fonction pure, testable, sans dépendance React ou d'icônes.
  */
-export function buildProfessionalNavigation(workspace: WorkspaceConfig): WorkspaceNavItem[] {
+/** Rubriques qui n'ont de sens qu'avec des comptes clients (fermés en V1). */
+const CLIENT_ACCOUNT_ITEMS = new Set(['marketplace', 'messages']);
+
+export function buildProfessionalNavigation(
+  workspace: WorkspaceConfig,
+  options: { clientAccess?: boolean } = {},
+): WorkspaceNavItem[] {
+  const items = buildWorkspaceItems(workspace);
+  return options.clientAccess === false ? items.filter((item) => !CLIENT_ACCOUNT_ITEMS.has(item.id)) : items;
+}
+
+function buildWorkspaceItems(workspace: WorkspaceConfig): WorkspaceNavItem[] {
   // Generic Navigation (Base complète du CRM)
   if (workspace.type === 'generic') {
     return [

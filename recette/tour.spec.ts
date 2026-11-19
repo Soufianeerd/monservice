@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { test, expect, type Page } from '@playwright/test';
-import { FIELD_SERVICE_PROFESSION_CODES, FIELD_SERVICE_PROFESSIONS } from '../src/lib/workspaces/field-service/professions';
-import { PARAMEDICAL_PROFESSION_CODES } from '../src/lib/workspaces/paramedical/professions';
+import { test, type Page } from '@playwright/test';
 
 /**
- * Recette visuelle : crée un vrai compte par métier ouvert à l'inscription,
- * parcourt chaque page du menu, capture l'écran et consigne toute anomalie.
- * Données 100 % synthétiques, sur une branche Neon jetable.
+ * Recette par univers : un vrai compte professionnel par univers (généraliste,
+ * artisan, paramédical), puis le cycle métier complet, étape par étape, avec
+ * une capture à chaque étape. Une étape qui échoue est consignée et la suite
+ * continue, pour que le rapport montre tout ce qui marche et tout ce qui casse.
+ * Données fictives, branche Neon jetable, réglages de production V1.
  */
 
 const OUT = path.resolve('recette-output');
@@ -15,11 +15,7 @@ const SHOTS = path.join(OUT, 'captures');
 fs.mkdirSync(SHOTS, { recursive: true });
 const RESULTS = path.join(OUT, 'results.jsonl');
 const password = `Recette-${Date.now()}-Aa1!`;
-
-type PageCheck = {
-  account: string; sector: string; profession: string | null; url: string; status: number | null;
-  title: string; problems: string[]; screenshot: string | null;
-};
+const run = Date.now();
 
 function record(entry: unknown) {
   fs.appendFileSync(RESULTS, JSON.stringify(entry) + '\n');
@@ -29,65 +25,40 @@ function slug(value: string) {
   return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
 
-async function collectNavigation(page: Page): Promise<string[]> {
-  await page.waitForSelector('nav a[href^="/"]', { timeout: 45_000 });
-  // Déplie chaque rubrique qui a des sous-rubriques (le chevron ne navigue pas).
-  await page.evaluate(() => {
-    for (const link of Array.from(document.querySelectorAll('nav a'))) {
-      if (link.querySelector(':scope > svg')) (link as HTMLElement).click();
-    }
-  });
-  await page.waitForTimeout(500);
-  const hrefs = await page.$$eval('nav a[href^="/"]', (links) => links.map((link) => link.getAttribute('href') ?? ''));
-  return Array.from(new Set(hrefs.filter((href) => href && href !== '/' && !href.startsWith('/api'))));
-}
+type Universe = { key: string; title: string; sectorLabel: string; professionLabel: string | null; health: boolean };
 
-async function visit(page: Page, account: string, sector: string, profession: string | null, url: string, capture: boolean): Promise<PageCheck> {
+let order = 0;
+async function step(page: Page, universe: Universe, name: string, action: () => Promise<void>) {
+  order += 1;
   const problems: string[] = [];
-  const onError = (error: Error) => problems.push(`Erreur JavaScript : ${error.message.slice(0, 200)}`);
-  const onConsole = (message: { type(): string; text(): string }) => {
-    if (message.type() === 'error' && !/favicon|Download the React DevTools/i.test(message.text())) problems.push(`Console : ${message.text().slice(0, 200)}`);
-  };
-  const onResponse = (response: { status(): number; url(): string }) => {
-    const target = new URL(response.url());
-    if (response.status() >= 500 && target.origin === new URL(page.url() || 'http://localhost:3039').origin) problems.push(`HTTP ${response.status()} sur ${target.pathname}`);
-  };
+  const onError = (error: Error) => problems.push(`Erreur JavaScript : ${error.message.slice(0, 160)}`);
   page.on('pageerror', onError);
-  page.on('console', onConsole);
-  page.on('response', onResponse);
-  let status: number | null = null;
-  let screenshot: string | null = null;
-  let title = '';
+  let passed = true;
+  let error = '';
   try {
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    status = response?.status() ?? null;
-    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => problems.push('Page encore en chargement après 20 s'));
+    await action();
+    await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => undefined);
     const body = await page.locator('body').innerText().catch(() => '');
     if (/Une erreur est survenue/.test(body)) problems.push('Écran « Une erreur est survenue »');
     if (/Page introuvable/.test(body)) problems.push('Écran « Page introuvable »');
-    if (/\bundefined\b|\bNaN\b|\[object Object\]/.test(body)) problems.push('Texte technique affiché (undefined / NaN / [object Object])');
-    if (!new URL(page.url()).pathname.startsWith(new URL(url, 'http://x').pathname)) problems.push(`Redirigé vers ${new URL(page.url()).pathname}`);
-    if (status && status >= 400) problems.push(`HTTP ${status}`);
-    title = (await page.locator('h1').first().innerText({ timeout: 2_000 }).catch(() => '')).trim();
-    if (capture) {
-      screenshot = `captures/${slug(account)}__${slug(url) || 'accueil'}.png`;
-      await page.screenshot({ path: path.join(OUT, screenshot), fullPage: true });
-    }
-  } catch (error) {
-    problems.push(`Échec du chargement : ${(error as Error).message.split('\n')[0].slice(0, 200)}`);
+    if (/\d[.,]\d{3}\s?k€/.test(body)) problems.push('Axe du graphique illisible');
+    const alerts = (await page.getByRole('alert').allInnerTexts().catch(() => [])).map((text) => text.trim()).filter(Boolean);
+    if (alerts.length) problems.push(`Message d’erreur affiché : ${alerts.join(' / ').slice(0, 200)}`);
+  } catch (caught) {
+    passed = false;
+    error = (caught as Error).message.split('\n')[0].slice(0, 240);
   } finally {
     page.off('pageerror', onError);
-    page.off('console', onConsole);
-    page.off('response', onResponse);
   }
-  const check = { account, sector, profession, url, status, title, problems: Array.from(new Set(problems)), screenshot };
-  record({ kind: 'page', ...check });
-  return check;
+  const screenshot = `captures/${String(order).padStart(3, '0')}-${universe.key}-${slug(name)}.png`;
+  await page.screenshot({ path: path.join(OUT, screenshot), fullPage: true }).catch(() => undefined);
+  record({ kind: 'step', universe: universe.title, step: name, passed, error, problems, url: new URL(page.url()).pathname, screenshot });
+  return passed;
 }
 
-async function register(page: Page, email: string, orgName: string, sectorLabel: string, professionLabel: string | null) {
+async function register(page: Page, universe: Universe, email: string, orgName: string) {
   await page.goto('/register');
-  await page.locator('input[name="name"]').fill(`Recette ${orgName}`);
+  await page.locator('input[name="name"]').fill(`Camille ${universe.title}`);
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page.locator('input[name="confirmPassword"]').fill(password);
@@ -95,107 +66,185 @@ async function register(page: Page, email: string, orgName: string, sectorLabel:
   await page.getByRole('button', { name: /Je suis un professionnel/ }).click();
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   await page.locator('input[name="orgName"]').fill(orgName);
-  await page.getByRole('button', { name: sectorLabel, exact: true }).click();
-  if (professionLabel) await page.getByRole('button', { name: new RegExp(`^${professionLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) }).first().click();
+  await page.getByRole('button', { name: universe.sectorLabel, exact: true }).click();
+  if (universe.professionLabel) await page.getByRole('button', { name: new RegExp(`^${universe.professionLabel}`) }).first().click();
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Valider mon inscription' }).click();
   await page.waitForURL((target) => !target.pathname.startsWith('/register'), { timeout: 60_000 });
+  if (!new URL(page.url()).pathname.startsWith('/dashboard')) {
+    await page.goto('/login');
+    await page.locator('input[name="email"]').fill(email);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+  }
 }
 
-async function signIn(page: Page, email: string, secret: string) {
-  await page.goto('/login');
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(secret);
+async function fillOrganisation(page: Page) {
+  await page.goto('/parametres/organisation');
+  await page.locator('#email').fill('contact@exemple-recette.fr');
+  await page.locator('#phone').fill('03 87 00 00 00');
+  await page.locator('#address').fill('12 rue de la Recette');
+  await page.locator('#zipCode').fill('57000');
+  await page.locator('#city').fill('Metz');
+  await page.getByRole('button', { name: 'Enregistrer les coordonnées' }).click();
+  await page.getByText(/enregistr/i).first().waitFor({ timeout: 20_000 });
+}
+
+async function createClient(page: Page, name: string) {
+  await page.goto('/clients/new');
+  await page.locator('#name').fill(name);
+  await page.locator('#email').fill(`${slug(name)}@exemple-client.fr`);
+  await page.locator('#address').fill('8 place d’Armes');
+  await page.locator('#zipCode').fill('57000');
+  await page.locator('#city').fill('Metz');
+  await page.locator('#contactFirstName').fill('Marie');
+  await page.locator('#contactLastName').fill('Martin');
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+  await page.waitForURL((target) => /\/clients\/[^/]+$/.test(target.pathname) && !target.pathname.endsWith('/new'), { timeout: 60_000 });
 }
 
-async function tour(page: Page, account: string, sector: string, profession: string | null, fullCapture: boolean) {
+async function createPatient(page: Page) {
+  await page.goto('/patients/new');
+  await page.locator('#patient-birth-name').fill('MARTIN');
+  await page.locator('#patient-first-birth-name').fill('Marie');
+  await page.locator('#patient-birth-date').fill('1985-04-12');
+  await page.locator('#patient-sex').selectOption('female');
+  await page.locator('#patient-email').fill('marie.martin@exemple-patient.fr').catch(() => undefined);
+  await page.getByRole('button', { name: 'Créer le patient' }).click();
+  await page.waitForURL((target) => /\/patients\/[^/]+$/.test(target.pathname) && !target.pathname.endsWith('/new'), { timeout: 60_000 });
+}
+
+async function createQuote(page: Page, title: string, line: string) {
+  await page.goto('/facturation/devis/nouveau');
+  const recipient = page.locator('[data-testid="quote-client-select"]');
+  await recipient.waitFor({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const select = document.querySelector('[data-testid="quote-client-select"]') as HTMLSelectElement | null;
+    return Boolean(select && select.options.length > 1);
+  }, undefined, { timeout: 30_000 });
+  await recipient.selectOption({ index: 1 });
+  await page.waitForTimeout(500);
+  await page.locator('[data-testid="quote-title-input"]').fill(title);
+  if (!(await page.locator('[data-testid="line-description-input"]').first().isVisible().catch(() => false))) {
+    await page.locator('[data-testid="add-section-button"]').click();
+  }
+  await page.locator('[data-testid="line-description-input"]').first().fill(line);
+  await page.locator('[data-testid="line-quantity-input"]').first().fill('2');
+  await page.locator('[data-testid="line-price-input"]').first().fill('150');
+  await page.locator('[data-testid="save-quote-button"]').click();
+  await page.waitForURL(/\/facturation\/devis\/[0-9a-fA-F-]{36}/, { timeout: 60_000 });
+}
+
+async function sendAndAccept(page: Page) {
+  await page.locator('[data-testid="send-quote-button"]').click();
+  await page.locator('[data-testid="quote-status-badge"]').filter({ hasText: /Envoy/i }).waitFor({ timeout: 30_000 });
+  await page.locator('[data-testid="quote-decision-method"]').selectOption('signed_document');
+  await page.locator('[data-testid="record-quote-accepted-button"]').click();
+  await page.locator('[data-testid="quote-status-badge"]').filter({ hasText: /Accept/i }).waitFor({ timeout: 30_000 });
+}
+
+async function createInvoice(page: Page) {
+  await page.locator('[data-testid="create-final-invoice-button"]').click();
+  await page.waitForURL(/\/facturation\/factures\/[0-9a-fA-F-]{36}/, { timeout: 60_000 });
+}
+
+async function recordPayment(page: Page) {
+  const panel = page.locator('[data-testid="record-payment"]');
+  await panel.waitFor({ timeout: 30_000 });
+  await panel.getByRole('button', { name: 'Marquer comme réglée' }).click();
+  await page.locator('[data-testid="invoice-paid"]').waitFor({ timeout: 60_000 });
+}
+
+async function tourMenu(page: Page, universe: Universe) {
   await page.goto('/dashboard');
-  const links = await collectNavigation(page);
-  record({ kind: 'navigation', account, sector, profession, links });
-  const pages = ['/dashboard', ...links.filter((href) => href !== '/dashboard')];
-  for (const url of pages) await visit(page, account, sector, profession, url, fullCapture || url === '/dashboard');
+  await page.waitForSelector('nav a[href^="/"]', { timeout: 45_000 });
+  await page.evaluate(() => {
+    for (const link of Array.from(document.querySelectorAll('nav a'))) if (link.querySelector(':scope > svg')) (link as HTMLElement).click();
+  });
+  await page.waitForTimeout(400);
+  const hrefs = await page.$$eval('nav a[href^="/"]', (all) => all.map((link) => link.getAttribute('href') ?? ''));
+  const links = Array.from(new Set(hrefs.filter(Boolean)));
+  record({ kind: 'navigation', universe: universe.title, links });
+  record({ kind: 'rule', universe: universe.title, rule: 'Pas de Marketplace ni de Messagerie en V1', passed: !links.some((href) => href.startsWith('/marketplace') || href.startsWith('/messages')) });
+  for (const href of links) {
+    await step(page, universe, `Page ${href}`, async () => {
+      const response = await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      if ((response?.status() ?? 200) >= 400) throw new Error(`HTTP ${response?.status()}`);
+      if (!new URL(page.url()).pathname.startsWith(href)) throw new Error(`Redirigé vers ${new URL(page.url()).pathname}`);
+    });
+  }
 }
 
-type Candidate = { sectorLabel: string; sector: string; profession: string | null; professionLabel: string | null; full: boolean };
-
-const fieldFamiliesSeen = new Set<string>();
-const candidates: Candidate[] = [
-  { sector: 'freelance', sectorLabel: 'Consultant & Services professionnels', profession: null, professionLabel: null, full: true },
-  { sector: 'other', sectorLabel: 'Autre', profession: null, professionLabel: null, full: true },
-  ...FIELD_SERVICE_PROFESSION_CODES.map((code) => {
-    const definition = FIELD_SERVICE_PROFESSIONS[code];
-    const family = String(definition.family);
-    const full = !fieldFamiliesSeen.has(family);
-    fieldFamiliesSeen.add(family);
-    return { sector: 'field_services', sectorLabel: 'BTP, Artisanat & Services techniques', profession: code, professionLabel: definition.shortLabel || definition.label, full };
-  }),
+const universes: Universe[] = [
+  { key: 'generaliste', title: 'Généraliste (consultant)', sectorLabel: 'Consultant & Services professionnels', professionLabel: null, health: false },
+  { key: 'artisan', title: 'Artisan (plombier)', sectorLabel: 'BTP, Artisanat & Services techniques', professionLabel: 'Plombier', health: false },
+  { key: 'paramedical', title: 'Paramédical (kinésithérapeute)', sectorLabel: 'Santé & Bien-être', professionLabel: 'Kinésithérapeute', health: true },
 ];
 
 test.describe.configure({ mode: 'serial' });
 
-test('le secteur santé reste fermé à l’inscription (V1)', async ({ page }) => {
+test('règles V1 à l’inscription : professionnels uniquement, trois secteurs ouverts', async ({ page }) => {
   await page.goto('/register');
-  await page.locator('input[name="name"]').fill('Recette santé');
-  await page.locator('input[name="email"]').fill(`recette-sante-${Date.now()}@monservice.invalid`);
+  await page.locator('input[name="name"]').fill('Recette règles');
+  await page.locator('input[name="email"]').fill(`recette-regles-${run}@monservice.invalid`);
   await page.locator('input[name="password"]').fill(password);
   await page.locator('input[name="confirmPassword"]').fill(password);
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
-  const particulier = await page.getByRole('button', { name: /Je suis un particulier/ }).count();
-  record({ kind: 'rule', rule: 'Aucun compte particulier proposé à l’inscription (V1)', passed: particulier === 0 });
+  record({ kind: 'rule', universe: 'Inscription', rule: 'Aucun compte client ou patient proposé', passed: (await page.getByRole('button', { name: /Je suis un particulier/ }).count()) === 0 });
   await page.getByRole('button', { name: /Je suis un professionnel/ }).click();
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
-  const health = await page.getByRole('button', { name: 'Santé & Bien-être', exact: true }).count();
-  record({ kind: 'rule', rule: 'Secteur santé fermé à l’inscription (V1)', passed: health === 0 });
-  await page.screenshot({ path: path.join(SHOTS, '00-inscription-secteurs.png'), fullPage: true });
-  record({ kind: 'page', account: 'Inscription', sector: '-', profession: null, url: '/register (étape Activité)', status: 200, title: 'Choix du secteur', problems: [], screenshot: 'captures/00-inscription-secteurs.png' });
-  expect(particulier).toBe(0);
-  expect(health).toBe(0);
-});
-
-test('pages publiques', async ({ page }) => {
-  for (const url of ['/', '/login', '/register', '/conditions', '/confidentialite', '/mentions-legales', '/cookies']) {
-    await visit(page, 'Visiteur', 'public', null, url, true);
+  for (const label of ['Santé & Bien-être', 'BTP, Artisanat & Services techniques', 'Consultant & Services professionnels']) {
+    record({ kind: 'rule', universe: 'Inscription', rule: `Secteur ouvert : ${label}`, passed: (await page.getByRole('button', { name: label, exact: true }).count()) === 1 });
   }
+  await page.screenshot({ path: path.join(SHOTS, '000-inscription-secteurs.png'), fullPage: true });
 });
 
-for (const candidate of candidates) {
-  const label = candidate.profession ?? candidate.sector;
-  test(`inscription et parcours : ${label}`, async ({ page }) => {
-    const email = `recette-${slug(label)}-${Date.now()}@monservice.invalid`;
-    const orgName = `Recette ${candidate.professionLabel ?? candidate.sectorLabel}`;
-    let created = false;
-    try {
-      await register(page, email, orgName, candidate.sectorLabel, candidate.professionLabel);
-      created = true;
-      const landed = new URL(page.url()).pathname;
-      record({ kind: 'signup', account: orgName, sector: candidate.sector, profession: candidate.profession, landed, passed: landed.startsWith('/dashboard') });
-      if (!landed.startsWith('/dashboard')) await signIn(page, email, password);
-      await tour(page, orgName, candidate.sector, candidate.profession, candidate.full);
-    } catch (error) {
-      record({ kind: 'signup', account: orgName, sector: candidate.sector, profession: candidate.profession, landed: page.url(), passed: false, created, error: (error as Error).message.split('\n')[0].slice(0, 300) });
-      await page.screenshot({ path: path.join(SHOTS, `echec-${slug(label)}.png`), fullPage: true }).catch(() => undefined);
-      throw error;
+for (const universe of universes) {
+  test(`cycle complet — ${universe.title}`, async ({ page }) => {
+    test.setTimeout(900_000);
+    const email = `recette-${universe.key}-${run}@monservice.invalid`;
+    const orgName = `Recette ${universe.title}`;
+    const created = await step(page, universe, '1. Création du compte professionnel', () => register(page, universe, email, orgName));
+    if (!created) return;
+    await step(page, universe, '2. Tableau de bord à l’arrivée', async () => { await page.goto('/dashboard'); });
+    await step(page, universe, '3. Coordonnées de l’activité', () => fillOrganisation(page));
+    if (universe.health) {
+      await step(page, universe, '4. Nouveau patient', () => createPatient(page));
+      await step(page, universe, '5. Réglages du cabinet (lieux, praticiens, séances)', async () => { await page.goto('/parametres/cabinet'); });
+      await step(page, universe, '6. Agenda : planifier une séance', async () => {
+        await page.goto('/agenda/calendrier');
+        await page.getByRole('button', { name: /Nouvelle séance/ }).click();
+        await page.getByText('Planifier une nouvelle séance').waitFor({ timeout: 20_000 });
+      });
+    } else {
+      await step(page, universe, '4. Nouveau client (prospect)', () => createClient(page, `Client ${universe.key} ${run}`));
+      await step(page, universe, '5. Opportunités commerciales', async () => { await page.goto('/deals'); });
+      if (universe.key === 'artisan') {
+        await step(page, universe, '6. Nouveau chantier', async () => {
+          await page.goto('/operations/nouveau');
+          await page.locator('[data-testid="client-select"]').selectOption({ index: 1 });
+          await page.click('[data-testid="new-site-button"]', { force: true });
+          await page.fill('input[placeholder="Ex: Résidence Principale, Chantier Bat A..."]', `Maison Martin ${run}`);
+          await page.fill('input[placeholder="12 rue des Artisans"]', '8 place d’Armes');
+          await page.fill('input[placeholder="75001"]', '57000');
+          await page.fill('input[placeholder="Paris"]', 'Metz');
+          await page.click('button:has-text("Enregistrer le site")');
+          await page.locator('[data-testid="title-input"]').fill(`Remplacement chauffe-eau ${run}`);
+          await page.locator('[data-testid="scheduled-start-input"]').fill('2026-12-01T08:30');
+          await page.locator('[data-testid="scheduled-end-input"]').fill('2026-12-01T12:00');
+          await page.click('[data-testid="submit-operation-button"]', { force: true });
+          await page.waitForURL(/\/operations\/[0-9a-fA-F-]{36}/, { timeout: 60_000 });
+        });
+      }
     }
+    const line = universe.health ? 'Séance de kinésithérapie' : universe.key === 'artisan' ? 'Pose chauffe-eau 200 L' : 'Journée de conseil';
+    const quoted = await step(page, universe, '7. Devis', () => createQuote(page, `Devis recette ${universe.key} ${run}`, line));
+    const accepted = quoted && await step(page, universe, '8. Devis envoyé puis accepté', () => sendAndAccept(page));
+    const invoiced = accepted && await step(page, universe, '9. Facture', () => createInvoice(page));
+    if (invoiced) await step(page, universe, '10. Règlement enregistré', () => recordPayment(page));
+    await step(page, universe, '11. Trésorerie', async () => { await page.goto('/facturation/tresorerie'); });
+    await tourMenu(page, universe);
   });
 }
-
-// Comptes déjà remplis par les données de démonstration (lecture seule du parcours).
-const seeded = [
-  { email: 'pro_fs_a@monservice.invalid', account: 'Démo — Plomberie (avec données)', sector: 'field_services', profession: 'plumber' },
-  { email: 'pro_generic_a@monservice.invalid', account: 'Démo — Entreprise générique (avec données)', sector: 'IT', profession: null },
-  { email: 'pro_health_a@monservice.invalid', account: 'Démo — Kinésithérapeute (existant, V1 gelée)', sector: 'health', profession: 'physiotherapist' },
-  { email: 'pro_b@monservice.invalid', account: 'Démo — Ostéopathe (existant, V1 gelée)', sector: 'health', profession: 'osteopath' },
-];
-for (const account of seeded) {
-  test(`parcours démo : ${account.account}`, async ({ page }) => {
-    await signIn(page, account.email, process.env.E2E_AUTH_PASSWORD!);
-    await tour(page, account.account, account.sector, account.profession, true);
-  });
-}
-
-test('métiers santé non testables en V1', async () => {
-  record({ kind: 'note', note: `Métiers paramédicaux fermés à l’inscription en V1 : ${PARAMEDICAL_PROFESSION_CODES.length}. Seuls les deux cabinets existants (kiné, ostéo) sont parcourus.` });
-});

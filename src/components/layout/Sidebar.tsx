@@ -47,16 +47,17 @@ const clientNavItems: NavItem[] = [
 interface SidebarProps {
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
+  clientAccess?: boolean;
 }
 
-export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
+export default function Sidebar({ isOpen = false, setIsOpen, clientAccess = true }: SidebarProps) {
   const pathname = usePathname();
   const role = useRole();
   const workspace = useWorkspace();
   
   const navItems: NavItem[] = role === 'client' 
     ? clientNavItems 
-    : (workspace ? buildProfessionalNavigation(workspace).map(item => ({
+    : (workspace ? buildProfessionalNavigation(workspace, { clientAccess }).map(item => ({
         ...item,
         icon: iconMap[item.icon]
       })) : []);
