@@ -10,12 +10,12 @@
     "acceptance": "La signature électronique vaut acceptation ferme et définitive du présent devis, et fait office de bon de commande."
   },
   "site": {
-    "publisher": "MonService SAS",
-    "publisherAddress": "10 rue de la Paix, 75000 Paris, France",
-    "publisherEmail": "contact@monservice.com",
-    "publisherPhone": "+33 1 23 45 67 89",
-    "registrationNumber": "RCS Paris 123 456 789",
-    "vatId": "FR12345678901",
+    "publisher": "",
+    "publisherAddress": "",
+    "publisherEmail": "",
+    "publisherPhone": "",
+    "registrationNumber": "",
+    "vatId": "",
     "hosting": "Netlify, Inc.",
     "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
   },

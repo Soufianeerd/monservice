@@ -229,6 +229,7 @@ export class AppointmentReminderService {
             subject,
             html,
             text,
+            onBehalfOf: row.org.name,
           });
 
           await db

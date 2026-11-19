@@ -10,12 +10,12 @@
     "acceptance": "Mit der elektronischen Signatur wird dieses Angebot verbindlich angenommen."
   },
   "site": {
-    "publisher": "MonService GmbH",
-    "publisherAddress": "Friedrichstraße 123, 10117 Berlin, Deutschland",
-    "publisherEmail": "kontakt@monservice.de",
-    "publisherPhone": "+49 30 1234567",
-    "registrationNumber": "HRB 123456 B, Amtsgericht Charlottenburg",
-    "vatId": "DE123456789",
+    "publisher": "",
+    "publisherAddress": "",
+    "publisherEmail": "",
+    "publisherPhone": "",
+    "registrationNumber": "",
+    "vatId": "",
     "hosting": "Netlify, Inc.",
     "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
   },

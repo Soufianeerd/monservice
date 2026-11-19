@@ -110,6 +110,7 @@ export async function requestClientReview(
     html: template.html,
     replyTo: row.organizationEmail ?? undefined,
     tag: 'review.request',
+    onBehalfOf: row.organizationName,
   });
   return { url, email: row.email, emailSent: sent.sent };
 }

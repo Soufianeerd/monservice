@@ -137,6 +137,7 @@ export class ReminderService {
           html: template.html,
           replyTo: item.organizationEmail ?? undefined,
           tag: `automation.${item.kind}`,
+          onBehalfOf: item.organizationName,
         });
         status = sent.sent ? 'sent' : 'failed';
       } catch (err) {
