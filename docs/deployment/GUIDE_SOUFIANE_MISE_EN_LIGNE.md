@@ -1,6 +1,6 @@
 # Mise en ligne de MonService — guide pas à pas
 
-Version du 18 novembre 2026. État vérifié aujourd'hui sur ton compte Neon :
+Version du 19 novembre 2026. État vérifié aujourd'hui sur ton compte Neon :
 - projet de production **Monservice-Europe** (`misty-field-54835523`, Francfort), branche `production` ;
 - plan **Free** : historique de restauration de **6 heures**, branche `production` **non protégée** ;
 - e-mails de connexion envoyés par l'expéditeur partagé de Neon (`auth@mail.myneon.app`) ;
@@ -84,7 +84,7 @@ Vérification de la connexion, en lecture seule (copie la ligne entière) :
 node --input-type=module -e "import fs from 'node:fs'; import dotenv from 'dotenv'; import postgres from 'postgres'; const env = dotenv.parse(fs.readFileSync('.env.neon-production-admin.local')); for (const key of ['DATABASE_URL', 'DATABASE_URL_UNPOOLED']) { const sql = postgres(env[key], { max: 1 }); const rows = await sql.unsafe('select current_user'); console.log(key, 'OK', rows[0].current_user); await sql.end(); }"
 ```
 
-**Résultat attendu :** `Fichier mis a jour`, puis deux lignes `DATABASE_URL OK neondb_owner` et `DATABASE_URL_UNPOOLED OK neondb_owner`. (N'utilise pas `npm run db:check-drift` ici : il signale normalement un écart tant que les migrations 0014 à 0020 ne sont pas appliquées, à l'étape 8.) Si c'est bon, supprime la sauvegarde (elle contient l'ancien mot de passe) :
+**Résultat attendu :** `Fichier mis a jour`, puis deux lignes `DATABASE_URL OK neondb_owner` et `DATABASE_URL_UNPOOLED OK neondb_owner`. (N'utilise pas `npm run db:check-drift` ici : il signale normalement un écart tant que les migrations 0014 à 0022 ne sont pas appliquées, à l'étape 8.) Si c'est bon, supprime la sauvegarde (elle contient l'ancien mot de passe) :
 ```sh
 rm .env.neon-production-admin.local.bak
 ```
@@ -100,26 +100,11 @@ Projet **Monservice** (Ohio) vérifié vide (0 table) puis supprimé le 18 novem
 
 ---
 
-## Étape 3 — Sauvegardes : 7 jours de retour arrière (15 min, puis 5 min avec moi)
+## Étape 3 — Sauvegardes : ✅ fait, sur le plan gratuit
 
-**Pourquoi :** avec le plan gratuit, une erreur découverte plus de 6 heures après est irrécupérable.
+Décision : MonService reste sur le plan gratuit de Neon. Conséquence à connaître : une erreur découverte **plus de 6 heures** après n'est plus réparable par retour arrière. L'exercice de restauration a été fait le 18 novembre (copie de la production à une heure passée, données vérifiées, copie supprimée). Rien à faire de ton côté.
 
-### 3.1 — Passer au plan Launch
-1. **https://console.neon.tech** → en haut à gauche, clique sur le nom de ton organisation → **Billing**.
-2. **Change plan** (ou **Upgrade**) → **Launch** → ajoute ta carte → valide.
-
-**Attention au coût :** le plan vaut pour **toute l'organisation**, donc aussi pour tes autres projets (Maddak, LaGazella, SFPAuto, myevents…), facturés à l'usage. Avant de valider, lis l'estimation sur la page Billing. Si elle te paraît trop élevée, ne valide pas et dis-le-moi : on peut mettre MonService dans une organisation à part.
-
-### 3.2 — Régler l'historique sur 7 jours
-1. Projet **Monservice-Europe** → **Settings** (menu de gauche) → **Postgres**.
-2. Section **History window** : pousse le curseur jusqu'à **7 days** → **Save**.
-
-### 3.3 — Protéger la branche de production
-1. Projet **Monservice-Europe** → **Branches** (menu de gauche).
-2. Ligne **production** → **⋯** → **Set as protected** (si l'option apparaît) → confirme.
-
-### 3.4 — Exercice de restauration
-Écris-moi : **« fais l'exercice de restauration »**. Avec le connecteur Neon, je crée une copie de la production telle qu'elle était quelques heures plus tôt, je vérifie que les données y sont, je note la durée dans le dossier du projet, puis je te demande l'autorisation de supprimer cette copie. Je ne touche pas à la branche `production`.
+Option gratuite que je peux ajouter si tu me le demandes : une copie chiffrée de la base chaque nuit, gardée 30 jours dans GitHub.
 
 ---
 
@@ -175,32 +160,31 @@ unset RESEND_KEY
 
 ---
 
-## Étape 5 — Les informations légales (10 min)
+## Étape 5 — Les informations légales (10 min, le jour J à l'étape 9)
 
-**Pourquoi :** les mentions légales et le pied de chaque e-mail affichent aujourd'hui une société fictive (« MonService SAS »). Je corrige le code, mais il me faut tes vraies informations.
+**Pourquoi :** le site n'invente plus aucune identité. Tant que ces informations manquent, les mentions légales affichent « Information en cours de publication ». Elles sont lues dans des variables Netlify, que **tu** saisis toi-même à l'étape 9.2. Rien à m'envoyer.
 
-Envoie-moi dans un message, **uniquement** :
-- le nom de l'entreprise tel qu'au répertoire SIRENE (micro-entreprise : « Soufiane El Rhadi EI », ou ton nom commercial) ;
-- le numéro SIRET ;
-- l'adresse professionnelle déclarée ;
-- l'adresse e-mail de contact publique ;
-- le statut TVA : « TVA non applicable, art. 293 B du CGI » ou ton numéro de TVA ;
-- le domaine choisi à l'étape 4.
+Prépare dès maintenant, dans une note, ces valeurs (les crochets sont à remplacer) :
 
-Aucune donnée bancaire. Avec ces informations, je rédige aussi les brouillons des conditions générales, de l'annexe de sous-traitance RGPD et de la liste des sous-traitants. Une relecture par un juriste reste conseillée.
+| Nom de la variable | Exemple de valeur |
+|---|---|
+| `PUBLISHER_NAME` | `Soufiane El Rhadi EI` (nom exact au répertoire SIRENE) |
+| `PUBLISHER_LEGAL_FORM` | `Entreprise individuelle (micro-entreprise)` |
+| `PUBLISHER_ADDRESS` | `[numéro et rue], [code postal] Metz, France` |
+| `PUBLISHER_EMAIL` | `contact@[ton domaine]` |
+| `PUBLISHER_PHONE` | facultatif |
+| `PUBLISHER_SIRET` | les 14 chiffres, sans espace |
+| `PUBLISHER_VAT_EXEMPT` | `true` si tu es en franchise (« TVA non applicable, art. 293 B du CGI ») |
+| `PUBLISHER_VAT_ID` | seulement si tu as un numéro de TVA (alors pas de `PUBLISHER_VAT_EXEMPT`) |
+| `PUBLISHER_DIRECTOR` | `Soufiane El Rhadi` (directeur de la publication) |
+
+Si tu veux que je rédige les brouillons des conditions générales, de l'annexe de sous-traitance RGPD et de la liste des sous-traitants, écris-moi « rédige les CGU ». Une relecture par un juriste reste conseillée.
 
 ---
 
-## Étape 6 — Vérifier que Netlify sait construire le site (10 min)
+## Étape 6 — Netlify : ✅ diagnostiqué
 
-**Pourquoi :** l'application n'a jamais été construite avec succès sur Netlify. Il faut le savoir avant le jour J.
-
-1. **https://app.netlify.com** → connecte-toi → clique sur le projet **monservicecrm**.
-2. Onglet **Deploys**.
-3. Cherche une ligne **Deploy Preview #2** (la PR #2) et clique dessus.
-4. Statut **Published** : envoie-moi « aperçu OK ».
-5. Statut **Failed** : clique sur **Deploy log**, descends tout en bas, sélectionne les **40 dernières lignes**, copie-les et envoie-les-moi (retire tout ce qui ressemble à une clé).
-6. Aucune ligne « Deploy Preview #2 » : envoie-moi une capture d'écran de la page **Deploys**.
+Les déploiements Netlify échouaient parce qu'aucune variable d'environnement n'y était définie (vérifié dans les journaux de déploiement le 18 novembre). Ce n'est pas un défaut du code : l'étape 9.2 corrige cela. Le même code se construit et passe la recette complète dans GitHub.
 
 ---
 
@@ -226,7 +210,7 @@ npm ci
 ```
 
 ## Étape 8 — Mettre la base de production à jour (15 min)
-Ces migrations ajoutent des tables et des fonctions ; elles ne suppriment rien.
+Les migrations 0014 à 0022 ajoutent des tables, des colonnes, des contrôles et des fonctions ; elles ne suppriment rien. Avant de lancer, dis-moi « crée un point de restauration » : je prends un instantané de la production avec le connecteur Neon (gratuit, un seul à la fois).
 ```sh
 NEON_ADMIN_ENV_FILE=.env.neon-production-admin.local NEON_PRODUCTION_REPLAY=validated npm run db:migrate
 ```
@@ -270,12 +254,13 @@ unset RESEND_KEY
    ```
 2. **https://app.netlify.com** → projet **monservicecrm** → **Project configuration** → **Environment variables** → **Add a variable** → **Add a single variable**.
 3. Pour **chaque ligne** du fichier affiché, sauf `NEON_BRANCH` et `NEON_BRANCH_ID` : *Key* = le nom avant `=`, *Value* = la valeur **sans les guillemets**, *Deploy contexts* = **Production** seulement → **Create variable**.
-4. Vérifie que ces noms sont tous présents dans Netlify : `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `LAUNCH_INCLUDED_PLAN`.
+4. Ajoute de la même façon les variables `PUBLISHER_…` préparées à l'étape 5 (contexte **Production**).
+5. Vérifie que ces noms sont tous présents dans Netlify : `DATABASE_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `NEON_AUTH_COOKIE_SECRET`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NEON_STRIPE_DATABASE_URL`, `NEON_REMINDERS_DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `LAUNCH_INCLUDED_PLAN`, `PUBLISHER_NAME`, `PUBLISHER_ADDRESS`, `PUBLISHER_EMAIL`, `PUBLISHER_SIRET`, `PUBLISHER_DIRECTOR`.
 
-**Ne crée jamais dans Netlify :** `CLIENT_ACCESS_ENABLED`, `DATABASE_POOL_MAX`, une variable `STRIPE_…`, ni rien qui vienne de `.env.neon-production-admin.local`.
+**Ne crée jamais dans Netlify :** `CLIENT_ACCESS_ENABLED`, `DATABASE_POOL_MAX`, `RATE_LIMIT_DISABLED`, `NEXT_PUBLIC_CLOSED_REGISTRATION_SECTORS`, une variable `STRIPE_…`, ni rien qui vienne de `.env.neon-production-admin.local`.
 
 ### 9.3 — Région des fonctions (vitesse)
-Netlify → projet **monservicecrm** → **Project configuration** → **Cloud compute** → **Functions** → **Region** → **Configure** → **EU (Frankfurt)** → **Save**. Si Netlify demande de changer d'offre, ne paie pas : dis-le-moi d'abord.
+Sur l'offre gratuite de Netlify, la région des fonctions ne se change pas : elles tournent aux États-Unis et chaque page interroge la base à Francfort, d'où un délai d'environ 0,1 à 0,2 s par requête. Acceptable pour le lancement ; on en reparlera si l'application paraît lente. Ne paie rien pour cela.
 
 ## Étape 10 — Contrôle final, ouverture, vérifications (30 min)
 1. Contrôle avant bascule, en lecture seule :
@@ -288,7 +273,9 @@ Netlify → projet **monservicecrm** → **Project configuration** → **Cloud c
 4. Vérifications sur **https://monservicecrm.netlify.app** :
    - [ ] l'accueil et les mentions légales s'affichent avec tes vraies informations ;
    - [ ] inscription d'un compte professionnel avec ton adresse : le code arrive ;
-   - [ ] création d'un client, d'un devis, « Le client a accepté », facture ;
+   - [ ] Paramètres → Organisation : renseigne SIRET, statut TVA, IBAN et BIC ;
+   - [ ] création d'un client (avec ta seconde adresse e-mail), d'un devis, **« Envoyer par e-mail »** : le PDF arrive en pièce jointe ;
+   - [ ] « Le client a accepté », facture finale, **« Émettre la facture »** (numéro définitif), « Envoyer par e-mail » ;
    - [ ] sur la facture : « Marquer comme réglée », puis « Demander un avis au client » vers une autre de tes adresses ; dépose l'avis depuis cette adresse ;
    - [ ] Paramètres → Vitrine publique : publie, ouvre la vitrine, l'avis y apparaît ;
    - [ ] Paramètres → Équipe : invite une deuxième adresse à toi, accepte, retire-la ;
