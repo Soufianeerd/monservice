@@ -130,7 +130,7 @@ export default function PatientDetailManager({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg shadow-sm transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                  Dossier clinique
+                  {t('Dossier clinique')}
                 </Link>
               )}
               <button

@@ -85,7 +85,7 @@ export default function ParamedicalPracticeDashboard({
             href="/parametres/organisation"
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
           >
-            Compléter les coordonnées du cabinet
+            {t('Compléter les coordonnées du cabinet')}
           </Link>
         )}
       </div>

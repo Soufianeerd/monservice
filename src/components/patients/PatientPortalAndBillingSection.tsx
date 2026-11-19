@@ -435,9 +435,9 @@ export default function PatientPortalAndBillingSection({
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Facturation & Notes d'Honoraires</h3>
+                <h3 className="text-base font-bold text-slate-900">{t("Facturation & Notes d'Honoraires")}</h3>
                 <p className="text-xs text-slate-500">
-                  Générez des factures de soins pour le patient ou son représentant légal.
+                  {t('Générez des factures de soins pour le patient ou son représentant légal.')}
                 </p>
               </div>
             </div>
