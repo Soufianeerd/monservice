@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
+import { sensitiveRateLimit } from '@/middleware/rate-limit';
 
 /** Chemins publics comparés par égalité stricte. */
 const PUBLIC_EXACT = new Set([
@@ -38,6 +39,9 @@ function isPublic(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
+  const limited = sensitiveRateLimit(request);
+  if (limited) return limited;
+
   const response = isPublic(request.nextUrl.pathname) ? NextResponse.next() : await auth.middleware({ loginUrl: '/login' })(request);
 
   // L’interface possède une seule langue source. Corriger aussi les anciens cookies.

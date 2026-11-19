@@ -11,7 +11,7 @@ const template = 'br-icy-morning-b1317ev6';
 const name = `ci-${process.env.GITHUB_RUN_ID ?? Date.now()}-${process.env.GITHUB_RUN_ATTEMPT ?? 'local'}`;
 const adminFile = `.env.${name}-admin.local`;
 const runtimeFile = `.env.${name}-runtime.local`;
-const environment = { ...process.env, NEON_ADMIN_ENV_FILE: adminFile, NEON_RUNTIME_ENV_FILE: runtimeFile };
+const environment = { ...process.env, NEON_ADMIN_ENV_FILE: adminFile, NEON_RUNTIME_ENV_FILE: runtimeFile, RATE_LIMIT_DISABLED: 'true' };
 let branchId;
 let validationSucceeded=false;
 const authOnly = process.env.NEON_CI_AUTH_ONLY === 'true';

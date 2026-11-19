@@ -79,10 +79,9 @@ describe('SetupGuidePopover', () => {
     expect(actionsContainer?.textContent).toBe('');
   });
 
-  it('affiche le bouton vidéo inactif', () => {
+  it("n'affiche aucun tutoriel vidéo non livré", () => {
     render(<SetupGuidePopover />);
-    const step6Row = screen.getByText('Step 6').parentElement;
-    const videoBtn = step6Row?.querySelector('span[title="Bientôt disponible"]');
-    expect(videoBtn).toBeInTheDocument();
+    expect(screen.queryByText(/Tutoriel vidéo/)).not.toBeInTheDocument();
+    expect(document.querySelector('span[title="Bientôt disponible"]')).toBeNull();
   });
 });
