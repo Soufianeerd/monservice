@@ -110,7 +110,7 @@ async function createPatient(page: Page) {
   await page.locator('#patient-birth-date').fill('1985-04-12');
   await page.locator('#patient-sex').selectOption('female');
   await page.locator('#patient-email').fill('marie.martin@exemple-patient.fr').catch(() => undefined);
-  await page.getByRole('button', { name: 'Créer le patient' }).click();
+  await page.getByRole('button', { name: /^Créer le/ }).click();
   await page.waitForURL((target) => /\/patients\/[^/]+$/.test(target.pathname) && !target.pathname.endsWith('/new'), { timeout: 60_000 });
 }
 
@@ -179,6 +179,7 @@ const universes: Universe[] = [
   { key: 'generaliste', title: 'Généraliste (consultant)', sectorLabel: 'Consultant & Services professionnels', professionLabel: null, health: false },
   { key: 'artisan', title: 'Artisan (plombier)', sectorLabel: 'BTP, Artisanat & Services techniques', professionLabel: 'Plombier', health: false },
   { key: 'paramedical', title: 'Paramédical (kinésithérapeute)', sectorLabel: 'Santé & Bien-être', professionLabel: 'Kinésithérapeute', health: true },
+  { key: 'bien-etre', title: 'Bien-être (coach sportif)', sectorLabel: 'Santé & Bien-être', professionLabel: 'Coach', health: true },
 ];
 
 test.describe.configure({ mode: 'serial' });
@@ -238,12 +239,19 @@ for (const universe of universes) {
         });
       }
     }
-    const line = universe.health ? 'Séance de kinésithérapie' : universe.key === 'artisan' ? 'Pose chauffe-eau 200 L' : 'Journée de conseil';
+    const line = universe.key === 'bien-etre' ? 'Séance de coaching' : universe.health ? 'Séance de kinésithérapie' : universe.key === 'artisan' ? 'Pose chauffe-eau 200 L' : 'Journée de conseil';
     const quoted = await step(page, universe, '7. Devis', () => createQuote(page, `Devis recette ${universe.key} ${run}`, line));
     const accepted = quoted && await step(page, universe, '8. Devis envoyé puis accepté', () => sendAndAccept(page));
     const invoiced = accepted && await step(page, universe, '9. Facture', () => createInvoice(page));
     if (invoiced) await step(page, universe, '10. Règlement enregistré', () => recordPayment(page));
     await step(page, universe, '11. Trésorerie', async () => { await page.goto('/facturation/tresorerie'); });
+    await step(page, universe, '12. Vitrine publique (mise en valeur)', async () => {
+      await page.goto('/parametres/vitrine');
+      await page.getByLabel('Accroche').fill(`${universe.title} à Metz`);
+      await page.getByLabel('Publier la vitrine').check();
+      await page.getByRole('button', { name: /Enregistrer/ }).first().click();
+      await page.getByText(/enregistr/i).first().waitFor({ timeout: 20_000 });
+    });
     await tourMenu(page, universe);
   });
 }

@@ -6,10 +6,30 @@ import { ExternalLink, Trash2 } from 'lucide-react';
 import { deletePortfolioItemAction, savePortfolioItemAction, savePublicProfileAction } from '@/app/actions/growth.actions';
 import { MAX_INTERVENTION_CITIES, MAX_PUBLIC_SERVICES, parseList, publicProfilePath, slugify } from '@/lib/growth/public-profile';
 import type { OwnPublicProfile, PortfolioItem } from '@/lib/services/public-profile.service';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 const input = 'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-gray-50';
 
 type Feedback = { type: 'ok' | 'error'; text: string } | null;
+
+// Exemples adaptés à l'univers : chacun met en valeur son activité et ses spécialités.
+const EXAMPLES = {
+  field_service: {
+    headline: 'Plombier chauffagiste à Metz, dépannage sous 24 h',
+    about: 'Votre parcours, vos garanties, vos certifications (RGE, Qualibat…), ce qui vous distingue.',
+    services: 'Dépannage plomberie\nRénovation de salle de bain\nEntretien de chaudière',
+  },
+  paramedical: {
+    headline: 'Ostéopathe à Metz, sportifs et nourrissons',
+    about: 'Votre parcours, vos formations et diplômes, votre approche, le public que vous accompagnez.',
+    services: 'Ostéopathie du sport\nSuivi des nourrissons\nGestion du stress',
+  },
+  generic: {
+    headline: 'Consultante en organisation pour TPE et PME',
+    about: 'Votre parcours, vos références, votre méthode, ce qui vous distingue.',
+    services: 'Audit et diagnostic\nAccompagnement au changement\nFormation des équipes',
+  },
+} as const;
 
 export default function PublicProfileEditor({ initial, portfolio, isAdmin, organization }: {
   initial: OwnPublicProfile;
@@ -17,6 +37,8 @@ export default function PublicProfileEditor({ initial, portfolio, isAdmin, organ
   isAdmin: boolean;
   organization: { name: string; phone: string | null; email: string | null; city: string | null };
 }) {
+  const workspaceType = useWorkspace()?.type;
+  const examples = EXAMPLES[workspaceType === 'field_service' || workspaceType === 'paramedical' ? workspaceType : 'generic'];
   const [profile, setProfile] = useState(initial);
   const [cities, setCities] = useState(initial.interventionCities.join(', '));
   const [services, setServices] = useState(initial.services.join('\n'));
@@ -90,12 +112,12 @@ export default function PublicProfileEditor({ initial, portfolio, isAdmin, organ
 
         <label className="block text-sm">
           <span className="font-medium text-gray-700">Accroche</span>
-          <input value={profile.headline} disabled={disabled} maxLength={120} onChange={(event) => set('headline', event.target.value)} className={input} placeholder="Plombier chauffagiste à Metz, dépannage sous 24 h" />
+          <input value={profile.headline} disabled={disabled} maxLength={120} onChange={(event) => set('headline', event.target.value)} className={input} placeholder={examples.headline} />
         </label>
 
         <label className="block text-sm">
           <span className="font-medium text-gray-700">Présentation</span>
-          <textarea value={profile.about} disabled={disabled} maxLength={4000} rows={6} onChange={(event) => set('about', event.target.value)} className={input} placeholder="Votre parcours, vos garanties, vos certifications (RGE, Qualibat…), ce qui vous distingue." />
+          <textarea value={profile.about} disabled={disabled} maxLength={4000} rows={6} onChange={(event) => set('about', event.target.value)} className={input} placeholder={examples.about} />
         </label>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -110,8 +132,8 @@ export default function PublicProfileEditor({ initial, portfolio, isAdmin, organ
         </div>
 
         <label className="block text-sm">
-          <span className="font-medium text-gray-700">Prestations (une par ligne)</span>
-          <textarea value={services} disabled={disabled} rows={4} onChange={(event) => setServices(event.target.value)} className={input} placeholder={'Dépannage plomberie\nRénovation de salle de bain\nEntretien de chaudière'} />
+          <span className="font-medium text-gray-700">Spécialités et prestations (une par ligne)</span>
+          <textarea value={services} disabled={disabled} rows={4} onChange={(event) => setServices(event.target.value)} className={input} placeholder={examples.services} />
         </label>
 
         <label className="block text-sm">

@@ -175,6 +175,10 @@ async function verifyContract() {
       'occupational_therapist',
       'psychomotor_therapist',
       'dietitian',
+      'psychologist',
+      'sport_coach',
+      'nutritionist',
+      'wellness_massage',
       'field_services',
       'mason',
       'plumber',
@@ -206,7 +210,11 @@ async function verifyContract() {
       'podiatrist',
       'occupational_therapist',
       'psychomotor_therapist',
-      'dietitian'
+      'dietitian',
+      'psychologist',
+      'sport_coach',
+      'nutritionist',
+      'wellness_massage'
     ];
     for (const el of expectedElements) {
       if (!def.includes(el.replace(/\s+/g, ''))) {

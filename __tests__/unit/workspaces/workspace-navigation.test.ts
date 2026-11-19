@@ -166,8 +166,8 @@ describe('Workspace Navigation', () => {
     expect(hrefs.some(h => h.includes('care'))).toBe(false);
   });
   
-  it('valide que les 7 professions conservent une navigation top-level stable sans route profession-specific', () => {
-    const expectedTopLevelIds = ['dashboard', 'patients', 'billing', 'agenda', 'settings'];
+  it('valide que toutes les professions santé et bien-être conservent une navigation top-level stable sans route profession-specific', () => {
+    const expectedTopLevelIds = ['dashboard', 'patients', 'billing', 'reviews', 'agenda', 'settings'];
 
     PARAMEDICAL_PROFESSION_CODES.forEach(code => {
       const config = resolveWorkspace({
@@ -178,12 +178,12 @@ describe('Workspace Navigation', () => {
       const nav = buildProfessionalNavigation(config);
       const ids = nav.map(n => n.id);
       
-      // Top-level IDs identiques et ordonnés pour les 7 professions
+      // Top-level IDs identiques et ordonnés pour toutes les professions
       expect(ids).toEqual(expectedTopLevelIds);
 
       // Aucune route personnalisée ou forkée de type /kine, /osteo, /diet
       const allHrefs = nav.flatMap(n => [n.href, ...(n.subItems?.map(sub => sub.href) || [])]);
-      expect(allHrefs.some(h => /^\/(kine|osteo|diet|speech|podiatrist|psychomotor|occupational)/i.test(h))).toBe(false);
+      expect(allHrefs.some(h => /^\/(kine|osteo|diet|speech|podiatrist|psychomotor|occupational|psy|coach|nutri|massage)/i.test(h))).toBe(false);
     });
   });
 });

@@ -129,7 +129,7 @@ export const organizations = sqliteTable('organizations', {
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   check('organizations_sector_profession_check', sql`(
-    (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))
+    (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian', 'psychologist', 'sport_coach', 'nutritionist', 'wellness_massage'))
     OR
     (${t.sector} IN ('field_services', 'artisan') AND ${t.profession} IN (
       'mason', 'plumber', 'electrician', 'heating_technician', 'hvac_technician',
@@ -784,7 +784,7 @@ export const practicePractitioners = sqliteTable('practice_practitioners', {
   index('practice_practitioners_organization_id_idx').on(t.organizationId),
   uniqueIndex('practice_practitioners_org_id_unique').on(t.id, t.organizationId),
   uniqueIndex('practice_practitioners_org_user_unique').on(t.organizationId, t.userId),
-  check('practice_practitioners_profession_check', sql`${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian')`),
+  check('practice_practitioners_profession_check', sql`${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian', 'psychologist', 'sport_coach', 'nutritionist', 'wellness_massage')`),
   foreignKey({
     columns: [t.userId, t.organizationId],
     foreignColumns: [users.id, users.organizationId],

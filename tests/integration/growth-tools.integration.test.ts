@@ -87,22 +87,22 @@ describe('Growth tools (0020)', () => {
     await workerConnection.end();
   });
 
-  it('keeps settings admin-only, per organization, and closed to the health sector', async () => {
+  it('keeps settings admin-only and per organization, health sector included (0021)', async () => {
     expect((await clientA.rpc('save_automation_settings', [true, true, 7, true, 3])).error).not.toBeNull();
-    expect((await health.rpc('save_automation_settings', [true, true, 7, true, 3])).error?.message).toContain('sector');
+    expect((await health.rpc('save_automation_settings', [true, true, 7, true, 3])).error).toBeNull();
     expect((await adminA.rpc('save_automation_settings', [true, true, 7, true, 3])).error).toBeNull();
     expect((await adminB.from('organization_automation_settings').select('organization_id')).data ?? []).toHaveLength(0);
     expect((await adminA.from('organization_automation_settings').update({ quote_followup_days: 1 }).eq('organization_id', orgA).select('organization_id')).error).not.toBeNull();
   });
 
-  it('lets only the restricted worker list due items, once per level, never for health', async () => {
-    await sql`INSERT INTO organization_automation_settings (organization_id, invoice_reminders_enabled, review_requests_enabled) VALUES (${orgHealth}, true, true)`;
+  it('lets only the restricted worker list due items, once per level, for every sector', async () => {
+    await sql`INSERT INTO organization_automation_settings (organization_id, invoice_reminders_enabled, review_requests_enabled) VALUES (${orgHealth}, true, true) ON CONFLICT (organization_id) DO UPDATE SET invoice_reminders_enabled = true, review_requests_enabled = true`;
     expect((await adminA.rpc('due_automation_items', [50])).error).not.toBeNull();
     const due = (await worker.unsafe('select kind, level, document_id from public.due_automation_items(500)'))
       .filter((row) => invoiceIds.includes(String(row.document_id)))
       .map((row) => `${row.kind}/${row.level}/${row.document_id}`)
       .sort();
-    expect(due).toEqual(['invoice_overdue/2/growth-db-late', 'quote_followup/1/growth-db-quote', 'review_request/1/growth-db-paid']);
+    expect(due).toEqual(['invoice_overdue/2/growth-db-late', 'quote_followup/1/growth-db-quote', 'review_request/1/growth-db-health', 'review_request/1/growth-db-paid']);
     await expect(worker.unsafe('select count(*) from public.invoices')).rejects.toMatchObject({ code: '42501' });
 
     const [first] = await worker.unsafe(`select public.claim_automation_delivery('growth-db-late', 'invoice_overdue', 2) as id`);
@@ -119,7 +119,7 @@ describe('Growth tools (0020)', () => {
   it('issues a review link only for a paid invoice of the caller’s organization', async () => {
     expect((await adminA.rpc('request_client_review', ['growth-db-late', hash(newToken())])).error?.message).toContain('Invoice must be paid');
     expect((await adminB.rpc('request_client_review', ['growth-db-paid', hash(newToken())])).error?.message).toContain('Invoice not found');
-    expect((await health.rpc('request_client_review', ['growth-db-health', hash(newToken())])).error?.message).toContain('sector');
+    expect((await health.rpc('request_client_review', ['growth-db-health', hash(newToken())])).error).toBeNull();
     expect((await anon.rpc('request_client_review', ['growth-db-paid', hash(newToken())])).error).not.toBeNull();
     const token = newToken();
     expect((await adminA.rpc('request_client_review', ['growth-db-paid', hash(token)])).error).toBeNull();
@@ -151,7 +151,7 @@ describe('Growth tools (0020)', () => {
     expect((await anon.rpc('public_professional_reviews', [slug, 10])).data?.[0]).toMatchObject({ author: 'Jean D.', rating: 5, reply: 'Merci Jean !' });
     expect((await adminB.rpc('save_public_profile', [slug, true, null, null, null, '{}', '{}', false, false, null])).error?.message).toContain('organization_public_profiles_slug_unique');
     expect((await adminB.rpc('save_public_profile', ['growth-db-b', true, null, null, null, '{}', '{}', false, false, 'javascript:alert(1)'])).error).not.toBeNull();
-    expect((await health.rpc('save_public_profile', ['growth-db-kine', true, null, null, null, '{}', '{}', false, false, null])).error?.message).toContain('sector');
+    expect((await health.rpc('save_public_profile', ['growth-db-kine', true, null, null, null, '{}', '{}', false, false, null])).error).toBeNull();
     expect((await clientA.rpc('save_portfolio_item', [null, 'Pirate', null, null, null, 0])).error).not.toBeNull();
     expect((await adminA.rpc('save_portfolio_item', [null, 'Salle de bain', 'Rénovation', 'Metz', '2026-05-01', 0])).error).toBeNull();
     expect((await anon.rpc('public_professional_portfolio', [slug])).data?.[0]).toMatchObject({ title: 'Salle de bain' });

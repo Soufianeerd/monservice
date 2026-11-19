@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Globe, Mail, MapPin, Phone, Star } from 'lucide-react';
 import { getFieldServiceProfession } from '@/lib/workspaces/field-service/professions';
+import { getParamedicalProfession } from '@/lib/workspaces/paramedical/professions';
 import { getPublicProfessional, type PublicProfessional } from '@/lib/services/public-profile.service';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -13,7 +14,9 @@ function appBaseUrl(): string {
 }
 
 function activityLabel(pro: PublicProfessional): string | null {
-  return getFieldServiceProfession(pro.profession)?.label ?? null;
+  // Métier de l'artisan, du praticien de santé ou du bien-être ; rien pour un
+  // généraliste (son accroche et ses spécialités disent ce qu'il fait).
+  return getFieldServiceProfession(pro.profession)?.label ?? getParamedicalProfession(pro.profession)?.label ?? null;
 }
 
 function locality(pro: PublicProfessional): string | null {
@@ -175,7 +178,7 @@ export default async function PublicProfessionalPage({ params }: Props) {
           )}
           {pro.services.length > 0 && (
             <section className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-base font-semibold text-gray-900">Prestations</h2>
+              <h2 className="text-base font-semibold text-gray-900">Spécialités et prestations</h2>
               <ul className="mt-3 space-y-1 text-sm text-gray-700 list-disc list-inside">
                 {pro.services.map((service) => <li key={service}>{service}</li>)}
               </ul>

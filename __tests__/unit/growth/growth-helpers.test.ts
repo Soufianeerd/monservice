@@ -79,8 +79,8 @@ describe('réglages et périmètre', () => {
     expect(automationSettingsSchema.safeParse({ ...base, quoteFollowupDays: 1 }).success).toBe(false);
     expect(automationSettingsSchema.safeParse({ ...base, reviewRequestDelayDays: 31 }).success).toBe(false);
   });
-  it('exclut le secteur santé', () => {
-    expect(isGrowthAvailable('health')).toBe(false);
+  it('est ouvert à tous les secteurs, santé compris', () => {
+    expect(isGrowthAvailable('health')).toBe(true);
     expect(isGrowthAvailable('field_services')).toBe(true);
     expect(isGrowthAvailable(null)).toBe(true);
   });

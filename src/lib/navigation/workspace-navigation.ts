@@ -108,15 +108,17 @@ function buildWorkspaceItems(workspace: WorkspaceConfig): WorkspaceNavItem[] {
       },
       {
         id: 'billing',
-        name: 'Factures patients',
+        name: `Factures ${workspace.terminology.customerPlural.toLowerCase()}`,
         href: '/facturation',
         icon: 'billing',
         subItems: [
           { name: 'Factures', href: '/facturation/factures' },
           { name: 'Devis', href: '/facturation/devis' },
           { name: 'Prestations et tarifs', href: '/facturation/produits' },
+          { name: 'Trésorerie', href: '/facturation/tresorerie' },
         ],
       },
+      { id: 'reviews', name: 'Avis', href: '/avis-clients', icon: 'reviews' },
       {
         id: 'agenda',
         name: 'Agenda',
@@ -142,6 +144,8 @@ function buildWorkspaceItems(workspace: WorkspaceConfig): WorkspaceNavItem[] {
           { name: 'Coordonnées du cabinet', href: '/parametres/organisation' },
           { name: 'Lieux et équipe', href: '/parametres/cabinet' },
           { name: 'Comptes utilisateurs', href: '/parametres/equipe' },
+          { name: 'Relances et avis', href: '/parametres/relances' },
+          { name: 'Vitrine publique', href: '/parametres/vitrine' },
           { name: 'Abonnement MonService', href: '/parametres/facturation' },
           { name: 'Conformité RGPD', href: '/parametres/privacy' },
           { name: 'Notifications', href: '/parametres/notifications' },
