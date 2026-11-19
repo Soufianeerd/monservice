@@ -1,3 +1,4 @@
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
 import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
 import { schedulingService } from '@/lib/services/scheduling.service';
@@ -26,6 +27,7 @@ export default async function TypesSeancesPage() {
     notFound();
   }
 
+  await prepareStarterPractice(organization.id, context.userId);
   const types = await schedulingService.listAppointmentTypes(organization.id);
 
   return (

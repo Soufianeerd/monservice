@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 import { useClientAccess } from '@/components/layout/ClientAccessContext';
 
@@ -44,6 +45,7 @@ export default function PatientPortalAndBillingSection({
 }: {
   patientDetail: PatientDetailDTO;
 }) {
+  const t = useCareVocabulary();
   const { patient, representatives } = patientDetail;
   // V1 : pas de compte patient, donc ni portail ni questionnaire à remplir en ligne.
   const portalOpen = useClientAccess();
@@ -171,7 +173,7 @@ export default function PatientPortalAndBillingSection({
         ],
       });
       setInvoices((prev) => [newInv, ...prev]);
-      announceGuideSaved('La facture patient est enregistrée.');
+      announceGuideSaved(t('La facture patient est enregistrée.'));
     } catch (err: unknown) {
       setBillingError(err instanceof Error ? err.message : 'Erreur lors de la création de la facture');
     } finally {
@@ -228,7 +230,7 @@ export default function PatientPortalAndBillingSection({
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Accès Portail Santé Patient</h3>
+                <h3 className="text-base font-bold text-slate-900">{t("Accès Portail Santé Patient")}</h3>
                 <p className="text-xs text-slate-500">
                   Activez l'accès sécurisé pour le patient ou un représentant légal afin qu'il puisse consulter ses RDV, documents et remplir des questionnaires.
                 </p>
@@ -262,7 +264,7 @@ export default function PatientPortalAndBillingSection({
                     }}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white"
                   >
-                    <option value="">Patient direct</option>
+                    <option value="">{t("Patient direct")}</option>
                     {representatives.map((r) => (
                       <option key={r.representativeId} value={r.representativeId}>
                         Représentant : {r.firstName} {r.lastName}
@@ -299,7 +301,7 @@ export default function PatientPortalAndBillingSection({
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Accès configurés</h4>
               {accessList.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Aucun accès portail configuré pour ce patient.</p>
+                <p className="text-xs text-slate-400 italic">{t("Aucun accès portail configuré pour ce patient.")}</p>
               ) : (
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                   {accessList.map((acc) => (
@@ -307,7 +309,7 @@ export default function PatientPortalAndBillingSection({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-slate-800">
-                            {acc.accessType === 'representative' ? 'Représentant légal' : 'Patient direct'}
+                            {acc.accessType === 'representative' ? 'Représentant légal' : t('Patient direct')}
                           </span>
                           {acc.isActive ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-800 flex items-center gap-1">
@@ -503,7 +505,7 @@ export default function PatientPortalAndBillingSection({
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Historique des factures</h4>
               {invoices.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Aucune facture enregistrée pour ce patient.</p>
+                <p className="text-xs text-slate-400 italic">{t("Aucune facture enregistrée pour ce patient.")}</p>
               ) : (
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                   {invoices.map((inv) => (

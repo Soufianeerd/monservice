@@ -1,3 +1,4 @@
+import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 import Link from 'next/link';
 import { Calendar, CheckSquare, FileText, Settings, MapPin, Briefcase, AlertCircle, Clock, Users } from 'lucide-react';
 import { ParamedicalWorkspaceConfig } from '@/lib/workspaces/types';
@@ -19,6 +20,8 @@ export default function ParamedicalPracticeDashboard({
   organization,
   data,
 }: ParamedicalPracticeDashboardProps) {
+  const vocabulary = vocabularyFromCustomerTerm(workspace.terminology.customerSingular);
+  const t = (text: string) => adaptCareText(text, vocabulary);
   const professionLabel = workspace.label;
   
   const formatDate = (dateString: string | null) => {
@@ -158,9 +161,9 @@ export default function ParamedicalPracticeDashboard({
             </h2>
             <nav className="space-y-3" aria-label="Actions du cabinet">
               {[
-                { href: '/patients/new', label: 'Ajouter un patient', description: 'Créer sa fiche administrative.', icon: Users },
-                { href: '/agenda/calendrier', label: 'Planifier un rendez-vous', description: 'Choisir un patient, une date et un praticien.', icon: Calendar },
-                { href: '/facturation/factures/new', label: 'Créer une facture', description: 'Choisir le patient et ses prestations.', icon: FileText },
+                { href: '/patients/new', label: t('Ajouter un patient'), description: 'Créer sa fiche administrative.', icon: Users },
+                { href: '/agenda/calendrier', label: 'Planifier un rendez-vous', description: t('Choisir un patient, une date et un praticien.'), icon: Calendar },
+                { href: '/facturation/factures/new', label: 'Créer une facture', description: t('Choisir le patient et ses prestations.'), icon: FileText },
               ].map(action => <Link key={action.href} data-guide={action.href === '/facturation/factures/new' ? 'dashboard-patient-invoice' : undefined} href={action.href} className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-gray-700 hover:bg-gray-50"><action.icon className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" /><span><span className="block font-medium">{action.label}</span><span className="mt-1 block text-xs text-gray-500">{action.description}</span></span></Link>)}
             </nav>
             <div className="mt-5 border-t border-gray-200 pt-4 text-sm text-gray-600"><p className="mb-2 font-medium text-gray-900">Préparer votre agenda</p><p className="text-xs">Ajoutez vos lieux et praticiens, puis définissez vos horaires et types de séances.</p><Link href="/parametres/cabinet" className="mt-3 inline-block font-medium text-indigo-600">Configurer les lieux et l’équipe →</Link></div>

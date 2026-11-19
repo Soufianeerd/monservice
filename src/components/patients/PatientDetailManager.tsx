@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,6 +40,7 @@ export default function PatientDetailManager({
   allRepresentatives,
   canAccessClinical = false,
 }: PatientDetailManagerProps) {
+  const t = useCareVocabulary();
   const router = useRouter();
   const [detail, setDetail] = useState<PatientDetailDTO>(initialDetail);
   const [isEditing, setIsEditing] = useState(false);
@@ -114,7 +116,7 @@ export default function PatientDetailManager({
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              Dossier administratif patient #{patient.id.slice(0, 8)}
+              {t('Dossier administratif patient')} #{patient.id.slice(0, 8)}
             </p>
           </div>
         </div>

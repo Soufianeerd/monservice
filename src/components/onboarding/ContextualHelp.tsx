@@ -9,14 +9,17 @@ import { getPageHelp } from './definitions/page-help';
 import { getHelpWorkflows, GUIDE_SAVED_EVENT, type HelpWorkflow } from './definitions/workflows';
 import { activeGuideForm, collectGuideElements, workflowEntry, type GuideElement } from './guide-elements';
 import TourSpotlight from './TourSpotlight';
+import { adaptCareTexts, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 
 export default function ContextualHelp() {
   const pathname = usePathname();
   const router = useRouter();
   const workspace = useWorkspace();
   const type = workspace?.type || (pathname.startsWith('/patients') ? 'paramedical' : 'generic');
-  const help = useMemo(() => getPageHelp(pathname, type), [pathname, type]);
-  const workflows = useMemo(() => getHelpWorkflows(type), [type]);
+  // Coach, nutritionniste, massage bien-être : « client » plutôt que « patient ».
+  const vocabulary = vocabularyFromCustomerTerm(workspace?.terminology?.customerSingular);
+  const help = useMemo(() => adaptCareTexts(getPageHelp(pathname, type), vocabulary), [pathname, type, vocabulary]);
+  const workflows = useMemo(() => adaptCareTexts(getHelpWorkflows(type), vocabulary), [type, vocabulary]);
   const [open, setOpen] = useState(false);
   // Fermé par défaut pour ne pas masquer les formulaires ; l'espace
   // paramédical (V1 gelée) garde son ouverture d'origine.
@@ -72,7 +75,7 @@ export default function ContextualHelp() {
       const changedScope = form !== scopeRef.current;
       scopeRef.current = form;
       setInForm(!!form);
-      const steps = collectGuideElements(pathname, type, help, form);
+      const steps = adaptCareTexts(collectGuideElements(pathname, type, help, form), vocabulary);
       let selected = currentKeyRef.current === null ? -1 : steps.findIndex(step => step.key === currentKeyRef.current);
       if (changedScope || selected < 0) selected = 0;
       if (!changedScope && clickedRef.current) {

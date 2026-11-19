@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -38,6 +39,7 @@ export function AppointmentForm({
   onSuccess,
   onCancel,
 }: Props) {
+  const t = useCareVocabulary();
   const isReschedule = Boolean(initialData?.appointmentId);
 
   // Form Fields
@@ -131,7 +133,7 @@ export function AppointmentForm({
     setErrorMessage(null);
 
     if (!patientId) {
-      setErrorMessage('Veuillez sélectionner un patient');
+      setErrorMessage(t('Veuillez sélectionner un patient'));
       return;
     }
 
@@ -191,7 +193,7 @@ export function AppointmentForm({
       <form data-guide-form="rendez-vous" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SEARCH */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient *</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Patient *")}</label>
           {selectedPatientDisplay ? (
             <div className="mt-1 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <span className="text-sm font-semibold text-blue-900">{selectedPatientDisplay}</span>

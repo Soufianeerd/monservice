@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -27,6 +28,7 @@ export function WaitlistForm({
   onSuccess,
   onCancel,
 }: Props) {
+  const t = useCareVocabulary();
   const isEditing = Boolean(initialData);
 
   // Form Fields
@@ -103,7 +105,7 @@ export function WaitlistForm({
     setErrorMessage(null);
 
     if (!patientId) {
-      setErrorMessage('Veuillez sélectionner un patient');
+      setErrorMessage(t('Veuillez sélectionner un patient'));
       return;
     }
 
@@ -166,7 +168,7 @@ export function WaitlistForm({
     <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-gray-100 max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold text-gray-900">
-          {isEditing ? "Modifier l'inscription en attente" : "Inscrire un patient en liste d'attente"}
+          {isEditing ? "Modifier l'inscription en attente" : t("Inscrire un patient en liste d’attente")}
         </h3>
         <button
           onClick={onCancel}
@@ -186,7 +188,7 @@ export function WaitlistForm({
       <form data-guide-form="liste-attente" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SELECTION */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient *</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Patient *")}</label>
           {selectedPatientDisplay ? (
             <div className="mt-1 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <span className="text-sm font-semibold text-blue-900">{selectedPatientDisplay}</span>

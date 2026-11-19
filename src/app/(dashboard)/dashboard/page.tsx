@@ -1,3 +1,4 @@
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
 import { getSessionAction, getOrganizationAction } from '@/app/actions/session';
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
@@ -31,6 +32,8 @@ export default async function DashboardPage() {
   });
 
   if (workspace.type === 'paramedical') {
+    // Agenda prêt dès la première connexion (lieu, séances types, horaires).
+    await prepareStarterPractice(organization.id, user.id);
     const data = await getPracticeDashboardAction();
     
     return (

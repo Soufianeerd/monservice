@@ -141,7 +141,7 @@ function buildWorkspaceItems(workspace: WorkspaceConfig): WorkspaceNavItem[] {
         dataTour: 'settings-nav',
         subItems: [
           { name: 'Mon compte', href: '/parametres/profil' },
-          { name: 'Coordonnées du cabinet', href: '/parametres/organisation' },
+          { name: workspace.terminology.customerSingular === 'Client' ? 'Coordonnées de l’activité' : 'Coordonnées du cabinet', href: '/parametres/organisation' },
           { name: 'Lieux et équipe', href: '/parametres/cabinet' },
           { name: 'Comptes utilisateurs', href: '/parametres/equipe' },
           { name: 'Relances et avis', href: '/parametres/relances' },

@@ -44,7 +44,7 @@ export async function findActiveClinicalPractitioner(
  * premier accès au dossier patient, au lieu de lui opposer un refus. Un cabinet
  * qui a déjà des fiches n'est jamais modifié (secrétariat, associés…).
  */
-async function provisionFirstPractitioner(organizationId: string, userId: string, profession: string | null): Promise<string | null> {
+export async function provisionFirstPractitioner(organizationId: string, userId: string, profession: string | null): Promise<string | null> {
   if (!profession || !(PARAMEDICAL_PROFESSION_CODES as readonly string[]).includes(profession)) return null;
   const [existing] = await db.select({ id: practicePractitioners.id }).from(practicePractitioners)
     .where(eq(practicePractitioners.organizationId, organizationId)).limit(1);

@@ -1,5 +1,7 @@
 'use server';
 
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
+
 import { requireProfessional } from '@/lib/auth/session';
 import { schedulingService } from '@/lib/services/scheduling.service';
 import { organizationService } from '@/lib/services/organization.service';
@@ -49,7 +51,8 @@ async function requireParamedicalContext() {
 // BOOTSTRAP & SEARCH
 // ==========================================
 export async function getSchedulingBootstrapAction() {
-  const { organizationId } = await requireParamedicalContext();
+  const { organizationId, userId } = await requireParamedicalContext();
+  await prepareStarterPractice(organizationId, userId);
   return schedulingService.getSchedulingBootstrap(organizationId);
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useTransition } from 'react';
 import { 
   UserPlus, 
@@ -55,6 +56,7 @@ export default function RepresentativeManager({
   allRepresentatives,
   onUpdate,
 }: RepresentativeManagerProps) {
+  const t = useCareVocabulary();
   const [isPending, startTransition] = useTransition();
   const [modalMode, setModalMode] = useState<'create' | 'link_existing' | 'edit_link' | 'edit_rep' | null>(null);
   const [selectedRep, setSelectedRep] = useState<PatientRepresentativeWithLinkDTO | null>(null);
@@ -654,7 +656,7 @@ export default function RepresentativeManager({
 
               {/* Flags */}
               <div className="p-3 bg-gray-50 rounded-xl space-y-2 border border-gray-100">
-                <p className="text-xs font-semibold text-gray-700 mb-1">Rôles pour ce patient</p>
+                <p className="text-xs font-semibold text-gray-700 mb-1">{t("Rôles pour ce patient")}</p>
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -706,7 +708,7 @@ export default function RepresentativeManager({
                   disabled={isPending}
                   className="px-4 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {isPending ? 'Liaison...' : 'Associer au patient'}
+                  {isPending ? 'Liaison...' : t('Associer au patient')}
                 </button>
               </div>
             </form>
@@ -759,7 +761,7 @@ export default function RepresentativeManager({
 
               {/* Flags */}
               <div className="p-3 bg-gray-50 rounded-xl space-y-2 border border-gray-100">
-                <p className="text-xs font-semibold text-gray-700 mb-1">Rôles pour ce patient</p>
+                <p className="text-xs font-semibold text-gray-700 mb-1">{t("Rôles pour ce patient")}</p>
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"

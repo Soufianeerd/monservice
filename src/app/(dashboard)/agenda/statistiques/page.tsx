@@ -1,3 +1,4 @@
+import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { requireProfessional } from '@/lib/auth/session';
@@ -70,8 +71,8 @@ export default async function PracticeStatisticsPage(props: { searchParams: Prom
         <Tile testId="stat-no-show-rate" label="Taux d’absence" value={percent(summary.noShowRate)} hint={`${summary.noShow} absence${summary.noShow > 1 ? 's' : ''} non excusée${summary.noShow > 1 ? 's' : ''}`} />
         <Tile testId="stat-cancellation-rate" label="Taux d’annulation" value={percent(summary.cancellationRate)} hint={`${summary.cancelled} rendez-vous annulé${summary.cancelled > 1 ? 's' : ''}`} />
         <Tile testId="stat-upcoming" label="Rendez-vous à venir" value={summary.upcoming.toLocaleString('fr-FR')} hint="Tous créneaux futurs planifiés" />
-        <Tile testId="stat-active-patients" label="Patients vus" value={summary.activePatients.toLocaleString('fr-FR')} hint="Au moins une séance honorée" />
-        <Tile testId="stat-new-patients" label="Nouveaux patients" value={summary.newPatients.toLocaleString('fr-FR')} hint="Dossiers créés sur la période" />
+        <Tile testId="stat-active-patients" label={adaptCareText("Patients vus", vocabularyFromCustomerTerm(workspace.terminology.customerSingular))} value={summary.activePatients.toLocaleString('fr-FR')} hint="Au moins une séance honorée" />
+        <Tile testId="stat-new-patients" label={adaptCareText("Nouveaux patients", vocabularyFromCustomerTerm(workspace.terminology.customerSingular))} value={summary.newPatients.toLocaleString('fr-FR')} hint="Dossiers créés sur la période" />
       </div>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5">

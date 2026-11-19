@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import ProtectedLayout from '../auth/ProtectedLayout';
 import { ClientAccessProvider } from './ClientAccessContext';
+import { CareVocabularyProvider } from '@/hooks/useCareVocabulary';
 
 export default function DashboardShell({ children, clientAccess = true }: { children: React.ReactNode; clientAccess?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,7 +19,7 @@ export default function DashboardShell({ children, clientAccess = true }: { chil
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto pb-24">
           <ProtectedLayout>
-            {children}
+            <CareVocabularyProvider>{children}</CareVocabularyProvider>
           </ProtectedLayout>
         </main>
       </div>

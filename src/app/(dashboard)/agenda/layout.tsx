@@ -1,3 +1,4 @@
+import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 import { Tabs } from '@/components/ui/Tabs';
 import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
@@ -43,7 +44,7 @@ export default async function AgendaLayout({ children }: { children: React.React
           <h1 className="text-3xl font-bold text-gray-900">Agenda</h1>
           <p className="mt-1 text-sm text-gray-500">
             {workspace.type === 'paramedical'
-              ? 'Planifiez les rendez-vous de vos patients. Réglez vos horaires habituels et vos absences.'
+              ? adaptCareText('Planifiez les rendez-vous de vos patients. Réglez vos horaires habituels et vos absences.', vocabularyFromCustomerTerm(workspace.terminology.customerSingular))
               : 'Gérez vos tâches et consultez votre calendrier.'}
           </p>
         </div>

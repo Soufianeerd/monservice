@@ -10,6 +10,7 @@ import { useOnboardingContext } from '@/components/onboarding/OnboardingProvider
 import { Organization } from '@/lib/data/interfaces';
 import Skeleton from '@/components/crm/Skeleton';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 
 export default function OrganizationSettingsPage() {
   const { organization, refresh } = useAuth();
@@ -122,8 +123,8 @@ export default function OrganizationSettingsPage() {
       )}
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">{workspace?.type === "paramedical" ? "Coordonnées du cabinet" : "Coordonnées de votre activité"}</h2>
-        <p className="mt-2 text-sm text-gray-500">{workspace?.type === "paramedical" ? "Ces informations identifient votre cabinet sur vos documents. Les lieux de consultation et les praticiens se règlent dans « Lieux et équipe »." : "Ces informations apparaissent sur vos devis et factures. Les membres de votre équipe se gèrent dans « Équipe »."}</p>
+        <h2 className="text-xl font-semibold text-gray-900">{workspace?.type === "paramedical" && workspace.terminology.customerSingular !== "Client" ? "Coordonnées du cabinet" : "Coordonnées de votre activité"}</h2>
+        <p className="mt-2 text-sm text-gray-500">{workspace?.type === "paramedical" ? adaptCareText("Ces informations identifient votre cabinet sur vos documents. Les lieux de consultation et les praticiens se règlent dans « Lieux et équipe ».", vocabularyFromCustomerTerm(workspace.terminology.customerSingular)) : "Ces informations apparaissent sur vos devis et factures. Les membres de votre équipe se gèrent dans « Équipe »."}</p>
       </div>
       <div data-tour="company-form">
         <OrganizationForm

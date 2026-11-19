@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,6 +26,7 @@ interface PatientListProps {
 }
 
 export default function PatientList({ initialData }: PatientListProps) {
+  const t = useCareVocabulary();
   const router = useRouter();
   const [data, setData] = useState<PatientListResult>(initialData);
   const [birthName, setBirthName] = useState('');
@@ -171,14 +173,14 @@ export default function PatientList({ initialData }: PatientListProps) {
               onChange={(e) => { const status = e.target.value as 'active' | 'archived' | 'all'; setActiveFilter(status); handleSearch(0, status); }}
               className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
-              <option value="active">Patients actifs</option>
-              <option value="archived">Patients archivés</option>
-              <option value="all">Tous les patients</option>
+              <option value="active">{t("Patients actifs")}</option>
+              <option value="archived">{t("Patients archivés")}</option>
+              <option value="all">{t("Tous les patients")}</option>
             </select>
           </div>
         </div>
 
-        <p className="text-xs text-gray-500">Un patient archivé reste conservé dans votre cabinet. Le filtre de statut s’applique immédiatement ; cliquez sur Rechercher pour appliquer les autres critères.</p>
+        <p className="text-xs text-gray-500">{t("Un patient archivé reste conservé dans votre cabinet. Le filtre de statut s’applique immédiatement ; cliquez sur Rechercher pour appliquer les autres critères.")}</p>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <button
             type="button"
@@ -296,7 +298,7 @@ export default function PatientList({ initialData }: PatientListProps) {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                    <p className="font-medium text-gray-700">Aucun patient trouvé</p>
+                    <p className="font-medium text-gray-700">{t("Aucun patient trouvé")}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Modifiez vos critères de recherche ou créez un nouveau patient.
                     </p>

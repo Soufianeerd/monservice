@@ -25,6 +25,12 @@ function slug(value: string) {
   return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
 
+function nextWeekday(): string {
+  const day = new Date(Date.now() + 2 * 86_400_000);
+  while (day.getUTCDay() === 0 || day.getUTCDay() === 6) day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
 type Universe = { key: string; title: string; sectorLabel: string; professionLabel: string | null; health: boolean };
 
 let order = 0;
@@ -212,10 +218,16 @@ for (const universe of universes) {
     if (universe.health) {
       await step(page, universe, '4. Nouveau patient', () => createPatient(page));
       await step(page, universe, '5. Réglages du cabinet (lieux, praticiens, séances)', async () => { await page.goto('/parametres/cabinet'); });
-      await step(page, universe, '6. Agenda : planifier une séance', async () => {
+      await step(page, universe, '6. Agenda : rendez-vous réservé', async () => {
         await page.goto('/agenda/calendrier');
         await page.getByRole('button', { name: /Nouvelle séance/ }).click();
         await page.getByText('Planifier une nouvelle séance').waitFor({ timeout: 20_000 });
+        await page.getByPlaceholder('Rechercher par nom ou prénom...').fill('MARTIN');
+        await page.getByRole('button', { name: /MARTIN/ }).first().click();
+        await page.locator('input[type="date"]').first().fill(nextWeekday());
+        await page.locator('input[type="time"]').first().fill('10:00');
+        await page.getByRole('button', { name: 'Confirmer le rendez-vous' }).click();
+        await page.getByText('Planifier une nouvelle séance').waitFor({ state: 'hidden', timeout: 30_000 });
       });
     } else {
       await step(page, universe, '4. Nouveau client (prospect)', () => createClient(page, `Client ${universe.key} ${run}`));
