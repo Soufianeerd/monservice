@@ -54,7 +54,7 @@ const commonPages: Record<string, [string, string]> = {
   '/operations': ['Vos interventions et chantiers', 'Une intervention associe un client, son site et les travaux à réaliser. Planifiez les dates, attribuez les intervenants puis suivez l’avancement et les comptes rendus.'],
   '/messages': ['Votre messagerie', 'Choisissez une conversation, lisez les échanges puis composez votre message. Vérifiez le destinataire avant l’envoi.'],
   '/marketplace': ['Les demandes de services', 'Consultez les demandes disponibles et ouvrez une demande pour examiner les besoins avant de proposer une réponse.'],
-  '/parametres/privacy': ['Les outils de confidentialité', 'Ces rubriques regroupent les consentements, demandes d’accès, registre et incidents. Le guide montre les contrôles disponibles et les informations à renseigner.'],
+  '/parametres/donnees': ['Vos données', 'Téléchargez une copie complète de vos données ou supprimez votre compte. La suppression est définitive.'],
   '/parametres/notifications': ['Vos notifications', 'Consultez les alertes de votre activité et les préférences proposées sur cet écran.'],
 };
 
