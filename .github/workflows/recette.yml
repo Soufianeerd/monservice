@@ -29,8 +29,10 @@ jobs:
       - run: npm install --global neon@8.0.7
       - name: Install Chromium with retries
         run: |
+          # Un essai coupé par timeout laisse apt verrouillé : on attend sa fin.
           for attempt in 1 2 3; do
-            timeout 240 npx playwright install --with-deps chromium && exit 0
+            while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done
+            timeout 600 npx playwright install --with-deps chromium && exit 0
             sleep 15
           done
           exit 1
