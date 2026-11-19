@@ -4,11 +4,13 @@ import { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ProtectedLayout from '../auth/ProtectedLayout';
+import { ClientAccessProvider } from './ClientAccessContext';
 
 export default function DashboardShell({ children, clientAccess = true }: { children: React.ReactNode; clientAccess?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <ClientAccessProvider value={clientAccess}>
     <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} clientAccess={clientAccess} />
       
@@ -21,5 +23,6 @@ export default function DashboardShell({ children, clientAccess = true }: { chil
         </main>
       </div>
     </div>
+    </ClientAccessProvider>
   );
 }

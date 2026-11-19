@@ -1,6 +1,7 @@
 'use client';
 
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+import { useClientAccess } from '@/components/layout/ClientAccessContext';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -44,7 +45,9 @@ export default function PatientPortalAndBillingSection({
   patientDetail: PatientDetailDTO;
 }) {
   const { patient, representatives } = patientDetail;
-  const [activeTab, setActiveTab] = useState<'portal' | 'questionnaires' | 'billing'>('portal');
+  // V1 : pas de compte patient, donc ni portail ni questionnaire à remplir en ligne.
+  const portalOpen = useClientAccess();
+  const [activeTab, setActiveTab] = useState<'portal' | 'questionnaires' | 'billing'>(portalOpen ? 'portal' : 'billing');
 
   // Portal Access state
   const [accessList, setAccessList] = useState<PatientPortalAccessDTO[]>([]);
@@ -180,7 +183,7 @@ export default function PatientPortalAndBillingSection({
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mt-6">
       {/* Tab Header */}
       <div className="flex border-b border-slate-200 bg-slate-50/70 p-1">
-        <button
+        {portalOpen && <button
           onClick={() => setActiveTab('portal')}
           className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeTab === 'portal'
@@ -190,9 +193,9 @@ export default function PatientPortalAndBillingSection({
         >
           <KeyRound className="w-4 h-4 text-teal-600" />
           Portail & Accès Patient ({accessList.filter((a) => a.isActive).length})
-        </button>
+        </button>}
 
-        <button
+        {portalOpen && <button
           onClick={() => setActiveTab('questionnaires')}
           className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeTab === 'questionnaires'
@@ -202,7 +205,7 @@ export default function PatientPortalAndBillingSection({
         >
           <FileCheck className="w-4 h-4 text-amber-600" />
           Questionnaires assignés ({assignments.length})
-        </button>
+        </button>}
 
         <button
           onClick={() => setActiveTab('billing')}
@@ -221,7 +224,7 @@ export default function PatientPortalAndBillingSection({
         {/* ========================================== */}
         {/* TAB 1: PORTAL ACCESS */}
         {/* ========================================== */}
-        {activeTab === 'portal' && (
+        {portalOpen && activeTab === 'portal' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -341,7 +344,7 @@ export default function PatientPortalAndBillingSection({
         {/* ========================================== */}
         {/* TAB 2: QUESTIONNAIRES */}
         {/* ========================================== */}
-        {activeTab === 'questionnaires' && (
+        {portalOpen && activeTab === 'questionnaires' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
