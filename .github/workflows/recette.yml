@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [launch/v1-professional-only]
-    paths: ['recette/**', 'playwright.recette.config.ts', '.github/workflows/recette.yml']
+    paths: ['recette/**', 'playwright.recette.config.ts', '.github/workflows/recette.yml', 'src/**', 'drizzle/**']
 permissions:
   contents: read
 concurrency:
