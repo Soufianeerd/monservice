@@ -29,6 +29,12 @@ function mapDbInvoice(inv: typeof invoices.$inferSelect, lines: InvoiceLine[], s
   };
 }
 
+/** Numéro provisoire d'un brouillon de facture (le définitif est attribué à l'émission). */
+export const PROVISIONAL_NUMBER_PREFIX = 'BROUILLON-';
+export function isProvisionalNumber(number: string | null | undefined): boolean {
+  return Boolean(number?.startsWith(PROVISIONAL_NUMBER_PREFIX));
+}
+
 export const invoiceService = {
   async findAll(organizationId: string): Promise<Invoice[]> {
     const invs = await db.select().from(invoices).where(eq(invoices.organizationId, organizationId));
@@ -452,6 +458,13 @@ export const invoiceService = {
 
       await this.calculateTotals(id, organizationId, tx);
 
+      // Numérotation continue (S-08) : un brouillon de facture porte un numéro
+      // provisoire ; le numéro définitif et la date d'émission sont attribués
+      // à l'émission, si bien qu'un brouillon supprimé ne laisse aucun trou.
+      if (validated.status === 'sent' && existing.type !== 'quote' && isProvisionalNumber(existing.number)) {
+        const number = await allocateBillingNumber(tx, organizationId, 'invoice');
+        await tx.update(invoices).set({ number, date: new Date().toISOString().slice(0, 10) }).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId)));
+      }
       if (validated.status) await tx.update(invoices).set({ status: validated.status }).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId)));
       if (validated.status === 'sent') {
         const { retentionService } = await import('./retention.service');

@@ -28,7 +28,10 @@ export default function NewInvoicePage() {
     try {
       const type = data.type || 'invoice';
       const recipientId = isPractice ? await preparePatientBillingRecipientAction(data.clientId) : data.clientId;
-      const number = await invoiceActions.getNextInvoiceNumberAction(user.organizationId, type);
+      // Facture : numéro provisoire, le définitif est attribué à l'émission (S-08).
+      const number = type === 'invoice'
+        ? `BROUILLON-${Date.now().toString(36).toUpperCase()}`
+        : await invoiceActions.getNextInvoiceNumberAction(user.organizationId, type);
       
       const { lines, ...rest } = data;
 

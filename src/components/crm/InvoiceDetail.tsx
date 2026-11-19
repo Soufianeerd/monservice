@@ -1,5 +1,6 @@
 'use client';
 import { getByIdAction } from '@/app/actions/organization.actions';
+import { updateAction as updateInvoiceAction } from '@/app/actions/invoice.actions';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -23,6 +24,24 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
   const router = useRouter();
   const { user } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+
+  // Émission (S-03) : verrouille la facture, attribue son numéro définitif et
+  // sa date. Elle peut ensuite être réglée, relancée et suivie en trésorerie.
+  const issueInvoice = async () => {
+    if (!window.confirm('Émettre la facture ? Elle recevra son numéro définitif et ne pourra plus être modifiée.')) return;
+    setIssuing(true);
+    setIssueError(null);
+    try {
+      await updateInvoiceAction(invoice.id, null, { status: 'sent' });
+      router.refresh();
+    } catch (error) {
+      setIssueError(error instanceof Error ? error.message : 'Émission impossible.');
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   useEffect(() => {
     async function loadOrg() {
@@ -47,7 +66,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {isQuote ? 'Devis' : 'Facture'} {invoice.number}
+            {isQuote ? 'Devis' : 'Facture'} {invoice.number?.startsWith('BROUILLON-') ? '(brouillon, numéro attribué à l’émission)' : invoice.number}
           </h2>
           <div className="mt-1 flex items-center space-x-2">
             <span className="text-sm text-gray-500">
@@ -93,6 +112,18 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
             </button>
           )}
 
+          {invoice.status === 'draft' && invoice.type !== 'quote' && (
+            <button
+              type="button"
+              onClick={issueInvoice}
+              disabled={issuing}
+              data-testid="issue-invoice-button"
+              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {issuing ? 'Émission…' : 'Émettre la facture'}
+            </button>
+          )}
+
           {invoice.status === 'draft' && (
             <Link
               href={`/invoices/${invoice.id}/edit`}
@@ -103,6 +134,8 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
           )}
         </div>
       </div>
+
+      {issueError && <p role="alert" className="text-sm text-red-600">{issueError}</p>}
 
       <div className="border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
