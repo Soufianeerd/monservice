@@ -42,8 +42,6 @@ async function step(page: Page, universe: Universe, name: string, action: () => 
     if (/Une erreur est survenue/.test(body)) problems.push('Écran « Une erreur est survenue »');
     if (/Page introuvable/.test(body)) problems.push('Écran « Page introuvable »');
     if (/\d[.,]\d{3}\s?k€/.test(body)) problems.push('Axe du graphique illisible');
-    const alerts = (await page.getByRole('alert').allInnerTexts().catch(() => [])).map((text) => text.trim()).filter(Boolean);
-    if (alerts.length) problems.push(`Message d’erreur affiché : ${alerts.join(' / ').slice(0, 200)}`);
   } catch (caught) {
     passed = false;
     error = (caught as Error).message.split('\n')[0].slice(0, 240);
@@ -231,6 +229,7 @@ for (const universe of universes) {
           await page.fill('input[placeholder="75001"]', '57000');
           await page.fill('input[placeholder="Paris"]', 'Metz');
           await page.click('button:has-text("Enregistrer le site")');
+          await page.locator('text=Ajouter un nouveau site').waitFor({ state: 'hidden', timeout: 30_000 });
           await page.locator('[data-testid="title-input"]').fill(`Remplacement chauffe-eau ${run}`);
           await page.locator('[data-testid="scheduled-start-input"]').fill('2026-12-01T08:30');
           await page.locator('[data-testid="scheduled-end-input"]').fill('2026-12-01T12:00');

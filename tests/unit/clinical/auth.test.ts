@@ -11,6 +11,7 @@ vi.mock('@/lib/auth/session', () => ({
 vi.mock('@/lib/db/server', () => ({
   db: {
     select: vi.fn(),
+    insert: vi.fn(),
   },
 }));
 
@@ -122,6 +123,14 @@ describe('Clinical Auth Module', () => {
           }),
         }),
       });
+      // Le cabinet a déjà des praticiens : un membre non rattaché reste refusé.
+      mockSelect.mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'practitioner-colleague' }]),
+          }),
+        }),
+      });
 
       vi.mocked(db.select).mockImplementation(mockSelect);
 
@@ -131,6 +140,30 @@ describe('Clinical Auth Module', () => {
           code: 'CLINICAL_ACCESS_FORBIDDEN',
         }),
       );
+    });
+
+    it('crée la fiche du premier praticien quand le cabinet vient d’être créé', async () => {
+      vi.mocked(requireProfessional).mockResolvedValue({
+        userId: 'user-new-1',
+        organizationId: 'org-health-new',
+        profileType: 'professional',
+        email: 'kine@cabinet.fr',
+      });
+      const rows = (value: unknown[]) => ({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue(value) }) }) });
+      const mockSelect = vi.fn()
+        .mockReturnValueOnce(rows([{ id: 'org-health-new', sector: 'health', profession: 'physiotherapist', country: 'FR' }]))
+        .mockReturnValueOnce(rows([]))
+        .mockReturnValueOnce(rows([]))
+        .mockReturnValueOnce(rows([{ name: 'Camille Kiné', email: 'kine@cabinet.fr' }]))
+        .mockReturnValueOnce(rows([{ id: 'practitioner-new' }]));
+      vi.mocked(db.select).mockImplementation(mockSelect);
+      const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+      const values = vi.fn().mockReturnValue({ onConflictDoNothing });
+      vi.mocked(db.insert).mockReturnValue({ values } as unknown as ReturnType<typeof db.insert>);
+
+      const context = await requireClinicalPractitionerContext();
+      expect(context.practitionerId).toBe('practitioner-new');
+      expect(values).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-health-new', userId: 'user-new-1', displayName: 'Camille Kiné', profession: 'physiotherapist' }));
     });
 
     it('throws CLINICAL_ACCESS_FORBIDDEN when workspace is generic IT or consulting', async () => {
