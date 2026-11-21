@@ -1,8 +1,8 @@
-# État de reprise — MonService (mis à jour le 21/11/2026, 23 h)
+# État de reprise — MonService (mis à jour le 22/11/2026, 2 h)
 
 Dépôt `Soufianeerd/monservice`, branche `launch/v1-professional-only` (PR #2 non fusionnée).
 Site de test : https://monservicecrm.netlify.app — base Neon de test `demo` (br-billowing-salad-b1fafmn2), séparée de la production.
-Production Neon (br-little-surf-b1l5wgni) : migrations 0000–0013 seulement, aucun compte ; **0014–0024 à rejouer le jour J (Partie B du guide)**. Attention : `scripts/neon/check-production.mjs` attend 59 tables publiques — à recompter après rejeu (0024 n'ajoute aucune table publique : son compteur est dans le schéma `app_private`). Aucune migration n'a été lancée en production.
+Production Neon (br-little-surf-b1l5wgni) : migrations 0000–0013 seulement, aucun compte ; **0014–0025 à rejouer le jour J (Partie B du guide)**. Attention : `scripts/neon/check-production.mjs` attend 59 tables publiques — à recompter après rejeu (0024 et 0025 n'ajoutent aucune table publique : compteur et secrets 2FA sont dans le schéma `app_private`). Variable à créer en production avant 0025 : `TWO_FACTOR_ENCRYPTION_KEY` (`openssl rand -hex 32`, ne jamais la changer). Aucune migration n'a été lancée en production.
 
 ## Mise en ligne du site de test
 Workflow `.github/workflows/demo.yml` (push sur `src/**`, `drizzle/neon/**` ou lancement manuel) : migre la branche `demo`, envoie les variables à Netlify (secret `NETLIFY_AUTH_TOKEN`), construit et publie. Inscription sans code e-mail sur la démo. E-mails (Resend) non branchés.
@@ -20,17 +20,22 @@ Workflow `.github/workflows/demo.yml` (push sur `src/**`, `drizzle/neon/**` ou l
 - Légal : vraie politique de confidentialité, `/sous-traitants`, `/contrat-de-sous-traitance` (art. 28) — relecture juriste conseillée.
 - Performance : squelettes `loading.tsx`, factures sans N+1, organisation lue une fois par requête, connexion gardée, cookie session 300 s, PDF chargé au clic, requêtes fusionnées (C5), lot de lecture `withReadScope` (C6 partiel : opérations, tâches du cabinet, amorçage agenda).
 
-## Reste à faire (ordre conseillé)
-1. Vérifier CI complète + recette sur le dernier commit (voir « Tests » ci-dessous).
-2. Performance : C4 complet (session + organisation en une requête), C11 (actions au démarrage), C10 pour les autres listes (pipeline, tâches, devis), C3 (transaction à 3 allers-retours, sensible : seulement avec test:rls vert). Décision Soufiane en attente : Netlify Pro 20 $/mois région Francfort.
-3. Ergonomie restante (`ux-accessibilite.md`) : window.confirm() à remplacer par des dialogues, ~98 étiquettes non reliées, modales (piège de focus, Échap), pages mot de passe oublié/vérification sans mise en page, deux formulaires de devis à unifier.
-4. Sécurité (`securite-rgpd.md`) : double authentification (Neon Auth n'expose pas de 2FA : à construire), CSP sans unsafe-inline/eval, notes chiffrées côté application, CGU à réécrire.
-5. Se démarquer (`veille-ux.md`) : identité visuelle par univers, barre mobile artisans + PWA, accueil « Aujourd'hui », devis voix/photo, facture électronique.
+## Fait le 22/11 (nuit)
+- Ergonomie : 18 `window.confirm()` → fenêtre intégrée (`askConfirm`, `components/ui/ConfirmDialog.tsx`) ; 23 modales au clavier (`ModalOverlay`, `hooks/useDialogKeyboard.ts` : focus piégé, Échap, retour du focus) ; 136 étiquettes reliées ; pages mot de passe oublié / nouveau mot de passe / vérification e-mail avec la mise en page de connexion ; **un seul formulaire de devis** (création + modification via `?id=`, bouton « Modifier » sur brouillon, l'éditeur générique ne touche plus aux devis hors paramédical — corrige une perte des lots/unités à l'enregistrement).
+- Fluidité : C11 (profil + organisation transmis par le layout, plus de 3 actions au démarrage ; appel de notifications vide retiré) ; C10 devis, tâches, pipeline chargés côté serveur. C4 : variante cache par requête déjà en place.
+- Sécurité : CSP à nonce par requête dans `src/proxy.ts` (`lib/security/csp.ts`), plus de 'unsafe-inline'/'unsafe-eval' pour les scripts (vérifié sur build de production : hydratation et navigation OK, 0 violation) ; **double authentification TOTP** (migration additive **0025**, secrets chiffrés dans `app_private`, preuve liée à la session Neon Auth, codes de secours, journal d'audit, page Paramètres › Sécurité, page `/verification-2fa`) — fonctions SQL testées sur PostgreSQL 16 local (refus anonyme, isolation entre comptes, pas de rejeu).
+- Légal : CGU réécrites (`/conditions`) — relecture juriste avant lancement.
 
-## Tests (21/11, 23 h)
-- CI Neon complète **verte sur 3997f9f** (migrations jusqu'à 0023, RLS, contraintes, E2E avec et sans comptes clients).
-- Démo : migrations 0023 et 0024 appliquées sans erreur sur la branche `demo` (déploiement 591f9a0 OK).
-- Unitaires locaux : 106 fichiers OK sur 591f9a0.
+## Reste à faire (ordre conseillé)
+1. Vérifier CI complète + recette sur da1cd6f (E2E nouveau : `e2e/two-factor.spec.ts`, compte seedé `pro_two_factor@monservice.invalid`).
+2. Performance : C3 (transaction à 3 allers-retours, sensible : seulement avec test:rls vert). Décision Soufiane en attente : Netlify Pro 20 $/mois région Francfort.
+3. Sécurité : notes chiffrées côté application ; faire relire CGU, confidentialité, sous-traitance par un juriste.
+4. Se démarquer (`veille-ux.md`) : identité visuelle par univers, barre mobile artisans + PWA, accueil « Aujourd'hui », devis voix/photo, facture électronique.
+
+## Tests (22/11, 2 h)
+- CI Neon complète **verte sur 4aa07f5** (correctif du nettoyage audit_logs confirmé). Run sur 9e5b1dc en cours, puis da1cd6f.
+- Démo : déploiements OK jusqu'à 1280524 (CSP comprise).
+- Locaux sur da1cd6f : `tsc` OK, ESLint 0 erreur, Vitest 115 fichiers / 936 tests OK, build de production OK, chaîne de migrations 0000→0025 rejouée sur PostgreSQL 16.
 
 ## Tests (historique)
 - Locaux (21/11 soir, commit 3997f9f) : `tsc` OK, ESLint sans erreur sur les fichiers modifiés, Vitest unitaires 104 fichiers OK.
