@@ -1,6 +1,6 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { Tabs } from '@/components/ui/Tabs';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
 import { notFound } from 'next/navigation';
@@ -11,7 +11,7 @@ export default async function ParametresLayout({ children }: { children: React.R
     notFound();
   }
 
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   if (!organization) {
     notFound();
   }

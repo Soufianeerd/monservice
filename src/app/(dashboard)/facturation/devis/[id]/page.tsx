@@ -31,7 +31,6 @@ import {
   convertQuoteToInvoiceAction,
   createWorkOrderFromQuoteAction,
 } from '@/app/actions/quote.actions';
-import { generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { getByIdAction } from '@/app/actions/organization.actions';
 import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
 import type { Invoice } from '@/lib/data/interfaces';
@@ -231,6 +230,8 @@ export default function ProfessionalQuoteDetailPage({
           }
         : undefined;
 
+      // Générateur PDF chargé seulement au clic.
+      const { generateQuotePDF, downloadPDF } = await import('@/lib/utils/pdf-generator');
       const blob = await generateQuotePDF(quote, org, clientInfo, siteInfo);
       downloadPDF(blob, `Devis_${quote.number}.pdf`);
     } catch (err) {

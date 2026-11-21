@@ -1,7 +1,7 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { getReviewOverview } from '@/lib/services/review.service';
 import { getOwnPublicProfile } from '@/lib/services/public-profile.service';
 import { getAutomationSettings } from '@/lib/services/automation.service';
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Avis clients' };
 
 export default async function ClientReviewsPage() {
   const ctx = await requireProfessional();
-  const organization = await organizationService.getById(ctx.organizationId);
+  const organization = await getOrganizationForRequest(ctx.organizationId);
   if (!organization || !isGrowthAvailable(organization.sector)) notFound();
   const [overview, profile, settings, isAdmin] = await Promise.all([
     getReviewOverview(ctx.organizationId),

@@ -35,22 +35,41 @@ export function isProvisionalNumber(number: string | null | undefined): boolean 
   return Boolean(number?.startsWith(PROVISIONAL_NUMBER_PREFIX));
 }
 
+/**
+ * Lignes et sections de plusieurs factures en deux requêtes au total (et non deux
+ * par facture) : chaque aller-retour vers la base compte.
+ */
+async function withLinesAndSections(invs: (typeof invoices.$inferSelect)[]): Promise<Invoice[]> {
+  const ids = invs.map((inv) => inv.id);
+  const [lines, sections] = await Promise.all([
+    db.select().from(invoiceLines).where(inArray(invoiceLines.invoiceId, ids)).orderBy(asc(invoiceLines.position)),
+    db.select().from(invoiceSections).where(inArray(invoiceSections.invoiceId, ids)).orderBy(asc(invoiceSections.position)),
+  ]);
+  const linesByInvoice = new Map<string, (typeof lines)[number][]>();
+  for (const line of lines) {
+    const bucket = linesByInvoice.get(line.invoiceId) ?? [];
+    bucket.push(line);
+    linesByInvoice.set(line.invoiceId, bucket);
+  }
+  const sectionsByInvoice = new Map<string, (typeof sections)[number][]>();
+  for (const section of sections) {
+    const bucket = sectionsByInvoice.get(section.invoiceId) ?? [];
+    bucket.push(section);
+    sectionsByInvoice.set(section.invoiceId, bucket);
+  }
+  return invs.map((inv) => mapDbInvoice(inv, linesByInvoice.get(inv.id) ?? [], (sectionsByInvoice.get(inv.id) ?? []).map((s) => ({
+    ...s,
+    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+    updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
+  }))));
+}
+
 export const invoiceService = {
   async findAll(organizationId: string): Promise<Invoice[]> {
     const invs = await db.select().from(invoices).where(eq(invoices.organizationId, organizationId));
     if (invs.length === 0) return [];
     
-    const result: Invoice[] = [];
-    for (const inv of invs) {
-      const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-      const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
-      result.push(mapDbInvoice(inv, lines, sections.map(s => ({
-        ...s,
-        createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
-        updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
-      }))));
-    }
-    return result;
+    return withLinesAndSections(invs);
   },
 
   async findByClient(userId: string): Promise<Invoice[]> {
@@ -64,17 +83,7 @@ export const invoiceService = {
     const invs = await db.select().from(invoices).where(condition);
     if (invs.length === 0) return [];
     
-    const result: Invoice[] = [];
-    for (const inv of invs) {
-      const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-      const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
-      result.push(mapDbInvoice(inv, lines, sections.map(s => ({
-        ...s,
-        createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
-        updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
-      }))));
-    }
-    return result;
+    return withLinesAndSections(invs);
   },
 
   async findByProfessional(organizationId: string): Promise<Invoice[]> {

@@ -1,8 +1,8 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { getPracticeStatistics } from '@/lib/services/practice-statistics.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import {
@@ -32,7 +32,7 @@ const percent = (value: number | null) => (value === null ? '—' : `${value.toL
 
 export default async function PracticeStatisticsPage(props: { searchParams: Promise<{ periode?: string | string[] }> }) {
   const context = await requireProfessional();
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   if (!organization) notFound();
   const workspace = resolveWorkspace({ sector: organization.sector, profession: organization.profession, country: organization.country });
   if (workspace.type !== 'paramedical') redirect('/dashboard');

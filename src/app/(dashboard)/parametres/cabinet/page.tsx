@@ -1,6 +1,6 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { getPracticeStructureAction } from '@/app/actions/practice-structure.actions';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { notFound } from 'next/navigation';
 import { PracticeStructureManager } from '@/components/practice/PracticeStructureManager';
@@ -15,7 +15,7 @@ export default async function CabinetPage() {
     notFound();
   }
 
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   if (!organization) {
     notFound();
   }

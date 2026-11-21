@@ -8,9 +8,12 @@ let instance: NeonAuth | undefined;
 function createAuth(): NeonAuth {
   return createNeonAuth({
     baseUrl: process.env.NEON_AUTH_BASE_URL!,
-    cookies: { secret: process.env.NEON_AUTH_COOKIE_SECRET!, sessionDataTtl: 60 },
+    cookies: { secret: process.env.NEON_AUTH_COOKIE_SECRET!, sessionDataTtl: 300 },
     logLevel: 'silent',
   });
+  // 300 s : la révocation reste immédiate, elle est vérifiée en base à chaque
+  // requête (public.provider_session_is_active) ; le cookie évite seulement un
+  // appel réseau au fournisseur d'identité.
 }
 
 /**

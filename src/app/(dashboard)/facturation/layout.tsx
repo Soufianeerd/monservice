@@ -1,11 +1,11 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { Tabs } from '@/components/ui/Tabs';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
 export default async function FacturationLayout({ children }: { children: React.ReactNode }) {
   const context = await requireProfessional();
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   const isPractice = organization?.sector === 'health';
   // « Factures patients » pour un kiné, « Factures clients » pour un coach.
   const customers = resolveWorkspace({ sector: organization?.sector, profession: organization?.profession }).terminology.customerPlural.toLowerCase();

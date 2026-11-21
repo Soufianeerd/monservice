@@ -50,7 +50,10 @@ const poolMax = Number.isInteger(configuredPoolMax) && configuredPoolMax > 0 ? c
 const client = globalForDb.postgresClient ?? postgres(databaseUrl, {
   prepare: false,
   max: poolMax,
-  idle_timeout: 20,
+  // Connexion gardée ouverte entre deux clics : une reconnexion coûte plusieurs
+  // allers-retours vers la base (postgres.js se reconnecte seul si elle a été fermée).
+  idle_timeout: 300,
+  max_lifetime: 600,
   connect_timeout: 10,
 });
 

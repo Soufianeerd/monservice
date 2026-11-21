@@ -8,9 +8,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Invoice, Client, Product, Organization } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import DocumentPDF from './DocumentPDF';
-import { generateInvoicePDF, generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import InvoicePaymentPanel from '@/components/growth/InvoicePaymentPanel';
 import { isGrowthAvailable } from '@/lib/growth/availability';
 
@@ -119,6 +116,8 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
                     zipCode: client.zipCode ?? undefined,
                     country: client.country ?? undefined,
                   };
+                  // Générateur PDF (~480 Ko) chargé seulement au clic.
+                  const { generateInvoicePDF, generateQuotePDF, downloadPDF } = await import('@/lib/utils/pdf-generator');
                   const blob = isQuote
                     ? await generateQuotePDF(invoice, organization, pdfClient)
                     : await generateInvoicePDF(invoice, organization, pdfClient);

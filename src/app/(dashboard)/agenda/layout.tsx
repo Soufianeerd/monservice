@@ -1,7 +1,7 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { adaptCareText, vocabularyFromCustomerTerm } from '@/lib/workspaces/paramedical/vocabulary';
 import { Tabs } from '@/components/ui/Tabs';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { notFound } from 'next/navigation';
 
@@ -11,7 +11,7 @@ export default async function AgendaLayout({ children }: { children: React.React
     notFound();
   }
 
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   if (!organization) {
     notFound();
   }
