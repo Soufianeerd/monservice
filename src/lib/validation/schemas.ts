@@ -180,14 +180,23 @@ export const organizationUpdateSchema = z
   .strict();
 
 /**
- * Politique de mot de passe.
- *
- * Alignée sur NIST SP 800-63B : la longueur prime sur la complexité
- * arbitraire. 8 caractères minimum, pas d'expiration forcée.
+ * Politique de mot de passe des nouveaux comptes, alignée sur la recommandation
+ * de la CNIL (délibération 2022-100) pour un mot de passe seul : au moins 12
+ * caractères mêlant majuscules, minuscules, chiffres et caractères spéciaux.
+ * Les règles sont exposées dans PASSWORD_REQUIREMENTS pour l'affichage en direct.
  */
+export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_REQUIREMENTS = [
+  { id: 'length', label: `${PASSWORD_MIN_LENGTH} caractères minimum`, test: (value: string) => value.length >= PASSWORD_MIN_LENGTH },
+  { id: 'lower', label: 'une minuscule', test: (value: string) => /[a-z]/.test(value) },
+  { id: 'upper', label: 'une majuscule', test: (value: string) => /[A-Z]/.test(value) },
+  { id: 'digit', label: 'un chiffre', test: (value: string) => /[0-9]/.test(value) },
+  { id: 'special', label: 'un caractère spécial', test: (value: string) => /[^a-zA-Z0-9]/.test(value) },
+] as const;
+
 export const passwordSchema = z
   .string()
-  .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+  .min(PASSWORD_MIN_LENGTH, `Le mot de passe doit contenir au moins ${PASSWORD_MIN_LENGTH} caractères`)
   .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une lettre minuscule')
   .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une lettre majuscule')
   .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre')

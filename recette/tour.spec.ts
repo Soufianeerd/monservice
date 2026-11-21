@@ -67,14 +67,13 @@ async function register(page: Page, universe: Universe, email: string, orgName: 
   await page.locator('input[name="password"]').fill(password);
   await page.locator('input[name="confirmPassword"]').fill(password);
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
-  await page.getByRole('button', { name: /Je suis un professionnel/ }).click();
-  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   await page.locator('input[name="orgName"]').fill(orgName);
+  await page.locator('input[name="city"]').fill('Metz');
   await page.getByRole('button', { name: universe.sectorLabel, exact: true }).click();
   if (universe.professionLabel) await page.getByRole('button', { name: new RegExp(`^${universe.professionLabel}`) }).first().click();
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Valider mon inscription' }).click();
+  await page.getByRole('button', { name: 'Créer mon espace' }).click();
   await page.waitForURL((target) => !target.pathname.startsWith('/register'), { timeout: 60_000 });
   if (!new URL(page.url()).pathname.startsWith('/dashboard')) {
     await page.goto('/login');
@@ -203,8 +202,6 @@ test('règles V1 à l’inscription : professionnels uniquement, trois secteurs 
   await page.locator('input[name="confirmPassword"]').fill(password);
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   record({ kind: 'rule', universe: 'Inscription', rule: 'Aucun compte client ou patient proposé', passed: (await page.getByRole('button', { name: /Je suis un particulier/ }).count()) === 0 });
-  await page.getByRole('button', { name: /Je suis un professionnel/ }).click();
-  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   for (const label of ['Santé & Bien-être', 'BTP, Artisanat & Services techniques', 'Consultant & Services professionnels']) {
     record({ kind: 'rule', universe: 'Inscription', rule: `Secteur ouvert : ${label}`, passed: (await page.getByRole('button', { name: label, exact: true }).count()) === 1 });
   }

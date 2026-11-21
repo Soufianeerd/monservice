@@ -30,8 +30,8 @@ export default async function RegisterPage(props: { searchParams: Promise<{ invi
 
   return (
     <AuthLayout
-      title="Créez votre compte"
-      subtitle="Rejoignez-nous et commencez à développer votre activité dès aujourd'hui."
+      title="Créez votre espace professionnel"
+      subtitle="Gratuit pendant le lancement, sans carte bancaire. Prêt en deux minutes."
     >
       <RegisterForm clientRegistrationOpen={isClientAccessEnabled()} />
     </AuthLayout>

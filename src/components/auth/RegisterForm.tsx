@@ -20,6 +20,7 @@ import { ProfileType } from '@/lib/data/interfaces';
 import { passwordSchema } from '@/lib/validation/schemas';
 import { toast } from 'react-hot-toast';
 import { registerAction } from '@/app/actions/auth';
+import { updateAction as updateOrganizationAction } from '@/app/actions/organization.actions';
 import PasswordField from './PasswordField';
 import {
   PARAMEDICAL_PROFESSION_CODES,
@@ -54,10 +55,14 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
     email: '',
     password: '',
     confirmPassword: '',
-    profileType: '' as ProfileType | '',
+    // V1 : inscription réservée aux professionnels, le choix du profil n'est
+    // proposé que si les comptes particuliers sont ouverts.
+    profileType: (clientRegistrationOpen ? '' : 'professional') as ProfileType | '',
     sector: '' as RegistrationSectorCode | '',
     profession: '' as SelectedProfession,
     orgName: '',
+    city: '',
+    phone: '',
     acceptedTerms: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +118,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
         toast.error(passwordCheck.error.issues[0].message);
         return;
       }
-      setStep(2);
+      setStep(clientRegistrationOpen ? 2 : 3);
     } else if (step === 2) {
       if (!formData.profileType) {
         toast.error('Veuillez choisir un profil.');
@@ -125,8 +130,8 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
         setStep(3);
       }
     } else if (step === 3) {
-      if (!formData.sector || !formData.orgName) {
-        toast.error('Veuillez renseigner votre secteur et le nom de votre entreprise.');
+      if (!formData.sector || !formData.orgName.trim() || !formData.city.trim()) {
+        toast.error('Veuillez renseigner le nom de votre activité, votre ville et votre secteur.');
         return;
       }
       if (formData.sector === 'health' && !formData.profession) {
@@ -144,6 +149,8 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
   const handleBack = () => {
     if (step === 4 && formData.profileType === 'client') {
       setStep(2);
+    } else if (step === 3 && !clientRegistrationOpen) {
+      setStep(1);
     } else if (step > 1) {
       setStep(step - 1);
     }
@@ -179,23 +186,34 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
       return;
     }
 
+    // Entrée directe dans l'espace : on tente la connexion dans tous les cas. Elle
+    // n'échoue que si l'adresse doit d'abord être confirmée (ou en cas d'incident).
+    const { error } = await signIn(formData.email, formData.password);
+    if (!error) {
+      if (formData.profileType === 'professional' && (formData.city.trim() || formData.phone.trim())) {
+        // Personnalisation de l'espace : sans incidence sur l'entrée si elle échoue.
+        try {
+          await updateOrganizationAction(null, {
+            city: formData.city.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+          });
+        } catch {
+          /* complétable ensuite dans Paramètres → Organisation */
+        }
+      }
+      toast.success('Bienvenue ! Votre espace est prêt.');
+      // Navigation complète : le cookie de session est lu dès le premier rendu.
+      window.location.assign(formData.profileType === 'client' ? '/client/dashboard' : '/dashboard');
+      return;
+    }
+    setIsSubmitting(false);
     if (result.requiresEmailConfirmation) {
-      setIsSubmitting(false);
-      toast.success('Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse.');
+      toast.success('Compte créé. Saisissez le code reçu par e-mail pour entrer dans votre espace.');
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       return;
     }
-
-    const { error } = await signIn(formData.email, formData.password);
-    setIsSubmitting(false);
-
-    if (error) {
-      toast.error('Compte créé, mais erreur lors de la connexion automatique.');
-      router.push('/login');
-    } else {
-      toast.success('Compte créé avec succès !');
-      router.push(formData.profileType === 'client' ? '/client/dashboard' : '/dashboard');
-    }
+    toast.error('Compte créé, mais la connexion automatique a échoué. Connectez-vous.');
+    router.push('/login');
   };
 
   const sectorIcons: Record<RegistrationSectorCode, React.ReactNode> = {
@@ -211,7 +229,10 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
     icon: sectorIcons[code],
   }));
 
-  const stepsLabels = ['Compte', 'Profil', 'Activité', 'Terminé'];
+  const visibleSteps = clientRegistrationOpen
+    ? [{ step: 1, label: 'Compte' }, { step: 2, label: 'Profil' }, { step: 3, label: 'Activité' }, { step: 4, label: 'Validation' }]
+    : [{ step: 1, label: 'Compte' }, { step: 3, label: 'Activité' }, { step: 4, label: 'Validation' }];
+  const currentIndex = Math.max(0, visibleSteps.findIndex((item) => item.step === step));
 
   // Obtention du label affiché de la profession
   const getSelectedProfessionLabel = (): string => {
@@ -227,25 +248,18 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
 
   return (
     <div className="w-full max-w-2xl bg-white p-8 sm:p-10 rounded-2xl shadow-xl shadow-gray-100 border border-gray-100 transition-all">
-      <div className="mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-center">Créer un compte</h2>
-        <p className="text-sm text-gray-500 text-center mt-2">
-          Rejoignez la plateforme et pilotez votre activité en toute simplicité
-        </p>
-      </div>
-
       {/* Stepper Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between relative">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-gray-100 w-full z-0" />
           <div
             className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-primary-600 transition-all duration-300 z-0"
-            style={{ width: `${((step - 1) / (stepsLabels.length - 1)) * 100}%` }}
+            style={{ width: `${(currentIndex / (visibleSteps.length - 1)) * 100}%` }}
           />
-          {stepsLabels.map((label, idx) => {
+          {visibleSteps.map(({ label }, idx) => {
             const stepNum = idx + 1;
-            const isCompleted = step > stepNum;
-            const isCurrent = step === stepNum;
+            const isCompleted = currentIndex > idx;
+            const isCurrent = currentIndex === idx;
             return (
               <div key={label} className="relative z-10 flex flex-col items-center">
                 <div
@@ -281,6 +295,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
               <input
                 type="text"
                 name="name"
+                autoComplete="name"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -294,6 +309,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
               <input
                 type="email"
                 name="email"
+                autoComplete="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -303,20 +319,23 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
             </div>
 
             <PasswordField
+              id="register-password"
               label="Mot de passe *"
               name="password"
+              autoComplete="new-password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="8 caractères min, 1 maj, 1 min, 1 chiffre, 1 spécial"
-              helperText="Min. 8 caractères dont 1 majuscule, 1 minuscule, 1 chiffre et 1 symbole."
+              showRequirements
             />
 
             <PasswordField
+              id="register-password-confirm"
               label="Confirmer le mot de passe *"
               name="confirmPassword"
+              autoComplete="new-password"
               value={formData.confirmPassword}
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              placeholder="Confirmez votre mot de passe"
+              error={formData.confirmPassword && formData.confirmPassword !== formData.password ? 'Les deux mots de passe ne correspondent pas.' : undefined}
             />
           </div>
         )}
@@ -374,8 +393,42 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
                 onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
                 className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
                 placeholder="Ex: Entreprise Dupont"
+                autoComplete="organization"
               />
             </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="register-city" className="block text-sm font-medium text-gray-700 mb-1">Ville d&apos;exercice *</label>
+                <input
+                  id="register-city"
+                  type="text"
+                  name="city"
+                  required
+                  autoComplete="address-level2"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
+                  placeholder="Ex : Metz"
+                />
+              </div>
+              <div>
+                <label htmlFor="register-phone" className="block text-sm font-medium text-gray-700 mb-1">Téléphone professionnel</label>
+                <input
+                  id="register-phone"
+                  type="tel"
+                  name="phone"
+                  autoComplete="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="block w-full appearance-none rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 sm:text-sm transition-colors"
+                  placeholder="Facultatif"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 -mt-2">
+              Vos informations légales (SIRET, TVA, coordonnées bancaires) se complètent ensuite dans votre espace, au moment de votre premier devis.
+            </p>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">Secteur d&apos;activité *</label>
@@ -509,15 +562,21 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
                   <span className="text-gray-500">Email</span>
                   <span className="font-medium text-gray-900">{formData.email}</span>
                 </div>
-                <div className="flex justify-between border-b border-gray-200 pb-2">
-                  <span className="text-gray-500">Profil</span>
-                  <span className="font-medium text-gray-900">{formData.profileType === 'client' ? 'Particulier' : 'Professionnel'}</span>
-                </div>
+                {clientRegistrationOpen && (
+                  <div className="flex justify-between border-b border-gray-200 pb-2">
+                    <span className="text-gray-500">Profil</span>
+                    <span className="font-medium text-gray-900">{formData.profileType === 'client' ? 'Particulier' : 'Professionnel'}</span>
+                  </div>
+                )}
                 {formData.profileType === 'professional' && (
                   <>
                     <div className="flex justify-between border-b border-gray-200 pb-2">
                       <span className="text-gray-500">Entreprise</span>
                       <span className="font-medium text-gray-900">{formData.orgName}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-gray-200 pb-2">
+                      <span className="text-gray-500">Ville</span>
+                      <span className="font-medium text-gray-900">{formData.city}</span>
                     </div>
                     <div className="flex justify-between border-b border-gray-200 pb-2">
                       <span className="text-gray-500">Secteur</span>
@@ -546,7 +605,15 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
                 />
               </div>
               <div className="text-sm text-gray-600">
-                J&apos;accepte les <Link href="/conditions" className="text-primary-600 font-medium hover:underline">conditions générales d&apos;utilisation</Link> et la <Link href="/confidentialite" className="text-primary-600 font-medium hover:underline">politique de confidentialité</Link>.
+                J&apos;accepte les{' '}
+                <a href="/conditions" target="_blank" rel="noopener noreferrer" className="text-primary-600 font-medium hover:underline">
+                  conditions générales d&apos;utilisation<span className="sr-only"> (nouvel onglet)</span>
+                </a>{' '}
+                et la{' '}
+                <a href="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-primary-600 font-medium hover:underline">
+                  politique de confidentialité<span className="sr-only"> (nouvel onglet)</span>
+                </a>
+                . Ils s&apos;ouvrent dans un nouvel onglet : votre saisie est conservée ici.
               </div>
             </label>
           </div>
@@ -571,11 +638,11 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
             className="order-1 sm:order-2 flex-1 inline-flex justify-center items-center px-6 py-3 border border-transparent text-sm font-bold rounded-xl shadow-sm shadow-primary-200 text-white bg-primary-600 hover:bg-primary-700 focus:outline-none transition-all disabled:opacity-50"
           >
             {isSubmitting ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Création...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Création de votre espace…</>
             ) : step < 4 ? (
               'Continuer'
             ) : (
-              'Valider mon inscription'
+              'Créer mon espace'
             )}
           </button>
         </div>

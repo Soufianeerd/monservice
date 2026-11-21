@@ -116,8 +116,6 @@ test('Les professions ne débordent pas lors de l’inscription, sur desktop et 
   await page.locator('input[name="password"]').fill('Synthetic!Password2026');
   await page.locator('input[name="confirmPassword"]').fill('Synthetic!Password2026');
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
-  await page.getByRole('button', { name: /Je suis un professionnel/ }).click();
-  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   await page.getByRole('button', { name: 'Santé & Bien-être', exact: true }).click();
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 1000 });

@@ -65,18 +65,18 @@ export default function InvitedMemberRegisterForm({ token, email, organizationNa
         id="invited-password"
         label="Mot de passe *"
         name="password"
+        autoComplete="new-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        placeholder="8 caractères min, 1 maj, 1 min, 1 chiffre, 1 spécial"
-        helperText="Min. 8 caractères dont 1 majuscule, 1 minuscule, 1 chiffre et 1 symbole."
+        showRequirements
       />
       <PasswordField
         id="invited-confirm-password"
         label="Confirmer le mot de passe *"
         name="confirmPassword"
+        autoComplete="new-password"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
-        placeholder="Confirmez votre mot de passe"
       />
       <button type="submit" disabled={submitting} className="w-full rounded-xl bg-primary-600 px-4 py-3 font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
         {submitting ? 'Création…' : 'Créer mon compte'}

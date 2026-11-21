@@ -22,7 +22,8 @@ test.describe('V1 — réservé aux professionnels', () => {
     await page.locator('input[name="password"]').fill(process.env.E2E_AUTH_PASSWORD!);
     await page.locator('input[name="confirmPassword"]').fill(process.env.E2E_AUTH_PASSWORD!);
     await page.getByRole('button', { name: 'Continuer', exact: true }).click();
-    await expect(page.getByRole('button', { name: /Je suis un professionnel/ })).toBeVisible();
+    // Sans choix de profil : on arrive directement sur l'activité professionnelle.
+    await expect(page.locator('input[name="orgName"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /Je suis un particulier/ })).toHaveCount(0);
   });
 

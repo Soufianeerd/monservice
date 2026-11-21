@@ -68,7 +68,7 @@ test.describe('Production Auth policy — actual browser recovery', () => {
     await page.getByRole('button', { name: /Je suis un particulier/ }).click();
     await page.getByRole('button', { name: 'Continuer', exact: true }).click();
     await page.getByRole('checkbox').check();
-    await page.getByRole('button', { name: 'Valider mon inscription' }).click();
+    await page.getByRole('button', { name: 'Créer mon espace' }).click();
     await page.waitForURL('**/verify-email?email=*');
     const [profile] = await admin`select id,profile_type,organization_id from public.users where email=${email}`;
     expect(profile).toMatchObject({ profile_type: 'client', organization_id: null });
