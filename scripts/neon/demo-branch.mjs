@@ -100,9 +100,9 @@ if (!site) throw new Error(`Netlify site ${siteName} not found`);
 const account = site.account_slug ?? site.account_id;
 console.log(`Netlify site found (account ${account})`);
 const existing = new Set((await netlify('GET', `/accounts/${account}/env?site_id=${site.id}`)).map((variable) => variable.key));
-const scopes = ['builds', 'functions', 'runtime'];
 for (const [key, value] of Object.entries(out)) {
-  const variable = { key, scopes, values: [{ context: 'all', value }] };
+  // Offre gratuite : pas de portée spécifique (toutes les portées par défaut).
+  const variable = { key, values: [{ context: 'all', value }] };
   if (existing.has(key)) await netlify('PUT', `/accounts/${account}/env/${key}?site_id=${site.id}`, variable);
   else await netlify('POST', `/accounts/${account}/env?site_id=${site.id}`, [variable]);
 }
