@@ -11,6 +11,11 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   
+  /* Accessibilité (WCAG 2.2 AA, contraste 4,5:1) : le gris 400 de Tailwind
+     (#9ca3af, 2,5:1 sur blanc) sert à des libellés et des icônes d'action ;
+     il est assombri à #6b7280 (4,8:1). */
+  --color-gray-400: #6b7280;
+
   /* Primary brand colors (MonService Violet/Indigo) */
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
