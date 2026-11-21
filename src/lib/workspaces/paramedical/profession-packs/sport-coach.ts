@@ -50,6 +50,7 @@ export const SPORT_COACH_PACK: ParamedicalProfessionPack = {
   ],
   measurementPresets: [
     { code: 'weight', label: 'Poids', valueType: 'numeric', unit: 'kg', description: 'Poids déclaré ou mesuré en séance.' },
+    { code: 'height', label: 'Taille', valueType: 'numeric', unit: 'cm', description: 'Taille en centimètres (pour l’IMC).' },
     { code: 'waist_circumference', label: 'Tour de taille', valueType: 'numeric', unit: 'cm', description: 'Tour de taille en centimètres.' },
     { code: 'resting_heart_rate', label: 'Fréquence cardiaque au repos', valueType: 'numeric', unit: 'bpm', description: 'Pulsations par minute au repos.' },
   ],

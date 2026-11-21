@@ -18,3 +18,8 @@ export function useCareVocabulary(): (text: string) => string {
   const vocabulary = useContext(CareVocabularyContext);
   return useCallback((text: string) => adaptCareText(text, vocabulary), [vocabulary]);
 }
+
+/** Vocabulaire du métier : « client » pour le bien-être, « patient » pour le paramédical. */
+export function useCareVocabularyMode(): CareVocabulary {
+  return useContext(CareVocabularyContext);
+}

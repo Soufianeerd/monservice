@@ -114,12 +114,12 @@ describe('Workspace Resolver with Profession Packs', () => {
 });
 
 describe('Total Presets Aggregations Across 11 Packs', () => {
-  it('has exactly 31 total measurement presets across all 11 packs', () => {
+  it('has exactly 32 total measurement presets across all 11 packs', () => {
     const totalMeasurements = PARAMEDICAL_PROFESSION_CODES.reduce((acc, code) => {
       return acc + PARAMEDICAL_PROFESSION_PACKS[code].measurementPresets.length;
     }, 0);
 
-    expect(totalMeasurements).toBe(31);
+    expect(totalMeasurements).toBe(32);
   });
 });
 

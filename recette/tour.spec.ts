@@ -118,7 +118,8 @@ async function createPatient(page: Page) {
   await page.locator('#patient-birth-name').fill('MARTIN');
   await page.locator('#patient-first-birth-name').fill('Marie');
   await page.locator('#patient-birth-date').fill('1985-04-12');
-  await page.locator('#patient-sex').selectOption('female');
+  if (await page.locator('#patient-sex').count()) await page.locator('#patient-sex').selectOption('female');
+  if (await page.locator('#client-height').count()) { await page.locator('#client-height').fill('168'); await page.locator('#client-weight').fill('62'); }
   await page.locator('#patient-email').fill('marie.martin@exemple-patient.fr').catch(() => undefined);
   await page.getByRole('button', { name: /^Créer le/ }).click();
   await page.waitForURL((target) => /\/patients\/[^/]+$/.test(target.pathname) && !target.pathname.endsWith('/new'), { timeout: 60_000 });

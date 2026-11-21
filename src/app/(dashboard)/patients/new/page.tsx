@@ -27,22 +27,26 @@ export default async function NewPatientPage() {
     notFound();
   }
 
+  const isClient = workspace.terminology.customerSingular === 'Client';
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="border-b border-gray-200 pb-5">
         <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
           <Link href="/patients" className="hover:text-blue-600 transition-colors">
-            Patients
+            {workspace.terminology.customerPlural}
           </Link>
           <span>/</span>
-          <span>Nouveau dossier</span>
+          <span>{isClient ? 'Nouveau client' : 'Nouveau dossier'}</span>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <UserPlus className="w-7 h-7 text-blue-600" />
-          Nouveau dossier patient
+          {isClient ? 'Nouveau client' : 'Nouveau dossier patient'}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Saisie de l'identité civile et des coordonnées administratives du patient
+          {isClient
+            ? 'Identité, coordonnées et, si vous le souhaitez, taille et poids pour calculer l’IMC.'
+            : 'Saisie de l’identité civile et des coordonnées administratives du patient'}
         </p>
       </div>
 
