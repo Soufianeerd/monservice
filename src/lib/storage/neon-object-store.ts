@@ -1,11 +1,19 @@
 import 'server-only';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { readStorageConfig } from './storage-config';
 
 let client: S3Client | undefined;
 function s3() {
-  if (!process.env.AWS_ENDPOINT_URL_S3 || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) throw new Error('Private object storage configuration missing');
-  return client ??= new S3Client({ forcePathStyle: true, endpoint: process.env.AWS_ENDPOINT_URL_S3, region: process.env.AWS_REGION });
+  const config = readStorageConfig();
+  if (!config) throw new Error('Private object storage configuration missing');
+  // Identifiants explicites : jamais ceux de la plateforme d'hébergement.
+  return client ??= new S3Client({
+    forcePathStyle: true,
+    endpoint: config.endpoint,
+    region: config.region,
+    credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
+  });
 }
 
 /** Internal byte transport. Domain adapters must authorize before every call. */

@@ -13,10 +13,15 @@ const serverEnvSchema = z.object({
 
   NEON_AUTH_BASE_URL: z.string().url(),
   NEON_AUTH_COOKIE_SECRET: z.string().min(32),
-  AWS_ENDPOINT_URL_S3: z.string().url(),
-  AWS_REGION: z.string().min(1),
-  AWS_ACCESS_KEY_ID: z.string().min(1),
-  AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  // Stockage privé : noms NEON_STORAGE_* (obligatoires sur Netlify) ou AWS_*.
+  NEON_STORAGE_ENDPOINT: z.string().url().optional(),
+  NEON_STORAGE_REGION: z.string().min(1).optional(),
+  NEON_STORAGE_ACCESS_KEY_ID: z.string().min(1).optional(),
+  NEON_STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  AWS_ENDPOINT_URL_S3: z.string().url().optional(),
+  AWS_REGION: z.string().min(1).optional(),
+  AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   // Stripe est optionnel : l'application doit démarrer sans, avec les
   // fonctionnalités de paiement désactivées (503).
@@ -29,7 +34,11 @@ const serverEnvSchema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
 
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-});
+}).refine(
+  (env) => Boolean((env.NEON_STORAGE_ENDPOINT || env.AWS_ENDPOINT_URL_S3) && (env.NEON_STORAGE_REGION || env.AWS_REGION)
+    && (env.NEON_STORAGE_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID) && (env.NEON_STORAGE_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY)),
+  { message: 'Configuration du stockage privé incomplète (NEON_STORAGE_* ou AWS_*)' },
+);
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 

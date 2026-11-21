@@ -67,31 +67,39 @@ Object.assign(out, {
 console.log('Runtime keys:', Object.keys(out).sort().join(', '));
 console.log('Runtime role:', new URL(out.DATABASE_URL).username);
 
-// Les variables partent directement de GitHub vers Vercel (jeton VERCEL_TOKEN dans
-// les secrets du dépôt) : aucune valeur n'apparaît dans les journaux ni ailleurs.
-const vercelToken = process.env.VERCEL_TOKEN;
-const team = 'team_rWwEXqoM91yFl0AQdwuxyjlI';
-const vercelProject = 'prj_gBJtdHZLC3D6uJje6vEtSgVMPnJS';
-if (!vercelToken) throw new Error('VERCEL_TOKEN secret is missing');
+// Netlify réserve les noms AWS_* (fonctions sur AWS Lambda) : le stockage passe par
+// NEON_STORAGE_*, que l'application lit en priorité.
+for (const [from, to] of [['AWS_ENDPOINT_URL_S3', 'NEON_STORAGE_ENDPOINT'], ['AWS_REGION', 'NEON_STORAGE_REGION'], ['AWS_ACCESS_KEY_ID', 'NEON_STORAGE_ACCESS_KEY_ID'], ['AWS_SECRET_ACCESS_KEY', 'NEON_STORAGE_SECRET_ACCESS_KEY']]) {
+  if (out[from]) out[to] = out[from];
+  delete out[from];
+}
+delete out.NEON_BRANCH_ID;
 for (const file of [adminFile, runtimeFile]) fs.rmSync(file, { force: true });
-const visible = new Set(['NEXT_PUBLIC_APP_URL', 'LAUNCH_INCLUDED_PLAN', 'CLIENT_ACCESS_ENABLED', 'DATABASE_POOL_MAX', 'AWS_REGION', 'NEON_AUTH_BASE_URL', 'NEON_AUTH_JWKS_URL', 'AWS_ENDPOINT_URL_S3', 'NEON_BRANCH_ID']);
-const vercel = async (path, body) => {
-  const response = await fetch(`https://api.vercel.com${path}${path.includes('?') ? '&' : '?'}teamId=${team}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${vercelToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+
+// Les valeurs partent directement de GitHub vers Netlify (secret NETLIFY_AUTH_TOKEN) :
+// aucune n'apparaît dans les journaux.
+const token = process.env.NETLIFY_AUTH_TOKEN;
+if (!token) throw new Error('NETLIFY_AUTH_TOKEN secret is missing');
+const netlify = async (method, path, body) => {
+  const response = await fetch(`https://api.netlify.com/api/v1${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`Vercel API ${path.split('?')[0]} failed with status ${response.status}`);
-  return response.json();
+  if (!response.ok) throw new Error(`Netlify API ${method} ${path.split('?')[0]} failed with status ${response.status}`);
+  return response.status === 204 ? null : response.json();
 };
-await vercel(`/v10/projects/${vercelProject}/env?upsert=true`, Object.entries(out).map(([key, value]) => ({
-  key, value, type: visible.has(key) ? 'plain' : 'sensitive', target: ['production'],
-})));
-console.log('Vercel environment updated');
-const deployment = await vercel('/v13/deployments', {
-  name: 'monservice-demo',
-  project: vercelProject,
-  target: 'production',
-  gitSource: { type: 'github', org: 'Soufianeerd', repo: 'monservice', ref: process.env.GITHUB_REF_NAME ?? 'launch/v1-professional-only' },
-});
-console.log('Vercel production deployment started:', deployment.id);
+const siteName = process.env.NETLIFY_SITE_NAME ?? 'monservicecrm';
+const sites = await netlify('GET', `/sites?name=${encodeURIComponent(siteName)}&filter=all`);
+const site = sites.find((candidate) => candidate.name === siteName);
+if (!site) throw new Error(`Netlify site ${siteName} not found`);
+const account = site.account_id ?? site.account_slug;
+const existing = new Set((await netlify('GET', `/accounts/${account}/env?site_id=${site.id}`)).map((variable) => variable.key));
+const scopes = ['builds', 'functions', 'runtime'];
+for (const [key, value] of Object.entries(out)) {
+  const variable = { key, scopes, values: [{ context: 'all', value }] };
+  if (existing.has(key)) await netlify('PUT', `/accounts/${account}/env/${key}?site_id=${site.id}`, variable);
+  else await netlify('POST', `/accounts/${account}/env?site_id=${site.id}`, [variable]);
+}
+console.log(`Netlify environment updated (${Object.keys(out).length} variables)`);
+fs.appendFileSync(process.env.GITHUB_ENV ?? '/dev/null', `NETLIFY_SITE_ID=${site.id}\n`);
