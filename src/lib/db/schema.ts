@@ -151,6 +151,15 @@ export const organizations = sqliteTable('organizations', {
       'technical_service_provider'
     ))
     OR
+    (${t.sector} = 'freelance' AND ${t.profession} IN (
+      'lawyer', 'legal_advisor', 'notary', 'bailiff', 'accountant', 'wealth_advisor',
+      'insurance_broker', 'real_estate_agent', 'business_consultant', 'it_consultant', 'hr_consultant', 'virtual_assistant',
+      'web_developer', 'graphic_designer', 'photographer', 'videographer', 'community_manager', 'copywriter',
+      'translator', 'architect_interior', 'musician', 'dj', 'event_planner', 'entertainer',
+      'artist', 'trainer', 'private_tutor', 'business_coach', 'music_teacher', 'home_cleaning',
+      'home_help', 'childcare', 'pet_care', 'concierge'
+    ))
+    OR
     (${t.profession} IS NULL)
   ) AND NOT (${t.sector} IS NULL AND ${t.profession} IS NOT NULL)`),
 ]);

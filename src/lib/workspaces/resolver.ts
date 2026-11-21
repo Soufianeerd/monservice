@@ -1,5 +1,5 @@
 import { OrganizationContext, WorkspaceConfig } from './types';
-import { GENERIC_WORKSPACE_CONFIG } from './generic/config';
+import { GENERIC_WORKSPACE_CONFIG, getGenericWorkspaceConfig } from './generic/config';
 import { getParamedicalWorkspaceConfig } from './paramedical/config';
 import { getFieldServiceWorkspaceConfig } from './field-service/config';
 
@@ -18,7 +18,11 @@ export function resolveWorkspace(context?: OrganizationContext | null): Workspac
     return getFieldServiceWorkspaceConfig(profession);
   }
 
-  // Fallback for other sectors (freelance, other) or empty/unknown sector
+  if (sector === 'freelance') {
+    return getGenericWorkspaceConfig(profession);
+  }
+
+  // Autre secteur, ou secteur vide/inconnu
   return GENERIC_WORKSPACE_CONFIG;
 }
 

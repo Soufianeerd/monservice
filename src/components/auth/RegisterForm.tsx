@@ -40,12 +40,21 @@ import {
   FieldServiceBusinessFamilyCode,
 } from '@/lib/workspaces/field-service/families';
 import {
+  GENERIC_PROFESSION_CODES,
+  GENERIC_PROFESSION_FAMILIES,
+  GENERIC_PROFESSION_FAMILY_CODES,
+  GENERIC_PROFESSIONS,
+  GenericProfession,
+  GenericProfessionCode,
+  isGenericProfessionCode,
+} from '@/lib/workspaces/generic/professions';
+import {
   openRegistrationSectorCodes,
   REGISTRATION_SECTORS,
   RegistrationSectorCode,
 } from '@/lib/registration/options';
 
-type SelectedProfession = ParamedicalProfessionCode | FieldServiceProfessionCode | '';
+type SelectedProfession = ParamedicalProfessionCode | FieldServiceProfessionCode | GenericProfessionCode | '';
 
 export default function RegisterForm({ clientRegistrationOpen = false }: { clientRegistrationOpen?: boolean }) {
   const [step, setStep] = useState(1);
@@ -101,6 +110,22 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
     return result;
   }, [professionSearch]);
 
+  // Métiers de l'univers général, regroupés par famille et filtrés par la recherche.
+  const groupedGenericProfessions = useMemo(() => {
+    const query = professionSearch.trim().toLowerCase();
+    return GENERIC_PROFESSION_FAMILY_CODES.map((familyCode) => ({
+      familyCode,
+      familyLabel: GENERIC_PROFESSION_FAMILIES[familyCode].label,
+      professions: GENERIC_PROFESSION_CODES
+        .map((code): GenericProfession => GENERIC_PROFESSIONS[code])
+        .filter((prof) => prof.family === familyCode)
+        .filter((prof) => !query
+          || prof.label.toLowerCase().includes(query)
+          || prof.description.toLowerCase().includes(query)
+          || GENERIC_PROFESSION_FAMILIES[familyCode].label.toLowerCase().includes(query)),
+    })).filter((group) => group.professions.length > 0);
+  }, [professionSearch]);
+
   const handleNext = () => {
     if (step === 1) {
       if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
@@ -138,7 +163,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
         toast.error('Veuillez sélectionner votre profession.');
         return;
       }
-      if (formData.sector === 'field_services' && !formData.profession) {
+      if ((formData.sector === 'field_services' || formData.sector === 'freelance') && !formData.profession) {
         toast.error('Veuillez sélectionner votre métier.');
         return;
       }
@@ -166,7 +191,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
 
     setIsSubmitting(true);
 
-    const isProfessionSector = formData.sector === 'health' || formData.sector === 'field_services';
+    const isProfessionSector = formData.sector === 'health' || formData.sector === 'field_services' || formData.sector === 'freelance';
     const result = await registerAction({
       name: formData.name,
       email: formData.email,
@@ -242,6 +267,9 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
     }
     if (formData.sector === 'field_services' && formData.profession in FIELD_SERVICE_PROFESSIONS) {
       return FIELD_SERVICE_PROFESSIONS[formData.profession as FieldServiceProfessionCode].label;
+    }
+    if (formData.sector === 'freelance' && isGenericProfessionCode(formData.profession)) {
+      return GENERIC_PROFESSIONS[formData.profession].label;
     }
     return formData.profession;
   };
@@ -536,6 +564,52 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
                               <span className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">
                                 {prof.description}
                               </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Métiers de l'univers général */}
+            {formData.sector === 'freelance' && (
+              <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <label htmlFor="register-generic-search" className="block text-sm font-medium text-gray-700">Votre métier *</label>
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      id="register-generic-search"
+                      type="search"
+                      value={professionSearch}
+                      onChange={(e) => setProfessionSearch(e.target.value)}
+                      placeholder="Rechercher un métier…"
+                      className="w-full text-xs rounded-lg border border-gray-200 pl-8 pr-3 py-1.5 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto space-y-4 pr-1 border border-gray-100 rounded-xl p-3 bg-gray-50/50">
+                  {groupedGenericProfessions.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-gray-500">Aucun métier ne correspond. Choisissez le plus proche ou le secteur « Autre ».</div>
+                  ) : (
+                    groupedGenericProfessions.map((group) => (
+                      <div key={group.familyCode} className="space-y-2">
+                        <div className="text-xs font-bold text-gray-600 uppercase tracking-wider px-1">{group.familyLabel}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {group.professions.map((prof) => (
+                            <button
+                              key={prof.code}
+                              type="button"
+                              aria-pressed={formData.profession === prof.code}
+                              onClick={() => setFormData({ ...formData, profession: prof.code })}
+                              className={`flex flex-col p-2.5 border-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-all text-left ${
+                                formData.profession === prof.code ? 'border-primary-600 bg-primary-50 shadow-sm' : 'border-gray-200 hover:border-primary-200 bg-white'
+                              }`}
+                            >
+                              <span className={`text-xs font-semibold ${formData.profession === prof.code ? 'text-primary-900' : 'text-gray-900'}`}>{prof.label}</span>
+                              <span className="text-[11px] text-gray-600 line-clamp-1 mt-0.5">{prof.description}</span>
                             </button>
                           ))}
                         </div>

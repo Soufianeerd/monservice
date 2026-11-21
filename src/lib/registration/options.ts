@@ -10,7 +10,7 @@ export type RegistrationSectorCode = typeof REGISTRATION_SECTOR_CODES[number];
 export const REGISTRATION_SECTORS: Record<RegistrationSectorCode, { label: string }> = {
   health: { label: 'Santé & Bien-être' },
   field_services: { label: 'BTP, Artisanat & Services techniques' },
-  freelance: { label: 'Consultant & Services professionnels' },
+  freelance: { label: 'Indépendants, conseil & services' },
   other: { label: 'Autre' },
 } as const;
 

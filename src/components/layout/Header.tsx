@@ -79,6 +79,9 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     if (workspace && workspace.type === 'field_service') {
       return workspace.label || 'Espace Artisans & Services Techniques';
     }
+    if (workspace?.type === 'generic' && workspace.profession) {
+      return workspace.label;
+    }
     const industry = organization?.industry;
     if (industry && industry in REGISTRATION_SECTORS) {
       return REGISTRATION_SECTORS[industry as RegistrationSectorCode].label;

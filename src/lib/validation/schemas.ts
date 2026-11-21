@@ -205,11 +205,13 @@ export const passwordSchema = z
 
 import { PARAMEDICAL_PROFESSION_CODES, isParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
 import { FIELD_SERVICE_PROFESSION_CODES, isFieldServiceProfessionCode } from '@/lib/workspaces/field-service/professions';
+import { GENERIC_PROFESSION_CODES, isGenericProfessionCode } from '@/lib/workspaces/generic/professions';
 import { REGISTRATION_SECTOR_CODES } from '@/lib/registration/options';
 
 export const ALL_REGISTRATION_PROFESSION_CODES = [
   ...PARAMEDICAL_PROFESSION_CODES,
   ...FIELD_SERVICE_PROFESSION_CODES,
+  ...GENERIC_PROFESSION_CODES,
 ] as const;
 
 export type RegistrationProfessionCode = typeof ALL_REGISTRATION_PROFESSION_CODES[number];
@@ -290,6 +292,20 @@ export const registerSchema = z
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Le métier sélectionné n'est pas valide pour le secteur BTP & services techniques",
+            path: ['profession'],
+          });
+        }
+      } else if (data.sector === 'freelance') {
+        if (!data.profession) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Veuillez sélectionner votre métier',
+            path: ['profession'],
+          });
+        } else if (!isGenericProfessionCode(data.profession)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Le métier sélectionné n'est pas valide pour ce secteur",
             path: ['profession'],
           });
         }

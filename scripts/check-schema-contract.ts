@@ -183,6 +183,12 @@ async function verifyContract() {
       'mason',
       'plumber',
       'electrician',
+      'freelance',
+      'lawyer',
+      'notary',
+      'web_developer',
+      'musician',
+      'home_cleaning',
     ];
     for (const el of expectedElements) {
       if (!def.includes(el.replace(/\s+/g, ''))) {

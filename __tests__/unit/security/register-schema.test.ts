@@ -15,16 +15,11 @@ describe('Security: registerSchema validation', () => {
     expect(result.success).toBe(true);
   });
 
-  it('2. professional freelance + orgName + sans profession accepté', () => {
-    const result = registerSchema.safeParse({
-      name: 'John Doe',
-      email: 'john@example.com',
-      password: 'Password123!',
-      profileType: 'professional',
-      orgName: 'My Freelance Corp',
-      sector: 'freelance'
-    });
-    expect(result.success).toBe(true);
+  it('2. professional freelance : métier obligatoire et vérifié', () => {
+    const base = { name: 'John Doe', email: 'john@example.com', password: 'Password123!', profileType: 'professional', orgName: 'My Freelance Corp', sector: 'freelance' };
+    expect(registerSchema.safeParse(base).success).toBe(false);
+    expect(registerSchema.safeParse({ ...base, profession: 'web_developer' }).success).toBe(true);
+    expect(registerSchema.safeParse({ ...base, profession: 'plumber' }).success).toBe(false);
   });
 
   it('3. professional health + physiotherapist accepté', () => {
@@ -332,6 +327,8 @@ describe('Security: registerSchema validation', () => {
           ? 'physiotherapist'
           : sector === 'field_services'
           ? 'plumber'
+          : sector === 'freelance'
+          ? 'notary'
           : undefined;
 
       const result = registerSchema.safeParse({

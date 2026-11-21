@@ -186,7 +186,7 @@ async function tourMenu(page: Page, universe: Universe) {
 }
 
 const universes: Universe[] = [
-  { key: 'generaliste', title: 'Généraliste (consultant)', sectorLabel: 'Consultant & Services professionnels', professionLabel: null, health: false },
+  { key: 'generaliste', title: 'Généraliste (développeur web)', sectorLabel: 'Indépendants, conseil & services', professionLabel: 'Développeur web', health: false },
   { key: 'artisan', title: 'Artisan (plombier)', sectorLabel: 'BTP, Artisanat & Services techniques', professionLabel: 'Plombier', health: false },
   { key: 'paramedical', title: 'Paramédical (kinésithérapeute)', sectorLabel: 'Santé & Bien-être', professionLabel: 'Kinésithérapeute', health: true },
   { key: 'bien-etre', title: 'Bien-être (coach sportif)', sectorLabel: 'Santé & Bien-être', professionLabel: 'Coach', health: true },
@@ -202,7 +202,7 @@ test('règles V1 à l’inscription : professionnels uniquement, trois secteurs 
   await page.locator('input[name="confirmPassword"]').fill(password);
   await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   record({ kind: 'rule', universe: 'Inscription', rule: 'Aucun compte client ou patient proposé', passed: (await page.getByRole('button', { name: /Je suis un particulier/ }).count()) === 0 });
-  for (const label of ['Santé & Bien-être', 'BTP, Artisanat & Services techniques', 'Consultant & Services professionnels']) {
+  for (const label of ['Santé & Bien-être', 'BTP, Artisanat & Services techniques', 'Indépendants, conseil & services']) {
     record({ kind: 'rule', universe: 'Inscription', rule: `Secteur ouvert : ${label}`, passed: (await page.getByRole('button', { name: label, exact: true }).count()) === 1 });
   }
   await page.screenshot({ path: path.join(SHOTS, '000-inscription-secteurs.png'), fullPage: true });
