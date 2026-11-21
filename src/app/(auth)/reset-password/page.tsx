@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth/client';
 import { isAuthApiError } from '@neondatabase/auth/next';
 import PasswordField from '@/components/auth/PasswordField';
+import AuthLayout from '@/components/auth/AuthLayout';
+import { authButtonClass, authMessageClass } from '@/components/auth/auth-styles';
 import { passwordSchema } from '@/lib/validation/schemas';
 
 function ResetPasswordForm() {
@@ -47,8 +49,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow">
-      <h1 className="text-xl font-bold mb-4">Créer un nouveau mot de passe</h1>
+    <AuthLayout title="Nouveau mot de passe" subtitle="Choisissez un mot de passe que vous n’utilisez nulle part ailleurs.">
       <form onSubmit={handleSubmit}>
         <PasswordField
           id="reset-password"
@@ -75,17 +76,17 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+          className={authButtonClass}
         >
-          {loading ? 'Mise à jour...' : 'Réinitialiser'}
+          {loading ? 'Mise à jour…' : 'Réinitialiser'}
         </button>
       </form>
       {message && (
-        <div className={`mt-4 p-2 text-sm rounded ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div role="status" className={`mt-5 ${authMessageClass(message.type)}`}>
           {message.text}
         </div>
       )}
-    </div>
+    </AuthLayout>
   );
 }
 

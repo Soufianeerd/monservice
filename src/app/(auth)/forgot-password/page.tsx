@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { authClient } from '@/lib/auth/client';
+import AuthLayout from '@/components/auth/AuthLayout';
+import { authButtonClass, authInputClass, authLabelClass, authMessageClass } from '@/components/auth/auth-styles';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -30,30 +33,36 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow">
-      <h1 className="text-xl font-bold mb-4">Réinitialiser le mot de passe</h1>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="fld-7db0b935" className="block mb-2">Email</label>
-        <input id="fld-7db0b935"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
-          required
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
-        >
-          {loading ? 'Envoi...' : 'Envoyer le lien'}
+    <AuthLayout
+      title="Mot de passe oublié"
+      subtitle="Indiquez l’adresse de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="forgot-email" className={authLabelClass}>Adresse email</label>
+          <input
+            id="forgot-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={authInputClass}
+            placeholder="vous@exemple.fr"
+            required
+          />
+        </div>
+        <button type="submit" disabled={loading} className={authButtonClass}>
+          {loading ? 'Envoi…' : 'Envoyer le lien'}
         </button>
       </form>
       {message && (
-        <div className={`mt-4 p-2 text-sm rounded ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div role="status" className={`mt-5 ${authMessageClass(message.type)}`}>
           {message.text}
         </div>
       )}
-    </div>
+      <p className="mt-8 text-center text-sm">
+        <Link href="/login" className="font-semibold text-primary-600 hover:underline">Retour à la connexion</Link>
+      </p>
+    </AuthLayout>
   );
 }
