@@ -25,6 +25,10 @@ function cleanupExpiredEntries(now: number) {
 }
 
 export function getCanonicalClientIp(request: Request | NextRequest): string {
+  // Adresse fixée par l'hébergeur, que le visiteur ne peut pas falsifier
+  // (Netlify : x-nf-client-connection-ip). À défaut, en-têtes génériques.
+  const platformIp = request.headers.get('x-nf-client-connection-ip')?.trim();
+  if (platformIp) return platformIp;
   const xForwardedFor = request.headers.get('x-forwarded-for');
   if (xForwardedFor) {
     const firstIp = xForwardedFor.split(',')[0].trim();

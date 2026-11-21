@@ -41,3 +41,11 @@ describe('sensitiveRateLimit', () => {
     expect(sensitiveRateLimit(post('/laisser-un-avis'))?.status).toBe(429);
   });
 });
+
+describe('getCanonicalClientIp', () => {
+  it("préfère l'adresse fixée par Netlify à x-forwarded-for, falsifiable", async () => {
+    const { getCanonicalClientIp } = await import('@/middleware/rate-limit');
+    const request = new NextRequest('https://app.test/', { headers: { 'x-forwarded-for': '1.1.1.1', 'x-nf-client-connection-ip': '203.0.113.9' } });
+    expect(getCanonicalClientIp(request)).toBe('203.0.113.9');
+  });
+});

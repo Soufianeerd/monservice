@@ -4,6 +4,8 @@ import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth/client';
 import { isAuthApiError } from '@neondatabase/auth/next';
+import PasswordField from '@/components/auth/PasswordField';
+import { passwordSchema } from '@/lib/validation/schemas';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -19,8 +21,9 @@ function ResetPasswordForm() {
       setMessage({ text: 'Les mots de passe ne correspondent pas.', type: 'error' });
       return;
     }
-    if (password.length < 12) {
-      setMessage({ text: 'Le mot de passe doit faire au moins 12 caractères.', type: 'error' });
+    const policy = passwordSchema.safeParse(password);
+    if (!policy.success) {
+      setMessage({ text: policy.error.issues[0]?.message ?? 'Mot de passe non conforme.', type: 'error' });
       return;
     }
 
@@ -47,21 +50,27 @@ function ResetPasswordForm() {
     <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow">
       <h1 className="text-xl font-bold mb-4">Créer un nouveau mot de passe</h1>
       <form onSubmit={handleSubmit}>
-        <label className="block mb-2">Nouveau mot de passe (12 caractères min)</label>
-        <input
-          type="password"
+        <PasswordField
+          id="reset-password"
+          label="Nouveau mot de passe"
+          name="password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          showRequirements
           required
+          className="mb-4"
         />
-        <label className="block mb-2">Confirmer le mot de passe</label>
-        <input
-          type="password"
+        <PasswordField
+          id="reset-password-confirm"
+          label="Confirmer le mot de passe"
+          name="confirmPassword"
+          autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          error={confirmPassword && confirmPassword !== password ? 'Les deux mots de passe ne correspondent pas.' : undefined}
           required
+          className="mb-4"
         />
         <button
           type="submit"
