@@ -1,5 +1,6 @@
 'use client';
 
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +30,7 @@ interface InvoiceFormProps {
 
 export default function InvoiceForm({ initialData, organizationId, onSubmit, isSubmitting }: InvoiceFormProps) {
   const router = useRouter();
+  const { markDirty, markSaved } = useUnsavedChanges();
   const isPatientCreation = useWorkspace()?.type === 'paramedical' && !initialData;
   const { recipients: clients, query, setQuery, error: recipientError } = useBillingRecipients(organizationId, isPatientCreation);
   const [products, setProducts] = useState<Product[]>([]);
@@ -101,6 +103,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   };
 
   const submitForm = async (data: InvoiceFormData) => {
+    // Plus d'avertissement pendant la redirection qui suit l'enregistrement.
+    markSaved();
     await onSubmit({
       ...data,
       totalHT: totals.totalHT,
@@ -110,7 +114,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   };
 
   return (
-    <form data-guide-form="document" onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="document" onSubmit={handleSubmit(submitForm)} onInput={markDirty} onChange={markDirty} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       {recipientError && <p role="alert" className="text-sm text-red-600">{recipientError}</p>}
       {isPatientCreation && <div><label htmlFor="invoice-patient-search" className="block text-sm font-medium text-gray-700">Rechercher un patient</label><input id="invoice-patient-search" value={query} onChange={event => { setQuery(event.target.value); setValue('clientId', ''); }} placeholder="Au moins deux lettres du nom ou prénom" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /><p className="mt-1 text-xs text-gray-500">Choisissez ensuite le patient dans la liste. La recherche permet de retrouver un dossier au-delà des 100 premiers.</p></div>}
       

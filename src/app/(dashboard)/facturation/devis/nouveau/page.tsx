@@ -1,5 +1,6 @@
 'use client';
 
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import { useState, useEffect, useMemo, use } from 'react';
@@ -80,6 +81,8 @@ const LINE_TYPE_OPTIONS: { value: InvoiceLineType; label: string }[] = [
 
 export default function NewQuotePage() {
   const router = useRouter();
+  // Un devis de 20 lignes ne doit pas se perdre sur un clic de travers.
+  const { markDirty, markSaved } = useUnsavedChanges();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const workspace = useWorkspace();
@@ -295,6 +298,7 @@ export default function NewQuotePage() {
       };
 
       const createdQuote = await createQuoteAction(payload);
+      markSaved();
       announceGuideSaved('Le devis est enregistré.');
       router.push(`/facturation/devis/${createdQuote.id}`);
     } catch (err: unknown) {
@@ -305,7 +309,7 @@ export default function NewQuotePage() {
   };
 
   return (
-    <form data-guide-form="devis" onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
+    <form data-guide-form="devis" onSubmit={handleSubmit} onInput={markDirty} onChange={markDirty} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
       {recipientError && <p role="alert" className="text-sm text-red-600">{recipientError}</p>}
       {isPractice && <div><label htmlFor="quote-patient-search" className="block text-sm font-medium text-gray-700">Rechercher un patient</label><input id="quote-patient-search" value={patientQuery} onChange={event => { setPatientQuery(event.target.value); setClientId(''); }} placeholder="Au moins deux lettres du nom ou prénom" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /><p className="mt-1 text-xs text-gray-500">Choisissez ensuite le patient dans la liste des résultats.</p></div>}
       {/* Header Bar */}

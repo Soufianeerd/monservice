@@ -56,7 +56,8 @@ export const calendarService = {
       id: `${evt.type}_${evt.id}`,
       title: evt.title,
       start: evt.date,
-      allDay: true,
+      // Un rendez-vous (tâche avec une heure) s'affiche à son horaire.
+      allDay: !(evt.type === 'task' && /T\d{2}:\d{2}/.test(evt.date ?? '') && !/T00:00(:00(\.000)?)?Z?$/.test(evt.date ?? '')),
       ...(COLORS[evt.type] ?? COLORS.task),
       extendedProps: {
         type: evt.type,
