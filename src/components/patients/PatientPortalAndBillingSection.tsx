@@ -249,8 +249,8 @@ export default function PatientPortalAndBillingSection({
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Activer un nouvel accès</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Type d'accès</label>
-                  <select
+                  <label htmlFor="fld-d0a5307d" className="block text-xs font-medium text-slate-600 mb-1">Type d'accès</label>
+                  <select id="fld-d0a5307d"
                     value={selectedRepId}
                     onChange={(e) => {
                       const repId = e.target.value;
@@ -274,9 +274,9 @@ export default function PatientPortalAndBillingSection({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Email du compte client</label>
+                  <label htmlFor="fld-6b965dcd" className="block text-xs font-medium text-slate-600 mb-1">Email du compte client</label>
                   <div className="flex gap-2">
-                    <input
+                    <input id="fld-6b965dcd"
                       type="email"
                       required
                       value={portalEmail}
@@ -367,8 +367,8 @@ export default function PatientPortalAndBillingSection({
             {/* Assign Form */}
             <form data-guide-form="facture-patient" onSubmit={handleAssignQuestionnaire} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row gap-3 items-end">
               <div className="flex-1 w-full">
-                <label className="block text-xs font-medium text-slate-600 mb-1">Sélectionner un modèle de formulaire</label>
-                <select
+                <label htmlFor="fld-70751d73" className="block text-xs font-medium text-slate-600 mb-1">Sélectionner un modèle de formulaire</label>
+                <select id="fld-70751d73"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white"
@@ -454,8 +454,8 @@ export default function PatientPortalAndBillingSection({
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Créer une facture rapide</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Prestation</label>
-                  <input
+                  <label htmlFor="fld-77aca51f" className="block text-xs font-medium text-slate-600 mb-1">Prestation</label>
+                  <input id="fld-77aca51f"
                     type="text"
                     required
                     value={invoiceDescription}
@@ -465,8 +465,8 @@ export default function PatientPortalAndBillingSection({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Montant TTC (€)</label>
-                  <input
+                  <label htmlFor="fld-2439ba90" className="block text-xs font-medium text-slate-600 mb-1">Montant TTC (€)</label>
+                  <input id="fld-2439ba90"
                     type="number"
                     step="0.01"
                     min="0"
@@ -478,8 +478,8 @@ export default function PatientPortalAndBillingSection({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Date d'échéance</label>
-                  <input
+                  <label htmlFor="fld-284da7e8" className="block text-xs font-medium text-slate-600 mb-1">Date d'échéance</label>
+                  <input id="fld-284da7e8"
                     type="date"
                     required
                     value={invoiceDueDate}

@@ -964,10 +964,10 @@ export default function ClinicalRecordManager({
                           {/* New Note Form */}
                           {newNoteEncounterId === encounter.id && (
                             <div className="p-4 rounded-lg border border-emerald-300 bg-emerald-50/30 space-y-3">
-                              <label className="block text-xs font-semibold text-gray-800">
+                              <label htmlFor="fld-bfcfdd65" className="block text-xs font-semibold text-gray-800">
                                 Nouvelle note d'évolution / observation clinique :
                               </label>
-                              <textarea
+                              <textarea id="fld-bfcfdd65"
                                 rows={4}
                                 value={newNoteContent}
                                 onChange={(e) => setNewNoteContent(e.target.value)}
@@ -1071,10 +1071,10 @@ export default function ClinicalRecordManager({
 
             <form onSubmit={handleCreateEpisode} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-18d93e2a" className="block text-xs font-semibold text-gray-700 mb-1">
                   Intitulé de l'épisode (optionnel)
                 </label>
-                <input
+                <input id="fld-18d93e2a"
                   type="text"
                   maxLength={160}
                   value={newEpisodeTitle}
@@ -1119,10 +1119,10 @@ export default function ClinicalRecordManager({
 
             <form onSubmit={handleCreateEncounter} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-e4107519" className="block text-xs font-semibold text-gray-700 mb-1">
                   Date et heure de la séance *
                 </label>
-                <input
+                <input id="fld-e4107519"
                   type="datetime-local"
                   required
                   value={encounterOccurredAt}
@@ -1132,10 +1132,10 @@ export default function ClinicalRecordManager({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-8c2c18ab" className="block text-xs font-semibold text-gray-700 mb-1">
                   Rendez-vous associé (optionnel)
                 </label>
-                <select
+                <select id="fld-8c2c18ab"
                   value={encounterAppointmentId}
                   onChange={(e) => setEncounterAppointmentId(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"

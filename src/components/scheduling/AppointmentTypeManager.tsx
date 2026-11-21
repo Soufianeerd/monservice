@@ -341,8 +341,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
             <form data-guide-form="type-seance" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nom de la séance *</label>
-                <input
+                <label htmlFor="fld-85550069" className="block text-sm font-medium text-gray-700">Nom de la séance *</label>
+                <input id="fld-85550069"
                   type="text"
                   required
                   value={formData.name}
@@ -353,8 +353,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
+                <label htmlFor="fld-8c0e5320" className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea id="fld-8c0e5320"
                   rows={2}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -365,8 +365,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Durée (minutes) *</label>
-                  <input
+                  <label htmlFor="fld-79c35d68" className="block text-sm font-medium text-gray-700">Durée (minutes) *</label>
+                  <input id="fld-79c35d68"
                     type="number"
                     required
                     min={5}
@@ -380,8 +380,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Intervalle entre les départs proposés (min) *</label>
-                  <input
+                  <label htmlFor="fld-28942d21" className="block text-sm font-medium text-gray-700">Intervalle entre les départs proposés (min) *</label>
+                  <input id="fld-28942d21"
                     type="number"
                     required
                     min={5}
@@ -397,8 +397,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temps de préparation avant (min)</label>
-                  <input
+                  <label htmlFor="fld-4f1cc722" className="block text-sm font-medium text-gray-700">Temps de préparation avant (min)</label>
+                  <input id="fld-4f1cc722"
                     type="number"
                     min={0}
                     max={240}
@@ -414,8 +414,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temps de pause après (min)</label>
-                  <input
+                  <label htmlFor="fld-90be108a" className="block text-sm font-medium text-gray-700">Temps de pause après (min)</label>
+                  <input id="fld-90be108a"
                     type="number"
                     min={0}
                     max={240}

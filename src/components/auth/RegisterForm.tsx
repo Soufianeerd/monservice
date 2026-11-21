@@ -320,7 +320,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
-              <input
+              <input aria-label="Nom complet"
                 type="text"
                 name="name"
                 autoComplete="name"
@@ -334,7 +334,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Adresse email *</label>
-              <input
+              <input aria-label="Adresse email"
                 type="email"
                 name="email"
                 autoComplete="email"
@@ -412,8 +412,8 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
         {step === 3 && formData.profileType === 'professional' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom de votre entreprise *</label>
-              <input
+              <label htmlFor="fld-76be9428" className="block text-sm font-medium text-gray-700 mb-1">Nom de votre entreprise *</label>
+              <input id="fld-76be9428"
                 type="text"
                 name="orgName"
                 required
@@ -520,7 +520,7 @@ export default function RegisterForm({ clientRegistrationOpen = false }: { clien
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <label className="block text-sm font-medium text-gray-700">Votre métier / activité technique *</label>
                   <div className="relative w-full sm:w-64">
-                    <input
+                    <input aria-label="Votre métier / activité technique"
                       type="text"
                       value={professionSearch}
                       onChange={(e) => setProfessionSearch(e.target.value)}

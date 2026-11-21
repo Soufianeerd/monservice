@@ -33,8 +33,8 @@ export default function ForgotPasswordPage() {
     <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow">
       <h1 className="text-xl font-bold mb-4">Réinitialiser le mot de passe</h1>
       <form onSubmit={handleSubmit}>
-        <label className="block mb-2">Email</label>
-        <input
+        <label htmlFor="fld-7db0b935" className="block mb-2">Email</label>
+        <input id="fld-7db0b935"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

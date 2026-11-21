@@ -17,8 +17,8 @@ export default function ClientProfileForm({ user, onSubmit }: { user: User, onSu
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Nom complet</label>
-        <input 
+        <label htmlFor="fld-3c71ab58" className="block text-sm font-medium text-gray-700">Nom complet</label>
+        <input id="fld-3c71ab58" 
           type="text" 
           required
           value={formData.name} 
@@ -28,8 +28,8 @@ export default function ClientProfileForm({ user, onSubmit }: { user: User, onSu
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Adresse email</label>
-        <input 
+        <label htmlFor="fld-c5fc5c33" className="block text-sm font-medium text-gray-700">Adresse email</label>
+        <input id="fld-c5fc5c33" 
           type="email" 
           value={formData.email} 
           disabled

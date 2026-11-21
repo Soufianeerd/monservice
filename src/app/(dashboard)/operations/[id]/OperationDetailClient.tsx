@@ -942,10 +942,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleConfirmCancel} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-99833cef" className="block text-xs font-semibold text-gray-700 mb-1">
                   Motif d’annulation *
                 </label>
-                <select
+                <select id="fld-99833cef"
                   required
                   value={cancellationReason}
                   onChange={e => setCancellationReason(e.target.value)}
@@ -962,10 +962,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-9687088e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Notes explicatives
                 </label>
-                <textarea
+                <textarea id="fld-9687088e"
                   rows={3}
                   value={cancellationNotes}
                   onChange={e => setCancellationNotes(e.target.value)}
@@ -1015,10 +1015,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleAssignWorker} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-2a9b1f76" className="block text-xs font-semibold text-gray-700 mb-1">
                   Professionnel de l’entreprise *
                 </label>
-                <select
+                <select id="fld-2a9b1f76"
                   required
                   value={assignUserId}
                   onChange={e => setAssignUserId(e.target.value)}
@@ -1033,10 +1033,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-9bb9386a" className="block text-xs font-semibold text-gray-700 mb-1">
                   Rôle sur le chantier
                 </label>
-                <select
+                <select id="fld-9bb9386a"
                   value={assignRole}
                   onChange={e => setAssignRole(e.target.value as 'lead' | 'technician' | 'assistant' | 'observer')}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1090,10 +1090,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleSaveReport} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-56853d0e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Résumé synthétique *
                 </label>
-                <input
+                <input id="fld-56853d0e"
                   type="text"
                   required
                   placeholder="Ex: Remplacement vanne générale effectué avec succès"
@@ -1104,10 +1104,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-410bfcaf" className="block text-xs font-semibold text-gray-700 mb-1">
                   Travaux réalisés
                 </label>
-                <textarea
+                <textarea id="fld-410bfcaf"
                   rows={3}
                   placeholder="Détails des opérations techniques menées..."
                   value={reportWorkPerformed}
@@ -1117,10 +1117,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-93f91e6c" className="block text-xs font-semibold text-gray-700 mb-1">
                   Problèmes constatés
                 </label>
-                <textarea
+                <textarea id="fld-93f91e6c"
                   rows={2}
                   placeholder="Points de blocage, vétusté, imprévus..."
                   value={reportIssuesFound}
@@ -1130,10 +1130,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-b2ae9f76" className="block text-xs font-semibold text-gray-700 mb-1">
                   Recommandations
                 </label>
-                <textarea
+                <textarea id="fld-b2ae9f76"
                   rows={2}
                   placeholder="Préconisations d'entretien futur, travaux à prévoir..."
                   value={reportRecommendations}

@@ -514,8 +514,8 @@ export function AvailabilityManager({
 
             <form data-guide-form="horaires" onSubmit={handleRuleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Jour de la semaine *</label>
-                <select
+                <label htmlFor="fld-396127d9" className="block text-sm font-medium text-gray-700">Jour de la semaine *</label>
+                <select id="fld-396127d9"
                   value={ruleFormData.weekday}
                   onChange={(e) => setRuleFormData({ ...ruleFormData, weekday: Number(e.target.value) })}
                   className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -530,8 +530,8 @@ export function AvailabilityManager({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Heure de début *</label>
-                  <input
+                  <label htmlFor="fld-c734b735" className="block text-sm font-medium text-gray-700">Heure de début *</label>
+                  <input id="fld-c734b735"
                     type="time"
                     required
                     value={ruleFormData.startTime}
@@ -540,8 +540,8 @@ export function AvailabilityManager({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Heure de fin *</label>
-                  <input
+                  <label htmlFor="fld-28699297" className="block text-sm font-medium text-gray-700">Heure de fin *</label>
+                  <input id="fld-28699297"
                     type="time"
                     required
                     value={ruleFormData.endTime}
@@ -553,8 +553,8 @@ export function AvailabilityManager({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Valide à partir du *</label>
-                  <input
+                  <label htmlFor="fld-f145059f" className="block text-sm font-medium text-gray-700">Valide à partir du *</label>
+                  <input id="fld-f145059f"
                     type="date"
                     required
                     value={ruleFormData.validFrom}
@@ -563,8 +563,8 @@ export function AvailabilityManager({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Valide jusqu&apos;au (optionnel)</label>
-                  <input
+                  <label htmlFor="fld-aff53a16" className="block text-sm font-medium text-gray-700">Valide jusqu&apos;au (optionnel)</label>
+                  <input id="fld-aff53a16"
                     type="date"
                     value={ruleFormData.validUntil}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, validUntil: e.target.value })}
@@ -604,8 +604,8 @@ export function AvailabilityManager({
 
             <form data-guide-form="horaires" onSubmit={handleExceptionSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date concernée *</label>
-                <input
+                <label htmlFor="fld-174e6028" className="block text-sm font-medium text-gray-700">Date concernée *</label>
+                <input id="fld-174e6028"
                   type="date"
                   required
                   value={exceptionFormData.localDate}
@@ -661,8 +661,8 @@ export function AvailabilityManager({
               {!exceptionFormData.isAllDay && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Heure de début *</label>
-                    <input
+                    <label htmlFor="fld-da5ff7fb" className="block text-sm font-medium text-gray-700">Heure de début *</label>
+                    <input id="fld-da5ff7fb"
                       type="time"
                       required={!exceptionFormData.isAllDay}
                       value={exceptionFormData.startTime}
@@ -673,8 +673,8 @@ export function AvailabilityManager({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Heure de fin *</label>
-                    <input
+                    <label htmlFor="fld-5634a3fb" className="block text-sm font-medium text-gray-700">Heure de fin *</label>
+                    <input id="fld-5634a3fb"
                       type="time"
                       required={!exceptionFormData.isAllDay}
                       value={exceptionFormData.endTime}

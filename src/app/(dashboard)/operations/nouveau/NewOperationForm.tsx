@@ -416,10 +416,10 @@ export default function NewOperationForm({
 
             <form data-guide-form="intervention" onSubmit={handleCreateSite} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-a5d3060e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Nom du site *
                 </label>
-                <input
+                <input id="fld-a5d3060e"
                   type="text"
                   required
                   placeholder="Ex: Résidence Principale, Chantier Bat A..."
@@ -430,10 +430,10 @@ export default function NewOperationForm({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-e5c78bd9" className="block text-xs font-semibold text-gray-700 mb-1">
                   Adresse *
                 </label>
-                <input
+                <input id="fld-e5c78bd9"
                   type="text"
                   required
                   placeholder="12 rue des Artisans"
@@ -445,10 +445,10 @@ export default function NewOperationForm({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label htmlFor="fld-331a8e4d" className="block text-xs font-semibold text-gray-700 mb-1">
                     Code Postal *
                   </label>
-                  <input
+                  <input id="fld-331a8e4d"
                     type="text"
                     required
                     placeholder="75001"
@@ -458,10 +458,10 @@ export default function NewOperationForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label htmlFor="fld-4391497e" className="block text-xs font-semibold text-gray-700 mb-1">
                     Ville *
                   </label>
-                  <input
+                  <input id="fld-4391497e"
                     type="text"
                     required
                     placeholder="Paris"
@@ -473,10 +473,10 @@ export default function NewOperationForm({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-f98968f5" className="block text-xs font-semibold text-gray-700 mb-1">
                   Instructions d’accès
                 </label>
-                <textarea
+                <textarea id="fld-f98968f5"
                   rows={2}
                   placeholder="Digicode, étage, accès cour..."
                   value={newSiteAccess}

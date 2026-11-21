@@ -144,10 +144,10 @@ export function WaitlistManager({ bootstrap }: Props) {
         {/* Filters grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-4 border-t border-gray-100">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-7e3b9a40" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Statut
             </label>
-            <select
+            <select id="fld-7e3b9a40"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as WaitlistStatus | 'all')}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -159,10 +159,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-1605fbea" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Lieu
             </label>
-            <select
+            <select id="fld-1605fbea"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -177,10 +177,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-6e3c5bc5" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Praticien
             </label>
-            <select
+            <select id="fld-6e3c5bc5"
               value={practitionerFilter}
               onChange={(e) => setPractitionerFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -195,10 +195,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-a7125bbe" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Type de séance
             </label>
-            <select
+            <select id="fld-a7125bbe"
               value={appointmentTypeFilter}
               onChange={(e) => setAppointmentTypeFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -213,10 +213,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-acab73c7" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Recherche patient
             </label>
-            <input
+            <input id="fld-acab73c7"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -371,10 +371,10 @@ export function WaitlistManager({ bootstrap }: Props) {
 
             <form onSubmit={handleConfirmResolve} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fld-a595ad37" className="block text-sm font-medium text-gray-700 mb-1">
                   Motif de résolution *
                 </label>
-                <select
+                <select id="fld-a595ad37"
                   value={resolutionCode}
                   onChange={(e) => setResolutionCode(e.target.value as WaitlistResolutionCode)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -390,10 +390,10 @@ export function WaitlistManager({ bootstrap }: Props) {
 
               {resolutionCode === 'booked' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fld-faa9a11b" className="block text-sm font-medium text-gray-700 mb-1">
                     Identifiant de la séance planifiée *
                   </label>
-                  <input
+                  <input id="fld-faa9a11b"
                     type="text"
                     required
                     value={resolvedAppointmentId}

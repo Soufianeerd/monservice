@@ -49,8 +49,8 @@ export default function TemplateForm({ initialData, onSubmit, isSubmitting }: Te
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
       <div>
-        <label className="block text-sm font-medium text-gray-700">Nom du modèle *</label>
-        <input
+        <label htmlFor="fld-41460bbd" className="block text-sm font-medium text-gray-700">Nom du modèle *</label>
+        <input id="fld-41460bbd"
           type="text"
           {...register('name')}
           className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -59,8 +59,8 @@ export default function TemplateForm({ initialData, onSubmit, isSubmitting }: Te
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Type de message *</label>
-        <select
+        <label htmlFor="fld-2f916912" className="block text-sm font-medium text-gray-700">Type de message *</label>
+        <select id="fld-2f916912"
           {...register('type')}
           className="text-gray-900 mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
@@ -72,8 +72,8 @@ export default function TemplateForm({ initialData, onSubmit, isSubmitting }: Te
 
       {type === 'email' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700">Objet de l'email *</label>
-          <input
+          <label htmlFor="fld-f52d5d2e" className="block text-sm font-medium text-gray-700">Objet de l'email *</label>
+          <input id="fld-f52d5d2e"
             type="text"
             {...register('subject')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -83,9 +83,9 @@ export default function TemplateForm({ initialData, onSubmit, isSubmitting }: Te
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Corps du message *</label>
+        <label htmlFor="fld-c4e47bff" className="block text-sm font-medium text-gray-700">Corps du message *</label>
         <p className="text-xs text-gray-500 mb-2">Variables disponibles : {'{{clientName}}, {{invoiceNumber}}, {{amount}}, {{dueDate}}'}</p>
-        <textarea
+        <textarea id="fld-c4e47bff"
           {...register('body')}
           rows={8}
           className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"

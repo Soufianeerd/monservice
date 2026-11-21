@@ -364,10 +364,10 @@ export default function NewQuotePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Client Selection */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-b23c0149" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 {isPractice ? 'Patient' : 'Client'} <span className="text-red-500">*</span>
               </label>
-              <select
+              <select id="fld-b23c0149"
                 data-testid="quote-client-select"
                 value={clientId}
                 onChange={(e) => {
@@ -389,10 +389,10 @@ export default function NewQuotePage() {
             {/* Site / Chantier (Field service & advanced mode) */}
             {advancedMode && isFieldService && (
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-c912354a" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Site / Chantier
                 </label>
-                <select
+                <select id="fld-c912354a"
                   data-testid="quote-site-select"
                   value={siteId}
                   onChange={(e) => setSiteId(e.target.value)}
@@ -417,10 +417,10 @@ export default function NewQuotePage() {
 
             {/* Deal / Opportunité */}
             <div hidden={isPractice}>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-44403817" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 Opportunité commerciale
               </label>
-              <select
+              <select id="fld-44403817"
                 data-testid="quote-deal-select"
                 value={dealId}
                 onChange={(e) => setDealId(e.target.value)}
@@ -439,10 +439,10 @@ export default function NewQuotePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
             {/* Project Title */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-f55ee2dd" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 Titre du projet / Objet du devis
               </label>
-              <input
+              <input id="fld-f55ee2dd"
                 data-testid="quote-title-input"
                 type="text"
                 value={title}
@@ -454,10 +454,10 @@ export default function NewQuotePage() {
 
             {/* Valid Until */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-cc3695b4" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 Date de fin de validité
               </label>
-              <input
+              <input id="fld-cc3695b4"
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
@@ -660,8 +660,8 @@ export default function NewQuotePage() {
 
             {depositMode === 'percentage' && (
               <div className="pt-2 flex items-center space-x-3">
-                <label className="text-xs text-gray-600">Taux (%) :</label>
-                <input
+                <label htmlFor="fld-aa3f4e15" className="text-xs text-gray-600">Taux (%) :</label>
+                <input id="fld-aa3f4e15"
                   data-testid="deposit-rate-input"
                   type="number"
                   min="0"
@@ -679,8 +679,8 @@ export default function NewQuotePage() {
 
             {depositMode === 'fixed' && (
               <div className="pt-2 flex items-center space-x-3">
-                <label className="text-xs text-gray-600">Montant fixe (€ TTC) :</label>
-                <input
+                <label htmlFor="fld-7a3489f5" className="text-xs text-gray-600">Montant fixe (€ TTC) :</label>
+                <input id="fld-7a3489f5"
                   type="number"
                   min="0"
                   step="0.01"
@@ -812,8 +812,8 @@ function LineRow({
       {/* Numbers row (Métrés, Price, Discount, VAT, Margin) */}
       <div className="grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-7 gap-2 items-center text-xs">
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Qté</label>
-          <input
+          <label htmlFor="fld-241ee875" className="block text-[10px] text-gray-500 uppercase">Qté</label>
+          <input id="fld-241ee875"
             data-testid="line-quantity-input"
             type="number"
             step="0.001"
@@ -825,8 +825,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Unité</label>
-          <select
+          <label htmlFor="fld-f5cc8b03" className="block text-[10px] text-gray-500 uppercase">Unité</label>
+          <select id="fld-f5cc8b03"
             data-testid="line-unit-select"
             value={line.unitCode}
             onChange={(e) => onUpdate({ unitCode: e.target.value as InvoiceUnitCode })}
@@ -841,8 +841,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Prix Vente HT</label>
-          <input
+          <label htmlFor="fld-8c930139" className="block text-[10px] text-gray-500 uppercase">Prix Vente HT</label>
+          <input id="fld-8c930139"
             data-testid="line-price-input"
             type="number"
             step="0.01"
@@ -855,8 +855,8 @@ function LineRow({
 
         {advancedMode && (
           <div>
-            <label className="block text-[10px] text-gray-500 uppercase">Prix Achat HT</label>
-            <input
+            <label htmlFor="fld-bcd89f8a" className="block text-[10px] text-gray-500 uppercase">Prix Achat HT</label>
+            <input id="fld-bcd89f8a"
               type="number"
               step="0.01"
               min="0"
@@ -873,8 +873,8 @@ function LineRow({
         )}
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Remise (%)</label>
-          <input
+          <label htmlFor="fld-7936ed13" className="block text-[10px] text-gray-500 uppercase">Remise (%)</label>
+          <input id="fld-7936ed13"
             data-testid="line-discount-input"
             type="number"
             step="0.1"
@@ -887,8 +887,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">TVA (%)</label>
-          <select
+          <label htmlFor="fld-5241fde0" className="block text-[10px] text-gray-500 uppercase">TVA (%)</label>
+          <select id="fld-5241fde0"
             data-testid="line-tax-select"
             value={line.taxRate}
             onChange={(e) => onUpdate({ taxRate: Number(e.target.value) || 0 })}

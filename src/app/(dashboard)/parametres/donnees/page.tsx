@@ -102,10 +102,10 @@ export default function DonneesPersonnellesPage() {
           </button>
         ) : (
           <div className="mt-4 space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
+            <label htmlFor="fld-64858f45" className="block text-sm font-medium text-gray-700">
               Saisissez votre adresse e-mail pour confirmer
             </label>
-            <input
+            <input id="fld-64858f45"
               type="email"
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}

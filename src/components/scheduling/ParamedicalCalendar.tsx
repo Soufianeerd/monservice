@@ -243,10 +243,10 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
           {/* Location & Timezone banner */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-1480921b" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                 Lieu de consultation
               </label>
-              <select
+              <select id="fld-1480921b"
                 aria-label="Lieu de consultation"
                 value={selectedLocationId}
                 onChange={(e) => setSelectedLocationId(e.target.value)}
@@ -262,10 +262,10 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-eb1e9497" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                 Praticien
               </label>
-              <select
+              <select id="fld-eb1e9497"
                 aria-label="Praticien"
                 value={selectedPractitionerId}
                 onChange={(e) => setSelectedPractitionerId(e.target.value)}

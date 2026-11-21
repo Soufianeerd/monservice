@@ -122,7 +122,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700">Type de document</label>
-          <select
+          <select aria-label="Type de document"
             {...register('type')}
             disabled={Boolean(initialData)}
             className="text-gray-900 mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
@@ -147,8 +147,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Date d'émission *</label>
-          <input
+          <label htmlFor="fld-b89c4505" className="block text-sm font-medium text-gray-700">Date d'émission *</label>
+          <input id="fld-b89c4505"
             type="date"
             {...register('date')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -158,8 +158,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
         {watchType === 'invoice' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Date d'échéance</label>
-            <input
+            <label htmlFor="fld-1a2786f5" className="block text-sm font-medium text-gray-700">Date d'échéance</label>
+            <input id="fld-1a2786f5"
               type="date"
               {...register('dueDate')}
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -178,7 +178,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
               
               <div className="col-span-12 md:col-span-3">
                 <label className="block text-xs font-medium text-gray-500">Prestation du catalogue</label>
-                <select
+                <select aria-label="Prestation du catalogue"
                   {...register(`lines.${index}.productId`)}
                   onChange={(e) => {
                     register(`lines.${index}.productId`).onChange(e);
@@ -195,7 +195,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-12 md:col-span-3">
                 <label className="block text-xs font-medium text-gray-500">Description</label>
-                <input
+                <input aria-label="Description"
                   type="text"
                   placeholder="Description personnalisée"
                   {...register(`lines.${index}.description`)}
@@ -205,7 +205,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-6 md:col-span-1">
                 <label className="block text-xs font-medium text-gray-500">Qté</label>
-                <input
+                <input aria-label="Qté"
                   type="number"
                   step="0.01"
                   {...register(`lines.${index}.quantity`, { valueAsNumber: true })}
@@ -215,7 +215,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-6 md:col-span-2">
                 <label className="block text-xs font-medium text-gray-500">Prix U. HT</label>
-                <input
+                <input aria-label="Prix U. HT"
                   type="number"
                   step="0.01"
                   {...register(`lines.${index}.unitPrice`, { valueAsNumber: true })}
@@ -225,7 +225,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-4 md:col-span-1">
                 <label className="block text-xs font-medium text-gray-500">TVA (%)</label>
-                <input
+                <input aria-label="TVA (%)"
                   type="number"
                   step="0.1"
                   {...register(`lines.${index}.taxRate`, { valueAsNumber: true })}
@@ -234,8 +234,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
               </div>
 
               <div className="col-span-4 md:col-span-1">
-                <label className="block text-xs font-medium text-gray-500">Remise (%)</label>
-                <input
+                <label htmlFor="fld-9ed40a7c" className="block text-xs font-medium text-gray-500">Remise (%)</label>
+                <input id="fld-9ed40a7c"
                   type="number"
                   step="0.1"
                   {...register(`lines.${index}.discount`, { valueAsNumber: true })}

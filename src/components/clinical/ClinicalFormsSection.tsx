@@ -521,10 +521,10 @@ export default function ClinicalFormsSection({
 
           <form onSubmit={handleSaveDraft} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-cf0f148f" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Épisode de prise en charge associé (optionnel)
               </label>
-              <select
+              <select id="fld-cf0f148f"
                 value={selectedEpisodeId}
                 onChange={(e) => setSelectedEpisodeId(e.target.value)}
                 className="w-full max-w-md px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -777,10 +777,10 @@ export default function ClinicalFormsSection({
 
             <form onSubmit={handleCreateTemplateSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-ec4516ab" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Nom du modèle *
                 </label>
-                <input
+                <input id="fld-ec4516ab"
                   type="text"
                   required
                   maxLength={200}
@@ -793,10 +793,10 @@ export default function ClinicalFormsSection({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-f950184d" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Type de formulaire *
                   </label>
-                  <select
+                  <select id="fld-f950184d"
                     value={newTemplateKind}
                     onChange={(e) =>
                       setNewTemplateKind(e.target.value as ClinicalFormTemplateDTO['kind'])
@@ -812,10 +812,10 @@ export default function ClinicalFormsSection({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-b5ab1a55" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Description (optionnelle)
                   </label>
-                  <input
+                  <input id="fld-b5ab1a55"
                     type="text"
                     maxLength={1000}
                     value={newTemplateDescription}
@@ -827,10 +827,10 @@ export default function ClinicalFormsSection({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-61afd439" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Schéma JSON des champs *
                 </label>
-                <textarea
+                <textarea id="fld-61afd439"
                   rows={8}
                   required
                   value={newTemplateFieldsJson}
