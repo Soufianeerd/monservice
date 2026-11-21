@@ -9,11 +9,13 @@ import * as productActions from '@/app/actions/product.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export default function EditInvoicePage(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
+  const isPractice = useWorkspace()?.type === 'paramedical';
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,12 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
         const id = params.id;
         const inv = await invoiceActions.findByIdAction(id, user.organizationId);
         
+        if (inv?.type === 'quote' && !isPractice) {
+          // Les devis se modifient dans le formulaire de devis complet
+          // (lots, options, unités) pour ne rien perdre à l'enregistrement.
+          router.replace(`/facturation/devis/nouveau?id=${inv.id}`);
+          return;
+        }
         if (inv) {
           setInvoice(inv);
         } else {
@@ -39,7 +47,7 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
     }
     
     if (user) loadData();
-  }, [params.id, user, router]);
+  }, [params.id, user, router, isPractice]);
 
   const handleSubmit = async (data: InvoiceFormData & { totalHT: number; taxAmount: number; totalTTC: number }) => {
     if (!user?.organizationId || !invoice) return;

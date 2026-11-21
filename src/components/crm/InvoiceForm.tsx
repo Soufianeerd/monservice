@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import React, { useEffect, useState } from 'react';
@@ -121,15 +122,15 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
       {/* Informations Générales */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Type de document</label>
-          <select aria-label="Type de document"
-            {...register('type')}
-            disabled={Boolean(initialData)}
-            className="text-gray-900 mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          >
-            <option value="invoice">Facture</option>
-            <option value="quote">Devis</option>
-          </select>
+          <p className="block text-sm font-medium text-gray-700">Type de document</p>
+          <p className="mt-1 py-2 text-sm text-gray-900">{initialData?.type === 'quote' ? 'Devis' : 'Facture'}</p>
+          {!initialData && (
+            <p className="text-xs text-gray-500">
+              Pour un devis, utilisez le{' '}
+              <Link href="/facturation/devis/nouveau" className="font-medium text-indigo-600 hover:underline">formulaire de devis</Link>
+              {' '}(lots, options, acompte).
+            </p>
+          )}
         </div>
 
         <div>

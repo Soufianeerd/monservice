@@ -28,7 +28,8 @@ import { preparePatientBillingRecipientAction } from '@/app/actions/patient-bill
 import { useBillingRecipients } from '@/hooks/useBillingRecipients';
 import * as dealActions from '@/app/actions/deal.actions';
 import { listFieldServiceSitesAction } from '@/app/actions/field-service-operations.actions';
-import { createQuoteAction } from '@/app/actions/quote.actions';
+import { createQuoteAction, updateDraftQuoteAction } from '@/app/actions/quote.actions';
+import { findByIdAction as findInvoiceByIdAction } from '@/app/actions/invoice.actions';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
 import type { Deal, InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces';
 
@@ -94,6 +95,8 @@ export default function NewQuotePage() {
   // Zero Re-Entry initial query params
   const paramDealId = searchParams.get('dealId') || '';
   const paramClientId = searchParams.get('clientId') || '';
+  // ?id=<devis brouillon> : même formulaire en modification (lots, options, unités conservés).
+  const editingId = searchParams.get('id') || '';
 
   // Form Header State
   const [clientId, setClientId] = useState(paramClientId);
@@ -134,6 +137,68 @@ export default function NewQuotePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editReady, setEditReady] = useState(!editingId);
+
+  useEffect(() => {
+    if (!editingId) return;
+    let cancelled = false;
+    findInvoiceByIdAction(editingId)
+      .then((quote) => {
+        if (cancelled) return;
+        if (!quote || quote.type !== 'quote') {
+          setError('Devis introuvable.');
+          return;
+        }
+        if (isPractice) {
+          router.replace(`/facturation/factures/${quote.id}/edit`);
+          return;
+        }
+        if (quote.status !== 'draft') {
+          router.replace(`/facturation/devis/${quote.id}`);
+          return;
+        }
+        setClientId(quote.clientId || '');
+        setSiteId(quote.siteId || '');
+        setDealId(quote.dealId || '');
+        setTitle(quote.title || '');
+        if (quote.validUntil) setValidUntil(quote.validUntil.slice(0, 10));
+        setDepositMode(quote.depositMode || 'none');
+        if (quote.depositRate != null) setDepositRate(quote.depositRate);
+        if (quote.depositFixedAmount != null) setDepositFixedAmount(quote.depositFixedAmount);
+        const loadedSections = [...(quote.sections ?? [])].sort((a, b) => a.position - b.position);
+        setSections(loadedSections.map((section, index) => ({
+          id: section.id,
+          kind: section.kind,
+          title: section.title,
+          description: section.description ?? undefined,
+          position: index,
+          isOptional: section.isOptional,
+          isSelected: section.isSelected,
+        })));
+        if (quote.sections?.some((section) => section.kind !== 'section') || quote.lines.some((line) => line.unitCode && line.unitCode !== 'unit')) {
+          setAdvancedMode(true);
+        }
+        setLines(quote.lines.map((line) => ({
+          id: line.id,
+          sectionId: line.sectionId ?? undefined,
+          lineType: line.lineType ?? 'service',
+          description: line.description,
+          quantity: line.quantity,
+          unitCode: line.unitCode ?? 'unit',
+          unitCost: line.unitCost ?? undefined,
+          unitPrice: line.unitPrice,
+          discountRate: line.discountRate ?? 0,
+          taxRate: line.taxRate,
+        })));
+        setEditReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Impossible de charger le devis.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId, router, isPractice]);
 
   // Load clients and deals
   useEffect(() => {
@@ -298,6 +363,29 @@ export default function NewQuotePage() {
         })),
       };
 
+      if (editingId) {
+        await updateDraftQuoteAction({
+          id: editingId,
+          clientId: payload.clientId,
+          siteId: payload.siteId ?? null,
+          dealId: payload.dealId ?? null,
+          title: payload.title,
+          validUntil: payload.validUntil ?? null,
+          depositMode: payload.depositMode,
+          depositRate: payload.depositRate ?? null,
+          depositFixedAmount: payload.depositFixedAmount ?? null,
+          sections: sections.map((s, idx) => ({ ...payload.sections[idx], id: s.id })),
+          lines: lines.map((l, idx) => ({
+            ...payload.lines[idx],
+            sectionIndex: undefined,
+            sectionId: l.sectionId ?? null,
+          })),
+        });
+        markSaved();
+        announceGuideSaved('Le devis est enregistré.');
+        router.push(`/facturation/devis/${editingId}`);
+        return;
+      }
       const createdQuote = await createQuoteAction(payload);
       markSaved();
       announceGuideSaved('Le devis est enregistré.');
@@ -317,13 +405,13 @@ export default function NewQuotePage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-4">
         <div>
           <Link
-            href="/facturation/devis"
+            href={editingId ? `/facturation/devis/${editingId}` : '/facturation/devis'}
             className="text-sm font-medium text-blue-600 hover:text-blue-800 mb-1 inline-flex items-center"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Retour aux devis
+            {editingId ? 'Retour au devis' : 'Retour aux devis'}
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">{isPractice ? 'Nouveau devis patient' : 'Nouveau devis professionnel'}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{editingId ? 'Modifier le devis' : isPractice ? 'Nouveau devis patient' : 'Nouveau devis professionnel'}</h1>
           <p className="text-sm text-gray-500">
             {isPractice ? 'Décrivez les prestations proposées et vérifiez leur montant avant d’enregistrer.' : 'Chiffrage précis avec unités, TVA et options'}
           </p>
@@ -343,11 +431,11 @@ export default function NewQuotePage() {
           <button
             data-testid="save-quote-button"
             type="submit"
-            disabled={loading}
+            disabled={loading || !editReady}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
           >
             <Save className="w-4 h-4 mr-2" />
-            {loading ? 'Création...' : 'Créer le devis'}
+            {editingId ? (loading ? 'Enregistrement…' : 'Enregistrer le devis') : loading ? 'Création...' : 'Créer le devis'}
           </button>
         </div>
       </div>

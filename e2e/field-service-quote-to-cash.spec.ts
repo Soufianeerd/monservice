@@ -142,6 +142,24 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       const linesInDb = await sql`SELECT * FROM invoice_lines WHERE invoice_id = ${quoteId}`;
       expect(linesInDb.length).toBeGreaterThanOrEqual(3);
 
+      // 4b. Edit the draft in the same quote form: lots, units and rates survive.
+      await page.click('[data-testid="edit-quote-button"]');
+      await expect(page.getByRole('heading', { name: 'Modifier le devis' })).toBeVisible();
+      await expect(page.locator('[data-testid="quote-title-input"]')).toHaveValue(uniqueQuoteTitle);
+      await expect(page.locator('[data-testid="line-unit-select"]').first()).toHaveValue('meter');
+      await page.fill('[data-testid="quote-title-input"]', `${uniqueQuoteTitle} (révisé)`);
+      await page.click('[data-testid="save-quote-button"]');
+      await page.waitForURL(new RegExp(`/facturation/devis/${quoteId}$`));
+      const [editedQuote] = await sql`SELECT title, deposit_rate FROM invoices WHERE id = ${quoteId}`;
+      expect(editedQuote.title).toBe(`${uniqueQuoteTitle} (révisé)`);
+      expect(Number(editedQuote.deposit_rate)).toBe(30);
+      const editedSections = await sql`SELECT id FROM invoice_sections WHERE invoice_id = ${quoteId}`;
+      expect(editedSections.length).toBe(sectionsInDb.length);
+      const editedLines = await sql`SELECT section_id, unit_code FROM invoice_lines WHERE invoice_id = ${quoteId} ORDER BY position ASC`;
+      expect(editedLines.length).toBe(linesInDb.length);
+      expect(editedLines.filter((line) => line.section_id !== null).length).toBe(linesInDb.filter((line) => line.section_id !== null).length);
+      expect(editedLines[0].unit_code).toBe('meter');
+
       // ==============================================================
       // 5. Pro Sends Quote -> status = 'sent'
       // ==============================================================
