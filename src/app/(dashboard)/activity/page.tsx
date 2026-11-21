@@ -50,7 +50,7 @@ export default function ActivityPage() {
             <option value="ALL">Toute l&apos;activité</option>
             <option value="CLIENT">Clients</option>
             <option value="CONTACT">Contacts</option>
-            <option value="DEAL">Deals</option>
+            <option value="DEAL">Opportunités</option>
             <option value="TASK">Tâches</option>
             <option value="INVOICE">Factures / Devis</option>
             <option value="PRODUCT">Produits</option>

@@ -85,7 +85,7 @@ test('Le cabinet sépare les coordonnées, le planning, les prestations et l’a
   await page.getByRole('button', { name: 'Annuler', exact: true }).click();
   await page.goto('/parametres/facturation');
   await expect(page.getByRole('heading', { name: 'Abonnement MonService' })).toBeVisible();
-  await expect(page.getByText('Vous n’avez aucun compte Stripe à créer ou à connecter.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Offre de lancement : gratuite' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gérer mon abonnement sur Stripe' })).toHaveCount(0);
 });
 
