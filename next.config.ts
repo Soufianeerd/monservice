@@ -9,27 +9,10 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
  * Aucun en-tête n'était défini auparavant : ni CSP, ni HSTS, ni protection
  * anti-clickjacking, ni `nosniff` (anomalie MS-024).
  *
- * La CSP autorise `'unsafe-inline'` et `'unsafe-eval'` pour les scripts, ce
- * qui est nécessaire au runtime de Next.js sans mise en place de nonces.
- * TODO(P1) : passer à une CSP à base de nonces pour supprimer `unsafe-*`.
+ * La Content-Security-Policy est posée par requête dans `src/proxy.ts`
+ * (nonce, sans 'unsafe-inline' ni 'unsafe-eval' pour les scripts).
  */
 const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://api.stripe.com",
-      'frame-src https://js.stripe.com https://hooks.stripe.com',
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join('; '),
-  },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },

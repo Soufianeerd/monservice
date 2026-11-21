@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { sensitiveRateLimit } from '@/middleware/rate-limit';
+import { buildContentSecurityPolicy, createNonce, wantsDocumentCsp } from '@/lib/security/csp';
 
 /** Chemins publics comparés par égalité stricte. */
 const PUBLIC_EXACT = new Set([
@@ -44,7 +44,24 @@ export async function proxy(request: NextRequest) {
   const limited = sensitiveRateLimit(request);
   if (limited) return limited;
 
-  const response = isPublic(request.nextUrl.pathname) ? NextResponse.next() : await auth.middleware({ loginUrl: '/login' })(request);
+  // CSP à nonce : Next lit le nonce dans l'en-tête de la *requête* pour
+  // l'apposer sur ses propres scripts. Le middleware Neon Auth recopie les
+  // en-têtes de la requête qu'il reçoit, on lui passe donc la requête enrichie.
+  let forwarded: NextRequest = request;
+  let csp: string | null = null;
+  if (wantsDocumentCsp(request.method, request.headers)) {
+    const nonce = createNonce();
+    csp = buildContentSecurityPolicy(nonce);
+    const headers = new Headers(request.headers);
+    headers.set('x-nonce', nonce);
+    headers.set('Content-Security-Policy', csp);
+    forwarded = new NextRequest(request.url, { method: request.method, headers });
+  }
+
+  const response = isPublic(request.nextUrl.pathname)
+    ? NextResponse.next({ request: { headers: forwarded.headers } })
+    : await auth.middleware({ loginUrl: '/login' })(forwarded);
+  if (csp) response.headers.set('Content-Security-Policy', csp);
 
   // L’interface possède une seule langue source. Corriger aussi les anciens cookies.
   if (request.cookies.get('NEXT_LOCALE')?.value !== 'fr') {
