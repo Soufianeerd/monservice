@@ -10,8 +10,9 @@ import {
   generateNotificationsAction 
 } from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
-import { LanguageSwitcher } from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { REGISTRATION_SECTORS, type RegistrationSectorCode } from '@/lib/registration/options';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -31,17 +32,19 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     setMounted(true);
   }, []);
 
+  // Les actions serveur d'une page sont exécutées une par une : un appel
+  // inutile retarde toutes les saisies de l'utilisateur. Une seule génération
+  // par utilisateur et organisation, pas à chaque nouvel objet `user`.
+  const userId = user?.id;
+  const organizationId = organization?.id;
   useEffect(() => {
-    const initNotifications = async () => {
-      if (user && organization) {
-        // Générer les alertes métier dynamiquement (une fois par session)
-        await generateNotificationsAction(organization.id);
-        const fetched = await generateNotificationsAction(user.id);
-        setNotifications(fetched);
-      }
-    };
-    initNotifications();
-  }, [user, organization]);
+    if (!userId || !organizationId) return;
+    let cancelled = false;
+    generateNotificationsAction(organizationId).then((fetched) => {
+      if (!cancelled) setNotifications(fetched);
+    });
+    return () => { cancelled = true; };
+  }, [userId, organizationId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,25 +56,21 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = async (id: string) => {
+  // Les notifications sont recalculées à partir des données (relances dues,
+  // tâches en retard…) : « lu » ne vaut que pour la session en cours.
+  const handleMarkAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await /* markAsRead removed */(id);
-    if (user) {
-      generateNotificationsAction(user.id).then(setNotifications);
-    }
   };
 
-  const handleMarkAllAsRead = async () => {
+  const handleMarkAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    if (user && organization) {
-      await /* markAllAsRead removed */(organization.id, user.id);
-      generateNotificationsAction(user.id).then(setNotifications);
-    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const showGlobalSearch = user?.profileType === 'professional' && (!workspace || workspace.type === 'generic');
+  // Recherche ouverte aux espaces générique et terrain ; l'espace paramédical
+  // (V1 gelée) garde son propre accès aux dossiers patients.
+  const showGlobalSearch = user?.profileType === 'professional' && workspace?.type !== 'paramedical';
   
   const getWorkspaceLabel = () => {
     if (workspace && workspace.type === 'paramedical') {
@@ -80,14 +79,18 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     if (workspace && workspace.type === 'field_service') {
       return workspace.label || 'Espace Artisans & Services Techniques';
     }
-    return organization?.industry || 'CRM';
+    const industry = organization?.industry;
+    if (industry && industry in REGISTRATION_SECTORS) {
+      return REGISTRATION_SECTORS[industry as RegistrationSectorCode].label;
+    }
+    return industry || 'CRM';
   };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4">
         
-        <div className="flex items-center w-1/3">
+        <div className="flex items-center min-w-0 flex-1">
           <button 
             type="button"
             className="md:hidden p-2 -ml-2 mr-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
@@ -98,11 +101,11 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
           </button>
           {mounted ? (
             <>
-              <span className="text-gray-700 font-semibold text-lg hidden md:block">
+              <span className="text-gray-700 font-semibold text-lg truncate hidden md:block">
                 {organization?.name || 'Mon Organisation'}
               </span>
               <span className="mx-3 text-gray-300 hidden md:block">|</span>
-              <span className="text-sm text-gray-500 capitalize bg-gray-100 px-2 py-1 rounded hidden md:block">
+              <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded hidden md:block">
                 {getWorkspaceLabel()}
               </span>
             </>
@@ -115,14 +118,14 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
           )}
         </div>
 
-        <div className="flex-1 flex justify-center w-1/3 px-4">
+        <div className="hidden lg:flex flex-1 justify-center px-4">
           {showGlobalSearch && <GlobalSearchBar />}
         </div>
         
-        <div className="flex items-center justify-end w-1/3 space-x-4">
+        <div className="flex items-center justify-end gap-1 sm:gap-3 shrink-0">
           
-          <div className="hidden sm:block">
-            <LanguageSwitcher />
+          <div className="shrink-0">
+            <ThemeSwitcher />
           </div>
 
           <div className="relative" ref={notifRef}>

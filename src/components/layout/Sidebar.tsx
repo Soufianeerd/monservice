@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench, Star } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { buildProfessionalNavigation, NavigationIconKey } from '@/lib/navigation/workspace-navigation';
@@ -16,6 +16,7 @@ const iconMap: Record<NavigationIconKey, React.ElementType> = {
   billing: FileText,
   agenda: Calendar,
   marketplace: Store,
+  reviews: Star,
   messages: MessageSquare,
   settings: Settings,
 };
@@ -35,6 +36,8 @@ const clientNavItems: NavItem[] = [
   { id: 'dashboard', name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
   { id: 'sante', name: 'Suivi Santé', href: '/client/sante', icon: HeartPulse },
   { id: 'requests', name: 'Mes demandes', href: '/client/requests', icon: FileText },
+  { id: 'interventions', name: 'Mes interventions', href: '/client/interventions', icon: Wrench },
+  { id: 'equipements', name: 'Mes équipements', href: '/client/equipements', icon: Wrench },
   { id: 'quotes', name: 'Devis reçus', href: '/client/quotes', icon: FileText },
   { id: 'invoices', name: 'Mes factures', href: '/client/invoices', icon: FileText },
   { id: 'messages', name: 'Messagerie', href: '/client/messages', icon: MessageSquare },
@@ -44,16 +47,17 @@ const clientNavItems: NavItem[] = [
 interface SidebarProps {
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
+  clientAccess?: boolean;
 }
 
-export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
+export default function Sidebar({ isOpen = false, setIsOpen, clientAccess = true }: SidebarProps) {
   const pathname = usePathname();
   const role = useRole();
   const workspace = useWorkspace();
   
   const navItems: NavItem[] = role === 'client' 
     ? clientNavItems 
-    : (workspace ? buildProfessionalNavigation(workspace).map(item => ({
+    : (workspace ? buildProfessionalNavigation(workspace, { clientAccess }).map(item => ({
         ...item,
         icon: iconMap[item.icon]
       })) : []);
@@ -100,14 +104,14 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
             {navItems.map((item) => {
               const itemKey = item.id || item.name;
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const isExpanded = expandedItems[itemKey] || isActive;
+              const isExpanded = expandedItems[itemKey] ?? isActive;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const Icon = item.icon;
 
               return (
                 <div key={itemKey}>
                   <Link
-                    href={hasSubItems ? '#' : item.href}
+                    href={item.href}
                     onClick={(e) => {
                       if (hasSubItems) {
                         e.preventDefault();
@@ -138,6 +142,7 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
                         const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
                         return (
                           <Link
+                            data-tour={`nav-${subItem.href.split('/').filter(Boolean).join('-')}`}
                             key={subItem.name}
                             href={subItem.href}
                             onClick={() => setIsOpen?.(false)}

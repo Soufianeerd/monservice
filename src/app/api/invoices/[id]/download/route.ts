@@ -1,3 +1,4 @@
+import { requireBillingReadAuthority } from '@/lib/billing/authorization';
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceService } from '@/lib/services/invoice.service';
 import { storageService } from '@/lib/storage/storage.service';
@@ -33,17 +34,7 @@ export async function GET(
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
-    const isIssuer =
-      ctx.profileType === 'professional' &&
-      Boolean(ctx.organizationId) &&
-      invoice.organizationId === ctx.organizationId;
-    const isRecipient =
-      ctx.profileType === 'client' &&
-      invoice.recipientUserId === ctx.userId;
-
-    if (!isIssuer && !isRecipient) {
-      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-    }
+    await requireBillingReadAuthority(invoice, ctx.userId);
 
     if (!invoice.structuredInvoicePath) {
       return NextResponse.json({ error: 'Facture structurée non disponible' }, { status: 404 });

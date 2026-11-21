@@ -150,8 +150,26 @@ export function getEffectivePlan(
   subscriptionStatus: string | null | undefined,
 ): Plan {
   const statusGrantsAccess = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
-  if (!statusGrantsAccess) return PLANS.free;
-  return getPlan(subscriptionTier);
+  if (!statusGrantsAccess) return launchIncludedPlan();
+  const subscribed = getPlan(subscriptionTier);
+  const included = launchIncludedPlan();
+  return isUpgrade(subscribed.id, included.id) ? included : subscribed;
+}
+
+/**
+ * Offre de lancement : tant que les abonnements payants ne sont pas ouverts
+ * (Stripe désactivé), `LAUNCH_INCLUDED_PLAN` (`starter`, `pro` ou `business`)
+ * accorde ce plan à tout compte sans abonnement actif. Sans cette variable,
+ * ou avec une valeur inconnue, le plan gratuit et ses plafonds s'appliquent.
+ * Lue côté serveur uniquement : c'est le serveur qui applique les quotas.
+ */
+export function parseLaunchIncludedPlan(raw: string | null | undefined): PlanId {
+  const value = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  return value === 'starter' || value === 'pro' || value === 'business' ? value : 'free';
+}
+
+export function launchIncludedPlan(): Plan {
+  return PLANS[parseLaunchIncludedPlan(process.env.LAUNCH_INCLUDED_PLAN)];
 }
 
 export function isUpgrade(from: PlanId, to: PlanId): boolean {

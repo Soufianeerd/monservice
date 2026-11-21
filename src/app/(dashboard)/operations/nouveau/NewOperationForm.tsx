@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -104,6 +106,7 @@ export default function NewOperationForm({
         },
       ]);
       setSiteId(newSite.id);
+      announceGuideSaved('Le site est enregistré.', true);
       setIsSiteModalOpen(false);
       setNewSiteLabel('');
       setNewSiteAddress1('');
@@ -145,6 +148,7 @@ export default function NewOperationForm({
           scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
         });
 
+        announceGuideSaved('L’intervention est enregistrée.');
         router.push(`/operations/${order.id}`);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Erreur lors de la création de l’opération';
@@ -183,7 +187,7 @@ export default function NewOperationForm({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form data-guide-form="intervention" onSubmit={handleSubmit} className="space-y-6">
           {/* Client & Site */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
@@ -409,7 +413,7 @@ export default function NewOperationForm({
               </div>
             )}
 
-            <form onSubmit={handleCreateSite} className="space-y-4">
+            <form data-guide-form="intervention" onSubmit={handleCreateSite} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Nom du site *

@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ClientForm from '@/components/crm/ClientForm';
@@ -48,6 +50,7 @@ export default function NewClientPage() {
         }
       }
 
+      announceGuideSaved('Le client est enregistré.');
       router.push(`/clients/${newClient.id}`);
     } catch (error) {
       console.error('Erreur lors de la création du client', error);

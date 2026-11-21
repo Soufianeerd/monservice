@@ -1,42 +1,37 @@
+import { withWorkerDatabase } from '@/lib/db/worker-context';
 import { NextResponse } from 'next/server';
 import { reminderService } from '@/lib/services/reminder.service';
 import { getSessionContext } from '@/lib/auth/session';
 import { toErrorResponse } from '@/lib/utils/api-response';
+import { isValidCronSecret } from '@/lib/utils/cron-secret';
 
 /**
- * Déclenche la vérification des relances.
+ * Automatisations quotidiennes (relances, demandes d'avis).
  *
- * Deux modes d'appel, tous deux authentifiés :
- *  - une tâche planifiée, porteuse de l'en-tête `x-cron-secret` (toutes les
- *    organisations) ;
- *  - un professionnel connecté, pour sa seule organisation.
+ * Réservé à la tâche planifiée, porteuse de l'en-tête `x-cron-secret`. Un
+ * professionnel connecté ne déclenche plus d'envoi à la demande : les règles
+ * activées dans Paramètres › Relances et avis s'appliquent chaque matin, et
+ * un même rappel ne part jamais deux fois.
  *
  * L'ancienne version acceptait un `organizationId` en query string sans
  * aucune authentification (anomalie MS-013).
  */
 export async function GET(req: Request) {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-    const providedSecret = req.headers.get('x-cron-secret');
-    const isCron = Boolean(cronSecret && cronSecret.length > 0) && providedSecret === cronSecret;
-
-    if (isCron) {
-      const result = await reminderService.checkAndSendRemindersForAllOrganizations();
-      return NextResponse.json({ success: true, count: result.sent });
+    if (isValidCronSecret(req.headers.get('x-cron-secret'), process.env.CRON_SECRET)) {
+      const result = await withWorkerDatabase({ kind: 'reminders' }, () => reminderService.checkAndSendRemindersForAllOrganizations());
+      return NextResponse.json({ success: true, count: result.sent, errors: result.errors, skipped: result.skipped });
     }
 
     const ctx = await getSessionContext();
     if (!ctx) {
       return NextResponse.json({ error: 'Authentification requise' }, { status: 401 });
     }
-
-    if (ctx.profileType !== 'professional' || !ctx.organizationId) {
-      return NextResponse.json({ error: 'Accès réservé aux professionnels' }, { status: 403 });
-    }
-
-    const result = await reminderService.checkAndSendReminders(ctx.organizationId);
-    return NextResponse.json({ success: true, count: result?.sent ?? 0 });
+    return NextResponse.json(
+      { error: 'Les relances partent automatiquement chaque matin selon vos réglages.' },
+      { status: 403 },
+    );
   } catch (error: unknown) {
-    return toErrorResponse(error, 'Erreur lors de la vérification des relances');
+    return toErrorResponse(error, 'Erreur lors du traitement des relances');
   }
 }

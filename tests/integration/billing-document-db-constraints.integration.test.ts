@@ -1,3 +1,4 @@
+import { withFixtureMaintenance } from '../helpers/neon-fixtures';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
@@ -34,8 +35,7 @@ describe('Billing Document DB Constraints & Integrity (Session 18)', () => {
     sql = postgres(DATABASE_URL, { max: 3 });
 
     // Clean up
-    await sql.begin(async (tx) => {
-      await tx`SET LOCAL session_replication_role = 'replica'`;
+    await withFixtureMaintenance(sql, async tx => {
       await tx`DELETE FROM invoice_lines WHERE organization_id IN (${orgA}, ${orgB})`;
       await tx`DELETE FROM invoice_sections WHERE organization_id IN (${orgA}, ${orgB})`;
       await tx`DELETE FROM billing_document_sequences WHERE organization_id IN (${orgA}, ${orgB})`;
@@ -86,8 +86,7 @@ describe('Billing Document DB Constraints & Integrity (Session 18)', () => {
 
   afterAll(async () => {
     if (sql) {
-      await sql.begin(async (tx) => {
-        await tx`SET LOCAL session_replication_role = 'replica'`;
+      await withFixtureMaintenance(sql, async tx => {
         await tx`DELETE FROM invoice_lines WHERE organization_id IN (${orgA}, ${orgB})`;
         await tx`DELETE FROM invoice_sections WHERE organization_id IN (${orgA}, ${orgB})`;
         await tx`DELETE FROM billing_document_sequences WHERE organization_id IN (${orgA}, ${orgB})`;

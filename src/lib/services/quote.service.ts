@@ -1,3 +1,4 @@
+import { requireCoreRelation } from './core-update-authorization';
 import 'server-only';
 import { db } from '../db/server';
 import {
@@ -25,11 +26,14 @@ import {
   createQuoteSchema,
   updateDraftQuoteSchema,
   createWorkOrderFromQuoteSchema,
+  QUOTE_DECISION_METHOD_LABELS,
+  type QuoteDecisionMethod,
 } from '../validation/billing.schemas';
 import { z } from 'zod';
 import { toClientQuoteDTO, ClientQuoteDTO } from '../data/dto/client-billing.dto';
 import { invoiceService } from './invoice.service';
 import { getEffectivePlan } from '@/lib/billing/plans';
+import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -287,6 +291,9 @@ export const quoteService = {
 
       const clientId = validated.clientId || existing.clientId;
 
+      await requireCoreRelation(tx,organizationId,'client',clientId);
+      const [client] = await tx.select({ userId: clients.userId }).from(clients).where(and(eq(clients.id,clientId),eq(clients.organizationId,organizationId))).limit(1).for('share');
+
       // Validation du site si fourni
       const siteId = validated.siteId !== undefined ? validated.siteId : existing.siteId;
       if (siteId) {
@@ -347,6 +354,8 @@ export const quoteService = {
         .update(invoices)
         .set({
           clientId,
+          recipientUserId: validated.clientId && validated.clientId !== existing.clientId
+          ? client?.userId ?? null : existing.recipientUserId,
           title: validated.title !== undefined ? validated.title : existing.title,
           date: validated.date !== undefined ? validated.date : existing.date,
           validUntil: validated.validUntil !== undefined ? validated.validUntil : existing.validUntil,
@@ -469,37 +478,30 @@ export const quoteService = {
    * Marque le devis comme consulté par le destinataire ('viewed').
    */
   async markQuoteViewed(quoteId: string, recipientUserId: string): Promise<void> {
-    const [quote] = await db
-      .select({
-        id: invoices.id,
-        status: invoices.status,
-        recipientUserId: invoices.recipientUserId,
-        clientId: invoices.clientId,
-      })
-      .from(invoices)
-      .where(and(eq(invoices.id, quoteId), eq(invoices.type, 'quote')))
-      .limit(1);
+    await db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select({
+          id: invoices.id,
+          status: invoices.status,
+          recipientUserId: invoices.recipientUserId,
+          clientId: invoices.clientId,
+          organizationId: invoices.organizationId,
+        })
+        .from(invoices)
+        .where(and(eq(invoices.id, quoteId), eq(invoices.type, 'quote')))
+        .limit(1).for('update');
 
-    if (!quote) return;
+      if (!quote) return;
 
-    let isAuthorized = quote.recipientUserId === recipientUserId;
-    if (!isAuthorized) {
-      const [crmClient] = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.id, quote.clientId), eq(clients.userId, recipientUserId)))
-        .limit(1);
-      if (crmClient) isAuthorized = true;
-    }
+      await requireClientBillingAuthority(quote, recipientUserId, tx);
 
-    if (!isAuthorized) return;
-
-    if (quote.status === 'sent') {
-      await db
-        .update(invoices)
-        .set({ status: 'viewed', updatedAt: new Date().toISOString() })
-        .where(eq(invoices.id, quoteId));
-    }
+      if (quote.status === 'sent') {
+        await tx
+          .update(invoices)
+          .set({ status: 'viewed', updatedAt: new Date().toISOString() })
+          .where(eq(invoices.id, quoteId));
+      }
+    });
   },
 
   /**
@@ -517,9 +519,10 @@ export const quoteService = {
         .select()
         .from(invoices)
         .where(and(eq(invoices.id, quoteId), eq(invoices.type, 'quote')))
-        .limit(1);
+        .limit(1).for('update');
 
       if (!quote) throw new AppError('Devis introuvable', 404);
+      await requireClientBillingAuthority(quote, signerUserId, tx);
       if (quote.status !== 'sent' && quote.status !== 'viewed') {
         throw new AppError(`Le devis ne peut pas être accepté dans son statut actuel (${quote.status})`, 400);
       }
@@ -561,6 +564,12 @@ export const quoteService = {
         orgOwner = pro;
       }
 
+      if (!orgOwner) {
+        const entitlement = await tx.execute(sql`select * from public.quote_issuer_entitlement(${quoteId})`);
+        orgOwner = entitlement[0] as unknown as typeof orgOwner;
+      }
+      if (!orgOwner) throw new AppError('Autorité de signature indisponible', 403, 'FEATURE_NOT_ALLOWED');
+
       if (orgOwner) {
         const plan = getEffectivePlan(orgOwner.subscriptionTier, orgOwner.subscriptionStatus);
         if (!plan.features.electronicSignature) {
@@ -586,10 +595,7 @@ export const quoteService = {
 
       // Si rattaché à un Deal commercial, on le passe à 'won'
       if (quote.dealId) {
-        await tx
-          .update(deals)
-          .set({ status: 'won', updatedAt: now })
-          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, quote.organizationId)));
+        await tx.execute(sql`select public.sync_current_quote_deal(${quoteId})`);
       }
 
       console.info('[audit] quote.accepted', {
@@ -612,9 +618,10 @@ export const quoteService = {
         .select()
         .from(invoices)
         .where(and(eq(invoices.id, quoteId), eq(invoices.type, 'quote')))
-        .limit(1);
+        .limit(1).for('update');
 
       if (!quote) throw new AppError('Devis introuvable', 404);
+      await requireClientBillingAuthority(quote, clientUserId, tx);
       if (quote.status !== 'sent' && quote.status !== 'viewed') {
         throw new AppError(`Ce devis ne peut pas être refusé dans son statut actuel (${quote.status})`, 400);
       }
@@ -638,13 +645,66 @@ export const quoteService = {
         .where(eq(invoices.id, quoteId));
 
       if (quote.dealId) {
-        await tx
-          .update(deals)
-          .set({ status: 'lost', updatedAt: now })
-          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, quote.organizationId)));
+        await tx.execute(sql`select public.sync_current_quote_deal(${quoteId})`);
       }
 
       return (await this.getQuoteById(quoteId, quote.organizationId, tx))!;
+    });
+  },
+
+  /**
+   * Décision du client consignée par le professionnel émetteur.
+   *
+   * En V1 les clients n'ont pas de compte : l'accord (ou le refus) est reçu
+   * hors application et enregistré par un professionnel de l'organisation
+   * émettrice. Aucune signature électronique n'est inventée : `signature`
+   * reste vide, l'auteur et le mode de réception sont tracés.
+   */
+  async recordClientDecisionByIssuer(
+    quoteId: string,
+    organizationId: string,
+    userId: string,
+    input: { decision: 'accepted' | 'rejected'; method: QuoteDecisionMethod; decidedOn: string; note?: string | null },
+  ): Promise<Invoice> {
+    return await db.transaction(async (tx) => {
+      const [quote] = await tx
+        .select()
+        .from(invoices)
+        .where(and(eq(invoices.id, quoteId), eq(invoices.organizationId, organizationId), eq(invoices.type, 'quote')))
+        .limit(1).for('update');
+
+      if (!quote) throw new AppError('Devis introuvable', 404);
+      if (quote.status !== 'sent' && quote.status !== 'viewed') {
+        throw new AppError(`La décision du client ne peut pas être enregistrée dans le statut actuel (${quote.status})`, 400);
+      }
+
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+      // Une décision du jour garde l'heure réelle ; une date passée est posée à midi UTC.
+      const decidedAt = input.decidedOn === today ? now : `${input.decidedOn}T12:00:00.000Z`;
+      const [year, month, day] = input.decidedOn.split('-');
+      const trace = `${input.decision === 'accepted' ? 'Accord' : 'Refus'} du client reçu ${QUOTE_DECISION_METHOD_LABELS[input.method]} le ${day}/${month}/${year}, enregistré par le professionnel.${input.note ? ` ${input.note}` : ''}`;
+      const message = quote.message ? `${quote.message}\n${trace}` : trace;
+
+      await tx
+        .update(invoices)
+        .set(input.decision === 'accepted'
+          ? { status: 'accepted', acceptedAt: decidedAt, acceptedByUserId: userId, message, updatedAt: now }
+          : { status: 'rejected', rejectedAt: decidedAt, rejectedByUserId: userId, message, updatedAt: now })
+        .where(and(eq(invoices.id, quoteId), eq(invoices.organizationId, organizationId)));
+
+      if (quote.dealId) {
+        await tx
+          .update(deals)
+          .set({ status: input.decision === 'accepted' ? 'won' : 'lost', updatedAt: now })
+          .where(and(eq(deals.id, quote.dealId), eq(deals.organizationId, organizationId)));
+      }
+
+      console.info('[audit] quote.decision_recorded_by_issuer', {
+        quoteId, decision: input.decision, method: input.method, recordedBy: userId, decidedOn: input.decidedOn, at: now,
+      });
+
+      return (await this.getQuoteById(quoteId, organizationId, tx))!;
     });
   },
 
@@ -1099,19 +1159,7 @@ export const quoteService = {
 
     if (!quote) return null;
 
-    let isRecipient = quote.recipientUserId === recipientUserId;
-    if (!isRecipient) {
-      const [clientRecord] = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.id, quote.clientId), eq(clients.userId, recipientUserId)))
-        .limit(1);
-      if (clientRecord) isRecipient = true;
-    }
-
-    if (!isRecipient) {
-      throw new AppError('Accès refusé à ce devis', 403, 'FORBIDDEN');
-    }
+    await requireClientBillingAuthority(quote, recipientUserId);
 
     const sections = await db
       .select()

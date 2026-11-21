@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import PasswordField from './PasswordField';
@@ -12,8 +12,7 @@ export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signIn } = useAuth();
-  const router = useRouter();
+  const { signIn, isLoading } = useAuth();
   const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +35,12 @@ export default function LoginForm() {
       toast.success('Connecté !');
       // Destination d'origine si l'utilisateur a été redirigé vers /login.
       const callbackUrl = searchParams.get('callbackUrl');
-      const dest = callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/dashboard';
+      const { getAccountRecoveryAction } = await import('@/app/actions/auth');
+      const recovery = await getAccountRecoveryAction();
+      const { getSessionAction } = await import('@/app/actions/session');
+      const { user } = await getSessionAction();
+      const fallback = !user || recovery?.needsWorkspace ? '/complete-profile' : user.profileType === 'client' ? '/client/dashboard' : '/dashboard';
+      const dest = user && !recovery?.needsWorkspace && callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.includes('\\') ? callbackUrl : fallback;
       window.location.href = dest;
     } catch {
       toast.error('Erreur de connexion');
@@ -80,6 +84,7 @@ export default function LoginForm() {
         />
 
         <div className="flex items-center justify-end">
+          <Link href="/verify-email" className="text-sm text-primary-600 mr-4">Confirmer mon adresse</Link>
           <Link href="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-500 hover:underline transition-colors">
             Mot de passe oublié ?
           </Link>
@@ -87,7 +92,7 @@ export default function LoginForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoading}
           className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm shadow-primary-200 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all disabled:opacity-70"
         >
           {isSubmitting ? (

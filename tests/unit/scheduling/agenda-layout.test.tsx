@@ -86,8 +86,8 @@ describe('Agenda Layout Workspace Branching', () => {
     const jsx = await AgendaLayout({ children: <div>Contenu</div> });
     render(jsx);
 
-    expect(screen.getByText('Calendrier')).toBeDefined();
-    expect(screen.getByText('Disponibilités')).toBeDefined();
+    expect(screen.getByText('Rendez-vous')).toBeDefined();
+    expect(screen.getByText('Horaires et absences')).toBeDefined();
     expect(screen.getByText('Types de séances')).toBeDefined();
     expect(screen.getByText('Tâches')).toBeDefined();
   });

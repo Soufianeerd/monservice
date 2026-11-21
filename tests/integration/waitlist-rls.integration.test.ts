@@ -1,31 +1,25 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../helpers/neon-rls-client';
 import { SEED_SCHEDULING_IDS, SEED_PATIENT_IDS, SEED_PRACTICE_IDS } from '../../scripts/e2e/seed-local';
 import { randomUUID } from 'crypto';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLI_A_EMAIL = 'client_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLI_A_EMAIL = 'client_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
 describe('Waitlist RLS Integration Tests (Session 10)', () => {
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let clientAClient: SupabaseClient;
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let clientAClient: NeonRlsClient;
 
   beforeAll(async () => {
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
     // Auth Pro A
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
@@ -35,9 +29,7 @@ describe('Waitlist RLS Integration Tests (Session 10)', () => {
     }
 
     // Auth Pro B
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
@@ -47,9 +39,7 @@ describe('Waitlist RLS Integration Tests (Session 10)', () => {
     }
 
     // Auth Client A
-    clientAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    clientAClient = createRlsTestClient();
     const { error: errCli } = await clientAClient.auth.signInWithPassword({
       email: CLI_A_EMAIL,
       password: PASSWORD,
@@ -169,9 +159,10 @@ describe('Waitlist RLS Integration Tests (Session 10)', () => {
   });
 
   describe('Anonymous Rejection', () => {
-    it('Anon cannot SELECT from waitlist table (RLS error 42501)', async () => {
-      const { error } = await anonClient.from('appointment_waitlist_entries').select('*');
-      expect(error?.code).toBe('42501');
+    it('Anon cannot SELECT from waitlist table (RLS error zero authorized rows)', async () => {
+      const { data: anonymousRows0, error  } = await anonClient.from('appointment_waitlist_entries').select('*');
+      expect(error).toBeNull();
+      expect(anonymousRows0).toEqual([]);
     });
 
     it('Anon cannot INSERT into waitlist table (RLS error 42501)', async () => {

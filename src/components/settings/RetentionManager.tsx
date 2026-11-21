@@ -25,12 +25,12 @@ export function RetentionManager({ organizationId }: { organizationId: string })
       const data = await res.json();
       if (res.ok) {
         setDocuments(data.expired);
-        toast.success(data.message || 'Check complete');
+        toast.success(data.message || 'Vérification terminée');
       } else {
-        toast.error(data.error || 'Failed to check retention');
+        toast.error(data.error || 'Vérification impossible');
       }
     } catch (e) {
-      toast.error('Error fetching expired documents');
+      toast.error('Vérification impossible');
     } finally {
       setLoading(false);
     }

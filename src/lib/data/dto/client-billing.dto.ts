@@ -1,7 +1,7 @@
 import { Invoice, InvoiceStatus, InvoiceSubtype, DepositMode } from '@/lib/data/interfaces/invoice.interface';
 import { InvoiceSectionKind } from '@/lib/data/interfaces/invoice-section.interface';
 import { InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces/invoice-line.interface';
-import { VatRateBreakdown } from '@/lib/services/billing-calculator';
+import { calculateDocumentTotals, VatRateBreakdown } from '@/lib/services/billing-calculator';
 
 export interface ClientSectionDTO {
   id: string;
@@ -35,6 +35,7 @@ export interface ClientQuoteDTO {
   id: string;
   organizationId: string;
   type: 'quote';
+  requestId?: string | null;
   number: string;
   title?: string | null;
   date: string;
@@ -115,6 +116,7 @@ export function toClientQuoteDTO(
     id: invoice.id,
     organizationId: invoice.organizationId,
     type: 'quote',
+    requestId: invoice.requestId ?? null,
     number: invoice.number,
     title: invoice.title ?? null,
     date: invoice.date,
@@ -224,4 +226,19 @@ export function toClientInvoiceDTO(
     paymentLink: invoice.paymentLink ?? null,
     createdAt: invoice.createdAt,
   };
+}
+
+export type ClientBillingDTO = ClientQuoteDTO | ClientInvoiceDTO;
+
+/** One projection for every client-visible billing response. */
+export function toClientBillingDTO(invoice: Invoice): ClientBillingDTO {
+  const totals = calculateDocumentTotals(invoice.lines, {
+    depositMode: invoice.depositMode ?? 'none',
+    depositRate: invoice.depositRate,
+    depositFixedAmount: invoice.depositFixedAmount,
+    prepaidAmount: invoice.prepaidAmount,
+  });
+  return invoice.type === 'quote'
+    ? toClientQuoteDTO(invoice, totals.vatBreakdown)
+    : toClientInvoiceDTO(invoice, totals.vatBreakdown);
 }

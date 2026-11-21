@@ -1,6 +1,8 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import type { ClientInvoiceDTO } from '@/lib/data/dto/client-billing.dto';
 import type { Invoice, Organization } from '@/lib/data/interfaces';
 import { legalService } from '@/lib/services/legal.service';
+import { issuerBankLine, issuerFooterLine, issuerLegalLines, issuerPostalLine, VAT_EXEMPT_NOTICE } from '@/lib/legal/issuer';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
 
 const styles = StyleSheet.create({
@@ -51,7 +53,7 @@ const UNIT_LABELS: Record<string, string> = {
 };
 
 export interface InvoicePDFProps {
-  invoice: Invoice;
+  invoice: Invoice | ClientInvoiceDTO;
   organization: Organization;
   client: {
     name: string;
@@ -110,12 +112,12 @@ export async function InvoicePDF({ invoice, organization, client, site }: Invoic
             <Text style={styles.companyTitle}>{organization.name}</Text>
             {organization.address && <Text style={styles.partyText}>{organization.address}</Text>}
             <Text style={styles.partyText}>
-              {[organization.zipCode, organization.city].filter(Boolean).join(' ')}
+              {issuerPostalLine(organization)}
             </Text>
             {organization.country && <Text style={styles.partyText}>{organization.country}</Text>}
             {organization.email && <Text style={styles.partyText}>Email : {organization.email}</Text>}
             {organization.phone && <Text style={styles.partyText}>Tél : {organization.phone}</Text>}
-            {organization.taxId && <Text style={styles.partyText}>N° TVA : {organization.taxId}</Text>}
+            {issuerLegalLines(organization).map((line) => <Text key={line} style={styles.partyText}>{line}</Text>)}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.docTitle}>{invoiceTypeTitle}</Text>
@@ -298,12 +300,13 @@ export async function InvoicePDF({ invoice, organization, client, site }: Invoic
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>{mentions.legalNotice}</Text>
-          <Text>{mentions.paymentTerms}</Text>
+          <Text>{organization.vatExempt && !organization.vatNumber ? VAT_EXEMPT_NOTICE : mentions.legalNotice}</Text>
+          <Text>{organization.paymentTerms?.trim() || mentions.paymentTerms}</Text>
+          {issuerBankLine(organization) && <Text>{issuerBankLine(organization)}</Text>}
           <Text>{mentions.latePaymentPenalty}</Text>
           <Text>{mentions.indemnity}</Text>
           <Text style={{ marginTop: 2 }}>
-            {organization.name} - SIREN / TVA : {organization.taxId || 'N/A'} - Facture N° {invoice.number}
+            {issuerFooterLine(organization, `Facture N° ${invoice.number}`)}
           </Text>
         </View>
       </Page>

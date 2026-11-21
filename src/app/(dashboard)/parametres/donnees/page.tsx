@@ -48,7 +48,7 @@ export default function DonneesPersonnellesPage() {
         return;
       }
 
-      toast.success('Votre compte a été supprimé.');
+      toast.success('Votre compte a été fermé.');
       router.push('/');
     } catch {
       toast.error('La suppression a échoué.');
@@ -62,16 +62,16 @@ export default function DonneesPersonnellesPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mes données personnelles</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Conformément au RGPD, vous pouvez à tout moment récupérer l&apos;ensemble de vos données
-          ou supprimer votre compte.
+          Vous pouvez exporter les données liées à votre compte et fermer votre accès.
+          Certaines données conservées nécessitent une demande dédiée.
         </p>
       </div>
 
       <section className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900">Exporter mes données</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Téléchargez l&apos;intégralité de vos données au format JSON : profil, clients,
-          documents, messages et tâches. Droit d&apos;accès et de portabilité (art. 15 et 20).
+          Téléchargez votre profil, vos messages, vos demandes et vos documents clients liés au compte.
+          Les données de l&apos;organisation et les données cliniques relèvent de demandes dédiées.
         </p>
         <button
           onClick={handleExport}
@@ -83,15 +83,14 @@ export default function DonneesPersonnellesPage() {
       </section>
 
       <section className="bg-white shadow rounded-lg p-6 border-l-4 border-red-500">
-        <h2 className="text-lg font-medium text-gray-900">Supprimer mon compte</h2>
+        <h2 className="text-lg font-medium text-gray-900">Fermer mon compte</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Cette action est <strong>irréversible</strong>. Vos données personnelles, clients,
-          contacts, opportunités et tâches seront définitivement effacés.
+          Cette action ferme votre accès et anonymise votre profil. Les clients, contacts,
+          opportunités, tâches et autres données de l&apos;organisation sont conservés.
         </p>
         <p className="mt-2 text-sm text-gray-600">
-          Vos <strong>documents comptables</strong> (factures émises) sont conservés de façon
-          anonymisée pendant 10 ans, conformément à l&apos;obligation légale de conservation
-          (art. L123-22 du Code de commerce).
+          Les documents comptables, signatures, données cliniques et échanges conservés restent
+          inchangés. Leur effacement et leur durée de conservation nécessitent un traitement dédié.
         </p>
 
         {!showDeleteConfirm ? (
@@ -99,7 +98,7 @@ export default function DonneesPersonnellesPage() {
             onClick={() => setShowDeleteConfirm(true)}
             className="mt-4 inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
           >
-            Supprimer mon compte
+            Fermer mon compte
           </button>
         ) : (
           <div className="mt-4 space-y-3">
@@ -119,7 +118,7 @@ export default function DonneesPersonnellesPage() {
                 disabled={isDeleting || !confirmEmail}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
               >
-                {isDeleting ? 'Suppression…' : 'Confirmer la suppression définitive'}
+                {isDeleting ? 'Fermeture…' : 'Confirmer la fermeture'}
               </button>
               <button
                 onClick={() => {

@@ -1,5 +1,9 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+import { useClientAccess } from '@/components/layout/ClientAccessContext';
+
 import React, { useState, useEffect } from 'react';
 import {
   grantPatientPortalAccessAction,
@@ -41,8 +45,11 @@ export default function PatientPortalAndBillingSection({
 }: {
   patientDetail: PatientDetailDTO;
 }) {
+  const t = useCareVocabulary();
   const { patient, representatives } = patientDetail;
-  const [activeTab, setActiveTab] = useState<'portal' | 'questionnaires' | 'billing'>('portal');
+  // V1 : pas de compte patient, donc ni portail ni questionnaire à remplir en ligne.
+  const portalOpen = useClientAccess();
+  const [activeTab, setActiveTab] = useState<'portal' | 'questionnaires' | 'billing'>(portalOpen ? 'portal' : 'billing');
 
   // Portal Access state
   const [accessList, setAccessList] = useState<PatientPortalAccessDTO[]>([]);
@@ -166,6 +173,7 @@ export default function PatientPortalAndBillingSection({
         ],
       });
       setInvoices((prev) => [newInv, ...prev]);
+      announceGuideSaved(t('La facture patient est enregistrée.'));
     } catch (err: unknown) {
       setBillingError(err instanceof Error ? err.message : 'Erreur lors de la création de la facture');
     } finally {
@@ -177,7 +185,7 @@ export default function PatientPortalAndBillingSection({
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mt-6">
       {/* Tab Header */}
       <div className="flex border-b border-slate-200 bg-slate-50/70 p-1">
-        <button
+        {portalOpen && <button
           onClick={() => setActiveTab('portal')}
           className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeTab === 'portal'
@@ -187,9 +195,9 @@ export default function PatientPortalAndBillingSection({
         >
           <KeyRound className="w-4 h-4 text-teal-600" />
           Portail & Accès Patient ({accessList.filter((a) => a.isActive).length})
-        </button>
+        </button>}
 
-        <button
+        {portalOpen && <button
           onClick={() => setActiveTab('questionnaires')}
           className={`flex-1 py-2.5 px-4 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeTab === 'questionnaires'
@@ -199,7 +207,7 @@ export default function PatientPortalAndBillingSection({
         >
           <FileCheck className="w-4 h-4 text-amber-600" />
           Questionnaires assignés ({assignments.length})
-        </button>
+        </button>}
 
         <button
           onClick={() => setActiveTab('billing')}
@@ -218,11 +226,11 @@ export default function PatientPortalAndBillingSection({
         {/* ========================================== */}
         {/* TAB 1: PORTAL ACCESS */}
         {/* ========================================== */}
-        {activeTab === 'portal' && (
+        {portalOpen && activeTab === 'portal' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Accès Portail Santé Patient</h3>
+                <h3 className="text-base font-bold text-slate-900">{t("Accès Portail Santé Patient")}</h3>
                 <p className="text-xs text-slate-500">
                   Activez l'accès sécurisé pour le patient ou un représentant légal afin qu'il puisse consulter ses RDV, documents et remplir des questionnaires.
                 </p>
@@ -237,7 +245,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Grant Access Form */}
-            <form onSubmit={handleGrantAccess} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <form data-guide-form="facture-patient" onSubmit={handleGrantAccess} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Activer un nouvel accès</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-1">
@@ -256,7 +264,7 @@ export default function PatientPortalAndBillingSection({
                     }}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white"
                   >
-                    <option value="">Patient direct</option>
+                    <option value="">{t("Patient direct")}</option>
                     {representatives.map((r) => (
                       <option key={r.representativeId} value={r.representativeId}>
                         Représentant : {r.firstName} {r.lastName}
@@ -293,7 +301,7 @@ export default function PatientPortalAndBillingSection({
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Accès configurés</h4>
               {accessList.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Aucun accès portail configuré pour ce patient.</p>
+                <p className="text-xs text-slate-400 italic">{t("Aucun accès portail configuré pour ce patient.")}</p>
               ) : (
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                   {accessList.map((acc) => (
@@ -301,7 +309,7 @@ export default function PatientPortalAndBillingSection({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-slate-800">
-                            {acc.accessType === 'representative' ? 'Représentant légal' : 'Patient direct'}
+                            {acc.accessType === 'representative' ? 'Représentant légal' : t('Patient direct')}
                           </span>
                           {acc.isActive ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-800 flex items-center gap-1">
@@ -338,7 +346,7 @@ export default function PatientPortalAndBillingSection({
         {/* ========================================== */}
         {/* TAB 2: QUESTIONNAIRES */}
         {/* ========================================== */}
-        {activeTab === 'questionnaires' && (
+        {portalOpen && activeTab === 'questionnaires' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -357,7 +365,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Assign Form */}
-            <form onSubmit={handleAssignQuestionnaire} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row gap-3 items-end">
+            <form data-guide-form="facture-patient" onSubmit={handleAssignQuestionnaire} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row gap-3 items-end">
               <div className="flex-1 w-full">
                 <label className="block text-xs font-medium text-slate-600 mb-1">Sélectionner un modèle de formulaire</label>
                 <select
@@ -427,9 +435,9 @@ export default function PatientPortalAndBillingSection({
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Facturation & Notes d'Honoraires</h3>
+                <h3 className="text-base font-bold text-slate-900">{t("Facturation & Notes d'Honoraires")}</h3>
                 <p className="text-xs text-slate-500">
-                  Générez des factures de soins pour le patient ou son représentant légal.
+                  {t('Générez des factures de soins pour le patient ou son représentant légal.')}
                 </p>
               </div>
             </div>
@@ -442,7 +450,7 @@ export default function PatientPortalAndBillingSection({
             )}
 
             {/* Quick Invoice Creation Form */}
-            <form onSubmit={handleCreateInvoice} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <form data-guide-form="facture-patient" onSubmit={handleCreateInvoice} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Créer une facture rapide</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">
@@ -497,7 +505,7 @@ export default function PatientPortalAndBillingSection({
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Historique des factures</h4>
               {invoices.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Aucune facture enregistrée pour ce patient.</p>
+                <p className="text-xs text-slate-400 italic">{t("Aucune facture enregistrée pour ce patient.")}</p>
               ) : (
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                   {invoices.map((inv) => (

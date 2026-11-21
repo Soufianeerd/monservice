@@ -1,14 +1,14 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { authClient } from '@/lib/auth/client';
 import { User, Organization } from '@/lib/data/interfaces';
 
 /**
- * Contexte d'authentification — Supabase Auth.
+ * Contexte d'authentification — Neon Auth.
  *
  * Le profil applicatif (`profileType`, `organizationId`, onboarding) ne vit
- * pas dans Supabase Auth mais dans la table `public.users`. Il est chargé via
+ * pas dans Neon Auth mais dans la table `public.users`. Il est chargé via
  * une server action après authentification.
  *
  * ⚠️ Ce contexte sert UNIQUEMENT à l'affichage. Aucune décision de sécurité
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = useMemo(() => createClient(), []);
+  const providerSession = authClient.useSession();
 
   const loadProfile = useCallback(async () => {
     try {
@@ -61,31 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void loadProfile();
     }, 0);
 
-    // Recharge le profil à chaque changement d'état d'authentification
-    // (connexion, déconnexion, rafraîchissement de jeton).
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setOrganization(null);
-        setIsLoading(false);
-        return;
-      }
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        void loadProfile();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timer);
-    };
-  }, [supabase, loadProfile]);
+    return () => clearTimeout(timer);
+  }, [providerSession.data?.user?.id, loadProfile]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      try {
+      const { error } = await authClient.signIn.email({
         email: email.trim().toLowerCase(),
         password,
       });
@@ -99,26 +81,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await loadProfile();
       return { error: null };
+      } catch {
+        return { error: 'Email ou mot de passe incorrect' };
+      }
     },
-    [supabase, loadProfile],
+    [loadProfile],
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await authClient.signOut();
     setUser(null);
     setOrganization(null);
     window.location.href = '/login';
-  }, [supabase]);
+  }, []);
 
   const updateUser = useCallback(
     async (data: Partial<User>) => {
-      try {
-        const { updateUserAction } = await import('@/app/actions/session');
-        await updateUserAction(data as Record<string, unknown>);
-        await loadProfile();
-      } catch (err) {
-        console.error('Erreur lors de la mise à jour du profil:', err);
-      }
+      const { updateUserAction } = await import('@/app/actions/session');
+      await updateUserAction(data as Record<string, unknown>);
+      await loadProfile();
     },
     [loadProfile],
   );

@@ -1,3 +1,4 @@
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
 import { getSessionAction, getOrganizationAction } from '@/app/actions/session';
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
@@ -31,6 +32,8 @@ export default async function DashboardPage() {
   });
 
   if (workspace.type === 'paramedical') {
+    // Agenda prêt dès la première connexion (lieu, séances types, horaires).
+    await prepareStarterPractice(organization.id, user.id);
     const data = await getPracticeDashboardAction();
     
     return (
@@ -55,8 +58,7 @@ export default async function DashboardPage() {
     activeDeals: dashboardStats.activeDeals,
     ongoingTasks: dashboardStats.pendingTasks,
     revenue: dashboardStats.totalRevenue,
-    totalInvoiced: dashboardStats.totalRevenue,
-    totalUnpaid: dashboardStats.paidInvoices,
+    paidInvoicesCount: dashboardStats.paidInvoices,
   };
 
   const wonDeals = deals.filter((d: Deal) => d.status === 'won');
@@ -91,7 +93,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Tableau de bord</h1>
       
       <div data-tour="dashboard-overview">
         <DashboardStats 
@@ -99,12 +101,11 @@ export default async function DashboardPage() {
           activeDealsCount={stats.activeDeals}
           ongoingTasksCount={stats.ongoingTasks}
           totalRevenue={stats.revenue}
-          totalInvoiced={stats.totalInvoiced}
-          totalUnpaid={stats.totalUnpaid}
+          paidInvoicesCount={stats.paidInvoicesCount}
         />
       </div>
 
-      <div className="mt-8" data-tour="dashboard-activities">
+      <div className="mt-8" data-tour="dashboard-activities" data-guide-title="Évolution des affaires gagnées" data-guide-text="Ce graphique répartit les montants des affaires gagnées sur les six derniers mois, selon leur date de mise à jour.">
         <DashboardChart data={months} />
       </div>
     </div>

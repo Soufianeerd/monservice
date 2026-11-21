@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import ProductForm from '@/components/crm/ProductForm';
 import * as productActions from '@/app/actions/product.actions';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Product } from '@/lib/data/interfaces';
 
@@ -11,6 +12,7 @@ export default function EditProductPage(props: { params: Promise<{ id: string }>
   const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
+  const isPractice = useWorkspace()?.type === 'paramedical';
   const [product, setProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function EditProductPage(props: { params: Promise<{ id: string }>
         if (data) {
           setProduct(data);
         } else {
-          router.push('/products');
+          router.push('/facturation/produits');
         }
       } catch (error) {
         console.error('Erreur', error);
@@ -46,7 +48,7 @@ export default function EditProductPage(props: { params: Promise<{ id: string }>
 
       // activityLog disabled
 
-      router.push('/products');
+      router.push('/facturation/produits');
     } catch (error) {
       console.error('Erreur lors de la modification', error);
       setIsSubmitting(false);
@@ -59,7 +61,7 @@ export default function EditProductPage(props: { params: Promise<{ id: string }>
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Modifier Produit</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{isPractice ? 'Modifier la prestation' : 'Modifier le produit ou service'}</h1>
         <p className="mt-1 text-sm text-gray-500">
           Mise à jour des informations de {product.name}
         </p>

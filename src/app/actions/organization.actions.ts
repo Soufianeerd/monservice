@@ -30,6 +30,13 @@ export async function updateAction(_legacyId: unknown, data: Record<string, unkn
   // Liste blanche stricte : tout champ inconnu est rejeté (affectation de masse).
   const validated = organizationUpdateSchema.parse(data);
 
+  // Les relances de paiement lisent bank_details : on le tient à jour depuis
+  // l'IBAN et le BIC saisis dans « Informations légales et bancaires ».
+  if (validated.iban !== undefined) {
+    const iban = validated.iban ? validated.iban.replace(/(.{4})/g, '$1 ').trim() : null;
+    validated.bankDetails = iban ? [`IBAN ${iban}`, validated.bic ? `BIC ${validated.bic}` : null].filter(Boolean).join(' — ') : '';
+  }
+
   console.info('[audit] organization.updated', {
     organizationId,
     userId,

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -27,6 +28,7 @@ const RESOLUTION_LABELS: Record<WaitlistResolutionCode, string> = {
 };
 
 export function WaitlistManager({ bootstrap }: Props) {
+  const t = useCareVocabulary();
   const [entries, setEntries] = useState<WaitlistEntryDTO[]>([]);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export function WaitlistManager({ bootstrap }: Props) {
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Liste d&apos;attente des patients</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t("Liste d'attente des patients")}</h2>
             <p className="text-xs text-gray-500">
               Gérez les demandes de rendez-vous en attente et faites correspondre les créneaux libérés.
             </p>
@@ -134,7 +136,7 @@ export function WaitlistManager({ bootstrap }: Props) {
             onClick={handleOpenCreate}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            + Inscrire un patient
+            {t("+ Inscrire un patient")}
           </button>
         </div>
 

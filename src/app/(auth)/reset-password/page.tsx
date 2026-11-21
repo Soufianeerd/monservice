@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
+import { authClient } from '@/lib/auth/client';
+import { isAuthApiError } from '@neondatabase/auth/next';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -11,19 +12,6 @@ function ResetPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  useEffect(() => {
-    // Supabase gère le code via l'URL de callback. Si l'utilisateur arrive directement ici,
-    // il doit passer par le callback qui met à jour la session.
-    async function verifySession() {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login');
-      }
-    }
-    verifySession();
-  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +25,22 @@ function ResetPasswordForm() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    const token = searchParams.get('token');
+    if (!token) { setLoading(false); setMessage({ text: 'Lien invalide ou expiré.', type: 'error' }); return; }
+    try {
+      const { error } = await authClient.resetPassword({ newPassword: password, token });
 
-    if (error) {
-      setMessage({ text: 'Erreur lors de la mise à jour.', type: 'error' });
-    } else {
-      setMessage({ text: 'Mot de passe mis à jour avec succès.', type: 'success' });
-      setTimeout(() => router.push('/dashboard'), 2000);
-    }
+      if (error) {
+        setMessage({ text: 'Erreur lors de la mise à jour.', type: 'error' });
+      } else {
+        setMessage({ text: 'Mot de passe mis à jour avec succès.', type: 'success' });
+        setTimeout(() => router.push('/login'), 2000);
+      }
+    } catch (error) {
+      // Neon normalizes INVALID_TOKEN to bad_jwt (401), even when the
+      // upstream reset endpoint answered 400. It remains a rejected link.
+      setMessage({ text: isAuthApiError(error) && (error.status === 400 || error.code === 'bad_jwt') ? 'Erreur lors de la mise à jour.' : 'Mise à jour indisponible. Réessayez.', type: 'error' });
+    } finally { setLoading(false); }
   };
 
   return (

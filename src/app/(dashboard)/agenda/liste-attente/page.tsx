@@ -1,3 +1,4 @@
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
 import { requireProfessional } from '@/lib/auth/session';
 import { organizationService } from '@/lib/services/organization.service';
 import { schedulingService } from '@/lib/services/scheduling.service';
@@ -27,6 +28,7 @@ export default async function WaitlistPage() {
     redirect('/agenda/calendrier');
   }
 
+  await prepareStarterPractice(organization.id, context.userId);
   const bootstrap = await schedulingService.getSchedulingBootstrap(organization.id);
 
   return (

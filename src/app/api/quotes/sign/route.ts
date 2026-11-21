@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { quoteService } from '@/lib/services/quote.service';
 import { toErrorResponse } from '@/lib/utils/api-response';
 import { getRequestIp, getUserAgent } from '@/lib/utils/request-info';
+import { toClientBillingDTO } from '@/lib/data/dto/client-billing.dto';
 import { requireSession } from '@/lib/auth/session';
 
 export async function POST(req: Request) {
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       getUserAgent(req)
     );
 
-    return NextResponse.json({ success: true, quote: acceptedQuote });
+    return NextResponse.json({ success: true, quote: toClientBillingDTO(acceptedQuote) });
   } catch (error: unknown) {
     return toErrorResponse(error, 'Erreur lors de la sauvegarde de la signature');
   }

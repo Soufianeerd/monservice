@@ -1,93 +1,40 @@
 import 'server-only';
-import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
-import { createClient } from '@/utils/supabase/server';
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/lib/db/server';
+import { clinicalDocuments, practicePractitioners, patientProfiles } from '@/lib/db/schema';
+import { requireSession, requireProfessional } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
+import { objectStore } from '@/lib/storage/neon-object-store';
 
 export const CLINICAL_DOCUMENTS_BUCKET = 'clinical-documents';
 export const SIGNED_URL_TTL_SECONDS = 60;
 
-function getRequiredPrivilegedStorageClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    throw new AppError(
-      'Configuration administrateur de stockage manquante pour l\'opération privilégiée',
-      500,
-      'STORAGE_ADMIN_CONFIGURATION_MISSING',
-    );
-  }
-
-  return createSupabaseAdminClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+async function authorizeUploadPath(storagePath: string) {
+  const actor = await requireProfessional();
+  const [organizationId, practitionerId, patientId, documentId, fileName, ...rest] = storagePath.split('/');
+  if (organizationId !== actor.organizationId || !practitionerId || !patientId || !documentId || !fileName || rest.length || storagePath.split('/').some(p => p === '.' || p === '..')) throw new AppError('Chemin interdit', 403);
+  const [practitioner] = await db.select({ id: practicePractitioners.id }).from(practicePractitioners).where(and(eq(practicePractitioners.id, practitionerId), eq(practicePractitioners.organizationId, actor.organizationId), eq(practicePractitioners.userId, actor.userId), eq(practicePractitioners.isActive, true)));
+  const [patient] = await db.select({ id: patientProfiles.id }).from(patientProfiles).where(and(eq(patientProfiles.id, patientId), eq(patientProfiles.organizationId, actor.organizationId)));
+  if (!practitioner || !patient) throw new AppError('Accès clinique refusé', 403);
 }
 
 export const clinicalStorageService = {
-  /**
-   * Téléverse un fichier de document clinique dans le bucket privé Supabase Storage.
-   */
   async uploadFile(storagePath: string, buffer: Buffer, mimeType: string): Promise<void> {
-    const supabase = await createClient();
-
-    const { error } = await supabase.storage
-      .from(CLINICAL_DOCUMENTS_BUCKET)
-      .upload(storagePath, buffer, {
-        contentType: mimeType,
-        upsert: false,
-      });
-
-    if (error) {
-      throw new AppError(
-        `Échec du téléversement du document : ${error.message}`,
-        500,
-        'STORAGE_UPLOAD_FAILED',
-      );
-    }
+    await authorizeUploadPath(storagePath);
+    await objectStore.put(CLINICAL_DOCUMENTS_BUCKET, storagePath, buffer, mimeType);
   },
-
-  /**
-   * Génère une URL signée de courte durée (60 secondes) pour le téléchargement sécurisé.
-   */
   async getSignedDownloadUrl(storagePath: string, expiresIn = SIGNED_URL_TTL_SECONDS): Promise<string> {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.storage
-      .from(CLINICAL_DOCUMENTS_BUCKET)
-      .createSignedUrl(storagePath, expiresIn);
-
-    if (error || !data?.signedUrl) {
-      throw new AppError(
-        `Impossible de générer le lien de téléchargement sécurisé : ${error?.message || 'Lien introuvable'}`,
-        500,
-        'STORAGE_DOWNLOAD_URL_FAILED',
-      );
-    }
-
-    return data.signedUrl;
+    await requireSession();
+    // RLS checks the practitioner or active portal grant and patient-visible status.
+    const [document] = await db.select({ id: clinicalDocuments.id }).from(clinicalDocuments).where(eq(clinicalDocuments.storagePath, storagePath)).limit(1);
+    if (!document) throw new AppError('Document introuvable', 404, 'DOCUMENT_NOT_FOUND');
+    return objectStore.presign(CLINICAL_DOCUMENTS_BUCKET, storagePath, expiresIn);
   },
-
-  /**
-   * Opération interne de compensation serveur : supprime un fichier téléversé si l'insertion des métadonnées DB échoue.
-   * Utilise exclusivement le client privilégié service-role (fail-closed, aucun fallback utilisateur).
-   * Ne doit JAMAIS être exposée directement aux utilisateurs comme fonctionnalité de suppression.
-   */
   async removeFileAfterFailedMetadataWrite(storagePath: string): Promise<void> {
-    const privilegedClient = getRequiredPrivilegedStorageClient();
-
-    const { error } = await privilegedClient.storage
-      .from(CLINICAL_DOCUMENTS_BUCKET)
-      .remove([storagePath]);
-
-    if (error) {
-      throw new AppError(
-        'Échec du nettoyage du fichier orphelin',
-        500,
-        'STORAGE_CLEANUP_FAILED',
-      );
-    }
+    await authorizeUploadPath(storagePath);
+    // Compensation is possible only before a metadata record commits.
+    const [document] = await db.select({ id: clinicalDocuments.id }).from(clinicalDocuments).where(eq(clinicalDocuments.storagePath, storagePath));
+    if (document) throw new AppError('Document conservé', 403);
+    await objectStore.removeOrphan(CLINICAL_DOCUMENTS_BUCKET, storagePath);
   },
 };

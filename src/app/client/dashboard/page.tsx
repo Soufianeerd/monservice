@@ -1,7 +1,7 @@
 import { getSessionAction } from '@/app/actions/session';
 import { getClientStatsAction } from '@/app/actions/dashboard.actions';
 import { getUnreadCountAction } from '@/app/actions/message.actions';
-import { FileTextIcon, SearchIcon, MessageSquareIcon, FileCheckIcon } from 'lucide-react';
+import { FileTextIcon, SearchIcon, MessageSquareIcon, FileCheckIcon, WrenchIcon } from 'lucide-react';
 import Link from 'next/link';
 import ClientStats from '@/components/client/ClientStats';
 import ClientRecentActivity from '@/components/client/ClientRecentActivity';
@@ -67,6 +67,26 @@ export default async function ClientDashboard() {
                 </div>
               </Link>
               
+              <Link href="/client/interventions" data-testid="client-dashboard-interventions" className="flex items-center p-4 bg-white border border-gray-200 rounded-lg hover:border-indigo-500 hover:shadow-sm transition-all group">
+                <div className="p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:bg-indigo-100 mr-4">
+                  <WrenchIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Mes interventions</h3>
+                  <p className="text-sm text-gray-500">Travaux, comptes rendus et réception</p>
+                </div>
+              </Link>
+
+              <Link href="/client/equipements" className="flex items-center p-4 bg-white border border-gray-200 rounded-lg hover:border-indigo-500 hover:shadow-sm transition-all group">
+                <div className="p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:bg-indigo-100 mr-4">
+                  <WrenchIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Mes équipements</h3>
+                  <p className="text-sm text-gray-500">Garanties et prochains entretiens</p>
+                </div>
+              </Link>
+
               <Link href="/client/messages" className="flex items-center p-4 bg-white border border-gray-200 rounded-lg hover:border-indigo-500 hover:shadow-sm transition-all group">
                 <div className="p-3 bg-indigo-50 rounded-full text-indigo-600 group-hover:bg-indigo-100 mr-4">
                   <MessageSquareIcon className="w-6 h-6" />

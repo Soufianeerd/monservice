@@ -1,3 +1,4 @@
+import { prepareStarterPractice } from '@/lib/services/practice-starter.service';
 import CalendarView from '@/components/crm/CalendarView';
 import { ParamedicalCalendar } from '@/components/scheduling/ParamedicalCalendar';
 import { requireProfessional } from '@/lib/auth/session';
@@ -40,6 +41,7 @@ export default async function CalendarPage() {
 
   // Paramedical branch
   if (workspace.type === 'paramedical') {
+    await prepareStarterPractice(organization.id, context.userId);
     const bootstrap = await schedulingService.getSchedulingBootstrap(organization.id);
     return (
       <div className="space-y-6">

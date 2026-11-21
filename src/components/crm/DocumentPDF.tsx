@@ -1,3 +1,4 @@
+import { issuerFooterLine, issuerPostalLine } from '@/lib/legal/issuer';
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Invoice, Client, Organization } from '@/lib/data/interfaces';
@@ -74,7 +75,7 @@ export default function DocumentPDF({ invoice, client, organization }: DocumentP
             )}
             <Text style={styles.orgDetails}>{organization.address || ''}</Text>
             <Text style={styles.orgDetails}>
-              {organization.zipCode || ''} {organization.city || ''} {organization.country ? `- ${organization.country}` : ''}
+              {issuerPostalLine(organization)} {organization.country ? `- ${organization.country}` : ''}
             </Text>
             <Text style={styles.orgDetails}>{organization.email || ''}</Text>
             <Text style={styles.orgDetails}>{organization.phone || ''}</Text>
@@ -150,7 +151,7 @@ export default function DocumentPDF({ invoice, client, organization }: DocumentP
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            {organization.name} {organization.taxId ? `- N° TVA / SIRET: ${organization.taxId}` : ''}
+            {issuerFooterLine(organization, '')}
           </Text>
           <Text style={styles.footerText}>
             En cas de retard de paiement, une pénalité égale à 3 fois le taux d'intérêt légal sera appliquée. 

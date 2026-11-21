@@ -1,5 +1,8 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -36,6 +39,7 @@ export function AppointmentForm({
   onSuccess,
   onCancel,
 }: Props) {
+  const t = useCareVocabulary();
   const isReschedule = Boolean(initialData?.appointmentId);
 
   // Form Fields
@@ -129,7 +133,7 @@ export function AppointmentForm({
     setErrorMessage(null);
 
     if (!patientId) {
-      setErrorMessage('Veuillez sélectionner un patient');
+      setErrorMessage(t('Veuillez sélectionner un patient'));
       return;
     }
 
@@ -146,6 +150,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(updated);
         } else {
           const created = await createAppointmentAction({
@@ -157,6 +162,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(created);
         }
       } catch (err: unknown) {
@@ -184,10 +190,10 @@ export function AppointmentForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form data-guide-form="rendez-vous" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SEARCH */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient *</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Patient *")}</label>
           {selectedPatientDisplay ? (
             <div className="mt-1 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <span className="text-sm font-semibold text-blue-900">{selectedPatientDisplay}</span>
@@ -341,7 +347,7 @@ export function AppointmentForm({
             </div>
             {(selectedType.bufferBeforeMinutes > 0 || selectedType.bufferAfterMinutes > 0) && (
               <div className="flex justify-between text-gray-500">
-                <span>Plage d&apos;occupation praticien (buffers inclus) :</span>
+                <span>Temps réservé au praticien, préparation et pause incluses :</span>
                 <span>
                   +{selectedType.bufferBeforeMinutes}m avant / +{selectedType.bufferAfterMinutes}m après
                 </span>

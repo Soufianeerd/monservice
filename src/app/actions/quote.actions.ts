@@ -1,5 +1,7 @@
 'use server';
 
+import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
+
 import { quoteService } from '@/lib/services/quote.service';
 import { requireProfessional, requireSession } from '@/lib/auth/session';
 import { requireFieldServiceContext } from '@/lib/workspaces/field-service/context';
@@ -13,6 +15,7 @@ import {
   acceptQuoteSchema,
   rejectQuoteSchema,
   createQuoteRevisionSchema,
+  recordQuoteDecisionSchema,
   createDepositInvoiceSchema,
   convertQuoteToInvoiceSchema,
   createWorkOrderFromQuoteSchema,
@@ -23,6 +26,7 @@ import {
   type AcceptQuoteInput,
   type RejectQuoteInput,
   type CreateQuoteRevisionInput,
+  type RecordQuoteDecisionInput,
   type CreateDepositInvoiceInput,
   type ConvertQuoteToInvoiceInput,
   type CreateWorkOrderFromQuoteInput,
@@ -101,7 +105,7 @@ export async function markQuoteViewedAction(input: MarkQuoteViewedInput): Promis
   revalidatePath(`/facturation/devis/${validated.quoteId}`);
 }
 
-export async function acceptQuoteAction(input: AcceptQuoteInput): Promise<Invoice> {
+export async function acceptQuoteAction(input: AcceptQuoteInput): Promise<ClientQuoteDTO> {
   const session = await requireSession();
   const validated = acceptQuoteSchema.parse(input);
 
@@ -114,10 +118,10 @@ export async function acceptQuoteAction(input: AcceptQuoteInput): Promise<Invoic
   revalidatePath(`/client/quotes/${validated.quoteId}`);
   revalidatePath(`/facturation/devis/${validated.quoteId}`);
   revalidatePath('/facturation/devis');
-  return accepted;
+  return toClientQuoteDTO(accepted, calculateDocumentTotals(accepted.lines).vatBreakdown);
 }
 
-export async function rejectQuoteAction(input: RejectQuoteInput): Promise<Invoice> {
+export async function rejectQuoteAction(input: RejectQuoteInput): Promise<ClientQuoteDTO> {
   const session = await requireSession();
   const validated = rejectQuoteSchema.parse(input);
 
@@ -130,7 +134,27 @@ export async function rejectQuoteAction(input: RejectQuoteInput): Promise<Invoic
   revalidatePath(`/client/quotes/${validated.quoteId}`);
   revalidatePath(`/facturation/devis/${validated.quoteId}`);
   revalidatePath('/facturation/devis');
-  return rejected;
+  return toClientQuoteDTO(rejected, calculateDocumentTotals(rejected.lines).vatBreakdown);
+}
+
+/**
+ * Le professionnel consigne la décision de son client (accord ou refus reçu
+ * hors application). Réservé à l'organisation émettrice du devis.
+ */
+export async function recordQuoteDecisionAction(input: RecordQuoteDecisionInput): Promise<Invoice> {
+  const { organizationId, userId } = await requireProfessional();
+  const validated = recordQuoteDecisionSchema.parse(input);
+
+  const updated = await quoteService.recordClientDecisionByIssuer(
+    validated.quoteId,
+    organizationId,
+    userId,
+    { decision: validated.decision, method: validated.method, decidedOn: validated.decidedOn, note: validated.note },
+  );
+
+  revalidatePath('/facturation/devis');
+  revalidatePath(`/facturation/devis/${validated.quoteId}`);
+  return updated;
 }
 
 export async function createQuoteRevisionAction(input: CreateQuoteRevisionInput): Promise<Invoice> {

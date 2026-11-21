@@ -1,16 +1,8 @@
 import 'server-only';
 import { z } from 'zod';
 
-/**
- * Validation des variables d'environnement au démarrage.
- *
- * Les helpers Supabase lisaient auparavant une variable (`...ANON_KEY`) que
- * `.env.production` ne définissait pas : l'assertion `!` masquait le problème
- * au typage et, en production, chaque page authentifiée renvoyait 500
- * (anomalie MS-009).
- *
- * Un démarrage qui échoue bruyamment vaut mieux qu'une erreur 500 silencieuse.
- */
+/** Fail at startup when the managed Auth, restricted DB or private storage
+ * configuration is missing. Provider credentials remain server-only. */
 const serverEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -19,12 +11,17 @@ const serverEnvSchema = z.object({
     .min(1, 'DATABASE_URL est requise')
     .startsWith('postgres', 'DATABASE_URL doit pointer vers PostgreSQL'),
 
-  // Supabase Auth est la source d'identité : aucun secret d'authentification
-  // applicatif n'est nécessaire côté serveur.
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL doit être une URL valide'),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
-    .string()
-    .min(20, 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY est requise'),
+  NEON_AUTH_BASE_URL: z.string().url(),
+  NEON_AUTH_COOKIE_SECRET: z.string().min(32),
+  // Stockage privé : noms NEON_STORAGE_* (obligatoires sur Netlify) ou AWS_*.
+  NEON_STORAGE_ENDPOINT: z.string().url().optional(),
+  NEON_STORAGE_REGION: z.string().min(1).optional(),
+  NEON_STORAGE_ACCESS_KEY_ID: z.string().min(1).optional(),
+  NEON_STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  AWS_ENDPOINT_URL_S3: z.string().url().optional(),
+  AWS_REGION: z.string().min(1).optional(),
+  AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   // Stripe est optionnel : l'application doit démarrer sans, avec les
   // fonctionnalités de paiement désactivées (503).
@@ -37,7 +34,11 @@ const serverEnvSchema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
 
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
-});
+}).refine(
+  (env) => Boolean((env.NEON_STORAGE_ENDPOINT || env.AWS_ENDPOINT_URL_S3) && (env.NEON_STORAGE_REGION || env.AWS_REGION)
+    && (env.NEON_STORAGE_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID) && (env.NEON_STORAGE_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY)),
+  { message: 'Configuration du stockage privé incomplète (NEON_STORAGE_* ou AWS_*)' },
+);
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 

@@ -1,5 +1,8 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -23,6 +26,7 @@ interface PatientFormProps {
 }
 
 export default function PatientForm({ initialPatient, onSuccess, onCancel }: PatientFormProps) {
+  const t = useCareVocabulary();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +75,7 @@ export default function PatientForm({ initialPatient, onSuccess, onCancel }: Pat
       try {
         if (initialPatient) {
           const updated = await updatePatientAction(initialPatient.id, payload);
+          announceGuideSaved(t('Le dossier patient est enregistré.'));
           if (onSuccess) {
             onSuccess(updated);
           } else {
@@ -78,6 +83,7 @@ export default function PatientForm({ initialPatient, onSuccess, onCancel }: Pat
           }
         } else {
           const created = await createPatientAction(payload);
+          announceGuideSaved(t('Le dossier patient est enregistré.'));
           if (onSuccess) {
             onSuccess(created);
           } else {
@@ -95,7 +101,7 @@ export default function PatientForm({ initialPatient, onSuccess, onCancel }: Pat
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form data-guide-form="patient" onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2.5">
           <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" />
@@ -182,10 +188,10 @@ export default function PatientForm({ initialPatient, onSuccess, onCancel }: Pat
               onChange={(e) => setSex(e.target.value as PatientSexCode)}
               className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
-              <option value="female">Féminin (female)</option>
-              <option value="male">Masculin (male)</option>
-              <option value="indeterminate">Indéterminé (indeterminate)</option>
-              <option value="unknown">Inconnu (unknown)</option>
+              <option value="female">Féminin</option>
+              <option value="male">Masculin</option>
+              <option value="indeterminate">Indéterminé</option>
+              <option value="unknown">Inconnu</option>
             </select>
           </div>
         </div>
@@ -405,7 +411,7 @@ export default function PatientForm({ initialPatient, onSuccess, onCancel }: Pat
           className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
-          {isPending ? 'Enregistrement...' : initialPatient ? 'Mettre à jour' : 'Créer le patient'}
+          {isPending ? 'Enregistrement...' : initialPatient ? 'Mettre à jour' : t('Créer le patient')}
         </button>
       </div>
     </form>

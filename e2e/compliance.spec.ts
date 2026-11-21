@@ -5,7 +5,7 @@ test.describe('Compliance – E2E', () => {
   // Actuellement, la CI n'utilise pas d'émulateur Supabase complet (in-memory PostgreSQL seulement).
   // Les tests nécessitant une authentification réelle (comme la création de facture)
   // ne peuvent pas être simulés silencieusement sans fausser les résultats de sécurité.
-  // TODO (Prompt 03+): Mettre en place Supabase CLI local (supabase start) dans la CI 
+  // Backend CI isolé : Neon, créé et supprimé par scripts/neon/ci-branch.mjs.
   // pour exécuter les vrais flux E2E (facturation, Peppol, TVA) de bout en bout.
 
   test('Public pages are accessible and mention compliance (No Auth Required)', async ({ page }) => {

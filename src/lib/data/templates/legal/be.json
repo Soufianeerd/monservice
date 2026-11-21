@@ -10,14 +10,14 @@
     "acceptance": "La signature électronique vaut acceptation du devis et bon de commande."
   },
   "site": {
-    "publisher": "MonService SRL",
-    "publisherAddress": "Avenue Louise 123, 1050 Bruxelles, Belgique",
-    "publisherEmail": "contact@monservice.be",
-    "publisherPhone": "+32 2 123 45 67",
-    "registrationNumber": "BCE 0123.456.789",
-    "vatId": "BE0123456789",
+    "publisher": "",
+    "publisherAddress": "",
+    "publisherEmail": "",
+    "publisherPhone": "",
+    "registrationNumber": "",
+    "vatId": "",
     "hosting": "Netlify, Inc.",
-    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+    "hostingAddress": "101 2nd Street, Suite 575, San Francisco, CA 94105, États-Unis"
   },
   "terms": {
     "intro": "Les présentes conditions générales régissent l'utilisation de MonService en Belgique.",

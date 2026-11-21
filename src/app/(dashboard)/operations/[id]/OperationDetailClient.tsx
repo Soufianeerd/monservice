@@ -127,6 +127,8 @@ const statusBadgeStyles: Record<string, { label: string; bg: string; text: strin
   cancelled: { label: 'Annulé', bg: 'bg-rose-50 text-rose-700 border-rose-200', text: 'text-rose-700', icon: XCircle },
 };
 
+const statusLabel = (status: string) => statusBadgeStyles[status]?.label ?? status;
+
 const roleLabels: Record<string, string> = {
   lead: 'Responsable / Chef de chantier',
   technician: 'Technicien / Artisan',
@@ -898,7 +900,7 @@ export default function OperationDetailClient({
                   <div className="w-2.5 h-2.5 rounded-full bg-primary-600 mt-1.5 flex-shrink-0" />
                   <div className="text-xs space-y-0.5">
                     <div className="font-semibold text-gray-900">
-                      {h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Statut : ${h.toStatus}`}
+                      {h.fromStatus ? `${statusLabel(h.fromStatus)} → ${statusLabel(h.toStatus)}` : `Statut : ${statusLabel(h.toStatus)}`}
                     </div>
                     <div className="text-gray-400">
                       {new Date(h.createdAt).toLocaleDateString('fr-FR', {
@@ -909,7 +911,7 @@ export default function OperationDetailClient({
                       })}
                       {h.changedByName && ` • par ${h.changedByName}`}
                     </div>
-                    {h.reason && <div className="text-gray-600 italic mt-0.5">{h.reason}</div>}
+                    {h.reason && <div className="text-gray-600 italic mt-0.5">{h.reason === 'Initial creation' ? 'Création' : h.reason}</div>}
                   </div>
                 </div>
               ))}

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { XIcon, CheckCircleIcon, CircleIcon, PlayCircleIcon } from 'lucide-react';
+import { XIcon, CheckCircleIcon, CircleIcon } from 'lucide-react';
 import { useOnboardingContext } from './OnboardingProvider';
 import OnboardingProgress from './OnboardingProgress';
 import { TOUR_SCENARIOS } from './definitions/tour-scenarios';
@@ -73,13 +73,6 @@ export default function SetupGuidePopover() {
                         Accéder &rarr;
                       </Link>
                     ) : null}
-                    
-                    {step.videoUrl && (
-                      <span className="flex items-center gap-1 text-xs text-gray-400 cursor-not-allowed" title="Bientôt disponible">
-                        <PlayCircleIcon className="w-3.5 h-3.5" />
-                        Tutoriel vidéo (à venir)
-                      </span>
-                    )}
                   </div>
                 )}
               </div>

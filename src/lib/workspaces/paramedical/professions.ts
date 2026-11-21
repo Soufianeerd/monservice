@@ -6,6 +6,10 @@ export const PARAMEDICAL_PROFESSION_CODES = [
   'occupational_therapist',
   'psychomotor_therapist',
   'dietitian',
+  'psychologist',
+  'sport_coach',
+  'nutritionist',
+  'wellness_massage',
 ] as const;
 
 export type ParamedicalProfessionCode = typeof PARAMEDICAL_PROFESSION_CODES[number];
@@ -46,6 +50,24 @@ export const PARAMEDICAL_PROFESSIONS = {
   dietitian: {
     code: 'dietitian',
     label: 'Diététicien',
+  },
+  psychologist: {
+    code: 'psychologist',
+    label: 'Psychologue',
+  },
+  sport_coach: {
+    code: 'sport_coach',
+    label: 'Coach sportif & bien-être',
+    shortLabel: 'Coach',
+  },
+  nutritionist: {
+    code: 'nutritionist',
+    label: 'Nutritionniste',
+  },
+  wellness_massage: {
+    code: 'wellness_massage',
+    label: 'Praticien en massage bien-être',
+    shortLabel: 'Massage bien-être',
   },
 } as const satisfies Record<ParamedicalProfessionCode, ParamedicalProfession>;
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useTransition } from 'react';
 import type { 
   PracticeStructureOverview, 
@@ -154,6 +156,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           await createPracticeLocationAction(locationForm);
           setIsAddingLocation(false);
         }
+        announceGuideSaved('Le lieu est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde du lieu');
       }
@@ -232,6 +235,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           await createPracticePractitionerAction(payload);
           setIsAddingPractitioner(false);
         }
+        announceGuideSaved('Le praticien est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde praticien');
       }
@@ -272,6 +276,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           isPrimary: locId === assignmentsForm.primaryLocation,
         }));
         await setPractitionerLocationsAction(managingAssignmentsPractitioner.id, payload);
+        announceGuideSaved('Les affectations aux lieux sont enregistrées.');
         setManagingAssignmentsPractitioner(null);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde affectations');
@@ -321,6 +326,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           });
           setIsAddingRoom(false);
         }
+        announceGuideSaved('La salle est enregistrée.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde salle');
       }
@@ -383,6 +389,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           });
           setIsAddingResource(false);
         }
+        announceGuideSaved('L’équipement est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde ressource');
       }
@@ -454,7 +461,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingLocation || editingLocation) && (
-            <form onSubmit={handleSaveLocation} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveLocation} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingLocation ? 'Modifier le lieu' : 'Nouveau lieu'}
               </h5>
@@ -616,7 +623,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingPractitioner || editingPractitioner) && (
-            <form onSubmit={handleSavePractitioner} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSavePractitioner} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingPractitioner ? 'Modifier le praticien' : 'Nouveau praticien'}
               </h5>
@@ -704,7 +711,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
 
           {/* Modal Affectation Lieux */}
           {managingAssignmentsPractitioner && (
-            <form onSubmit={handleSaveAssignments} className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveAssignments} className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-4">
               <h5 className="font-medium text-indigo-900">
                 Affectation des lieux pour {managingAssignmentsPractitioner.displayName}
               </h5>
@@ -868,7 +875,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingRoom || editingRoom) && (
-            <form onSubmit={handleSaveRoom} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveRoom} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingRoom ? 'Modifier la salle' : 'Nouvelle salle'}
               </h5>
@@ -996,7 +1003,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingResource || editingResource) && (
-            <form onSubmit={handleSaveResource} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveResource} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingResource ? 'Modifier la ressource' : 'Nouvelle ressource'}
               </h5>

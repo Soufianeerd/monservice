@@ -41,7 +41,7 @@ export default function TaskForm({ initialData, users, onSubmit, isSubmitting }:
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="tache" onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">Titre *</label>
         <input

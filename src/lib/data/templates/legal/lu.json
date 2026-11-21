@@ -10,14 +10,14 @@
     "acceptance": "La signature électronique vaut acceptation ferme."
   },
   "site": {
-    "publisher": "MonService S.à r.l.",
-    "publisherAddress": "10 avenue de la Liberté, L-1930 Luxembourg",
-    "publisherEmail": "contact@monservice.lu",
-    "publisherPhone": "+352 123 456",
-    "registrationNumber": "RCS Luxembourg B 123456",
-    "vatId": "LU12345678",
+    "publisher": "",
+    "publisherAddress": "",
+    "publisherEmail": "",
+    "publisherPhone": "",
+    "registrationNumber": "",
+    "vatId": "",
     "hosting": "Netlify, Inc.",
-    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+    "hostingAddress": "101 2nd Street, Suite 575, San Francisco, CA 94105, États-Unis"
   },
   "terms": {
     "intro": "Les présentes conditions générales régissent l'utilisation de la plateforme au Grand-Duché de Luxembourg.",

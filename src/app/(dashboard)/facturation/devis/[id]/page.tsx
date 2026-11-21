@@ -26,13 +26,16 @@ import {
   sendQuoteAction,
   deleteDraftQuoteAction,
   createQuoteRevisionAction,
+  recordQuoteDecisionAction,
   createDepositInvoiceAction,
   convertQuoteToInvoiceAction,
   createWorkOrderFromQuoteAction,
 } from '@/app/actions/quote.actions';
 import { generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
 import { getByIdAction } from '@/app/actions/organization.actions';
+import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
 import type { Invoice } from '@/lib/data/interfaces';
+import { QUOTE_DECISION_METHODS, QUOTE_DECISION_METHOD_LABELS, type QuoteDecisionMethod } from '@/lib/validation/billing.schemas';
 
 export default function ProfessionalQuoteDetailPage({
   params,
@@ -49,6 +52,8 @@ export default function ProfessionalQuoteDetailPage({
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [decisionMethod, setDecisionMethod] = useState<QuoteDecisionMethod>('in_person');
+  const [decisionDate, setDecisionDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -78,9 +83,53 @@ export default function ProfessionalQuoteDetailPage({
     try {
       const updated = await sendQuoteAction({ quoteId: quote.id });
       setQuote(updated);
-      setSuccessMsg('Devis envoyé au client avec succès !');
+      setSuccessMsg('Devis marqué comme envoyé.');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Envoi réel (S-04) : e-mail au client avec le devis en PDF joint ; la
+  // réponse du client arrive directement dans la boîte de l'entreprise.
+  const handleEmail = async () => {
+    if (!quote) return;
+    setActionLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const result = await sendDocumentByEmailAction(quote.id);
+      if (!result.sent) {
+        setError(result.message);
+        return;
+      }
+      setSuccessMsg(result.message);
+      router.refresh();
+      if (quote.status === 'draft') setQuote({ ...quote, status: 'sent' });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRecordDecision = async (decision: 'accepted' | 'rejected') => {
+    if (!quote) return;
+    setActionLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const updated = await recordQuoteDecisionAction({
+        quoteId: quote.id,
+        decision,
+        method: decisionMethod,
+        decidedOn: decisionDate,
+      });
+      setQuote(updated);
+      setSuccessMsg(decision === 'accepted' ? 'Accord du client enregistré.' : 'Refus du client enregistré.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement de la décision");
     } finally {
       setActionLoading(false);
     }
@@ -258,6 +307,18 @@ export default function ProfessionalQuoteDetailPage({
             PDF
           </button>
 
+          {(isDraft || isSent || isViewed) && (
+            <button
+              onClick={handleEmail}
+              disabled={actionLoading}
+              data-testid="email-quote-button"
+              className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+            >
+              <Send className="w-4 h-4 mr-1.5" />
+              Envoyer par e-mail
+            </button>
+          )}
+
           {isDraft && (
             <>
               <button
@@ -267,7 +328,7 @@ export default function ProfessionalQuoteDetailPage({
                 className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
               >
                 <Send className="w-4 h-4 mr-1.5" />
-                Envoyer au client
+                Marquer comme envoyé
               </button>
               <button
                 onClick={handleDelete}
@@ -330,6 +391,69 @@ export default function ProfessionalQuoteDetailPage({
           )}
         </div>
       </div>
+
+      {(isSent || isViewed) && (
+        <section
+          aria-labelledby="quote-decision-title"
+          data-testid="quote-decision-panel"
+          className="p-4 bg-white border border-gray-200 rounded-md"
+        >
+          <h2 id="quote-decision-title" className="text-sm font-semibold text-gray-900">
+            Réponse du client
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Votre client vous a répondu ? Enregistrez sa décision pour poursuivre (acompte, intervention, facture).
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-sm text-gray-700" htmlFor="quote-decision-method">
+              Réponse reçue
+              <select
+                id="quote-decision-method"
+                data-testid="quote-decision-method"
+                value={decisionMethod}
+                onChange={(event) => setDecisionMethod(event.target.value as QuoteDecisionMethod)}
+                className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                {QUOTE_DECISION_METHODS.map((method) => (
+                  <option key={method} value={method}>{QUOTE_DECISION_METHOD_LABELS[method]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-700" htmlFor="quote-decision-date">
+              Le
+              <input
+                id="quote-decision-date"
+                data-testid="quote-decision-date"
+                type="date"
+                value={decisionDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(event) => setDecisionDate(event.target.value)}
+                className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-blue-500"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => handleRecordDecision('accepted')}
+              disabled={actionLoading}
+              data-testid="record-quote-accepted-button"
+              className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus-visible:ring-2 focus-visible:ring-green-500 disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Le client a accepté
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRecordDecision('rejected')}
+              disabled={actionLoading}
+              data-testid="record-quote-rejected-button"
+              className="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
+            >
+              <XCircle className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Le client a refusé
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Notifications */}
       {error && (

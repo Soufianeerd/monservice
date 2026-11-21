@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import React, { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -25,6 +26,7 @@ interface PatientListProps {
 }
 
 export default function PatientList({ initialData }: PatientListProps) {
+  const t = useCareVocabulary();
   const router = useRouter();
   const [data, setData] = useState<PatientListResult>(initialData);
   const [birthName, setBirthName] = useState('');
@@ -34,27 +36,32 @@ export default function PatientList({ initialData }: PatientListProps) {
   const [page, setPage] = useState(0);
   const [isPending, startTransition] = useTransition();
   const limit = 25;
+  const latestSearch = useRef(0);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSearch = (newPage = 0) => {
+  const handleSearch = (newPage = 0, status = activeFilter) => {
+    const request = ++latestSearch.current;
+    setErrorMessage('');
     startTransition(async () => {
       try {
         const res = await listPatientsAction({
           birthName: birthName || undefined,
           firstName: firstName || undefined,
           birthDate: birthDate || undefined,
-          active: activeFilter,
+          active: status,
           limit,
           offset: newPage * limit,
         });
-        setData(res);
-        setPage(newPage);
-      } catch (error) {
-        console.error('Erreur lors de la recherche des patients', error);
+        if (request === latestSearch.current) { setData(res); setPage(newPage); }
+      } catch {
+        if (request === latestSearch.current) setErrorMessage('La recherche a échoué. Réessayez.');
       }
     });
   };
 
   const handleReset = () => {
+    const request = ++latestSearch.current;
+    setErrorMessage('');
     setBirthName('');
     setFirstName('');
     setBirthDate('');
@@ -66,10 +73,9 @@ export default function PatientList({ initialData }: PatientListProps) {
           limit,
           offset: 0,
         });
-        setData(res);
-        setPage(0);
-      } catch (error) {
-        console.error('Erreur lors de la réinitialisation', error);
+        if (request === latestSearch.current) { setData(res); setPage(0); }
+      } catch {
+        if (request === latestSearch.current) setErrorMessage('La recherche a échoué. Réessayez.');
       }
     });
   };
@@ -96,13 +102,14 @@ export default function PatientList({ initialData }: PatientListProps) {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Users className="w-7 h-7 text-blue-600" />
-            Registre des Patients
+            Patients
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Gestion de l’identité administrative et des représentants
+            Retrouvez un patient, ouvrez sa fiche ou ajoutez un nouveau dossier.
           </p>
         </div>
         <Link
+          data-tour="new-patient"
           href="/patients/new"
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
         >
@@ -112,12 +119,12 @@ export default function PatientList({ initialData }: PatientListProps) {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+      <form onSubmit={e => { e.preventDefault(); handleSearch(0); }} data-tour="patient-filters" className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
           <Filter className="w-4 h-4 text-blue-600" />
           Filtres de recherche
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <div>
             <label htmlFor="filter-birth-name" className="block text-xs font-medium text-gray-600 mb-1">
               Nom (naissance / usage)
@@ -129,7 +136,6 @@ export default function PatientList({ initialData }: PatientListProps) {
               onChange={(e) => setBirthName(e.target.value)}
               placeholder="Ex: Dupont"
               className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch(0)}
             />
           </div>
           <div>
@@ -143,7 +149,6 @@ export default function PatientList({ initialData }: PatientListProps) {
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="Ex: Marie"
               className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch(0)}
             />
           </div>
           <div>
@@ -165,16 +170,17 @@ export default function PatientList({ initialData }: PatientListProps) {
             <select
               id="filter-status"
               value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value as 'active' | 'archived' | 'all')}
+              onChange={(e) => { const status = e.target.value as 'active' | 'archived' | 'all'; setActiveFilter(status); handleSearch(0, status); }}
               className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
-              <option value="active">Actifs uniquement</option>
-              <option value="archived">Archivés uniquement</option>
-              <option value="all">Tous les statuts</option>
+              <option value="active">{t("Patients actifs")}</option>
+              <option value="archived">{t("Patients archivés")}</option>
+              <option value="all">{t("Tous les patients")}</option>
             </select>
           </div>
         </div>
 
+        <p className="text-xs text-gray-500">{t("Un patient archivé reste conservé dans votre cabinet. Le filtre de statut s’applique immédiatement ; cliquez sur Rechercher pour appliquer les autres critères.")}</p>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <button
             type="button"
@@ -186,8 +192,7 @@ export default function PatientList({ initialData }: PatientListProps) {
             Réinitialiser
           </button>
           <button
-            type="button"
-            onClick={() => handleSearch(0)}
+            type="submit"
             disabled={isPending}
             className="px-4 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
           >
@@ -195,7 +200,8 @@ export default function PatientList({ initialData }: PatientListProps) {
             {isPending ? 'Recherche...' : 'Rechercher'}
           </button>
         </div>
-      </div>
+      </form>
+      {errorMessage && <p role="alert" className="text-sm text-red-700">{errorMessage}</p>}
 
       {/* Patients Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -292,7 +298,7 @@ export default function PatientList({ initialData }: PatientListProps) {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <Users className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                    <p className="font-medium text-gray-700">Aucun patient trouvé</p>
+                    <p className="font-medium text-gray-700">{t("Aucun patient trouvé")}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Modifiez vos critères de recherche ou créez un nouveau patient.
                     </p>

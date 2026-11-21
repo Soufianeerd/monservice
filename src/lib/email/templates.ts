@@ -72,7 +72,8 @@ export function quoteSentTemplate(params: {
   organizationName: string;
   quoteNumber: string;
   totalTTC: number;
-  url: string;
+  /** Lien de consultation ; absent en V1 (le devis est joint en PDF). */
+  url?: string;
   message?: string;
 }) {
   return {
@@ -84,8 +85,9 @@ export function quoteSentTemplate(params: {
         <p><strong>${escapeHtml(params.organizationName)}</strong> vous a adressé un devis
            d'un montant de <strong>${formatAmount(params.totalTTC)} TTC</strong>.</p>
         ${params.message ? `<p style="background:#f9fafb;padding:12px;border-radius:6px;">${escapeHtml(params.message)}</p>` : ''}
+        ${params.url ? '' : '<p>Le devis est joint à cet e-mail au format PDF. Pour l’accepter, répondez simplement à ce message.</p>'}
       `,
-      ctaLabel: 'Consulter le devis',
+      ctaLabel: params.url ? 'Consulter le devis' : undefined,
       ctaUrl: params.url,
     }),
   };
@@ -97,7 +99,9 @@ export function invoiceSentTemplate(params: {
   invoiceNumber: string;
   totalTTC: number;
   dueDate?: string | null;
-  url: string;
+  /** Lien de consultation ; absent en V1 (la facture est jointe en PDF). */
+  url?: string;
+  paymentDetails?: string | null;
 }) {
   return {
     subject: `Facture ${params.invoiceNumber} de ${params.organizationName}`,
@@ -108,8 +112,10 @@ export function invoiceSentTemplate(params: {
         <p>Veuillez trouver votre facture d'un montant de
            <strong>${formatAmount(params.totalTTC)} TTC</strong>.</p>
         ${params.dueDate ? `<p>Échéance de paiement : <strong>${formatDate(params.dueDate)}</strong>.</p>` : ''}
+        ${params.paymentDetails?.trim() ? `<p><strong>Coordonnées de règlement</strong><br>${escapeHtml(params.paymentDetails.trim())}</p>` : ''}
+        ${params.url ? '' : '<p>La facture est jointe à cet e-mail au format PDF.</p>'}
       `,
-      ctaLabel: 'Consulter et régler la facture',
+      ctaLabel: params.url ? 'Consulter et régler la facture' : undefined,
       ctaUrl: params.url,
     }),
   };
@@ -119,29 +125,80 @@ export function invoiceReminderTemplate(params: {
   clientName: string;
   organizationName: string;
   invoiceNumber: string;
-  totalTTC: number;
+  amount: number;
   dueDate: string;
   daysOverdue: number;
-  url: string;
+  level: 1 | 2 | 3;
+  paymentDetails?: string | null;
 }) {
   // Ton mesuré : une relance automatique trop sèche abîme la relation
-  // commerciale de l'utilisateur avec son propre client.
-  const tone =
-    params.daysOverdue <= 0
-      ? `arrive à échéance le <strong>${formatDate(params.dueDate)}</strong>`
-      : `est échue depuis <strong>${params.daysOverdue} jour${params.daysOverdue > 1 ? 's' : ''}</strong>`;
+  // commerciale de l'utilisateur avec son propre client. Aucun lien : les
+  // espaces clients sont fermés en V1, le client répond directement au
+  // professionnel (adresse de réponse).
+  const opening =
+    params.level === 1
+      ? 'Sauf erreur de notre part, nous n’avons pas encore reçu le règlement de la facture'
+      : params.level === 2
+        ? 'Nous revenons vers vous au sujet de la facture'
+        : 'Malgré nos précédents rappels, nous restons sans règlement de la facture';
+  const details = params.paymentDetails?.trim()
+    ? `<p style="font-size:14px;color:#374151;"><strong>Coordonnées de règlement</strong><br>${escapeHtml(params.paymentDetails.trim()).replace(/\n/g, '<br>')}</p>`
+    : '';
 
   return {
-    subject: `Rappel — facture ${params.invoiceNumber}`,
+    subject: params.level === 3
+      ? `Dernier rappel — facture ${params.invoiceNumber}`
+      : `Rappel — facture ${params.invoiceNumber}`,
     html: layout({
-      title: `Rappel de règlement`,
+      title: params.level === 3 ? 'Dernier rappel de règlement' : 'Rappel de règlement',
       body: `
         <p>Bonjour ${escapeHtml(params.clientName)},</p>
-        <p>Sauf erreur de notre part, la facture <strong>${escapeHtml(params.invoiceNumber)}</strong>
-           d'un montant de <strong>${formatAmount(params.totalTTC)} TTC</strong> ${tone}.</p>
-        <p>Si le règlement a déjà été effectué, merci de ne pas tenir compte de ce message.</p>
+        <p>${opening} <strong>${escapeHtml(params.invoiceNumber)}</strong>
+           de ${escapeHtml(params.organizationName)}, d'un montant de <strong>${formatAmount(params.amount)} TTC</strong>,
+           échue depuis le ${formatDate(params.dueDate)} (${params.daysOverdue} jour${params.daysOverdue > 1 ? 's' : ''}).</p>
+        ${details}
+        <p>Si le règlement a déjà été effectué, merci de ne pas tenir compte de ce message. Pour toute question, répondez simplement à cet e-mail.</p>
       `,
-      ctaLabel: 'Consulter la facture',
+    }),
+  };
+}
+
+export function quoteFollowupTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  quoteNumber: string;
+  amount: number;
+  sentOn: string;
+}) {
+  return {
+    subject: `Votre devis ${params.quoteNumber} — ${params.organizationName}`,
+    html: layout({
+      title: 'Avez-vous pu étudier notre devis ?',
+      body: `
+        <p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>Le ${formatDate(params.sentOn)}, ${escapeHtml(params.organizationName)} vous a adressé le devis
+           <strong>${escapeHtml(params.quoteNumber)}</strong> d'un montant de <strong>${formatAmount(params.amount)} TTC</strong>.</p>
+        <p>Avez-vous des questions ou souhaitez-vous l'ajuster ? Répondez simplement à cet e-mail : votre demande arrivera directement chez ${escapeHtml(params.organizationName)}.</p>
+      `,
+    }),
+  };
+}
+
+export function reviewRequestTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  url: string;
+}) {
+  return {
+    subject: `Votre avis sur ${params.organizationName}`,
+    html: layout({
+      title: 'Comment s’est passée la prestation ?',
+      body: `
+        <p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>Merci d'avoir fait confiance à ${escapeHtml(params.organizationName)}. Votre avis aide d'autres clients à choisir, et l'entreprise à s'améliorer.</p>
+        <p>Cela prend moins d'une minute, sans création de compte. Le lien est personnel, valable 30 jours et ne sert qu'une fois.</p>
+      `,
+      ctaLabel: 'Donner mon avis',
       ctaUrl: params.url,
     }),
   };
@@ -175,6 +232,47 @@ export function accountDeletionTemplate(params: { name: string; deletionDate: st
            comptables (factures) sont conservés de façon anonymisée pendant 10 ans,
            conformément aux obligations légales de conservation.</p>
       `,
+    }),
+  };
+}
+
+export function clientPortalInvitationTemplate(params: {
+  clientName: string;
+  organizationName: string;
+  url: string;
+  expiresAt: string;
+}) {
+  return {
+    subject: `${params.organizationName} vous invite à votre espace client`,
+    html: layout({
+      title: 'Votre espace client',
+      body: `<p>Bonjour ${escapeHtml(params.clientName)},</p>
+        <p>${escapeHtml(params.organizationName)} vous invite à suivre vos devis, factures et interventions dans votre espace client MonService.</p>
+        <p>Connectez-vous ou créez votre compte avec <strong>cette adresse e-mail</strong>, puis acceptez l'invitation. Le lien est valable jusqu'au ${formatDate(params.expiresAt)} et ne sert qu'une fois.</p>
+        <p style="font-size:13px;color:#6b7280;">Si vous n'attendiez pas cette invitation, ignorez simplement ce message.</p>`,
+      ctaLabel: 'Accepter l’invitation',
+      ctaUrl: params.url,
+    }),
+  };
+}
+
+export function teamInvitationTemplate(params: {
+  organizationName: string;
+  inviterName: string;
+  roleLabel: string;
+  url: string;
+  expiresAt: string;
+}) {
+  return {
+    subject: `${params.organizationName} vous invite à rejoindre son espace MonService`,
+    html: layout({
+      title: 'Rejoindre une équipe',
+      body: `<p>Bonjour,</p>
+        <p>${escapeHtml(params.inviterName)} vous invite à rejoindre ${escapeHtml(params.organizationName)} sur MonService, en tant que ${escapeHtml(params.roleLabel.toLowerCase())}.</p>
+        <p>Créez votre compte ou connectez-vous avec <strong>cette adresse e-mail</strong>, puis acceptez l'invitation. Le lien est valable jusqu'au ${formatDate(params.expiresAt)} et ne sert qu'une fois.</p>
+        <p style="font-size:13px;color:#6b7280;">Si vous n'attendiez pas cette invitation, ignorez simplement ce message.</p>`,
+      ctaLabel: 'Rejoindre l’équipe',
+      ctaUrl: params.url,
     }),
   };
 }

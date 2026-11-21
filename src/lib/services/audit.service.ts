@@ -2,6 +2,7 @@ import { db } from '@/lib/db/server';
 import { auditLogs } from '@/lib/db/schema';
 import { generateId } from '@/lib/utils/id-generator';
 import { eq, sql, and } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 
 export class AuditService {
   async log(
@@ -40,7 +41,7 @@ export class AuditService {
       endDate?: Date;
     }
   ): Promise<any[]> {
-    const conditions = [eq(auditLogs.organizationId, organizationId)];
+    const conditions: SQL[] = [eq(auditLogs.organizationId, organizationId)];
     
     if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
     if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
@@ -49,7 +50,6 @@ export class AuditService {
     if (filters?.startDate) conditions.push(sql`${auditLogs.createdAt} >= ${filters.startDate.toISOString()}`);
     if (filters?.endDate) conditions.push(sql`${auditLogs.createdAt} <= ${filters.endDate.toISOString()}`);
     
-    // @ts-ignore - dynamic and conditions
     return await db.select().from(auditLogs).where(and(...conditions)).orderBy(sql`${auditLogs.createdAt} DESC`);
   }
 

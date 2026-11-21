@@ -29,7 +29,18 @@ export type SendEmailInput = {
   attachments?: EmailAttachment[];
   /** Étiquette de traçabilité (`invoice.sent`, `quote.reminder`…). */
   tag?: string;
+  /** Entreprise au nom de laquelle MonService envoie (pied d'e-mail). */
+  onBehalfOf?: string;
 };
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+}
+
+/** Journaux sans adresse complète : « j***@domaine.fr ». */
+function maskRecipients(recipients: string[]): string[] {
+  return recipients.map((address) => address.replace(/^(.).*(@.*)$/, '$1***$2'));
+}
 
 export type SendEmailResult = {
   sent: boolean;
@@ -58,7 +69,6 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-import { legalService } from '@/lib/services/legal.service';
 
 export async function sendEmail(input: SendEmailInput & { country?: string; locale?: string }): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -67,7 +77,7 @@ export async function sendEmail(input: SendEmailInput & { country?: string; loca
   if (!apiKey) {
     // Mode dégradé explicite : jamais de faux succès silencieux.
     console.warn('[email] NON ENVOYÉ — RESEND_API_KEY absente', {
-      to: recipients,
+      to: maskRecipients(recipients),
       subject: input.subject,
       tag: input.tag,
     });
@@ -75,20 +85,16 @@ export async function sendEmail(input: SendEmailInput & { country?: string; loca
   }
 
   try {
-    // Add legal footers
-    const mentions = await legalService.getSiteMentions(input.country || 'FR', input.locale || 'fr');
-    const legalFooterHtml = `
-      <hr style="margin-top: 40px; border: 1px solid #eee;" />
-      <p style="font-size: 10px; color: #6b7280; text-align: center;">
-        Cet email est envoyé par <strong>${mentions.publisher}</strong><br/>
-        ${mentions.publisherAddress}<br/>
-        Immatriculation : ${mentions.registrationNumber} - TVA : ${mentions.vatId}
-      </p>
-    `;
-    const legalFooterText = `\n\n---\nCet email est envoyé par ${mentions.publisher}\n${mentions.publisherAddress}\nImmatriculation : ${mentions.registrationNumber} - TVA : ${mentions.vatId}`;
-
-    const finalHtml = input.html + legalFooterHtml;
-    const finalText = (input.text ?? htmlToText(input.html)) + legalFooterText;
+    // Pied d'e-mail : qui envoie, pour le compte de qui. Jamais d'identité
+    // inventée ; inséré avant </body> pour rester dans le document HTML.
+    const footerText = input.onBehalfOf
+      ? `Envoyé via MonService pour le compte de ${input.onBehalfOf}.`
+      : 'Envoyé par MonService.';
+    const legalFooterHtml = `<hr style="margin-top:40px;border:0;border-top:1px solid #eee" /><p style="font-size:11px;color:#6b7280;text-align:center">${escapeHtml(footerText)}</p>`;
+    const finalHtml = /<\/body>/i.test(input.html)
+      ? input.html.replace(/<\/body>/i, `${legalFooterHtml}</body>`)
+      : input.html + legalFooterHtml;
+    const finalText = `${input.text ?? htmlToText(input.html)}\n\n---\n${footerText}`;
 
     const response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
@@ -123,7 +129,7 @@ export async function sendEmail(input: SendEmailInput & { country?: string; loca
       console.error('[email] échec envoi', {
         status: response.status,
         detail: detail.slice(0, 500),
-        to: recipients,
+        to: maskRecipients(recipients),
         tag: input.tag,
       });
       return { sent: false, error: `Erreur ${response.status}` };
@@ -133,7 +139,7 @@ export async function sendEmail(input: SendEmailInput & { country?: string; loca
 
     console.info('[audit] email.sent', {
       id: data.id,
-      to: recipients,
+      to: maskRecipients(recipients),
       tag: input.tag,
       at: new Date().toISOString(),
     });
@@ -142,7 +148,7 @@ export async function sendEmail(input: SendEmailInput & { country?: string; loca
   } catch (error) {
     // Un échec d'envoi ne doit jamais faire échouer l'action métier :
     // la facture est créée même si l'e-mail ne part pas.
-    console.error("[email] exception à l'envoi", { error, to: recipients, tag: input.tag });
+    console.error("[email] exception à l'envoi", { error, to: maskRecipients(recipients), tag: input.tag });
     return { sent: false, error: "Échec de l'envoi" };
   }
 }

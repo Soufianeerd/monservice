@@ -73,44 +73,6 @@ export const userService = {
   },
 
   /**
-   * Crée le profil applicatif associé à un compte Supabase Auth.
-   *
-   * L'identifiant est IMPOSÉ : c'est celui de `auth.users`. C'est cette
-   * égalité qui permet à `getSessionContext()` de relier l'identité Supabase
-   * au profil métier.
-   *
-   * Aucun mot de passe n'est stocké ici : depuis la migration vers Supabase
-   * Auth, les identifiants vivent exclusivement dans `auth.users`.
-   */
-  async createProfile(data: {
-    id: string;
-    name: string;
-    email: string;
-    profileType: string;
-    organizationId?: string;
-  }): Promise<User> {
-    const now = new Date().toISOString();
-
-    const newProfile = {
-      id: data.id,
-      name: data.name,
-      email: data.email.trim().toLowerCase(),
-      profileType: data.profileType,
-      organizationId: data.organizationId ?? null,
-      onboardingCompleted: false,
-      onboardingStep: 0,
-      subscriptionTier: 'free',
-      subscriptionStatus: 'inactive',
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.insert(users).values(newProfile as unknown as typeof users.$inferInsert);
-
-    return newProfile as unknown as User;
-  },
-
-  /**
    * Met à jour le profil d'un utilisateur.
    *
    * Défense en profondeur : même si l'appelant transmet des champs non

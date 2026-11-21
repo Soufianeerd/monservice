@@ -1,0 +1,33 @@
+name: Environnement de démonstration
+# Branche Neon « demo » persistante, séparée de la production. Met à jour son schéma
+# puis construit et publie le site sur Netlify (monservicecrm).
+on:
+  workflow_dispatch:
+  push:
+    branches: [launch/v1-professional-only]
+    paths: ['.github/workflows/demo.yml', 'scripts/neon/demo-branch.mjs', 'drizzle/neon/**', 'src/**']
+permissions:
+  contents: read
+concurrency:
+  group: monservice-demo
+  cancel-in-progress: false
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_CI_API_KEY }}
+      DEMO_APP_URL: https://monservicecrm.netlify.app
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: test -n "$NEON_API_KEY" && test -n "$NETLIFY_AUTH_TOKEN"
+      - run: npm ci
+      - run: npm install --global neon@8.0.7
+      - run: node scripts/neon/demo-branch.mjs
+      - name: Construire et publier sur Netlify
+        run: npx --yes netlify-cli@latest deploy --build --prod --site "$NETLIFY_SITE_ID" --message "Démo ${GITHUB_SHA::7}"
