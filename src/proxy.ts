@@ -23,6 +23,8 @@ const PUBLIC_EXACT = new Set([
   '/invitation/equipe', // la page gère elle-même l'absence de session
   '/laisser-un-avis', // lien d'avis à usage unique, sans compte
   '/cookies',
+  '/sous-traitants',
+  '/contrat-de-sous-traitance',
 ]);
 
 /** Chemins publics comparés par préfixe (jamais `'/'`). */

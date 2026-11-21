@@ -11,7 +11,7 @@ export default function Footer() {
             <span className="text-lg font-bold text-gray-900 tracking-tight">MonService</span>
           </div>
           
-          <div className="flex justify-center space-x-6 md:order-2">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:order-2">
             <Link href="/mentions-legales" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">
               Mentions légales
             </Link>
@@ -20,6 +20,12 @@ export default function Footer() {
             </Link>
             <Link href="/conditions" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">
               CGU
+            </Link>
+            <Link href="/sous-traitants" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">
+              Sous-traitants
+            </Link>
+            <Link href="/contrat-de-sous-traitance" className="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">
+              Contrat RGPD
             </Link>
           </div>
           
