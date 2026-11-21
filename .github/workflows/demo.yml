@@ -18,33 +18,14 @@ jobs:
     env:
       NEON_API_KEY: ${{ secrets.NEON_CI_API_KEY }}
       DEMO_APP_URL: https://monservice-demo.vercel.app
-      DEMO_ENV_PUBLIC_KEY: |
-        -----BEGIN PUBLIC KEY-----
-        MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAqkZqKzE09+CSNlhdG4CZ
-        MoVRuU0wASNMbIrGh8cL50V91cy6F216hegJNijjb/pBA4YqSCpLxG6yyMPxnErM
-        YBbgZbRhP1SQ9EYLc8gyuKRIvn5mwHyCaexvYSMww8tLC+i4Lz/TdHB37v8aUWq5
-        tqK0VmLGV7MDVzvgGiURTo6y1U7s9cks8gTpw11WhlRItiNwunlWznUVizOKmc/a
-        RqcwXNrMaZO/RTNLMXDm6xEFqXYExtNHSi60F+3E0mDIBi6YORPCzk4zPMeZQNXT
-        ay9hpz3ADaI5nsJaaa0sKbzHEgysTU6yy/i1jlaQwW8ZZYV+u4zG+b13j/TKDSnV
-        env1S3N8Rd48IzSfTXRTBk6A23J8NfltVcH/tCvJywJ+XfBrnK8L/5LRr6YnwDlH
-        3jH52xSxiGZqz6DqxjiPvHqBFHilcaDf9nWbK3bH0bMRPPczxj0BXyaIN1YsERIC
-        2tN+3HWEvlQkaTMWws0PZQI8lqqr5lQOi0gpU0xsV8NbOWNKBZGifueQG+Oo0k2m
-        hHSIkzmCGEMhOqvlNs6lTC2+fs5WewHOqtbpWNlXWR5+TS1vEX4oqua85ECABVbJ
-        b0EvilNucq91twODipIRCsQN1vQVeOTI0b4kfzHyMaj3VVXE4rRyZIcWgauzu+1G
-        3fVmOeiiVrd/0xokpWsUiacCAwEAAQ==
-        -----END PUBLIC KEY-----
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - run: test -n "$NEON_API_KEY"
+      - run: test -n "$NEON_API_KEY" && test -n "$VERCEL_TOKEN"
       - run: npm ci
       - run: npm install --global neon@8.0.7
       - run: node scripts/neon/demo-branch.mjs
-      - uses: actions/upload-artifact@v4
-        with:
-          name: demo-env-encrypted
-          path: demo-output/env.enc.json
-          retention-days: 1

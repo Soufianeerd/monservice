@@ -13,8 +13,7 @@ const template = 'br-icy-morning-b1317ev6';
 const production = 'br-little-surf-b1l5wgni';
 const name = 'demo';
 const appUrl = process.env.DEMO_APP_URL;
-const publicKey = process.env.DEMO_ENV_PUBLIC_KEY;
-if (!appUrl || !publicKey) throw new Error('DEMO_APP_URL and DEMO_ENV_PUBLIC_KEY are required');
+if (!appUrl) throw new Error('DEMO_APP_URL is required');
 const adminFile = '.env.demo-admin.local';
 const runtimeFile = '.env.demo-runtime.local';
 const environment = { ...process.env, NEON_ADMIN_ENV_FILE: adminFile, NEON_RUNTIME_ENV_FILE: runtimeFile };
@@ -68,13 +67,31 @@ Object.assign(out, {
 console.log('Runtime keys:', Object.keys(out).sort().join(', '));
 console.log('Runtime role:', new URL(out.DATABASE_URL).username);
 
-// Chiffrement hybride : clé AES aléatoire chiffrée en RSA-OAEP.
-const key = crypto.randomBytes(32);
-const iv = crypto.randomBytes(12);
-const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-const body = Buffer.concat([cipher.update(JSON.stringify(out)), cipher.final()]);
-const wrapped = crypto.publicEncrypt({ key: publicKey, oaepHash: 'sha256' }, key);
-fs.mkdirSync('demo-output', { recursive: true });
-fs.writeFileSync('demo-output/env.enc.json', JSON.stringify({ wrapped: wrapped.toString('base64'), iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), body: body.toString('base64') }));
+// Les variables partent directement de GitHub vers Vercel (jeton VERCEL_TOKEN dans
+// les secrets du dépôt) : aucune valeur n'apparaît dans les journaux ni ailleurs.
+const vercelToken = process.env.VERCEL_TOKEN;
+const team = 'team_rWwEXqoM91yFl0AQdwuxyjlI';
+const vercelProject = 'prj_gBJtdHZLC3D6uJje6vEtSgVMPnJS';
+if (!vercelToken) throw new Error('VERCEL_TOKEN secret is missing');
 for (const file of [adminFile, runtimeFile]) fs.rmSync(file, { force: true });
-console.log('Encrypted demo environment written');
+const visible = new Set(['NEXT_PUBLIC_APP_URL', 'LAUNCH_INCLUDED_PLAN', 'CLIENT_ACCESS_ENABLED', 'DATABASE_POOL_MAX', 'AWS_REGION', 'NEON_AUTH_BASE_URL', 'NEON_AUTH_JWKS_URL', 'AWS_ENDPOINT_URL_S3', 'NEON_BRANCH_ID']);
+const vercel = async (path, body) => {
+  const response = await fetch(`https://api.vercel.com${path}${path.includes('?') ? '&' : '?'}teamId=${team}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${vercelToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`Vercel API ${path.split('?')[0]} failed with status ${response.status}`);
+  return response.json();
+};
+await vercel(`/v10/projects/${vercelProject}/env?upsert=true`, Object.entries(out).map(([key, value]) => ({
+  key, value, type: visible.has(key) ? 'plain' : 'sensitive', target: ['production'],
+})));
+console.log('Vercel environment updated');
+const deployment = await vercel('/v13/deployments', {
+  name: 'monservice-demo',
+  project: vercelProject,
+  target: 'production',
+  gitSource: { type: 'github', org: 'Soufianeerd', repo: 'monservice', ref: process.env.GITHUB_REF_NAME ?? 'launch/v1-professional-only' },
+});
+console.log('Vercel production deployment started:', deployment.id);
