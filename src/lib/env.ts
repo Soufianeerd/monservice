@@ -14,6 +14,7 @@ const serverEnvSchema = z.object({
   NEON_AUTH_BASE_URL: z.string().url(),
   NEON_AUTH_COOKIE_SECRET: z.string().min(32),
   // Stockage privé : noms NEON_STORAGE_* (obligatoires sur Netlify) ou AWS_*.
+  TWO_FACTOR_ENCRYPTION_KEY: z.string().min(32).optional(),
   NEON_STORAGE_ENDPOINT: z.string().url().optional(),
   NEON_STORAGE_REGION: z.string().min(1).optional(),
   NEON_STORAGE_ACCESS_KEY_ID: z.string().min(1).optional(),

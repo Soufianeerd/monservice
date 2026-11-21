@@ -1,7 +1,7 @@
 import DashboardShell from '@/components/layout/DashboardShell';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider';
-import { getSessionContext } from '@/lib/auth/session';
+import { getPendingSecondFactorContext, getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { currentTeamRemoval } from '@/lib/services/team.service';
 import { isClientAccessEnabled } from '@/lib/launch/client-access';
@@ -17,6 +17,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const ctx = await getSessionContext();
 
   if (!ctx) {
+    // Mot de passe validé, second facteur encore attendu.
+    if (await getPendingSecondFactorContext()) redirect('/verification-2fa');
     // Membre retiré de son équipe : session valide mais plus aucun accès. On
     // l'informe plutôt que de le renvoyer en boucle vers la connexion.
     const removal = await currentTeamRemoval().catch(() => null);

@@ -100,6 +100,9 @@ if (!site) throw new Error(`Netlify site ${siteName} not found`);
 const account = site.account_slug ?? site.account_id;
 console.log(`Netlify site found (account ${account})`);
 const existing = new Set((await netlify('GET', `/accounts/${account}/env?site_id=${site.id}`)).map((variable) => variable.key));
+// Clé de chiffrement des secrets de double authentification : créée une seule
+// fois, jamais remplacée (la changer rendrait les secrets enregistrés illisibles).
+if (!existing.has('TWO_FACTOR_ENCRYPTION_KEY')) out.TWO_FACTOR_ENCRYPTION_KEY = crypto.randomBytes(32).toString('hex');
 for (const [key, value] of Object.entries(out)) {
   // Offre gratuite : pas de portée spécifique (toutes les portées par défaut).
   const variable = { key, values: [{ context: 'all', value }] };

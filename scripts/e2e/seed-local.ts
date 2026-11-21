@@ -213,6 +213,8 @@ async function seed() {
   const proGenericAId = await createAuthUser('pro_generic_a@monservice.invalid', 'Professional Generic A', 'professional', SEED_GENERIC_IDS.orgA);
   const cliGenericAId = await createAuthUser('client_generic_a@monservice.invalid', 'Client Generic A', 'client', SEED_GENERIC_IDS.orgA);
   await createAuthUser('pro_generic_b@monservice.invalid', 'Professional Generic B', 'professional', SEED_GENERIC_IDS.orgB);
+  // Compte dédié à la double authentification (activée puis désactivée par l'E2E).
+  await createAuthUser('pro_two_factor@monservice.invalid', 'Professional Two Factor', 'professional', SEED_GENERIC_IDS.orgB);
   await createAuthUser('client_generic_b@monservice.invalid', 'Client Generic B', 'client', SEED_GENERIC_IDS.orgB);
 
   // Paramedical

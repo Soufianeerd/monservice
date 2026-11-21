@@ -1,18 +1,24 @@
 import { Metadata } from 'next';
-import { requireSession } from '@/lib/auth/session';
+import { getTwoFactorStatusAction } from '@/app/actions/two-factor.actions';
+import TwoFactorSettings from '@/components/settings/TwoFactorSettings';
 
 export const metadata: Metadata = {
   title: 'Sécurité du compte | MonService',
-  description: 'Gérez la sécurité de votre compte et l\'authentification à deux facteurs.',
+  description: 'Gérez la sécurité de votre compte et la double authentification.',
 };
 
 export default async function SecurityPage() {
-  await requireSession();
+  const status = await getTwoFactorStatusAction();
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Sécurité et Accès</h1>
-      <p>L’authentification à deux facteurs n’est pas encore disponible. Aucun second facteur n’est activé sur ce compte.</p>
+    <div className="max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Sécurité du compte</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Protégez l’accès à vos clients et à vos factures, même si votre mot de passe venait à fuiter.
+        </p>
+      </div>
+      <TwoFactorSettings initiallyEnabled={status.enabled} available={status.available} />
     </div>
   );
 }

@@ -24,6 +24,7 @@ export default async function ParametresLayout({ children }: { children: React.R
 
   const tabs = [
     { name: 'Mon compte', href: '/parametres/profil' },
+    { name: 'Sécurité', href: '/parametres/securite' },
     { name: workspace.type === 'paramedical' ? 'Coordonnées du cabinet' : 'Organisation', href: '/parametres/organisation' },
   ];
 

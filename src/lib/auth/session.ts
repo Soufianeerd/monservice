@@ -5,6 +5,7 @@ import { db } from '@/lib/db/server';
 import { users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { AppError } from '@/lib/errors';
+import { hasVerifiedSecondFactor } from '@/lib/auth/two-factor/session-cookie';
 
 /** Verified Neon session → stable application identity → stored tenant/profile.
  * Identity is installed by the DB adapter transaction-locally. Browser fields
@@ -19,13 +20,9 @@ export type SessionContext = {
 
 export type OrganizationContext = SessionContext & { organizationId: string };
 
-/**
- * Contexte si une session valide existe, `null` sinon. Ne lève jamais.
- *
- * `cache()` mémoïse le résultat pour la durée d'une même requête : le profil
- * n'est lu qu'une fois même si plusieurs actions l'appellent.
- */
-export const getSessionContext = cache(async (): Promise<SessionContext | null> => {
+type ResolvedSession = { context: SessionContext | null; secondFactorPending: boolean };
+
+const resolveSession = cache(async (): Promise<ResolvedSession> => {
   // The DB adapter verifies Neon Auth and installs the provider identity inside
   // this query's transaction. SQL resolves the stable app ID and denies closure.
   const profile = await db
@@ -35,22 +32,47 @@ export const getSessionContext = cache(async (): Promise<SessionContext | null> 
       accountClosedAt: users.accountClosedAt,
       profileType: users.profileType,
       organizationId: users.organizationId,
+      // Même instruction SQL : aucun aller-retour de plus par requête.
+      twoFactorEnabled: sql<boolean>`public.two_factor_enabled()`,
     })
     .from(users)
     .where(eq(users.id, sql`public.current_app_user_id()`));
 
-  if (profile[0]?.accountClosedAt) return null;
+  const row = profile[0];
+  if (!row || row.accountClosedAt) return { context: null, secondFactorPending: false };
 
-  if (!profile[0]) {
-    return null;
-  }
-
-  return {
-    userId: profile[0].id,
-    email: profile[0].email,
-    organizationId: profile[0].organizationId ?? null,
-    profileType: profile[0].profileType,
+  const context: SessionContext = {
+    userId: row.id,
+    email: row.email,
+    organizationId: row.organizationId ?? null,
+    profileType: row.profileType,
   };
+  // Double authentification active : sans preuve liée à cette session, le
+  // compte est traité comme non connecté par toutes les actions et pages.
+  if (row.twoFactorEnabled && !(await hasVerifiedSecondFactor(row.id))) {
+    return { context, secondFactorPending: true };
+  }
+  return { context, secondFactorPending: false };
+});
+
+/**
+ * Contexte si une session valide existe, `null` sinon. Ne lève jamais.
+ *
+ * `cache()` mémoïse le résultat pour la durée d'une même requête : le profil
+ * n'est lu qu'une fois même si plusieurs actions l'appellent.
+ */
+export const getSessionContext = cache(async (): Promise<SessionContext | null> => {
+  const resolved = await resolveSession();
+  return resolved.secondFactorPending ? null : resolved.context;
+});
+
+/**
+ * Compte connecté par mot de passe mais dont le second facteur reste à
+ * vérifier. Réservé à la page et à l'action de vérification.
+ */
+export const getPendingSecondFactorContext = cache(async (): Promise<SessionContext | null> => {
+  const resolved = await resolveSession();
+  return resolved.secondFactorPending ? resolved.context : null;
 });
 
 /** Contexte utilisateur authentifié. Lève 401 sinon. */

@@ -35,6 +35,13 @@ export default function LoginForm() {
       toast.success('Connecté !');
       // Destination d'origine si l'utilisateur a été redirigé vers /login.
       const callbackUrl = searchParams.get('callbackUrl');
+      const safeCallback = callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.includes('\\') ? callbackUrl : null;
+      // Double authentification active : le mot de passe ne suffit pas.
+      const { isSecondFactorRequiredAction } = await import('@/app/actions/two-factor.actions');
+      if (await isSecondFactorRequiredAction()) {
+        window.location.href = `/verification-2fa${safeCallback ? `?callbackUrl=${encodeURIComponent(safeCallback)}` : ''}`;
+        return;
+      }
       const { getAccountRecoveryAction } = await import('@/app/actions/auth');
       const recovery = await getAccountRecoveryAction();
       const { getSessionAction } = await import('@/app/actions/session');
