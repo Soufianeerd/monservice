@@ -43,6 +43,7 @@ describe('Header Workspace Dynamic', () => {
     signOut: vi.fn(),
     refresh: vi.fn(),
     updateUser: vi.fn(),
+    seed: vi.fn(),
   });
 
   it('affiche la recherche globale et l\'industrie pour un professionnel générique', () => {

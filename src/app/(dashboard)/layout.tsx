@@ -5,6 +5,9 @@ import { getSessionContext } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { currentTeamRemoval } from '@/lib/services/team.service';
 import { isClientAccessEnabled } from '@/lib/launch/client-access';
+import { SessionSeed } from '@/components/auth/AuthContext';
+import { userService } from '@/lib/services/user.service';
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Source d'identité unique : le socle `lib/auth/session`. Ne jamais
@@ -23,8 +26,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Professionnel sans organisation (inscrit sur invitation, ou espace à créer).
   if (!ctx.organizationId) redirect('/complete-profile');
 
+  const [profile, organization] = await Promise.all([
+    userService.getUserProfile(ctx.userId),
+    getOrganizationForRequest(ctx.organizationId),
+  ]);
+
   return (
     <OnboardingProvider>
+      {profile && <SessionSeed user={profile} organization={organization ?? null} />}
       <DashboardShell clientAccess={isClientAccessEnabled()}>
         {children}
         <OnboardingGuide />

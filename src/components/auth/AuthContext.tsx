@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { authClient } from '@/lib/auth/client';
 import { User, Organization } from '@/lib/data/interfaces';
 
@@ -24,6 +24,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
+  /** Profil déjà lu par le layout serveur : évite deux Server Actions au démarrage. */
+  seed: (user: User, organization: Organization | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -34,6 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const providerSession = authClient.useSession();
+  // Quand le layout serveur a fourni le profil, inutile de le relire :
+  // seuls une connexion, une mise à jour ou un refresh explicite le rechargent.
+  const seeded = useRef(false);
+
+  const seed = useCallback((nextUser: User, nextOrganization: Organization | null) => {
+    seeded.current = true;
+    setUser(nextUser);
+    setOrganization(nextOrganization);
+    setIsLoading(false);
+  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -57,8 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (seeded.current) return;
     const timer = setTimeout(() => {
-      void loadProfile();
+      if (!seeded.current) void loadProfile();
     }, 0);
 
     return () => clearTimeout(timer);
@@ -105,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, organization, isLoading, signIn, signOut, refresh: loadProfile, updateUser }),
-    [user, organization, isLoading, signIn, signOut, loadProfile, updateUser],
+    () => ({ user, organization, isLoading, signIn, signOut, refresh: loadProfile, updateUser, seed }),
+    [user, organization, isLoading, signIn, signOut, loadProfile, updateUser, seed],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -117,3 +130,15 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
+
+/**
+ * Transmet au contexte client le profil lu côté serveur par le layout.
+ * Données d'affichage uniquement : la sécurité reste vérifiée côté serveur.
+ */
+export function SessionSeed({ user, organization }: { user: User; organization: Organization | null }) {
+  const { seed } = useAuth();
+  useLayoutEffect(() => {
+    seed(user, organization);
+  }, [seed, user, organization]);
+  return null;
+}

@@ -6,9 +6,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Menu } from 'lucide-react';
 import GlobalSearchBar from '@/components/crm/GlobalSearchBar';
 import NotificationCenter from '@/components/crm/NotificationCenter';
-import { 
-  generateNotificationsAction 
-} from '@/app/actions/notification';
 import { Notification } from '@/lib/data/interfaces';
 import ThemeSwitcher from './ThemeSwitcher';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -32,19 +29,8 @@ export default function Header({ onMenuClick }: HeaderProps = {}) {
     setMounted(true);
   }, []);
 
-  // Les actions serveur d'une page sont exécutées une par une : un appel
-  // inutile retarde toutes les saisies de l'utilisateur. Une seule génération
-  // par utilisateur et organisation, pas à chaque nouvel objet `user`.
-  const userId = user?.id;
-  const organizationId = organization?.id;
-  useEffect(() => {
-    if (!userId || !organizationId) return;
-    let cancelled = false;
-    generateNotificationsAction(organizationId).then((fetched) => {
-      if (!cancelled) setNotifications(fetched);
-    });
-    return () => { cancelled = true; };
-  }, [userId, organizationId]);
+  // Pas d'appel de notifications au chargement : le service n'est pas encore
+  // branché (MS-018) et chaque Server Action inutile retarde les suivantes.
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
