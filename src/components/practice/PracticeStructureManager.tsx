@@ -1,5 +1,7 @@
 'use client';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useTransition } from 'react';
 import type { 
   PracticeStructureOverview, 
@@ -154,6 +156,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           await createPracticeLocationAction(locationForm);
           setIsAddingLocation(false);
         }
+        announceGuideSaved('Le lieu est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde du lieu');
       }
@@ -232,6 +235,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           await createPracticePractitionerAction(payload);
           setIsAddingPractitioner(false);
         }
+        announceGuideSaved('Le praticien est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde praticien');
       }
@@ -272,6 +276,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           isPrimary: locId === assignmentsForm.primaryLocation,
         }));
         await setPractitionerLocationsAction(managingAssignmentsPractitioner.id, payload);
+        announceGuideSaved('Les affectations aux lieux sont enregistrées.');
         setManagingAssignmentsPractitioner(null);
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde affectations');
@@ -321,6 +326,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           });
           setIsAddingRoom(false);
         }
+        announceGuideSaved('La salle est enregistrée.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde salle');
       }
@@ -383,6 +389,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           });
           setIsAddingResource(false);
         }
+        announceGuideSaved('L’équipement est enregistré.');
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : 'Erreur sauvegarde ressource');
       }
@@ -454,14 +461,14 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingLocation || editingLocation) && (
-            <form onSubmit={handleSaveLocation} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveLocation} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingLocation ? 'Modifier le lieu' : 'Nouveau lieu'}
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Nom du lieu *</label>
-                  <input
+                  <label htmlFor="fld-ee20f0be" className="block text-xs font-medium text-gray-700">Nom du lieu *</label>
+                  <input id="fld-ee20f0be"
                     type="text"
                     required
                     value={locationForm.name}
@@ -471,8 +478,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Fuseau horaire *</label>
-                  <input
+                  <label htmlFor="fld-988d8448" className="block text-xs font-medium text-gray-700">Fuseau horaire *</label>
+                  <input id="fld-988d8448"
                     type="text"
                     required
                     value={locationForm.timezone}
@@ -482,8 +489,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Adresse</label>
-                  <input
+                  <label htmlFor="fld-05a43052" className="block text-xs font-medium text-gray-700">Adresse</label>
+                  <input id="fld-05a43052"
                     type="text"
                     value={locationForm.address}
                     onChange={e => setLocationForm({ ...locationForm, address: e.target.value })}
@@ -491,8 +498,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Ville</label>
-                  <input
+                  <label htmlFor="fld-8e9dc26b" className="block text-xs font-medium text-gray-700">Ville</label>
+                  <input id="fld-8e9dc26b"
                     type="text"
                     value={locationForm.city}
                     onChange={e => setLocationForm({ ...locationForm, city: e.target.value })}
@@ -500,8 +507,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Code postal</label>
-                  <input
+                  <label htmlFor="fld-8fc2e6ad" className="block text-xs font-medium text-gray-700">Code postal</label>
+                  <input id="fld-8fc2e6ad"
                     type="text"
                     value={locationForm.postalCode}
                     onChange={e => setLocationForm({ ...locationForm, postalCode: e.target.value })}
@@ -509,8 +516,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Téléphone</label>
-                  <input
+                  <label htmlFor="fld-c23a1082" className="block text-xs font-medium text-gray-700">Téléphone</label>
+                  <input id="fld-c23a1082"
                     type="text"
                     value={locationForm.phone}
                     onChange={e => setLocationForm({ ...locationForm, phone: e.target.value })}
@@ -616,14 +623,14 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingPractitioner || editingPractitioner) && (
-            <form onSubmit={handleSavePractitioner} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSavePractitioner} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingPractitioner ? 'Modifier le praticien' : 'Nouveau praticien'}
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Nom & Prénom *</label>
-                  <input
+                  <label htmlFor="fld-5c50cdaa" className="block text-xs font-medium text-gray-700">Nom & Prénom *</label>
+                  <input id="fld-5c50cdaa"
                     type="text"
                     required
                     value={practitionerForm.displayName}
@@ -633,8 +640,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Profession *</label>
-                  <select
+                  <label htmlFor="fld-dd1f2bab" className="block text-xs font-medium text-gray-700">Profession *</label>
+                  <select id="fld-dd1f2bab"
                     value={practitionerForm.profession}
                     onChange={e => setPractitionerForm({ ...practitionerForm, profession: e.target.value as ParamedicalProfessionCode })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -647,8 +654,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Email professionnel</label>
-                  <input
+                  <label htmlFor="fld-47dceb50" className="block text-xs font-medium text-gray-700">Email professionnel</label>
+                  <input id="fld-47dceb50"
                     type="email"
                     value={practitionerForm.email}
                     onChange={e => setPractitionerForm({ ...practitionerForm, email: e.target.value })}
@@ -656,8 +663,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Téléphone</label>
-                  <input
+                  <label htmlFor="fld-a1a03241" className="block text-xs font-medium text-gray-700">Téléphone</label>
+                  <input id="fld-a1a03241"
                     type="text"
                     value={practitionerForm.phone}
                     onChange={e => setPractitionerForm({ ...practitionerForm, phone: e.target.value })}
@@ -665,8 +672,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">Compte utilisateur associé (Optionnel)</label>
-                  <select
+                  <label htmlFor="fld-5fbdb265" className="block text-xs font-medium text-gray-700">Compte utilisateur associé (Optionnel)</label>
+                  <select id="fld-5fbdb265"
                     value={practitionerForm.userId}
                     onChange={e => setPractitionerForm({ ...practitionerForm, userId: e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -704,7 +711,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
 
           {/* Modal Affectation Lieux */}
           {managingAssignmentsPractitioner && (
-            <form onSubmit={handleSaveAssignments} className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveAssignments} className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-4">
               <h5 className="font-medium text-indigo-900">
                 Affectation des lieux pour {managingAssignmentsPractitioner.displayName}
               </h5>
@@ -868,15 +875,15 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingRoom || editingRoom) && (
-            <form onSubmit={handleSaveRoom} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveRoom} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingRoom ? 'Modifier la salle' : 'Nouvelle salle'}
               </h5>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {!editingRoom && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700">Lieu de consultation *</label>
-                    <select
+                    <label htmlFor="fld-46c07a1b" className="block text-xs font-medium text-gray-700">Lieu de consultation *</label>
+                    <select id="fld-46c07a1b"
                       value={roomForm.locationId}
                       onChange={e => setRoomForm({ ...roomForm, locationId: e.target.value })}
                       required
@@ -889,8 +896,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Nom de la salle *</label>
-                  <input
+                  <label htmlFor="fld-aaf7f645" className="block text-xs font-medium text-gray-700">Nom de la salle *</label>
+                  <input id="fld-aaf7f645"
                     type="text"
                     required
                     value={roomForm.name}
@@ -900,8 +907,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">Description</label>
-                  <input
+                  <label htmlFor="fld-e85a7dcf" className="block text-xs font-medium text-gray-700">Description</label>
+                  <input id="fld-e85a7dcf"
                     type="text"
                     value={roomForm.description}
                     onChange={e => setRoomForm({ ...roomForm, description: e.target.value })}
@@ -996,7 +1003,7 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
           </div>
 
           {(isAddingResource || editingResource) && (
-            <form onSubmit={handleSaveResource} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+            <form data-guide-form="structure" onSubmit={handleSaveResource} className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
               <h5 className="font-medium text-gray-900">
                 {editingResource ? 'Modifier la ressource' : 'Nouvelle ressource'}
               </h5>
@@ -1004,8 +1011,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                 {!editingResource && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700">Lieu de consultation *</label>
-                      <select
+                      <label htmlFor="fld-328fab18" className="block text-xs font-medium text-gray-700">Lieu de consultation *</label>
+                      <select id="fld-328fab18"
                         value={resourceForm.locationId}
                         onChange={e => {
                           const newLoc = e.target.value;
@@ -1020,8 +1027,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700">Salle associée (Optionnel)</label>
-                      <select
+                      <label htmlFor="fld-dd4a47ce" className="block text-xs font-medium text-gray-700">Salle associée (Optionnel)</label>
+                      <select id="fld-dd4a47ce"
                         value={resourceForm.roomId}
                         onChange={e => setResourceForm({ ...resourceForm, roomId: e.target.value })}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -1037,8 +1044,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Nom de la ressource *</label>
-                  <input
+                  <label htmlFor="fld-211972d4" className="block text-xs font-medium text-gray-700">Nom de la ressource *</label>
+                  <input id="fld-211972d4"
                     type="text"
                     required
                     value={resourceForm.name}
@@ -1048,8 +1055,8 @@ export function PracticeStructureManager({ overview }: PracticeStructureManagerP
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">Description</label>
-                  <input
+                  <label htmlFor="fld-70364b95" className="block text-xs font-medium text-gray-700">Description</label>
+                  <input id="fld-70364b95"
                     type="text"
                     value={resourceForm.description}
                     onChange={e => setResourceForm({ ...resourceForm, description: e.target.value })}

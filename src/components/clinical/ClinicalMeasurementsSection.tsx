@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React, { useState, useTransition } from 'react';
 import {
@@ -229,7 +230,7 @@ export default function ClinicalMeasurementsSection({
 
       {/* New Measurement Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowNewModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               Enregistrer une mesure clinique
@@ -260,10 +261,10 @@ export default function ClinicalMeasurementsSection({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-cbfc7fb2" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Code technique *
                   </label>
-                  <input
+                  <input id="fld-cbfc7fb2"
                     type="text"
                     required
                     value={formCode}
@@ -274,10 +275,10 @@ export default function ClinicalMeasurementsSection({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-4505ffbe" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Libellé lisible *
                   </label>
-                  <input
+                  <input id="fld-4505ffbe"
                     type="text"
                     required
                     value={formLabel}
@@ -317,10 +318,10 @@ export default function ClinicalMeasurementsSection({
               {valueType === 'numeric' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label htmlFor="fld-bcadc4d5" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Valeur numérique *
                     </label>
-                    <input
+                    <input id="fld-bcadc4d5"
                       type="number"
                       step="any"
                       required
@@ -330,10 +331,10 @@ export default function ClinicalMeasurementsSection({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label htmlFor="fld-dcdd52f2" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                       Unité (optionnelle)
                     </label>
-                    <input
+                    <input id="fld-dcdd52f2"
                       type="text"
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
@@ -344,10 +345,10 @@ export default function ClinicalMeasurementsSection({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-43d97363" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Observation textuelle *
                   </label>
-                  <input
+                  <input id="fld-43d97363"
                     type="text"
                     required
                     value={formValueText}
@@ -360,10 +361,10 @@ export default function ClinicalMeasurementsSection({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-828d46f4" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Date & Heure du relevé *
                   </label>
-                  <input
+                  <input id="fld-828d46f4"
                     type="datetime-local"
                     required
                     value={formObservedAt}
@@ -373,10 +374,10 @@ export default function ClinicalMeasurementsSection({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label htmlFor="fld-751bdc47" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Épisode lié (optionnel)
                   </label>
-                  <select
+                  <select id="fld-751bdc47"
                     value={formEpisodeId}
                     onChange={(e) => setFormEpisodeId(e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -410,7 +411,7 @@ export default function ClinicalMeasurementsSection({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

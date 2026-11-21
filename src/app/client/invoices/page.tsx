@@ -4,12 +4,12 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
 import { useState, useEffect } from 'react';
 import * as invoiceActions from '@/app/actions/invoice.actions';
-import { Invoice } from '@/lib/data/interfaces';
+import type { ClientInvoiceDTO } from '@/lib/data/dto/client-billing.dto';
 import InvoiceList from '@/components/client/InvoiceList';
 
 export default function ClientInvoicesPage() {
   const { user } = useAuth();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<ClientInvoiceDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'react-hot-toast';
+
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,7 +22,7 @@ export default function NewDealPage() {
     setIsSubmitting(true);
     try {
       const newDeal = await dealActions.createAction({
-        name: data.name || 'Nouveau Deal',
+        name: data.name || 'Nouvelle opportunité',
         value: data.value || 0,
         status: data.status || 'prospect',
         expectedCloseDate: data.expectedCloseDate || new Date().toISOString(),
@@ -30,7 +33,8 @@ export default function NewDealPage() {
 
       // activityLog disabled
 
-      alert('Opportunité créée !');
+      toast.success('Opportunité créée !');
+      announceGuideSaved('L’opportunité est enregistrée.');
       router.push(`/deals/${newDeal.id}`);
     } catch (error) {
       handleError(error, "Erreur lors de la création de l'opportunité");
@@ -41,7 +45,7 @@ export default function NewDealPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Nouveau deal</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Nouvelle opportunité</h1>
         <p className="mt-1 text-sm text-gray-500">Créez une nouvelle opportunité commerciale.</p>
       </div>
       <DealForm organizationId={user?.organizationId || ''} onSubmit={handleSubmit} isSubmitting={isSubmitting} />

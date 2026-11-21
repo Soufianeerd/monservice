@@ -1,4 +1,7 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import React, { useState, useTransition } from 'react';
 import { AppointmentTypeDTO } from '@/lib/scheduling/types';
@@ -106,6 +109,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
           });
           setTypes((prev) => [created, ...prev]);
         }
+        announceGuideSaved('Le type de séance est enregistré.');
         setIsModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -148,7 +152,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
         <div>
           <h2 className="text-xl font-bold text-gray-900">Types de séances</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Définissez les motifs de consultation, durées et temps de préparation (buffers).
+            Définissez les motifs de consultation, durées et temps de préparation entre deux rendez-vous.
           </p>
         </div>
         <button
@@ -208,7 +212,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                       <p className="text-xs text-gray-500">{preset.description}</p>
                     )}
                     <div className="text-[11px] text-gray-400 pt-1">
-                      Buffers : +{preset.bufferBeforeMinutes}m av. / +{preset.bufferAfterMinutes}m ap. — Pas de {preset.slotStepMinutes}m
+                      Préparation : +{preset.bufferBeforeMinutes}m av. / +{preset.bufferAfterMinutes}m ap. — Départs tous les {preset.slotStepMinutes} min
                     </div>
                   </div>
 
@@ -254,7 +258,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                     Durée
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Buffers (Avant / Après)
+                    Préparation (avant / après)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Pas de créneau
@@ -329,16 +333,16 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingType ? 'Modifier le type de séance' : 'Nouveau type de séance'}
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form data-guide-form="type-seance" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nom de la séance *</label>
-                <input
+                <label htmlFor="fld-85550069" className="block text-sm font-medium text-gray-700">Nom de la séance *</label>
+                <input id="fld-85550069"
                   type="text"
                   required
                   value={formData.name}
@@ -349,8 +353,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
+                <label htmlFor="fld-8c0e5320" className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea id="fld-8c0e5320"
                   rows={2}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -361,8 +365,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Durée (minutes) *</label>
-                  <input
+                  <label htmlFor="fld-79c35d68" className="block text-sm font-medium text-gray-700">Durée (minutes) *</label>
+                  <input id="fld-79c35d68"
                     type="number"
                     required
                     min={5}
@@ -376,8 +380,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Pas de créneau (min) *</label>
-                  <input
+                  <label htmlFor="fld-28942d21" className="block text-sm font-medium text-gray-700">Intervalle entre les départs proposés (min) *</label>
+                  <input id="fld-28942d21"
                     type="number"
                     required
                     min={5}
@@ -393,8 +397,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Buffer avant (min)</label>
-                  <input
+                  <label htmlFor="fld-4f1cc722" className="block text-sm font-medium text-gray-700">Temps de préparation avant (min)</label>
+                  <input id="fld-4f1cc722"
                     type="number"
                     min={0}
                     max={240}
@@ -410,8 +414,8 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Buffer après (min)</label>
-                  <input
+                  <label htmlFor="fld-90be108a" className="block text-sm font-medium text-gray-700">Temps de pause après (min)</label>
+                  <input id="fld-90be108a"
                     type="number"
                     min={0}
                     max={240}
@@ -445,7 +449,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

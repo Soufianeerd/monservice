@@ -1,5 +1,7 @@
 'use client';
 
+import { useCareVocabulary, useCareVocabularyMode } from '@/hooks/useCareVocabulary';
+import { ageFromBirthDate } from '@/lib/wellness/body-profile';
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,6 +41,9 @@ export default function PatientDetailManager({
   allRepresentatives,
   canAccessClinical = false,
 }: PatientDetailManagerProps) {
+  const t = useCareVocabulary();
+  // Bien-être : fiche client simple (pas d'état civil, pas de représentants légaux).
+  const simple = useCareVocabularyMode() === 'client';
   const router = useRouter();
   const [detail, setDetail] = useState<PatientDetailDTO>(initialDetail);
   const [isEditing, setIsEditing] = useState(false);
@@ -114,7 +119,7 @@ export default function PatientDetailManager({
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              Dossier administratif patient #{patient.id.slice(0, 8)}
+              {simple ? 'Fiche client' : t('Dossier administratif patient')} #{patient.id.slice(0, 8)}
             </p>
           </div>
         </div>
@@ -128,7 +133,7 @@ export default function PatientDetailManager({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-lg shadow-sm transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                  Dossier clinique
+                  {t('Dossier clinique')}
                 </Link>
               )}
               <button
@@ -152,7 +157,7 @@ export default function PatientDetailManager({
                 {patient.isActive ? (
                   <>
                     <UserX className="w-3.5 h-3.5" />
-                    Archiver le dossier
+                    {simple ? 'Archiver la fiche' : 'Archiver le dossier'}
                   </>
                 ) : (
                   <>
@@ -201,16 +206,16 @@ export default function PatientDetailManager({
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
                 <User className="w-5 h-5 text-blue-600" />
-                Identité civile
+                {simple ? 'Identité' : 'Identité civile'}
               </h2>
 
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>
-                  <dt className="font-medium text-gray-500">Nom de naissance</dt>
+                  <dt className="font-medium text-gray-500">{simple ? 'Nom' : 'Nom de naissance'}</dt>
                   <dd className="text-gray-900 font-semibold mt-0.5">{patient.birthName}</dd>
                 </div>
                 <div>
-                  <dt className="font-medium text-gray-500">Premier prénom</dt>
+                  <dt className="font-medium text-gray-500">{simple ? 'Prénom' : 'Premier prénom'}</dt>
                   <dd className="text-gray-900 font-semibold mt-0.5">{patient.firstBirthName}</dd>
                 </div>
 
@@ -239,10 +244,11 @@ export default function PatientDetailManager({
                   <dd className="text-gray-900 mt-0.5 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
                     {formatDate(patient.birthDate)}
+                    {simple && ageFromBirthDate(patient.birthDate) !== null && <span className="text-gray-500">· {ageFromBirthDate(patient.birthDate)} ans</span>}
                   </dd>
                 </div>
 
-                <div>
+                {!simple && <div>
                   <dt className="font-medium text-gray-500">Sexe administratif</dt>
                   <dd className="text-gray-900 mt-0.5 capitalize">
                     {patient.sex === 'female' && 'Féminin'}
@@ -250,9 +256,9 @@ export default function PatientDetailManager({
                     {patient.sex === 'indeterminate' && 'Indéterminé'}
                     {patient.sex === 'unknown' && 'Inconnu'}
                   </dd>
-                </div>
+                </div>}
 
-                {(patient.birthPlace || patient.birthPlaceCode || patient.birthCountry) && (
+                {!simple && (patient.birthPlace || patient.birthPlaceCode || patient.birthCountry) && (
                   <div className="sm:col-span-2 pt-2 border-t border-gray-100">
                     <dt className="font-medium text-gray-500">Lieu de naissance</dt>
                     <dd className="text-gray-900 mt-0.5">
@@ -324,14 +330,14 @@ export default function PatientDetailManager({
           </div>
 
           {/* Representatives and contacts section */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          {!simple && <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <RepresentativeManager
               patientId={patient.id}
               representatives={representatives}
               allRepresentatives={allRepresentatives}
               onUpdate={() => router.refresh()}
             />
-          </div>
+          </div>}
 
           {/* Session 14 : Patient Portal, Questionnaires & Billing Bridge */}
           <PatientPortalAndBillingSection

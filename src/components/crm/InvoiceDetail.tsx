@@ -1,28 +1,68 @@
 'use client';
-import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
+import { toast } from 'react-hot-toast';
+import { getByIdAction } from '@/app/actions/organization.actions';
+import { updateAction as updateInvoiceAction } from '@/app/actions/invoice.actions';
+import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Invoice, Client, Product, Organization } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import DocumentPDF from './DocumentPDF';
-import StripePaymentButton from './StripePaymentButton';
-import { generateInvoicePDF, generateQuotePDF, downloadPDF } from '@/lib/utils/pdf-generator';
+import InvoicePaymentPanel from '@/components/growth/InvoicePaymentPanel';
+import { isGrowthAvailable } from '@/lib/growth/availability';
 
 interface InvoiceDetailProps {
   invoice: Invoice;
   client: Client | undefined;
   products: Product[];
-  onMarkAsPaid: () => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
-export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid, onDelete }: InvoiceDetailProps) {
+export default function InvoiceDetail({ invoice, client, products, onDelete }: InvoiceDetailProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
+
+  // Envoi réel (S-04) : la facture part en PDF joint ; un brouillon est émis d'abord.
+  const emailInvoice = async () => {
+    setIssuing(true);
+    setIssueError(null);
+    setEmailNotice(null);
+    try {
+      const result = await sendDocumentByEmailAction(invoice.id);
+      if (result.sent) {
+        setEmailNotice(result.message);
+        router.refresh();
+      } else {
+        setIssueError(result.message);
+      }
+    } catch (error) {
+      setIssueError(error instanceof Error ? error.message : 'Envoi impossible.');
+    } finally {
+      setIssuing(false);
+    }
+  };
+
+  // Émission (S-03) : verrouille la facture, attribue son numéro définitif et
+  // sa date. Elle peut ensuite être réglée, relancée et suivie en trésorerie.
+  const issueInvoice = async () => {
+    if (!await askConfirm('Elle recevra son numéro définitif et ne pourra plus être modifiée.', { title: 'Émettre la facture ?', confirmLabel: 'Émettre', tone: 'default' })) return;
+    setIssuing(true);
+    setIssueError(null);
+    try {
+      await updateInvoiceAction(invoice.id, null, { status: 'sent' });
+      router.refresh();
+    } catch (error) {
+      setIssueError(error instanceof Error ? error.message : 'Émission impossible.');
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   useEffect(() => {
     async function loadOrg() {
@@ -33,18 +73,6 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
     }
     loadOrg();
   }, [user]);
-
-  const handleSendEmail = () => {
-    alert('Document envoyé par email avec succès ! (Simulation)');
-  };
-
-  const handleDuplicate = () => {
-    alert('Fonctionnalité de duplication à venir.');
-  };
-
-  const handleConvertToInvoice = () => {
-    alert('Devis converti en facture avec succès ! (Simulation)');
-  };
 
   const getProductName = (productId?: string) => {
     if (!productId) return '';
@@ -59,7 +87,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {isQuote ? 'Devis' : 'Facture'} {invoice.number}
+            {isQuote ? 'Devis' : 'Facture'} {invoice.number?.startsWith('BROUILLON-') ? '(brouillon, numéro attribué à l’émission)' : invoice.number}
           </h2>
           <div className="mt-1 flex items-center space-x-2">
             <span className="text-sm text-gray-500">
@@ -80,13 +108,25 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             <button
               onClick={async () => {
                 try {
-                  const blob = isQuote 
-                    ? await generateQuotePDF(invoice as any, organization, client as any)
-                    : await generateInvoicePDF(invoice, organization, client as any);
+                  // Le PDF attend des champs absents plutôt que null.
+                  const pdfClient = {
+                    name: client.name,
+                    email: client.email ?? undefined,
+                    phone: client.phone ?? undefined,
+                    address: client.address ?? undefined,
+                    city: client.city ?? undefined,
+                    zipCode: client.zipCode ?? undefined,
+                    country: client.country ?? undefined,
+                  };
+                  // Générateur PDF (~480 Ko) chargé seulement au clic.
+                  const { generateInvoicePDF, generateQuotePDF, downloadPDF } = await import('@/lib/utils/pdf-generator');
+                  const blob = isQuote
+                    ? await generateQuotePDF(invoice, organization, pdfClient)
+                    : await generateInvoicePDF(invoice, organization, pdfClient);
                   downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
                 } catch (err) {
                   console.error(err);
-                  alert('Erreur lors de la génération du PDF');
+                  toast.error('Erreur lors de la génération du PDF');
                 }
               }}
               className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -95,43 +135,28 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
             </button>
           )}
 
-          <button
-            onClick={handleSendEmail}
-            className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Envoyer par email
-          </button>
-
-          <button
-            onClick={handleDuplicate}
-            className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Dupliquer
-          </button>
-
-          {isQuote && (
+          {invoice.type !== 'quote' && invoice.status !== 'cancelled' && (
             <button
-              onClick={handleConvertToInvoice}
-              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+              type="button"
+              onClick={emailInvoice}
+              disabled={issuing}
+              data-testid="email-invoice-button"
+              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
             >
-              Convertir en facture
+              Envoyer par e-mail
             </button>
           )}
 
-          {invoice.status === 'sent' && !isQuote && (
+          {invoice.status === 'draft' && invoice.type !== 'quote' && (
             <button
-              onClick={async () => {
-                await onMarkAsPaid();
-                alert('Facture marquée comme payée');
-              }}
-              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+              type="button"
+              onClick={issueInvoice}
+              disabled={issuing}
+              data-testid="issue-invoice-button"
+              className="px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
             >
-              Marquer comme payée
+              {issuing ? 'Émission…' : 'Émettre la facture'}
             </button>
-          )}
-
-          {(!isQuote && invoice.status !== 'paid' && invoice.status !== 'draft' && organization) && (
-            <StripePaymentButton invoiceId={invoice.id} organizationId={organization.id} />
           )}
 
           {invoice.status === 'draft' && (
@@ -145,12 +170,18 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
         </div>
       </div>
 
+      {issueError && <p role="alert" className="text-sm text-red-600">{issueError}</p>}
+      {emailNotice && <p className="text-sm text-emerald-700">{emailNotice}</p>}
+
       <div className="border-t border-gray-200 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Émetteur</h3>
-          <p className="font-semibold text-gray-900">MonService</p>
-          <p className="text-sm text-gray-600">123 Rue de la République</p>
-          <p className="text-sm text-gray-600">75001 Paris, France</p>
+          <p className="font-semibold text-gray-900">{organization?.name ?? '…'}</p>
+          {organization?.address && <p className="text-sm text-gray-600">{organization.address}</p>}
+          {(organization?.postalCode || organization?.city) && (
+            <p className="text-sm text-gray-600">{[organization?.postalCode, organization?.city].filter(Boolean).join(' ')}</p>
+          )}
+          {organization?.email && <p className="text-sm text-gray-600 mt-1">{organization.email}</p>}
         </div>
         <div>
           <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Adressé à</h3>
@@ -160,6 +191,10 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
           {client?.email && <p className="text-sm text-gray-600 mt-1">{client.email}</p>}
         </div>
       </div>
+
+      {!isQuote && organization && (
+        <InvoicePaymentPanel invoice={invoice} reviewsAvailable={isGrowthAvailable(organization.sector)} />
+      )}
 
       {/* Table */}
       <div className="border-t border-gray-200 pt-6">
@@ -216,13 +251,13 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
           </div>
         </div>
       </div>
-      
-      <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
+
+      {invoice.status === 'draft' && <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
         <button
           onClick={async () => {
-            if (window.confirm('Voulez-vous vraiment supprimer ce document ?')) {
+            if (await askConfirm('Voulez-vous vraiment supprimer ce document ?')) {
               await onDelete();
-              alert('Document supprimé');
+              toast.success('Document supprimé');
               router.push('/invoices');
             }
           }}
@@ -230,7 +265,7 @@ export default function InvoiceDetail({ invoice, client, products, onMarkAsPaid,
         >
           Supprimer
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

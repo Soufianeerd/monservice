@@ -1,9 +1,11 @@
+import Stripe from 'stripe';
+import { randomUUID } from 'node:crypto';
 import { test, expect, Page } from '@playwright/test';
 import postgres from 'postgres';
 
 async function dismissSetupGuideIfPresent(page: Page) {
   try {
-    const closeBtn = page.locator('button[aria-label="Réduire le guide"]');
+    const closeBtn = page.locator('button[aria-label="Réduire le guide"], button[aria-label="Réduire l’aide"]');
     if (await closeBtn.isVisible({ timeout: 1000 })) {
       await closeBtn.click({ force: true });
     }
@@ -13,12 +15,14 @@ async function dismissSetupGuideIfPresent(page: Page) {
 }
 
 test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)', () => {
-  const proEmail = 'pro_fs_a@monservice.com';
-  const clientEmail = 'client_fs_a@monservice.com';
-  const password = 'password123';
+  const proEmail = 'pro_fs_a@monservice.invalid';
+  const clientEmail = 'client_fs_a@monservice.invalid';
+  const password = process.env.E2E_AUTH_PASSWORD!;
 
   test('QUOTE_TO_CASH_FULL_PERSISTENT: Complete Lead-to-Cash Lifecycle with DB verification', async ({ page, request }) => {
-    test.setTimeout(180000);
+    // Parcours complet en 10 étapes : ~45 s en local, plus de 180 s sur un runner
+    // GitHub (États-Unis) qui parle à la base de Francfort.
+    test.setTimeout(480_000);
     const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
     try {
@@ -138,6 +142,24 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       const linesInDb = await sql`SELECT * FROM invoice_lines WHERE invoice_id = ${quoteId}`;
       expect(linesInDb.length).toBeGreaterThanOrEqual(3);
 
+      // 4b. Edit the draft in the same quote form: lots, units and rates survive.
+      await page.click('[data-testid="edit-quote-button"]');
+      await expect(page.getByRole('heading', { name: 'Modifier le devis' })).toBeVisible();
+      await expect(page.locator('[data-testid="quote-title-input"]')).toHaveValue(uniqueQuoteTitle);
+      await expect(page.locator('[data-testid="line-unit-select"]').first()).toHaveValue('meter');
+      await page.fill('[data-testid="quote-title-input"]', `${uniqueQuoteTitle} (révisé)`);
+      await page.click('[data-testid="save-quote-button"]');
+      await page.waitForURL(new RegExp(`/facturation/devis/${quoteId}$`));
+      const [editedQuote] = await sql`SELECT title, deposit_rate FROM invoices WHERE id = ${quoteId}`;
+      expect(editedQuote.title).toBe(`${uniqueQuoteTitle} (révisé)`);
+      expect(Number(editedQuote.deposit_rate)).toBe(30);
+      const editedSections = await sql`SELECT id FROM invoice_sections WHERE invoice_id = ${quoteId}`;
+      expect(editedSections.length).toBe(sectionsInDb.length);
+      const editedLines = await sql`SELECT section_id, unit_code FROM invoice_lines WHERE invoice_id = ${quoteId} ORDER BY position ASC`;
+      expect(editedLines.length).toBe(linesInDb.length);
+      expect(editedLines.filter((line) => line.section_id !== null).length).toBe(linesInDb.filter((line) => line.section_id !== null).length);
+      expect(editedLines[0].unit_code).toBe('meter');
+
       // ==============================================================
       // 5. Pro Sends Quote -> status = 'sent'
       // ==============================================================
@@ -247,12 +269,12 @@ test.describe('Field Service Quote-to-Cash & Lead-to-Cash E2E (Session 18 & 18B)
       // 8. Simulate Stripe Payment Webhook
       // ==============================================================
       const depositAmountCents = Math.round(Number(depositInvDb.total_ttc) * 100);
-      const webhookRes = await request.post('/api/stripe/webhook/simulate', {
-        data: {
-          invoiceId: depositInvoiceId,
-          amountPaidCents: depositAmountCents,
-        },
-      });
+      const webhookBody = JSON.stringify({ id: `evt_e2e_${randomUUID()}`, type: 'checkout.session.completed',
+        data: { object: { mode: 'payment', metadata: { invoiceId: depositInvoiceId }, payment_intent: `pi_e2e_${randomUUID()}`, amount_total: depositAmountCents } } });
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+      const signature = stripe.webhooks.generateTestHeaderString({ payload: webhookBody, secret: process.env.STRIPE_WEBHOOK_SECRET! });
+      const webhookRes = await request.post('/api/stripe/webhook', { data: webhookBody,
+        headers: { 'content-type': 'application/json', 'stripe-signature': signature } });
       expect(webhookRes.status()).toBe(200);
 
       // Verify Deposit Invoice is Paid in DB

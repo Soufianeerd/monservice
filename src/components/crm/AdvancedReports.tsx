@@ -86,13 +86,10 @@ export default function AdvancedReports({ deals, invoices, tasks, clients }: Adv
       
       <div className="flex justify-end">
         <button
-          onClick={() => {
-            alert('Génération du PDF en cours... (Simulation)');
-            window.print();
-          }}
+          onClick={() => window.print()}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          📄 Exporter en PDF
+          Imprimer ou enregistrer en PDF
         </button>
       </div>
 

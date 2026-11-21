@@ -1,92 +1,77 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRlsTestClient, NeonRlsClient } from '../../tests/helpers/neon-rls-client';
 import { SEED_PRACTICE_IDS } from '../../scripts/e2e/seed-local';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'dummy';
 
-const PRO_A_EMAIL = 'pro_a@monservice.com';
-const PRO_B_EMAIL = 'pro_b@monservice.com';
-const CLI_A_EMAIL = 'client_a@monservice.com';
-const PASSWORD = 'password123';
+const PRO_A_EMAIL = 'pro_a@monservice.invalid';
+const PRO_B_EMAIL = 'pro_b@monservice.invalid';
+const CLI_A_EMAIL = 'client_a@monservice.invalid';
+const PASSWORD = process.env.E2E_AUTH_PASSWORD!;
 
-describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => {
-  let anonClient: SupabaseClient;
-  let proAClient: SupabaseClient;
-  let proBClient: SupabaseClient;
-  let cliAClient: SupabaseClient;
+describe('Practice Structure RLS Integration Tests (Managed Neon Auth)', () => {
+  let anonClient: NeonRlsClient;
+  let proAClient: NeonRlsClient;
+  let proBClient: NeonRlsClient;
+  let cliAClient: NeonRlsClient;
   let cliAId: string;
   let proBId: string;
 
   beforeAll(async () => {
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    anonClient = createRlsTestClient();
 
-    proAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proAClient = createRlsTestClient();
     const { error: errA } = await proAClient.auth.signInWithPassword({
       email: PRO_A_EMAIL,
       password: PASSWORD,
     });
     if (errA) throw new Error(`Failed to login Pro A: ${errA.message}`);
 
-    proBClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    proBClient = createRlsTestClient();
     const { data: dataB, error: errB } = await proBClient.auth.signInWithPassword({
       email: PRO_B_EMAIL,
       password: PASSWORD,
     });
     if (errB) throw new Error(`Failed to login Pro B: ${errB.message}`);
-    proBId = dataB.user.id;
+    proBId = dataB.appUserId;
 
-    cliAClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
-    });
+    cliAClient = createRlsTestClient();
     const { data: dataCliA, error: errCliA } = await cliAClient.auth.signInWithPassword({
       email: CLI_A_EMAIL,
       password: PASSWORD,
     });
     if (errCliA) throw new Error(`Failed to login Client A: ${errCliA.message}`);
-    cliAId = dataCliA.user.id;
+    cliAId = dataCliA.appUserId;
   });
 
   describe('ANON Table Privilege Denial (42501 on all 5 tables)', () => {
     it('ANON cannot read practice_locations', async () => {
-      const { data, error } = await anonClient.from('practice_locations').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501');
-      expect(data).toBeNull();
+      const { data, error  } = await anonClient.from('practice_locations').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
 
     it('ANON cannot read practice_practitioners', async () => {
-      const { data, error } = await anonClient.from('practice_practitioners').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501');
-      expect(data).toBeNull();
+      const { data, error  } = await anonClient.from('practice_practitioners').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
 
     it('ANON cannot read practitioner_locations', async () => {
-      const { data, error } = await anonClient.from('practitioner_locations').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501');
-      expect(data).toBeNull();
+      const { data, error  } = await anonClient.from('practitioner_locations').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
 
     it('ANON cannot read practice_rooms', async () => {
-      const { data, error } = await anonClient.from('practice_rooms').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501');
-      expect(data).toBeNull();
+      const { data, error  } = await anonClient.from('practice_rooms').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
 
     it('ANON cannot read practice_resources', async () => {
-      const { data, error } = await anonClient.from('practice_resources').select('*');
-      expect(error).not.toBeNull();
-      expect(error?.code).toBe('42501');
-      expect(data).toBeNull();
+      const { data, error  } = await anonClient.from('practice_resources').select('*');
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
     });
   });
 
@@ -311,13 +296,15 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
   });
 
   describe('Client Profile Direct Access Denial (Same Tenant Org A)', () => {
-    it('Client A cannot SELECT practice_locations A -> 0 rows', async () => {
+    it('Portal client reads only appointment-linked practice_locations', async () => {
       const { data, error } = await cliAClient
         .from('practice_locations')
         .select('*')
         .eq('id', SEED_PRACTICE_IDS.locationA);
       expect(error).toBeNull();
-      expect(data).toHaveLength(0);
+      expect(data.map((row: { id: string }) => row.id)).toEqual([SEED_PRACTICE_IDS.locationA]);
+      const foreign = await cliAClient.from('practice_locations').select('*').eq('id', SEED_PRACTICE_IDS.locationB);
+      expect(foreign.data).toEqual([]);
     });
 
     it('Client A cannot SELECT practice_practitioners A -> 0 rows', async () => {
@@ -338,13 +325,15 @@ describe('Practice Structure RLS Integration Tests (Real Supabase Auth)', () => 
       expect(data).toHaveLength(0);
     });
 
-    it('Client A cannot SELECT practice_rooms A -> 0 rows', async () => {
+    it('Portal client reads only appointment-linked practice_rooms', async () => {
       const { data, error } = await cliAClient
         .from('practice_rooms')
         .select('*')
         .eq('id', SEED_PRACTICE_IDS.roomA);
       expect(error).toBeNull();
-      expect(data).toHaveLength(0);
+      expect(data.map((row: { id: string }) => row.id)).toEqual([SEED_PRACTICE_IDS.roomA]);
+      const foreign = await cliAClient.from('practice_rooms').select('*').eq('id', SEED_PRACTICE_IDS.roomB);
+      expect(foreign.data).toEqual([]);
     });
 
     it('Client A cannot SELECT practice_resources A -> 0 rows', async () => {

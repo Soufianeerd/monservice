@@ -1,9 +1,11 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
-import { Request, Invoice } from '@/lib/data/interfaces';
+import { Request } from '@/lib/data/interfaces';
 
+import type { ClientQuoteDTO } from '@/lib/data/dto/client-billing.dto';
 import * as invoiceActions from '@/app/actions/invoice.actions';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, use } from 'react';
@@ -19,7 +21,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   
   const [request, setRequest] = useState<Request | null>(null);
-  const [quotes, setQuotes] = useState<Invoice[]>([]);
+  const [quotes, setQuotes] = useState<ClientQuoteDTO[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,7 +29,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
       if (req && req.clientId === user?.id) {
         setRequest(req);
         const allInvoices = await invoiceActions.findByClientAction(user.id);
-        setQuotes(allInvoices.filter(inv => inv.type === 'quote' && inv.requestId === id));
+        setQuotes(allInvoices.filter((inv): inv is ClientQuoteDTO => inv.type === 'quote' && inv.requestId === id));
       }
     };
     if (user?.id) fetchData();
@@ -43,7 +45,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
           {request.status !== 'published' && (
             <button 
               onClick={async () => {
-                if(window.confirm('Voulez-vous vraiment publier cette demande ?')) {
+                if(await askConfirm('Elle sera visible par les professionnels.', { title: 'Publier la demande ?', confirmLabel: 'Publier', tone: 'default' })) {
                   await requestActions.publishAction(request.id, user?.id || '');
                   alert('Demande publiée !');
                   window.location.reload();

@@ -1,3 +1,5 @@
+import { contactUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { contacts } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -57,22 +59,15 @@ export const contactService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const partialSchema = contactSchema.partial();
-    const validated = partialSchema.parse({ ...data, role: data.position });
-
-    const updated: any = {
-      ...validated,
-      position: validated.role,
-      updatedAt: new Date().toISOString(),
-    };
-    if (data.email === undefined) delete updated.email;
-    if (data.phone === undefined) delete updated.phone;
-    if (data.position === undefined) delete updated.position;
-
-    await db.update(contacts)
-      .set(updated)
-      .where(and(eq(contacts.id, id), eq(contacts.organizationId, organizationId)));
-    return await this.findById(id, organizationId);
+    const validated = contactUpdateSchema.parse(data);
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx.select().from(contacts).where(and(eq(contacts.id,id),eq(contacts.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) return null;
+      if (validated.clientId) await requireCoreRelation(tx,organizationId,'client',validated.clientId);
+      await tx.update(contacts).set({ ...validated, updatedAt: new Date().toISOString() }).where(and(eq(contacts.id,id),eq(contacts.organizationId,organizationId)));
+    });
+    return this.findById(id, organizationId);
   },
 
   async delete(id: string, organizationId: string, userId: string): Promise<void> {

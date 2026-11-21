@@ -34,7 +34,7 @@ export default function ContactForm({ initialData, clients, onSubmit, isSubmitti
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="contact" onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow border border-gray-200">
       <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
         <div>
           <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">Prénom *</label>

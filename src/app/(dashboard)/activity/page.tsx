@@ -41,8 +41,8 @@ export default function ActivityPage() {
         </div>
         
         <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700">Filtrer par :</label>
-          <select
+          <label htmlFor="fld-7cf1a36f" className="text-sm font-medium text-gray-700">Filtrer par :</label>
+          <select id="fld-7cf1a36f"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="text-gray-900 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
@@ -50,7 +50,7 @@ export default function ActivityPage() {
             <option value="ALL">Toute l&apos;activité</option>
             <option value="CLIENT">Clients</option>
             <option value="CONTACT">Contacts</option>
-            <option value="DEAL">Deals</option>
+            <option value="DEAL">Opportunités</option>
             <option value="TASK">Tâches</option>
             <option value="INVOICE">Factures / Devis</option>
             <option value="PRODUCT">Produits</option>

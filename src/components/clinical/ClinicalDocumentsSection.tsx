@@ -1,4 +1,6 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import React, { useState, useRef, useTransition } from 'react';
 import {
@@ -116,8 +118,8 @@ export default function ClinicalDocumentsSection({
     });
   };
 
-  const handleArchiveClick = (docId: string) => {
-    if (!window.confirm('Voulez-vous archiver ce document clinique ?')) return;
+  const handleArchiveClick = async (docId: string) => {
+    if (!await askConfirm('Voulez-vous archiver ce document clinique ?')) return;
     setErrorMessage(null);
     setSuccessMessage(null);
     startTransition(async () => {
@@ -278,7 +280,7 @@ export default function ClinicalDocumentsSection({
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowUploadModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               Téléverser un document clinique
@@ -289,10 +291,10 @@ export default function ClinicalDocumentsSection({
 
             <form onSubmit={handleUploadSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-b61ba1b8" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Fichier *
                 </label>
-                <input
+                <input id="fld-b61ba1b8"
                   ref={fileInputRef}
                   type="file"
                   accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -302,10 +304,10 @@ export default function ClinicalDocumentsSection({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-db7c8c5b" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Titre du document *
                 </label>
-                <input
+                <input id="fld-db7c8c5b"
                   type="text"
                   required
                   maxLength={200}
@@ -317,10 +319,10 @@ export default function ClinicalDocumentsSection({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-9c82a810" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Catégorie *
                 </label>
-                <select
+                <select id="fld-9c82a810"
                   value={documentCategory}
                   onChange={(e) => setDocumentCategory(e.target.value as ClinicalDocumentCategory)}
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -334,10 +336,10 @@ export default function ClinicalDocumentsSection({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-a2b05b2d" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Épisode de prise en charge associé (optionnel)
                 </label>
-                <select
+                <select id="fld-a2b05b2d"
                   value={documentEpisodeId}
                   onChange={(e) => setDocumentEpisodeId(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -370,7 +372,7 @@ export default function ClinicalDocumentsSection({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

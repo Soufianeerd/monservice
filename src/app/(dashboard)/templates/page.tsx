@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ export default function TemplatesPage() {
   }, [user]);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Voulez-vous vraiment supprimer ce modèle ?")) {
+    if (await askConfirm("Voulez-vous vraiment supprimer ce modèle ?")) {
       await messageTemplateActions.deleteAction(id);
       loadTemplates();
     }

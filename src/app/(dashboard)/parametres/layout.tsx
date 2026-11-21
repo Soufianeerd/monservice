@@ -1,6 +1,6 @@
+import { getOrganizationForRequest } from '@/lib/services/organization-request';
 import { Tabs } from '@/components/ui/Tabs';
 import { requireProfessional } from '@/lib/auth/session';
-import { organizationService } from '@/lib/services/organization.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 
 import { notFound } from 'next/navigation';
@@ -11,7 +11,7 @@ export default async function ParametresLayout({ children }: { children: React.R
     notFound();
   }
 
-  const organization = await organizationService.getById(context.organizationId);
+  const organization = await getOrganizationForRequest(context.organizationId);
   if (!organization) {
     notFound();
   }
@@ -23,25 +23,35 @@ export default async function ParametresLayout({ children }: { children: React.R
   });
 
   const tabs = [
-    { name: 'Profil', href: '/parametres/profil' },
-    { name: 'Organisation', href: '/parametres/organisation' },
+    { name: 'Mon compte', href: '/parametres/profil' },
+    { name: 'Sécurité', href: '/parametres/securite' },
+    { name: workspace.type === 'paramedical' ? 'Coordonnées du cabinet' : 'Organisation', href: '/parametres/organisation' },
   ];
 
   if (workspace.type === 'paramedical') {
-    tabs.push({ name: 'Cabinet', href: '/parametres/cabinet' });
+    tabs.push({ name: 'Lieux et équipe', href: '/parametres/cabinet' });
   }
 
   tabs.push(
-    { name: 'Facturation', href: '/parametres/facturation' },
+    { name: workspace.type === 'paramedical' ? 'Comptes utilisateurs' : 'Équipe', href: '/parametres/equipe' },
+  );
+  if (workspace.type !== 'paramedical') {
+    tabs.push(
+      { name: 'Relances et avis', href: '/parametres/relances' },
+      { name: 'Vitrine publique', href: '/parametres/vitrine' },
+    );
+  }
+  tabs.push(
+    { name: 'Abonnement MonService', href: '/parametres/facturation' },
     { name: 'Notifications', href: '/parametres/notifications' }
   );
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
       <div className="mb-4">
         <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Gérez votre profil, votre organisation et vos préférences.
+          Vos informations personnelles, votre activité et votre abonnement MonService.
         </p>
       </div>
       

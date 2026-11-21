@@ -1,5 +1,6 @@
 'use client';
 
+import { computeBmi, latestMeasurement } from '@/lib/wellness/body-profile';
 import React from 'react';
 import {
   Activity,
@@ -259,6 +260,19 @@ export default function ClinicalOverviewSection({
               )}
             </div>
           </div>
+
+          {/* Profil corporel : IMC calculé depuis le dernier poids et la dernière taille */}
+          {(() => {
+            const bmi = computeBmi(latestMeasurement(overview.recentMeasurements, 'weight'), latestMeasurement(overview.recentMeasurements, 'height'));
+            if (!bmi) return null;
+            return (
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm" data-testid="bmi-card">
+                <h3 className="text-sm font-bold text-slate-900">Indice de masse corporelle</h3>
+                <p className="mt-2 text-2xl font-bold text-slate-900 tabular-nums">{bmi.value.toLocaleString('fr-FR')}</p>
+                <p className="text-xs text-slate-600">{bmi.label} · calculé avec le dernier poids et la dernière taille relevés</p>
+              </div>
+            );
+          })()}
 
           {/* Recent Measurements */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">

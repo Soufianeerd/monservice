@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, LayoutDashboard, Users, TrendingUp, FileText, Calendar, Store, MessageSquare, Settings, HeartPulse, Wrench, Star } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { buildProfessionalNavigation, NavigationIconKey } from '@/lib/navigation/workspace-navigation';
@@ -16,6 +16,7 @@ const iconMap: Record<NavigationIconKey, React.ElementType> = {
   billing: FileText,
   agenda: Calendar,
   marketplace: Store,
+  reviews: Star,
   messages: MessageSquare,
   settings: Settings,
 };
@@ -35,6 +36,8 @@ const clientNavItems: NavItem[] = [
   { id: 'dashboard', name: 'Tableau de bord', href: '/client/dashboard', icon: LayoutDashboard },
   { id: 'sante', name: 'Suivi Santé', href: '/client/sante', icon: HeartPulse },
   { id: 'requests', name: 'Mes demandes', href: '/client/requests', icon: FileText },
+  { id: 'interventions', name: 'Mes interventions', href: '/client/interventions', icon: Wrench },
+  { id: 'equipements', name: 'Mes équipements', href: '/client/equipements', icon: Wrench },
   { id: 'quotes', name: 'Devis reçus', href: '/client/quotes', icon: FileText },
   { id: 'invoices', name: 'Mes factures', href: '/client/invoices', icon: FileText },
   { id: 'messages', name: 'Messagerie', href: '/client/messages', icon: MessageSquare },
@@ -44,25 +47,22 @@ const clientNavItems: NavItem[] = [
 interface SidebarProps {
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
+  clientAccess?: boolean;
 }
 
-export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
+export default function Sidebar({ isOpen = false, setIsOpen, clientAccess = true }: SidebarProps) {
   const pathname = usePathname();
   const role = useRole();
   const workspace = useWorkspace();
   
   const navItems: NavItem[] = role === 'client' 
     ? clientNavItems 
-    : (workspace ? buildProfessionalNavigation(workspace).map(item => ({
+    : (workspace ? buildProfessionalNavigation(workspace, { clientAccess }).map(item => ({
         ...item,
         icon: iconMap[item.icon]
       })) : []);
       
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-
-  const toggleExpand = (id: string) => {
-    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-  };
 
   return (
     <>
@@ -100,44 +100,56 @@ export default function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
             {navItems.map((item) => {
               const itemKey = item.id || item.name;
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const isExpanded = expandedItems[itemKey] || isActive;
+              const isExpanded = expandedItems[itemKey] ?? isActive;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const Icon = item.icon;
 
+              // Une rubrique avec sous-menu ouvre directement sa première page
+              // (sans page de redirection) ; la flèche seule plie ou déplie.
+              const targetHref = hasSubItems ? item.subItems![0].href : item.href;
+              const submenuId = `submenu-${itemKey}`;
+
               return (
                 <div key={itemKey}>
-                  <Link
-                    href={hasSubItems ? '#' : item.href}
-                    onClick={(e) => {
-                      if (hasSubItems) {
-                        e.preventDefault();
-                        toggleExpand(itemKey);
-                      } else {
-                        setIsOpen?.(false);
-                      }
-                    }}
-                    data-tour={item.dataTour}
-                    className={`${
+                  <div className={`${
                       isActive
                         ? 'bg-gray-800 text-white'
                         : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                    } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                  >
-                    <div className="flex items-center">
+                    } group flex items-center justify-between rounded-md transition-colors`}>
+                    <Link
+                      href={targetHref}
+                      onClick={() => {
+                        if (hasSubItems) setExpandedItems((prev) => ({ ...prev, [itemKey]: true }));
+                        setIsOpen?.(false);
+                      }}
+                      aria-current={isActive && !hasSubItems ? 'page' : undefined}
+                      data-tour={item.dataTour}
+                      className="flex flex-1 items-center px-2 py-2 text-sm font-medium rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    >
                       <Icon className="mr-3 flex-shrink-0 h-5 w-5" aria-hidden="true" />
                       {item.name}
-                    </div>
+                    </Link>
                     {hasSubItems && (
-                      isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                      <button
+                        type="button"
+                        onClick={() => setExpandedItems((prev) => ({ ...prev, [itemKey]: !isExpanded }))}
+                        aria-expanded={isExpanded}
+                        aria-controls={submenuId}
+                        aria-label={`${isExpanded ? 'Replier' : 'Déplier'} ${item.name}`}
+                        className="p-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
+                      </button>
                     )}
-                  </Link>
+                  </div>
 
                   {hasSubItems && isExpanded && (
-                    <div className="ml-8 mt-1 space-y-1">
+                    <div id={submenuId} className="ml-8 mt-1 space-y-1">
                       {item.subItems!.map((subItem) => {
                         const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
                         return (
                           <Link
+                            data-tour={`nav-${subItem.href.split('/').filter(Boolean).join('-')}`}
                             key={subItem.name}
                             href={subItem.href}
                             onClick={() => setIsOpen?.(false)}

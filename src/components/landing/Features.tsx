@@ -148,7 +148,7 @@ export default function Features() {
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
                 <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                   <div className="font-semibold text-gray-900">Aujourd'hui</div>
-                  <div className="text-xs text-gray-500">Jeu. 14 Mai</div>
+                  <div className="text-xs text-gray-500">2 rendez-vous</div>
                 </div>
                 <div className="divide-y divide-gray-100 relative">
                   {/* Ligne rouge "actuelle" */}

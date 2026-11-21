@@ -1,4 +1,8 @@
 'use client';
+import { toast } from 'react-hot-toast';
+
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import { useState, useEffect, useMemo, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -20,12 +24,14 @@ import {
   TrendingUp,
   Percent,
 } from 'lucide-react';
-import * as clientActions from '@/app/actions/client.actions';
+import { preparePatientBillingRecipientAction } from '@/app/actions/patient-billing.actions';
+import { useBillingRecipients } from '@/hooks/useBillingRecipients';
 import * as dealActions from '@/app/actions/deal.actions';
 import { listFieldServiceSitesAction } from '@/app/actions/field-service-operations.actions';
-import { createQuoteAction } from '@/app/actions/quote.actions';
+import { createQuoteAction, updateDraftQuoteAction } from '@/app/actions/quote.actions';
+import { findByIdAction as findInvoiceByIdAction } from '@/app/actions/invoice.actions';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
-import type { Client, Deal, InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces';
+import type { Deal, InvoiceLineType, InvoiceUnitCode } from '@/lib/data/interfaces';
 
 interface SectionDraft {
   id: string;
@@ -77,15 +83,20 @@ const LINE_TYPE_OPTIONS: { value: InvoiceLineType; label: string }[] = [
 
 export default function NewQuotePage() {
   const router = useRouter();
+  // Un devis de 20 lignes ne doit pas se perdre sur un clic de travers.
+  const { markDirty, markSaved } = useUnsavedChanges();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const workspace = useWorkspace();
 
   const isFieldService = workspace?.type === 'field_service';
+  const isPractice = workspace?.type === 'paramedical';
 
   // Zero Re-Entry initial query params
   const paramDealId = searchParams.get('dealId') || '';
   const paramClientId = searchParams.get('clientId') || '';
+  // ?id=<devis brouillon> : même formulaire en modification (lots, options, unités conservés).
+  const editingId = searchParams.get('id') || '';
 
   // Form Header State
   const [clientId, setClientId] = useState(paramClientId);
@@ -105,7 +116,7 @@ export default function NewQuotePage() {
   const [advancedMode, setAdvancedMode] = useState(isFieldService);
 
   // Data Selectors
-  const [clients, setClients] = useState<Client[]>([]);
+  const { recipients: clients, query: patientQuery, setQuery: setPatientQuery, error: recipientError } = useBillingRecipients(user?.organizationId, isPractice);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [sites, setSites] = useState<any[]>([]);
 
@@ -126,16 +137,75 @@ export default function NewQuotePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editReady, setEditReady] = useState(!editingId);
+
+  useEffect(() => {
+    if (!editingId) return;
+    let cancelled = false;
+    findInvoiceByIdAction(editingId)
+      .then((quote) => {
+        if (cancelled) return;
+        if (!quote || quote.type !== 'quote') {
+          setError('Devis introuvable.');
+          return;
+        }
+        if (isPractice) {
+          router.replace(`/facturation/factures/${quote.id}/edit`);
+          return;
+        }
+        if (quote.status !== 'draft') {
+          router.replace(`/facturation/devis/${quote.id}`);
+          return;
+        }
+        setClientId(quote.clientId || '');
+        setSiteId(quote.siteId || '');
+        setDealId(quote.dealId || '');
+        setTitle(quote.title || '');
+        if (quote.validUntil) setValidUntil(quote.validUntil.slice(0, 10));
+        setDepositMode(quote.depositMode || 'none');
+        if (quote.depositRate != null) setDepositRate(quote.depositRate);
+        if (quote.depositFixedAmount != null) setDepositFixedAmount(quote.depositFixedAmount);
+        const loadedSections = [...(quote.sections ?? [])].sort((a, b) => a.position - b.position);
+        setSections(loadedSections.map((section, index) => ({
+          id: section.id,
+          kind: section.kind,
+          title: section.title,
+          description: section.description ?? undefined,
+          position: index,
+          isOptional: section.isOptional,
+          isSelected: section.isSelected,
+        })));
+        if (quote.sections?.some((section) => section.kind !== 'section') || quote.lines.some((line) => line.unitCode && line.unitCode !== 'unit')) {
+          setAdvancedMode(true);
+        }
+        setLines(quote.lines.map((line) => ({
+          id: line.id,
+          sectionId: line.sectionId ?? undefined,
+          lineType: line.lineType ?? 'service',
+          description: line.description,
+          quantity: line.quantity,
+          unitCode: line.unitCode ?? 'unit',
+          unitCost: line.unitCost ?? undefined,
+          unitPrice: line.unitPrice,
+          discountRate: line.discountRate ?? 0,
+          taxRate: line.taxRate,
+        })));
+        setEditReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Impossible de charger le devis.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId, router, isPractice]);
 
   // Load clients and deals
   useEffect(() => {
     if (!user?.organizationId) return;
 
-    clientActions.findAllAction(user.organizationId).then((cls) => {
-      setClients(cls);
-    });
 
-    dealActions.findAllAction(user.organizationId).then((dls) => {
+    if (!isPractice) dealActions.findAllAction(user.organizationId).then((dls) => {
       setDeals(dls);
       if (paramDealId) {
         const found = dls.find((d) => d.id === paramDealId);
@@ -147,11 +217,11 @@ export default function NewQuotePage() {
         }
       }
     });
-  }, [user, paramDealId]);
+  }, [user, paramDealId, isPractice]);
 
   // Load sites when client changes
   useEffect(() => {
-    if (!user?.organizationId || !clientId) {
+    if (!isFieldService || !user?.organizationId || !clientId) {
       setSites([]);
       return;
     }
@@ -166,7 +236,7 @@ export default function NewQuotePage() {
       .catch(() => {
         setSites([]);
       });
-  }, [user, clientId]);
+  }, [user, clientId, isFieldService]);
 
   // Pure calculations preview
   const totals = useMemo(() => {
@@ -240,7 +310,7 @@ export default function NewQuotePage() {
 
   const removeLine = (lineId: string) => {
     if (lines.length <= 1) {
-      alert('Un devis doit contenir au moins une ligne.');
+      toast.error('Un devis doit contenir au moins une ligne.');
       return;
     }
     setLines(lines.filter((l) => l.id !== lineId));
@@ -250,7 +320,7 @@ export default function NewQuotePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
-      setError('Veuillez sélectionner un client.');
+      setError(isPractice ? 'Veuillez sélectionner un patient.' : 'Veuillez sélectionner un client.');
       return;
     }
     if (lines.length === 0) {
@@ -263,7 +333,7 @@ export default function NewQuotePage() {
 
     try {
       const payload = {
-        clientId,
+        clientId: isPractice ? await preparePatientBillingRecipientAction(clientId) : clientId,
         siteId: siteId || undefined,
         dealId: dealId || undefined,
         title: title || undefined,
@@ -288,12 +358,37 @@ export default function NewQuotePage() {
           unitCost: l.unitCost ? Number(l.unitCost) : undefined,
           unitPrice: Number(l.unitPrice) || 0,
           discountRate: Number(l.discountRate) || 0,
-          taxRate: Number(l.taxRate) || 20,
+          taxRate: Number(l.taxRate),
           position: idx,
         })),
       };
 
+      if (editingId) {
+        await updateDraftQuoteAction({
+          id: editingId,
+          clientId: payload.clientId,
+          siteId: payload.siteId ?? null,
+          dealId: payload.dealId ?? null,
+          title: payload.title,
+          validUntil: payload.validUntil ?? null,
+          depositMode: payload.depositMode,
+          depositRate: payload.depositRate ?? null,
+          depositFixedAmount: payload.depositFixedAmount ?? null,
+          sections: sections.map((s, idx) => ({ ...payload.sections[idx], id: s.id })),
+          lines: lines.map((l, idx) => ({
+            ...payload.lines[idx],
+            sectionIndex: undefined,
+            sectionId: l.sectionId ?? null,
+          })),
+        });
+        markSaved();
+        announceGuideSaved('Le devis est enregistré.');
+        router.push(`/facturation/devis/${editingId}`);
+        return;
+      }
       const createdQuote = await createQuoteAction(payload);
+      markSaved();
+      announceGuideSaved('Le devis est enregistré.');
       router.push(`/facturation/devis/${createdQuote.id}`);
     } catch (err: unknown) {
       console.error('Erreur création devis:', err);
@@ -303,20 +398,22 @@ export default function NewQuotePage() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
+    <form data-guide-form="devis" onSubmit={handleSubmit} onInput={markDirty} onChange={markDirty} className="space-y-6 max-w-5xl mx-auto py-6 px-4 sm:px-6">
+      {recipientError && <p role="alert" className="text-sm text-red-600">{recipientError}</p>}
+      {isPractice && <div><label htmlFor="quote-patient-search" className="block text-sm font-medium text-gray-700">Rechercher un patient</label><input id="quote-patient-search" value={patientQuery} onChange={event => { setPatientQuery(event.target.value); setClientId(''); }} placeholder="Au moins deux lettres du nom ou prénom" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /><p className="mt-1 text-xs text-gray-500">Choisissez ensuite le patient dans la liste des résultats.</p></div>}
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-4">
         <div>
           <Link
-            href="/facturation/devis"
+            href={editingId ? `/facturation/devis/${editingId}` : '/facturation/devis'}
             className="text-sm font-medium text-blue-600 hover:text-blue-800 mb-1 inline-flex items-center"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Retour aux devis
+            {editingId ? 'Retour au devis' : 'Retour aux devis'}
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Nouveau Devis Professionnel</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{editingId ? 'Modifier le devis' : isPractice ? 'Nouveau devis patient' : 'Nouveau devis professionnel'}</h1>
           <p className="text-sm text-gray-500">
-            Chiffrage précis avec métrés, multi-TVA et options
+            {isPractice ? 'Décrivez les prestations proposées et vérifiez leur montant avant d’enregistrer.' : 'Chiffrage précis avec unités, TVA et options'}
           </p>
         </div>
 
@@ -328,17 +425,17 @@ export default function NewQuotePage() {
               onChange={(e) => setAdvancedMode(e.target.checked)}
               className="rounded text-blue-600 focus:ring-blue-500"
             />
-            <span className="font-medium">Mode Avancé BTP / Chantier</span>
+            <span className="font-medium">{isFieldService ? 'Mode avancé BTP / Chantier' : 'Détails des tarifs (unités, TVA, remises)'}</span>
           </label>
 
           <button
             data-testid="save-quote-button"
             type="submit"
-            disabled={loading}
+            disabled={loading || !editReady}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none disabled:opacity-50"
           >
             <Save className="w-4 h-4 mr-2" />
-            {loading ? 'Création...' : 'Créer le devis'}
+            {editingId ? (loading ? 'Enregistrement…' : 'Enregistrer le devis') : loading ? 'Création...' : 'Créer le devis'}
           </button>
         </div>
       </div>
@@ -355,10 +452,10 @@ export default function NewQuotePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Client Selection */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                Client <span className="text-red-500">*</span>
+              <label htmlFor="fld-b23c0149" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                {isPractice ? 'Patient' : 'Client'} <span className="text-red-500">*</span>
               </label>
-              <select
+              <select id="fld-b23c0149"
                 data-testid="quote-client-select"
                 value={clientId}
                 onChange={(e) => {
@@ -368,7 +465,7 @@ export default function NewQuotePage() {
                 required
                 className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none"
               >
-                <option value="">Sélectionner un client...</option>
+                <option value="">{isPractice ? 'Sélectionner un patient...' : 'Sélectionner un client...'}</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.company ? `(${c.company})` : ''}
@@ -378,12 +475,12 @@ export default function NewQuotePage() {
             </div>
 
             {/* Site / Chantier (Field service & advanced mode) */}
-            {advancedMode && (
+            {advancedMode && isFieldService && (
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                <label htmlFor="fld-c912354a" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Site / Chantier
                 </label>
-                <select
+                <select id="fld-c912354a"
                   data-testid="quote-site-select"
                   value={siteId}
                   onChange={(e) => setSiteId(e.target.value)}
@@ -407,17 +504,17 @@ export default function NewQuotePage() {
             )}
 
             {/* Deal / Opportunité */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                Deal / Opportunité CRM
+            <div hidden={isPractice}>
+              <label htmlFor="fld-44403817" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Opportunité commerciale
               </label>
-              <select
+              <select id="fld-44403817"
                 data-testid="quote-deal-select"
                 value={dealId}
                 onChange={(e) => setDealId(e.target.value)}
                 className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none"
               >
-                <option value="">Aucun deal associé</option>
+                <option value="">Aucune opportunité associée</option>
                 {deals.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} ({new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(d.value)})
@@ -430,10 +527,10 @@ export default function NewQuotePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
             {/* Project Title */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-f55ee2dd" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 Titre du projet / Objet du devis
               </label>
-              <input
+              <input id="fld-f55ee2dd"
                 data-testid="quote-title-input"
                 type="text"
                 value={title}
@@ -445,10 +542,10 @@ export default function NewQuotePage() {
 
             {/* Valid Until */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              <label htmlFor="fld-cc3695b4" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                 Date de fin de validité
               </label>
-              <input
+              <input id="fld-cc3695b4"
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
@@ -651,8 +748,8 @@ export default function NewQuotePage() {
 
             {depositMode === 'percentage' && (
               <div className="pt-2 flex items-center space-x-3">
-                <label className="text-xs text-gray-600">Taux (%) :</label>
-                <input
+                <label htmlFor="fld-aa3f4e15" className="text-xs text-gray-600">Taux (%) :</label>
+                <input id="fld-aa3f4e15"
                   data-testid="deposit-rate-input"
                   type="number"
                   min="0"
@@ -670,8 +767,8 @@ export default function NewQuotePage() {
 
             {depositMode === 'fixed' && (
               <div className="pt-2 flex items-center space-x-3">
-                <label className="text-xs text-gray-600">Montant fixe (€ TTC) :</label>
-                <input
+                <label htmlFor="fld-7a3489f5" className="text-xs text-gray-600">Montant fixe (€ TTC) :</label>
+                <input id="fld-7a3489f5"
                   type="number"
                   min="0"
                   step="0.01"
@@ -765,6 +862,7 @@ function LineRow({
       <div className="flex flex-col sm:flex-row gap-2">
         {advancedMode && (
           <select
+            aria-label="Type de prestation"
             value={line.lineType}
             onChange={(e) => onUpdate({ lineType: e.target.value as InvoiceLineType })}
             className="sm:w-40 rounded border border-gray-300 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-50"
@@ -778,6 +876,7 @@ function LineRow({
         )}
 
         <input
+          aria-label="Description de la ligne"
           data-testid="line-description-input"
           type="text"
           value={line.description}
@@ -788,6 +887,7 @@ function LineRow({
         />
 
         <button
+          aria-label="Supprimer la ligne"
           data-testid="delete-line-button"
           type="button"
           onClick={onDelete}
@@ -800,8 +900,8 @@ function LineRow({
       {/* Numbers row (Métrés, Price, Discount, VAT, Margin) */}
       <div className="grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-7 gap-2 items-center text-xs">
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Qté</label>
-          <input
+          <label htmlFor="fld-241ee875" className="block text-[10px] text-gray-500 uppercase">Qté</label>
+          <input id="fld-241ee875"
             data-testid="line-quantity-input"
             type="number"
             step="0.001"
@@ -813,8 +913,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Unité</label>
-          <select
+          <label htmlFor="fld-f5cc8b03" className="block text-[10px] text-gray-500 uppercase">Unité</label>
+          <select id="fld-f5cc8b03"
             data-testid="line-unit-select"
             value={line.unitCode}
             onChange={(e) => onUpdate({ unitCode: e.target.value as InvoiceUnitCode })}
@@ -829,8 +929,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Prix Vente HT</label>
-          <input
+          <label htmlFor="fld-8c930139" className="block text-[10px] text-gray-500 uppercase">Prix Vente HT</label>
+          <input id="fld-8c930139"
             data-testid="line-price-input"
             type="number"
             step="0.01"
@@ -843,8 +943,8 @@ function LineRow({
 
         {advancedMode && (
           <div>
-            <label className="block text-[10px] text-gray-500 uppercase">Prix Achat HT</label>
-            <input
+            <label htmlFor="fld-bcd89f8a" className="block text-[10px] text-gray-500 uppercase">Prix Achat HT</label>
+            <input id="fld-bcd89f8a"
               type="number"
               step="0.01"
               min="0"
@@ -861,8 +961,8 @@ function LineRow({
         )}
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">Remise (%)</label>
-          <input
+          <label htmlFor="fld-7936ed13" className="block text-[10px] text-gray-500 uppercase">Remise (%)</label>
+          <input id="fld-7936ed13"
             data-testid="line-discount-input"
             type="number"
             step="0.1"
@@ -875,8 +975,8 @@ function LineRow({
         </div>
 
         <div>
-          <label className="block text-[10px] text-gray-500 uppercase">TVA (%)</label>
-          <select
+          <label htmlFor="fld-5241fde0" className="block text-[10px] text-gray-500 uppercase">TVA (%)</label>
+          <select id="fld-5241fde0"
             data-testid="line-tax-select"
             value={line.taxRate}
             onChange={(e) => onUpdate({ taxRate: Number(e.target.value) || 0 })}

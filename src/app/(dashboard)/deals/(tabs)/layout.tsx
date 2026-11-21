@@ -10,7 +10,7 @@ export default function DealsTabsLayout({ children }: { children: React.ReactNod
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Deals</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Opportunités</h1>
           <p className="mt-1 text-sm text-gray-500">
             Gérez votre pipeline commercial et analysez vos performances.
           </p>

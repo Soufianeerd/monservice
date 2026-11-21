@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,11 +9,13 @@ import * as productActions from '@/app/actions/product.actions';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Client, Product, Invoice } from '@/lib/data/interfaces';
 import InvoiceForm, { InvoiceFormData } from '@/components/crm/InvoiceForm';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export default function EditInvoicePage(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
   const router = useRouter();
   const { user } = useAuth();
+  const isPractice = useWorkspace()?.type === 'paramedical';
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +28,12 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
         const id = params.id;
         const inv = await invoiceActions.findByIdAction(id, user.organizationId);
         
+        if (inv?.type === 'quote' && !isPractice) {
+          // Les devis se modifient dans le formulaire de devis complet
+          // (lots, options, unités) pour ne rien perdre à l'enregistrement.
+          router.replace(`/facturation/devis/nouveau?id=${inv.id}`);
+          return;
+        }
         if (inv) {
           setInvoice(inv);
         } else {
@@ -38,7 +47,7 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
     }
     
     if (user) loadData();
-  }, [params.id, user, router]);
+  }, [params.id, user, router, isPractice]);
 
   const handleSubmit = async (data: InvoiceFormData & { totalHT: number; taxAmount: number; totalTTC: number }) => {
     if (!user?.organizationId || !invoice) return;
@@ -48,25 +57,21 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
       const { lines, ...rest } = data;
 
       await invoiceActions.updateAction(invoice.id, user.organizationId, {
-        type: data.type as any,
         date: data.date || new Date().toISOString(),
         dueDate: data.dueDate,
         clientId: data.clientId || '',
-        totalHT: data.totalHT || 0,
-        taxAmount: data.taxAmount || 0,
-        totalTTC: data.totalTTC || 0,
         message: data.message,
         lines: (lines || []) as any,
       });
 
       // activityLog disabled
       
-      alert('Document mis à jour avec succès !');
+      toast.success('Document mis à jour avec succès !');
       router.push(`/invoices/${invoice.id}`);
       router.refresh();
     } catch (error) {
       console.error('Erreur lors de la mise à jour', error);
-      alert('Une erreur est survenue.');
+      toast.error('Une erreur est survenue.');
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,13 @@ import { useAuth } from './AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
+// `/clients/...` (CRM du professionnel) ne doit pas être pris pour l'espace
+// client `/client/...` : un simple startsWith('/client') renvoyait le
+// professionnel au tableau de bord dès l'ouverture d'une fiche client.
+export function isClientAreaPath(pathname: string): boolean {
+  return pathname === '/client' || pathname.startsWith('/client/');
+}
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -14,9 +21,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       if (!user) {
         router.push('/login');
       } else {
-        if (user.profileType === 'client' && !pathname.startsWith('/client') && !pathname.startsWith('/settings')) {
+        if (user.profileType === 'client' && !isClientAreaPath(pathname) && !pathname.startsWith('/settings')) {
           router.push('/client/dashboard');
-        } else if (user.profileType === 'professional' && pathname.startsWith('/client')) {
+        } else if (user.profileType === 'professional' && isClientAreaPath(pathname)) {
           router.push('/dashboard');
         }
       }

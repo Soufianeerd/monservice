@@ -2,22 +2,22 @@
   "invoice": {
     "paymentTerms": "Paiement à 30 jours nets",
     "latePaymentPenalty": "Pénalités de retard : 3 fois le taux d'intérêt légal en vigueur",
-    "indemnity": "Indemnité forfaitaire de 40 € pour frais de recouvrement (art. L. 441-6 du code de commerce)",
+    "indemnity": "Indemnité forfaitaire de 40 € pour frais de recouvrement (art. L. 441-10 du code de commerce)",
     "legalNotice": "TVA selon les règles en vigueur"
   },
   "quote": {
     "validity": "Devis valable 30 jours à compter de la date d'émission.",
-    "acceptance": "La signature électronique vaut acceptation ferme et définitive du présent devis, et fait office de bon de commande."
+    "acceptance": "Le devis retourné signé avec la mention « Bon pour accord » vaut acceptation et bon de commande."
   },
   "site": {
-    "publisher": "MonService SAS",
-    "publisherAddress": "10 rue de la Paix, 75000 Paris, France",
-    "publisherEmail": "contact@monservice.com",
-    "publisherPhone": "+33 1 23 45 67 89",
-    "registrationNumber": "RCS Paris 123 456 789",
-    "vatId": "FR12345678901",
+    "publisher": "",
+    "publisherAddress": "",
+    "publisherEmail": "",
+    "publisherPhone": "",
+    "registrationNumber": "",
+    "vatId": "",
     "hosting": "Netlify, Inc.",
-    "hostingAddress": "2325 3rd Street, Suite 215, San Francisco, CA 94107, USA"
+    "hostingAddress": "101 2nd Street, Suite 575, San Francisco, CA 94105, États-Unis"
   },
   "terms": {
     "intro": "Les présentes conditions générales régissent l'utilisation de la plateforme MonService en France.",

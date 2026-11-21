@@ -1,29 +1,15 @@
+import { CLIENT_ACCESS_CLOSED_MESSAGE, isClientAccessEnabled } from '@/lib/launch/client-access';
 import 'server-only';
 import { cache } from 'react';
-import { createClient } from '@/utils/supabase/server';
 import { db } from '@/lib/db/server';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { AppError } from '@/lib/errors';
+import { hasVerifiedSecondFactor } from '@/lib/auth/two-factor/session-cookie';
 
-/**
- * Contexte d'exécution serveur — implémentation Supabase Auth.
- *
- * RÈGLE FONDAMENTALE DU PROJET :
- * l'identité de l'appelant et son organisation ne doivent JAMAIS provenir
- * d'un paramètre de server action, d'un corps de requête, d'une query string
- * ou d'un cookie applicatif non signé. Elles sont exclusivement reconstruites
- * ici, à partir du jeton Supabase validé côté serveur.
- *
- * Toute server action et toute route API qui touche à des données doit
- * commencer par `requireSession()`, `requireOrganization()` ou
- * `requireProfessional()`.
- *
- * NOTE D'ARCHITECTURE — pourquoi cette abstraction existe :
- * la bascule NextAuth → Supabase Auth n'a nécessité de modifier que ce
- * fichier. Les 19 fichiers de server actions et les routes API n'ont pas
- * changé. Ne pas court-circuiter ce module en appelant directement
- * `supabase.auth.getUser()` ailleurs.
+/** Verified Neon session → stable application identity → stored tenant/profile.
+ * Identity is installed by the DB adapter transaction-locally. Browser fields
+ * never provide security context. Every protected action uses these helpers.
  */
 export type SessionContext = {
   userId: string;
@@ -34,6 +20,41 @@ export type SessionContext = {
 
 export type OrganizationContext = SessionContext & { organizationId: string };
 
+type ResolvedSession = { context: SessionContext | null; secondFactorPending: boolean };
+
+const resolveSession = cache(async (): Promise<ResolvedSession> => {
+  // The DB adapter verifies Neon Auth and installs the provider identity inside
+  // this query's transaction. SQL resolves the stable app ID and denies closure.
+  const profile = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      accountClosedAt: users.accountClosedAt,
+      profileType: users.profileType,
+      organizationId: users.organizationId,
+      // Même instruction SQL : aucun aller-retour de plus par requête.
+      twoFactorEnabled: sql<boolean>`public.two_factor_enabled()`,
+    })
+    .from(users)
+    .where(eq(users.id, sql`public.current_app_user_id()`));
+
+  const row = profile[0];
+  if (!row || row.accountClosedAt) return { context: null, secondFactorPending: false };
+
+  const context: SessionContext = {
+    userId: row.id,
+    email: row.email,
+    organizationId: row.organizationId ?? null,
+    profileType: row.profileType,
+  };
+  // Double authentification active : sans preuve liée à cette session, le
+  // compte est traité comme non connecté par toutes les actions et pages.
+  if (row.twoFactorEnabled && !(await hasVerifiedSecondFactor(row.id))) {
+    return { context, secondFactorPending: true };
+  }
+  return { context, secondFactorPending: false };
+});
+
 /**
  * Contexte si une session valide existe, `null` sinon. Ne lève jamais.
  *
@@ -41,48 +62,28 @@ export type OrganizationContext = SessionContext & { organizationId: string };
  * n'est lu qu'une fois même si plusieurs actions l'appellent.
  */
 export const getSessionContext = cache(async (): Promise<SessionContext | null> => {
-  const supabase = await createClient();
+  const resolved = await resolveSession();
+  return resolved.secondFactorPending ? null : resolved.context;
+});
 
-  // `getUser()` valide le jeton auprès du serveur Supabase.
-  // Ne jamais utiliser `getSession()` côté serveur : il fait confiance au
-  // cookie sans le vérifier.
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) return null;
-
-  // `profileType` et `organizationId` vivent dans la table applicative
-  // `public.users`, dont l'identifiant est celui de `auth.users`.
-  const profile = await db
-    .select({
-      profileType: users.profileType,
-      organizationId: users.organizationId,
-    })
-    .from(users)
-    .where(eq(users.id, user.id));
-
-  if (!profile[0]) {
-    // L'utilisateur existe dans Supabase Auth mais n'a pas de profil
-    // applicatif : le déclencheur `handle_new_user` n'a pas fonctionné, ou le
-    // profil a été supprimé. On ne devine pas de valeurs par défaut.
-    console.error('[auth] utilisateur sans profil applicatif', { userId: user.id });
-    return null;
-  }
-
-  return {
-    userId: user.id,
-    email: user.email ?? null,
-    organizationId: profile[0].organizationId ?? null,
-    profileType: profile[0].profileType,
-  };
+/**
+ * Compte connecté par mot de passe mais dont le second facteur reste à
+ * vérifier. Réservé à la page et à l'action de vérification.
+ */
+export const getPendingSecondFactorContext = cache(async (): Promise<SessionContext | null> => {
+  const resolved = await resolveSession();
+  return resolved.secondFactorPending ? resolved.context : null;
 });
 
 /** Contexte utilisateur authentifié. Lève 401 sinon. */
 export async function requireSession(): Promise<SessionContext> {
   const ctx = await getSessionContext();
   if (!ctx) throw new AppError('Authentification requise', 401, 'UNAUTHENTICATED');
+  // Périmètre V1 : un compte client existant ne peut exécuter aucune action
+  // serveur tant que les espaces clients sont fermés (voir lib/launch).
+  if (ctx.profileType === 'client' && !isClientAccessEnabled()) {
+    throw new AppError(CLIENT_ACCESS_CLOSED_MESSAGE, 403, 'CLIENT_ACCESS_DISABLED');
+  }
   return ctx;
 }
 

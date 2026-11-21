@@ -1,4 +1,7 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -104,6 +107,7 @@ export default function NewOperationForm({
         },
       ]);
       setSiteId(newSite.id);
+      announceGuideSaved('Le site est enregistré.', true);
       setIsSiteModalOpen(false);
       setNewSiteLabel('');
       setNewSiteAddress1('');
@@ -145,6 +149,7 @@ export default function NewOperationForm({
           scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
         });
 
+        announceGuideSaved('L’intervention est enregistrée.');
         router.push(`/operations/${order.id}`);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Erreur lors de la création de l’opération';
@@ -183,7 +188,7 @@ export default function NewOperationForm({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form data-guide-form="intervention" onSubmit={handleSubmit} className="space-y-6">
           {/* Client & Site */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
@@ -387,7 +392,7 @@ export default function NewOperationForm({
 
       {/* New Site Modal */}
       {isSiteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsSiteModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -409,12 +414,12 @@ export default function NewOperationForm({
               </div>
             )}
 
-            <form onSubmit={handleCreateSite} className="space-y-4">
+            <form data-guide-form="intervention" onSubmit={handleCreateSite} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-a5d3060e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Nom du site *
                 </label>
-                <input
+                <input id="fld-a5d3060e"
                   type="text"
                   required
                   placeholder="Ex: Résidence Principale, Chantier Bat A..."
@@ -425,10 +430,10 @@ export default function NewOperationForm({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-e5c78bd9" className="block text-xs font-semibold text-gray-700 mb-1">
                   Adresse *
                 </label>
-                <input
+                <input id="fld-e5c78bd9"
                   type="text"
                   required
                   placeholder="12 rue des Artisans"
@@ -440,10 +445,10 @@ export default function NewOperationForm({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label htmlFor="fld-331a8e4d" className="block text-xs font-semibold text-gray-700 mb-1">
                     Code Postal *
                   </label>
-                  <input
+                  <input id="fld-331a8e4d"
                     type="text"
                     required
                     placeholder="75001"
@@ -453,10 +458,10 @@ export default function NewOperationForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label htmlFor="fld-4391497e" className="block text-xs font-semibold text-gray-700 mb-1">
                     Ville *
                   </label>
-                  <input
+                  <input id="fld-4391497e"
                     type="text"
                     required
                     placeholder="Paris"
@@ -468,10 +473,10 @@ export default function NewOperationForm({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-f98968f5" className="block text-xs font-semibold text-gray-700 mb-1">
                   Instructions d’accès
                 </label>
-                <textarea
+                <textarea id="fld-f98968f5"
                   rows={2}
                   placeholder="Digicode, étage, accès cour..."
                   value={newSiteAccess}
@@ -498,7 +503,7 @@ export default function NewOperationForm({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

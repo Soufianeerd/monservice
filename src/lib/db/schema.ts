@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  smallint,
   real,
   doublePrecision,
   numeric,
@@ -14,9 +15,12 @@ import {
   check,
   jsonb,
   foreignKey,
+  primaryKey,
+  unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { ClinicalFormTemplateSchema, ClinicalFormAnswers } from '@/lib/clinical/types';
+import type { FieldServiceAssetCategory, FieldServiceAssetStatus } from '@/lib/workspaces/field-service/assets';
 import type {
   InvoiceLineType,
   InvoiceUnitCode,
@@ -68,11 +72,14 @@ export const quantityNumeric = customType<{ data: number; driverData: string }>(
 /** Helper : conserve la signature `integer(name, { mode: 'boolean' })`. */
 const sqliteTable = pgTable;
 
+export type InvoicePaymentMethod = 'transfer' | 'check' | 'cash' | 'card' | 'direct_debit' | 'other' | 'stripe';
+
 // Users
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   password: text('password'),
+  accountClosedAt: timestamp('account_closed_at', { withTimezone: true }),
   name: text('name'),
   profileType: text('profile_type').notNull(), // 'client' | 'professional'
   organizationId: text('organization_id'),
@@ -109,6 +116,13 @@ export const organizations = sqliteTable('organizations', {
   legalNotice: text('legal_notice'),
   paymentTerms: text('payment_terms'),
   bankDetails: text('bank_details'),
+  // Identité légale et banque (0022) : reprises sur les factures et devis.
+  legalForm: text('legal_form'),
+  siret: text('siret'),
+  vatNumber: text('vat_number'),
+  vatExempt: boolean('vat_exempt').notNull().default(false),
+  iban: text('iban'),
+  bic: text('bic'),
   // Colonnes référencées par Stripe Connect et la facturation, jusqu'ici
   // absentes du schéma (dérive constatée à l'audit).
   email: text('email'),
@@ -122,7 +136,7 @@ export const organizations = sqliteTable('organizations', {
   updatedAt: text('updated_at').notNull(),
 }, (t) => [
   check('organizations_sector_profession_check', sql`(
-    (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian'))
+    (${t.sector} = 'health' AND ${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian', 'psychologist', 'sport_coach', 'nutritionist', 'wellness_massage'))
     OR
     (${t.sector} IN ('field_services', 'artisan') AND ${t.profession} IN (
       'mason', 'plumber', 'electrician', 'heating_technician', 'hvac_technician',
@@ -135,6 +149,15 @@ export const organizations = sqliteTable('organizations', {
       'computer_repairer', 'appliance_repairer', 'electronics_repairer',
       'landscaper', 'custom_manufacturer', 'artisan_retailer',
       'technical_service_provider'
+    ))
+    OR
+    (${t.sector} = 'freelance' AND ${t.profession} IN (
+      'lawyer', 'legal_advisor', 'notary', 'bailiff', 'accountant', 'wealth_advisor',
+      'insurance_broker', 'real_estate_agent', 'business_consultant', 'it_consultant', 'hr_consultant', 'virtual_assistant',
+      'web_developer', 'graphic_designer', 'photographer', 'videographer', 'community_manager', 'copywriter',
+      'translator', 'architect_interior', 'musician', 'dj', 'event_planner', 'entertainer',
+      'artist', 'trainer', 'private_tutor', 'business_coach', 'music_teacher', 'home_cleaning',
+      'home_help', 'childcare', 'pet_care', 'concierge'
     ))
     OR
     (${t.profession} IS NULL)
@@ -334,6 +357,8 @@ export const invoices = sqliteTable('invoices', {
   depositAmount: moneyNumeric('deposit_amount').notNull().default(0),
   prepaidAmount: moneyNumeric('prepaid_amount').notNull().default(0),
   amountDue: moneyNumeric('amount_due').notNull().default(0),
+  // Mode de règlement saisi par le professionnel (0020), hors Stripe.
+  paymentMethod: text('payment_method').$type<InvoicePaymentMethod>(),
 
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -356,6 +381,7 @@ export const invoices = sqliteTable('invoices', {
   check('invoices_deposit_amount_check', sql`${t.depositAmount} >= 0`),
   check('invoices_prepaid_amount_check', sql`${t.prepaidAmount} >= 0`),
   check('invoices_amount_due_check', sql`${t.amountDue} >= 0`),
+  check('invoices_payment_method_check', sql`${t.paymentMethod} IS NULL OR ${t.paymentMethod} IN ('transfer', 'check', 'cash', 'card', 'direct_debit', 'other', 'stripe')`),
   foreignKey({
     columns: [t.clientId, t.organizationId],
     foreignColumns: [clients.id, clients.organizationId],
@@ -559,6 +585,28 @@ export const stripeEvents = sqliteTable('stripe_events', {
   processedAt: text('processed_at').notNull(),
 });
 
+// Provider credentials never replace stable application foreign keys.
+export const userIdentities = pgTable('user_identities', {
+  appUserId: text('app_user_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  provider: text('provider').notNull(),
+  providerUserId: text('provider_user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }).notNull(),
+  linkageMethod: text('linkage_method').notNull(),
+}, table => [
+  primaryKey({ columns: [table.provider,table.providerUserId] }),
+  unique('user_identities_app_user_id_provider_key').on(table.appUserId,table.provider),
+  check('user_identities_provider_check',sql`${table.provider} IN ('neon','supabase')`),
+  check('user_identities_linkage_method_check',sql`${table.linkageMethod} IN ('provider_signup','verified_reenrollment','source_import','synthetic_fixture')`),
+]);
+export const identityReenrollments = pgTable('identity_reenrollments', {
+  appUserId: text('app_user_id').primaryKey().references(() => users.id, { onDelete: 'restrict' }),
+  verifiedSourceEmail: text('verified_source_email').notNull().unique(),
+  sourceProviderUserId: text('source_provider_user_id'),
+  importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+});
+
 // Legal Entities
 export const legalEntities = sqliteTable('legal_entities', {
   id: text('id').primaryKey(),
@@ -752,7 +800,7 @@ export const practicePractitioners = sqliteTable('practice_practitioners', {
   index('practice_practitioners_organization_id_idx').on(t.organizationId),
   uniqueIndex('practice_practitioners_org_id_unique').on(t.id, t.organizationId),
   uniqueIndex('practice_practitioners_org_user_unique').on(t.organizationId, t.userId),
-  check('practice_practitioners_profession_check', sql`${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian')`),
+  check('practice_practitioners_profession_check', sql`${t.profession} IN ('physiotherapist', 'osteopath', 'speech_therapist', 'podiatrist', 'occupational_therapist', 'psychomotor_therapist', 'dietitian', 'psychologist', 'sport_coach', 'nutritionist', 'wellness_massage')`),
   foreignKey({
     columns: [t.userId, t.organizationId],
     foreignColumns: [users.id, users.organizationId],
@@ -1625,6 +1673,7 @@ export const fieldServiceWorkOrders = sqliteTable('field_service_work_orders', {
 }, (t) => [
   uniqueIndex('field_service_work_orders_org_ref_unique').on(t.organizationId, t.reference),
   uniqueIndex('field_service_work_orders_id_org_unique').on(t.id, t.organizationId),
+  uniqueIndex('field_service_work_orders_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
   index('field_service_work_orders_org_status_idx').on(t.organizationId, t.status),
   index('field_service_work_orders_org_sched_start_idx').on(t.organizationId, t.scheduledStart),
   index('field_service_work_orders_org_client_idx').on(t.organizationId, t.clientId),
@@ -1754,4 +1803,295 @@ export const fieldServiceWorkOrderStatusHistory = sqliteTable('field_service_wor
   })
 ]);
 
+// 6. Field Service Customer Assets (Session 19)
+export const fieldServiceAssets = sqliteTable('field_service_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  siteId: text('site_id'),
+  category: text('category').$type<FieldServiceAssetCategory>().notNull().default('other'),
+  label: text('label').notNull(),
+  manufacturer: text('manufacturer'),
+  model: text('model'),
+  serialNumber: text('serial_number'),
+  installedOn: date('installed_on'),
+  warrantyEndsOn: date('warranty_ends_on'),
+  status: text('status').$type<FieldServiceAssetStatus>().notNull().default('active'),
+  notes: text('notes'),
+  maintenanceIntervalMonths: integer('maintenance_interval_months'),
+  nextMaintenanceOn: date('next_maintenance_on'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_assets_id_org_client_unique').on(t.id, t.organizationId, t.clientId),
+  uniqueIndex('field_service_assets_org_serial_unique')
+    .on(t.organizationId, t.manufacturer, t.serialNumber)
+    .where(sql`${t.serialNumber} IS NOT NULL`),
+  index('field_service_assets_org_client_idx').on(t.organizationId, t.clientId),
+  index('field_service_assets_org_site_idx').on(t.organizationId, t.siteId),
+  index('field_service_assets_org_status_idx').on(t.organizationId, t.status),
+  index('field_service_assets_org_warranty_idx').on(t.organizationId, t.warrantyEndsOn),
+  index('field_service_assets_org_next_maintenance_idx').on(t.organizationId, t.nextMaintenanceOn),
+  check('field_service_assets_maintenance_interval_check', sql`${t.maintenanceIntervalMonths} IS NULL OR (${t.maintenanceIntervalMonths} >= 1 AND ${t.maintenanceIntervalMonths} <= 120)`),
+  check('field_service_assets_label_check', sql`char_length(trim(${t.label})) >= 1 AND char_length(trim(${t.label})) <= 160`),
+  check('field_service_assets_category_check', sql`${t.category} IN ('heating', 'cooling', 'ventilation', 'plumbing', 'electrical', 'appliance', 'security', 'it_equipment', 'vehicle', 'structure', 'other')`),
+  check('field_service_assets_status_check', sql`${t.status} IN ('active', 'out_of_service', 'decommissioned')`),
+  check('field_service_assets_serial_check', sql`${t.serialNumber} IS NULL OR (char_length(trim(${t.serialNumber})) >= 1 AND char_length(${t.serialNumber}) <= 120)`),
+  check('field_service_assets_manufacturer_check', sql`${t.manufacturer} IS NULL OR char_length(${t.manufacturer}) <= 120`),
+  check('field_service_assets_model_check', sql`${t.model} IS NULL OR char_length(${t.model}) <= 120`),
+  check('field_service_assets_notes_check', sql`${t.notes} IS NULL OR char_length(${t.notes}) <= 4000`),
+  check('field_service_assets_warranty_dates_check', sql`${t.installedOn} IS NULL OR ${t.warrantyEndsOn} IS NULL OR ${t.warrantyEndsOn} >= ${t.installedOn}`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'field_service_assets_client_fk'
+  }),
+  foreignKey({
+    columns: [t.siteId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceSites.id, fieldServiceSites.organizationId, fieldServiceSites.clientId],
+    name: 'field_service_assets_site_fk'
+  })
+]);
 
+// 8. Client acknowledgement of a finalized work report (Session 20)
+export const FIELD_SERVICE_REPORT_ACK_DECISIONS = ['accepted', 'accepted_with_reservations'] as const;
+export type FieldServiceReportAckDecision = (typeof FIELD_SERVICE_REPORT_ACK_DECISIONS)[number];
+
+export const fieldServiceWorkReportAcknowledgements = sqliteTable('field_service_work_report_acknowledgements', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  workReportId: text('work_report_id').notNull().references(() => fieldServiceWorkReports.id),
+  acknowledgedByUserId: text('acknowledged_by_user_id').notNull(),
+  signerName: text('signer_name').notNull(),
+  decision: text('decision').$type<FieldServiceReportAckDecision>().notNull().default('accepted'),
+  comment: text('comment'),
+  acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_report_ack_report_unique').on(t.workReportId),
+  index('field_service_report_ack_org_idx').on(t.organizationId, t.acknowledgedAt),
+  check('field_service_report_ack_signer_check', sql`char_length(trim(${t.signerName})) >= 2 AND char_length(${t.signerName}) <= 120`),
+  check('field_service_report_ack_decision_check', sql`${t.decision} IN ('accepted', 'accepted_with_reservations')`),
+  check('field_service_report_ack_comment_check', sql`${t.comment} IS NULL OR char_length(${t.comment}) <= 2000`),
+  check('field_service_report_ack_reservations_check', sql`${t.decision} = 'accepted' OR (${t.comment} IS NOT NULL AND char_length(trim(${t.comment})) >= 3)`),
+  foreignKey({
+    columns: [t.acknowledgedByUserId],
+    foreignColumns: [users.id],
+    name: 'field_service_report_ack_user_fk'
+  })
+]);
+
+// Invitation d'un client au portail (0017). Le jeton n'est jamais stocké :
+// seule son empreinte SHA-256 l'est. Liaison via accept_client_portal_invitation.
+export const clientPortalInvitations = sqliteTable('client_portal_invitations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('client_portal_invitations_token_hash_unique').on(t.tokenHash),
+  uniqueIndex('client_portal_invitations_pending_unique').on(t.clientId).where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  index('client_portal_invitations_org_client_idx').on(t.organizationId, t.clientId, t.createdAt),
+  check('client_portal_invitations_email_check', sql`${t.email} = lower(btrim(${t.email})) AND char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('client_portal_invitations_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('client_portal_invitations_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('client_portal_invitations_accepted_check', sql`(${t.acceptedAt} IS NULL) = (${t.acceptedByUserId} IS NULL)`),
+  check('client_portal_invitations_final_state_check', sql`${t.acceptedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+  foreignKey({
+    columns: [t.clientId, t.organizationId],
+    foreignColumns: [clients.id, clients.organizationId],
+    name: 'client_portal_invitations_client_fk'
+  })
+]);
+
+// Équipe d'une organisation (0019). Invitation d'un collaborateur : le jeton
+// n'est jamais stocké, seule son empreinte SHA-256. Rattachement uniquement
+// via accept_organization_invitation (adresse vérifiée = adresse invitée).
+export const organizationInvitations = sqliteTable('organization_invitations', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('member'),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('organization_invitations_token_hash_unique').on(t.tokenHash),
+  uniqueIndex('organization_invitations_pending_unique').on(t.organizationId, t.email).where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
+  index('organization_invitations_email_idx').on(t.email, t.createdAt),
+  check('organization_invitations_role_check', sql`${t.role} IN ('admin', 'member')`),
+  check('organization_invitations_email_check', sql`${t.email} = lower(btrim(${t.email})) AND char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('organization_invitations_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('organization_invitations_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('organization_invitations_accepted_check', sql`(${t.acceptedAt} IS NULL) = (${t.acceptedByUserId} IS NULL)`),
+  check('organization_invitations_final_state_check', sql`${t.acceptedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+]);
+
+// Retrait d'un membre (0019) : le compte garde son rattachement historique
+// mais current_account_is_active() le refuse partout. Aucun accès runtime.
+export const organizationMemberRemovals = sqliteTable('organization_member_removals', {
+  userId: text('user_id').primaryKey().references(() => users.id),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  removedByUserId: text('removed_by_user_id').notNull().references(() => users.id),
+  removedAt: timestamp('removed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 7. Work order ↔ asset links (same organization and same client, enforced by composite FKs)
+export const fieldServiceWorkOrderAssets = sqliteTable('field_service_work_order_assets', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  clientId: text('client_id').notNull(),
+  workOrderId: text('work_order_id').notNull(),
+  assetId: text('asset_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('field_service_work_order_assets_wo_asset_unique').on(t.workOrderId, t.assetId),
+  index('field_service_work_order_assets_org_asset_idx').on(t.organizationId, t.assetId),
+  index('field_service_work_order_assets_org_wo_idx').on(t.organizationId, t.workOrderId),
+  foreignKey({
+    columns: [t.workOrderId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceWorkOrders.id, fieldServiceWorkOrders.organizationId, fieldServiceWorkOrders.clientId],
+    name: 'field_service_work_order_assets_work_order_fk'
+  }),
+  foreignKey({
+    columns: [t.assetId, t.organizationId, t.clientId],
+    foreignColumns: [fieldServiceAssets.id, fieldServiceAssets.organizationId, fieldServiceAssets.clientId],
+    name: 'field_service_work_order_assets_asset_fk'
+  })
+]);
+
+
+// Outils de croissance (0020). Toutes les écritures passent par des fonctions
+// SQL bornées ; le rôle runtime ne fait que lire, filtré par organisation.
+export const organizationAutomationSettings = sqliteTable('organization_automation_settings', {
+  organizationId: text('organization_id').primaryKey().references(() => organizations.id),
+  invoiceRemindersEnabled: boolean('invoice_reminders_enabled').notNull().default(false),
+  quoteFollowupsEnabled: boolean('quote_followups_enabled').notNull().default(false),
+  quoteFollowupDays: integer('quote_followup_days').notNull().default(7),
+  reviewRequestsEnabled: boolean('review_requests_enabled').notNull().default(false),
+  reviewRequestDelayDays: integer('review_request_delay_days').notNull().default(3),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id),
+}, (t) => [
+  check('organization_automation_settings_quote_days_check', sql`${t.quoteFollowupDays} BETWEEN 3 AND 30`),
+  check('organization_automation_settings_review_delay_check', sql`${t.reviewRequestDelayDays} BETWEEN 0 AND 30`),
+]);
+
+export const automationDeliveries = sqliteTable('automation_deliveries', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull(),
+  documentId: text('document_id').notNull(),
+  kind: text('kind').notNull(),
+  level: integer('level').notNull().default(1),
+  status: text('status').notNull().default('claimed'),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('automation_deliveries_once').on(t.documentId, t.kind, t.level),
+  index('automation_deliveries_org_idx').on(t.organizationId, t.claimedAt),
+  check('automation_deliveries_kind_check', sql`${t.kind} IN ('invoice_overdue', 'quote_followup', 'review_request')`),
+  check('automation_deliveries_level_check', sql`${t.level} BETWEEN 1 AND 3`),
+  check('automation_deliveries_status_check', sql`${t.status} IN ('claimed', 'sent', 'failed', 'skipped')`),
+  foreignKey({ columns: [t.documentId, t.organizationId], foreignColumns: [invoices.id, invoices.organizationId], name: 'automation_deliveries_document_fk' }),
+]);
+
+export const clientReviewRequests = sqliteTable('client_review_requests', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  invoiceId: text('invoice_id').notNull(),
+  clientId: text('client_id').notNull(),
+  email: text('email').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  createdByUserId: text('created_by_user_id').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('client_review_requests_token_unique').on(t.tokenHash),
+  uniqueIndex('client_review_requests_invoice_live').on(t.invoiceId).where(sql`${t.revokedAt} IS NULL`),
+  index('client_review_requests_org_idx').on(t.organizationId, t.createdAt),
+  check('client_review_requests_token_hash_check', sql`${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check('client_review_requests_email_check', sql`char_length(${t.email}) BETWEEN 3 AND 320 AND position('@' IN ${t.email}) > 1`),
+  check('client_review_requests_expiry_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  check('client_review_requests_final_state_check', sql`${t.usedAt} IS NULL OR ${t.revokedAt} IS NULL`),
+  foreignKey({ columns: [t.invoiceId, t.organizationId, t.clientId], foreignColumns: [invoices.id, invoices.organizationId, invoices.clientId], name: 'client_review_requests_invoice_fk' }),
+]);
+
+export const clientReviews = sqliteTable('client_reviews', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  requestId: text('request_id').notNull().references(() => clientReviewRequests.id),
+  invoiceId: text('invoice_id').notNull(),
+  rating: smallint('rating').notNull(),
+  comment: text('comment'),
+  authorDisplayName: text('author_display_name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  reply: text('reply'),
+  repliedAt: timestamp('replied_at', { withTimezone: true }),
+  repliedByUserId: text('replied_by_user_id').references(() => users.id),
+  reportedAt: timestamp('reported_at', { withTimezone: true }),
+  reportReason: text('report_reason'),
+  hiddenAt: timestamp('hidden_at', { withTimezone: true }),
+  hiddenReason: text('hidden_reason'),
+}, (t) => [
+  uniqueIndex('client_reviews_request_unique').on(t.requestId),
+  index('client_reviews_org_idx').on(t.organizationId, t.createdAt),
+  check('client_reviews_rating_check', sql`${t.rating} BETWEEN 1 AND 5`),
+  check('client_reviews_comment_check', sql`${t.comment} IS NULL OR char_length(${t.comment}) <= 2000`),
+  check('client_reviews_author_check', sql`char_length(btrim(${t.authorDisplayName})) BETWEEN 1 AND 60`),
+  check('client_reviews_reply_check', sql`${t.reply} IS NULL OR char_length(${t.reply}) BETWEEN 1 AND 2000`),
+  check('client_reviews_report_check', sql`${t.reportReason} IS NULL OR ${t.reportReason} IN ('abusive', 'personal_data', 'not_a_client', 'off_topic')`),
+  foreignKey({ columns: [t.invoiceId, t.organizationId], foreignColumns: [invoices.id, invoices.organizationId], name: 'client_reviews_invoice_fk' }),
+]);
+
+export const organizationPublicProfiles = sqliteTable('organization_public_profiles', {
+  organizationId: text('organization_id').primaryKey().references(() => organizations.id),
+  slug: text('slug').notNull(),
+  published: boolean('published').notNull().default(false),
+  headline: text('headline'),
+  about: text('about'),
+  serviceArea: text('service_area'),
+  interventionCities: text('intervention_cities').array().notNull().default(sql`'{}'::text[]`),
+  services: text('services').array().notNull().default(sql`'{}'::text[]`),
+  showPhone: boolean('show_phone').notNull().default(false),
+  showEmail: boolean('show_email').notNull().default(false),
+  website: text('website'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id),
+}, (t) => [
+  uniqueIndex('organization_public_profiles_slug_unique').on(t.slug),
+  check('organization_public_profiles_slug_check', sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(${t.slug}) BETWEEN 3 AND 60`),
+  check('organization_public_profiles_headline_check', sql`${t.headline} IS NULL OR char_length(${t.headline}) <= 120`),
+  check('organization_public_profiles_about_check', sql`${t.about} IS NULL OR char_length(${t.about}) <= 4000`),
+  check('organization_public_profiles_area_check', sql`${t.serviceArea} IS NULL OR char_length(${t.serviceArea}) <= 300`),
+  check('organization_public_profiles_cities_check', sql`cardinality(${t.interventionCities}) <= 30`),
+  check('organization_public_profiles_services_check', sql`cardinality(${t.services}) <= 20`),
+  check('organization_public_profiles_website_check', sql`${t.website} IS NULL OR (${t.website} ~ '^https://[^\\s<>"]+$' AND char_length(${t.website}) <= 300)`),
+]);
+
+export const organizationPortfolioItems = sqliteTable('organization_portfolio_items', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  city: text('city'),
+  completedOn: date('completed_on'),
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('organization_portfolio_items_org_idx').on(t.organizationId, t.position),
+  check('organization_portfolio_items_title_check', sql`char_length(btrim(${t.title})) BETWEEN 1 AND 120`),
+  check('organization_portfolio_items_description_check', sql`${t.description} IS NULL OR char_length(${t.description}) <= 1000`),
+  check('organization_portfolio_items_city_check', sql`${t.city} IS NULL OR char_length(${t.city}) <= 80`),
+]);

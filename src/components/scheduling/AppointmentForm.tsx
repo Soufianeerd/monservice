@@ -1,5 +1,8 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -36,6 +39,7 @@ export function AppointmentForm({
   onSuccess,
   onCancel,
 }: Props) {
+  const t = useCareVocabulary();
   const isReschedule = Boolean(initialData?.appointmentId);
 
   // Form Fields
@@ -129,7 +133,7 @@ export function AppointmentForm({
     setErrorMessage(null);
 
     if (!patientId) {
-      setErrorMessage('Veuillez sélectionner un patient');
+      setErrorMessage(t('Veuillez sélectionner un patient'));
       return;
     }
 
@@ -146,6 +150,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(updated);
         } else {
           const created = await createAppointmentAction({
@@ -157,6 +162,7 @@ export function AppointmentForm({
             localDate,
             localStartTime,
           });
+          announceGuideSaved('Le rendez-vous est enregistré.');
           onSuccess(created);
         }
       } catch (err: unknown) {
@@ -184,10 +190,10 @@ export function AppointmentForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form data-guide-form="rendez-vous" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SEARCH */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient *</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Patient *")}</label>
           {selectedPatientDisplay ? (
             <div className="mt-1 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <span className="text-sm font-semibold text-blue-900">{selectedPatientDisplay}</span>
@@ -238,8 +244,8 @@ export function AppointmentForm({
         {/* LOCATION & PRACTITIONER */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Lieu de consultation *</label>
-            <select
+            <label htmlFor="fld-8ca1897c" className="block text-sm font-medium text-gray-700">Lieu de consultation *</label>
+            <select id="fld-8ca1897c"
               value={locationId}
               onChange={(e) => {
                 setLocationId(e.target.value);
@@ -256,8 +262,8 @@ export function AppointmentForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Praticien *</label>
-            <select
+            <label htmlFor="fld-b49c0487" className="block text-sm font-medium text-gray-700">Praticien *</label>
+            <select id="fld-b49c0487"
               value={practitionerId}
               onChange={(e) => setPractitionerId(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -274,8 +280,8 @@ export function AppointmentForm({
         {/* TYPE & ROOM */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Type de séance *</label>
-            <select
+            <label htmlFor="fld-7a05dd4e" className="block text-sm font-medium text-gray-700">Type de séance *</label>
+            <select id="fld-7a05dd4e"
               value={appointmentTypeId}
               onChange={(e) => setAppointmentTypeId(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -289,8 +295,8 @@ export function AppointmentForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Salle (optionnel)</label>
-            <select
+            <label htmlFor="fld-e7cde095" className="block text-sm font-medium text-gray-700">Salle (optionnel)</label>
+            <select id="fld-e7cde095"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -308,8 +314,8 @@ export function AppointmentForm({
         {/* DATE & TIME */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Date locale *</label>
-            <input
+            <label htmlFor="fld-432c9e4b" className="block text-sm font-medium text-gray-700">Date locale *</label>
+            <input id="fld-432c9e4b"
               type="date"
               required
               value={localDate}
@@ -319,8 +325,8 @@ export function AppointmentForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Heure de début *</label>
-            <input
+            <label htmlFor="fld-402bc457" className="block text-sm font-medium text-gray-700">Heure de début *</label>
+            <input id="fld-402bc457"
               type="time"
               required
               value={localStartTime}
@@ -341,7 +347,7 @@ export function AppointmentForm({
             </div>
             {(selectedType.bufferBeforeMinutes > 0 || selectedType.bufferAfterMinutes > 0) && (
               <div className="flex justify-between text-gray-500">
-                <span>Plage d&apos;occupation praticien (buffers inclus) :</span>
+                <span>Temps réservé au praticien, préparation et pause incluses :</span>
                 <span>
                   +{selectedType.bufferBeforeMinutes}m avant / +{selectedType.bufferAfterMinutes}m après
                 </span>

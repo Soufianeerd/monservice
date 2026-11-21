@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,7 +37,7 @@ export default function NewContactPage() {
 
       // activityLog disabled
 
-      alert('Contact créé !');
+      toast.success('Contact créé !');
       router.push('/contacts');
     } catch (error) {
       console.error('Erreur', error);

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -38,12 +39,12 @@ export default function EditTemplatePage() {
         ...data,
         updatedAt: new Date().toISOString(),
       });
-      alert('Modèle mis à jour !');
+      toast.success('Modèle mis à jour !');
       router.push('/templates');
       router.refresh();
     } catch (error) {
       console.error('Erreur', error);
-      alert('Erreur lors de la mise à jour.');
+      toast.error('Erreur lors de la mise à jour.');
     } finally {
       setIsSubmitting(false);
     }

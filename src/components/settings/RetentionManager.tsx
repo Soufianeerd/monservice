@@ -25,12 +25,12 @@ export function RetentionManager({ organizationId }: { organizationId: string })
       const data = await res.json();
       if (res.ok) {
         setDocuments(data.expired);
-        toast.success(data.message || 'Check complete');
+        toast.success(data.message || 'Vérification terminée');
       } else {
-        toast.error(data.error || 'Failed to check retention');
+        toast.error(data.error || 'Vérification impossible');
       }
     } catch (e) {
-      toast.error('Error fetching expired documents');
+      toast.error('Vérification impossible');
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export function RetentionManager({ organizationId }: { organizationId: string })
         <div className="flex items-end space-x-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Date de début</label>
-            <input
+            <input aria-label="Date de début"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -135,7 +135,7 @@ export function RetentionManager({ organizationId }: { organizationId: string })
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Date de fin</label>
-            <input
+            <input aria-label="Date de fin"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}

@@ -59,7 +59,7 @@ export class EinvoiceService {
     const hash = this.calculateHash(content);
     
     // 5. Store file
-    const path = await storageService.save(fileName, content);
+    const path = await storageService.save(fileName, content, { organizationId: invoice.organizationId, documentId: invoice.id });
     
     // 6. Update invoice
     await db.update(invoices).set({

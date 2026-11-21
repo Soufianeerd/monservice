@@ -1,0 +1,45 @@
+{
+  "observedAt": "2026-10-11T00:28:34.482Z",
+  "provider": "Netlify",
+  "method": "existing authenticated browser session",
+  "readOnly": true,
+  "hostingMutated": false,
+  "projectName": "monservicecrm",
+  "siteId": "dc084088-bcde-4d4f-9be5-d5aa8959650a",
+  "repository": "https://github.com/Soufianeerd/monservice",
+  "projectUrl": "https://app.netlify.com/projects/monservicecrm/overview",
+  "applicationUrl": "https://monservicecrm.netlify.app",
+  "customDomains": [],
+  "publishedDeployment": false,
+  "latestDeploy": {
+    "id": "6abab779cc220300099678f1",
+    "commit": "3b62b47",
+    "branch": "main",
+    "status": "failed",
+    "cause": "DATABASE_URL missing during page-data collection for /api/admin/audit/export"
+  },
+  "build": {
+    "command": "npm run build",
+    "publishDirectory": ".next",
+    "runtime": "Next.js",
+    "active": true,
+    "productionBranch": "main",
+    "branchDeploys": "production branch only",
+    "deployPreviews": "pull requests against production or branch-deploy branches",
+    "environmentNodeVersion": "22.x",
+    "dependencyManagementNodeVersion": "24.x",
+    "logsPublic": true
+  },
+  "environmentVariableNames": [
+    "NODE_VERSION"
+  ],
+  "applicationCredentialsInstalled": false,
+  "applicationEmailDomain": null,
+  "sources": [
+    "https://app.netlify.com/projects/monservicecrm/configuration/general",
+    "https://app.netlify.com/projects/monservicecrm/configuration/developer-settings",
+    "https://app.netlify.com/projects/monservicecrm/configuration/env",
+    "https://app.netlify.com/projects/monservicecrm/domain-management",
+    "https://app.netlify.com/projects/monservicecrm/deploys/6abab779cc220300099678f1"
+  ]
+}

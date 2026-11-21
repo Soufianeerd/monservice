@@ -1,14 +1,16 @@
 'use client';
+import Link from 'next/link';
 
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { Invoice, Client, Product, InvoiceLine } from '@/lib/data/interfaces';
-import { generateId } from '@/lib/utils/id-generator';
-import * as clientActions from '@/app/actions/client.actions';
+import { Invoice, Product } from '@/lib/data/interfaces';
 import * as productActions from '@/app/actions/product.actions';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { useBillingRecipients } from '@/hooks/useBillingRecipients';
 
 import { invoiceSchema, invoiceLineSchema } from '@/lib/validation/schemas';
 import { calculateDocumentTotals } from '@/lib/services/billing-calculator';
@@ -29,15 +31,16 @@ interface InvoiceFormProps {
 
 export default function InvoiceForm({ initialData, organizationId, onSubmit, isSubmitting }: InvoiceFormProps) {
   const router = useRouter();
-  const [clients, setClients] = useState<Client[]>([]);
+  const { markDirty, markSaved } = useUnsavedChanges();
+  const isPatientCreation = useWorkspace()?.type === 'paramedical' && !initialData;
+  const { recipients: clients, query, setQuery, error: recipientError } = useBillingRecipients(organizationId, isPatientCreation);
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     if (organizationId) {
-      clientActions.findAllAction(organizationId).then(setClients);
       productActions.findAllAction(organizationId).then(setProducts);
     }
-  }, [organizationId]);
+  }, [organizationId, isPatientCreation]);
   
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormInput, unknown, InvoiceFormData>({
     resolver: zodResolver(invoiceFormSchema),
@@ -101,6 +104,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   };
 
   const submitForm = async (data: InvoiceFormData) => {
+    // Plus d'avertissement pendant la redirection qui suit l'enregistrement.
+    markSaved();
     await onSubmit({
       ...data,
       totalHT: totals.totalHT,
@@ -110,28 +115,31 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="document" onSubmit={handleSubmit(submitForm)} onInput={markDirty} onChange={markDirty} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+      {recipientError && <p role="alert" className="text-sm text-red-600">{recipientError}</p>}
+      {isPatientCreation && <div><label htmlFor="invoice-patient-search" className="block text-sm font-medium text-gray-700">Rechercher un patient</label><input id="invoice-patient-search" value={query} onChange={event => { setQuery(event.target.value); setValue('clientId', ''); }} placeholder="Au moins deux lettres du nom ou prénom" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /><p className="mt-1 text-xs text-gray-500">Choisissez ensuite le patient dans la liste. La recherche permet de retrouver un dossier au-delà des 100 premiers.</p></div>}
       
       {/* Informations Générales */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Type de document</label>
-          <select
-            {...register('type')}
-            className="text-gray-900 mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          >
-            <option value="invoice">Facture</option>
-            <option value="quote">Devis</option>
-          </select>
+          <p className="block text-sm font-medium text-gray-700">Type de document</p>
+          <p className="mt-1 py-2 text-sm text-gray-900">{initialData?.type === 'quote' ? 'Devis' : 'Facture'}</p>
+          {!initialData && (
+            <p className="text-xs text-gray-500">
+              Pour un devis, utilisez le{' '}
+              <Link href="/facturation/devis/nouveau" className="font-medium text-indigo-600 hover:underline">formulaire de devis</Link>
+              {' '}(lots, options, acompte).
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Client *</label>
+          <label className="block text-sm font-medium text-gray-700">{isPatientCreation ? 'Patient *' : 'Client *'}</label>
           <select
             {...register('clientId')}
             className="text-gray-900 mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           >
-            <option value="">Sélectionnez un client...</option>
+            <option value="">{isPatientCreation ? 'Sélectionnez un patient...' : 'Sélectionnez un client...'}</option>
             {clients.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -140,8 +148,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Date d'émission *</label>
-          <input
+          <label htmlFor="fld-b89c4505" className="block text-sm font-medium text-gray-700">Date d'émission *</label>
+          <input id="fld-b89c4505"
             type="date"
             {...register('date')}
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -151,8 +159,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
         {watchType === 'invoice' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Date d'échéance</label>
-            <input
+            <label htmlFor="fld-1a2786f5" className="block text-sm font-medium text-gray-700">Date d'échéance</label>
+            <input id="fld-1a2786f5"
               type="date"
               {...register('dueDate')}
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -170,8 +178,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
             <div key={field.id} className="grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-md border border-gray-100">
               
               <div className="col-span-12 md:col-span-3">
-                <label className="block text-xs font-medium text-gray-500">Produit Catalogue</label>
-                <select
+                <label className="block text-xs font-medium text-gray-500">Prestation du catalogue</label>
+                <select aria-label="Prestation du catalogue"
                   {...register(`lines.${index}.productId`)}
                   onChange={(e) => {
                     register(`lines.${index}.productId`).onChange(e);
@@ -188,7 +196,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-12 md:col-span-3">
                 <label className="block text-xs font-medium text-gray-500">Description</label>
-                <input
+                <input aria-label="Description"
                   type="text"
                   placeholder="Description personnalisée"
                   {...register(`lines.${index}.description`)}
@@ -198,7 +206,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-6 md:col-span-1">
                 <label className="block text-xs font-medium text-gray-500">Qté</label>
-                <input
+                <input aria-label="Qté"
                   type="number"
                   step="0.01"
                   {...register(`lines.${index}.quantity`, { valueAsNumber: true })}
@@ -208,7 +216,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-6 md:col-span-2">
                 <label className="block text-xs font-medium text-gray-500">Prix U. HT</label>
-                <input
+                <input aria-label="Prix U. HT"
                   type="number"
                   step="0.01"
                   {...register(`lines.${index}.unitPrice`, { valueAsNumber: true })}
@@ -218,7 +226,7 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
 
               <div className="col-span-4 md:col-span-1">
                 <label className="block text-xs font-medium text-gray-500">TVA (%)</label>
-                <input
+                <input aria-label="TVA (%)"
                   type="number"
                   step="0.1"
                   {...register(`lines.${index}.taxRate`, { valueAsNumber: true })}
@@ -227,8 +235,8 @@ export default function InvoiceForm({ initialData, organizationId, onSubmit, isS
               </div>
 
               <div className="col-span-4 md:col-span-1">
-                <label className="block text-xs font-medium text-gray-500">Remise (%)</label>
-                <input
+                <label htmlFor="fld-9ed40a7c" className="block text-xs font-medium text-gray-500">Remise (%)</label>
+                <input id="fld-9ed40a7c"
                   type="number"
                   step="0.1"
                   {...register(`lines.${index}.discount`, { valueAsNumber: true })}

@@ -1,7 +1,9 @@
 import 'server-only';
 import { db } from '@/lib/db/server';
-import { practicePractitioners, organizations } from '@/lib/db/schema';
+import { practicePractitioners, organizations, users } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { PARAMEDICAL_PROFESSION_CODES } from '@/lib/workspaces/paramedical/professions';
 import { requireProfessional } from '@/lib/auth/session';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import type { ParamedicalProfessionCode } from '@/lib/workspaces/paramedical/professions';
@@ -34,6 +36,30 @@ export async function findActiveClinicalPractitioner(
     .limit(1);
 
   return row?.id ?? null;
+}
+
+/**
+ * Cabinet tout juste créé, sans aucune fiche praticien : le professionnel qui
+ * s'est inscrit est le premier praticien du cabinet. Sa fiche est créée à son
+ * premier accès au dossier patient, au lieu de lui opposer un refus. Un cabinet
+ * qui a déjà des fiches n'est jamais modifié (secrétariat, associés…).
+ */
+export async function provisionFirstPractitioner(organizationId: string, userId: string, profession: string | null): Promise<string | null> {
+  if (!profession || !(PARAMEDICAL_PROFESSION_CODES as readonly string[]).includes(profession)) return null;
+  const [existing] = await db.select({ id: practicePractitioners.id }).from(practicePractitioners)
+    .where(eq(practicePractitioners.organizationId, organizationId)).limit(1);
+  if (existing) return null;
+  const [user] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  await db.insert(practicePractitioners).values({
+    id: randomUUID(),
+    organizationId,
+    userId,
+    displayName: user?.name?.trim() || user?.email || 'Praticien',
+    profession,
+    email: user?.email ?? null,
+    isActive: true,
+  }).onConflictDoNothing();
+  return findActiveClinicalPractitioner(organizationId, userId);
 }
 
 export async function requireClinicalPractitionerContext(): Promise<ClinicalPractitionerContext> {
@@ -71,7 +97,8 @@ export async function requireClinicalPractitionerContext(): Promise<ClinicalPrac
     throw new AppError('Espace de travail non autorisé pour le dossier clinique', 403, 'CLINICAL_ACCESS_FORBIDDEN');
   }
 
-  const practitionerId = await findActiveClinicalPractitioner(session.organizationId, session.userId);
+  const practitionerId = await findActiveClinicalPractitioner(session.organizationId, session.userId)
+    ?? await provisionFirstPractitioner(session.organizationId, session.userId, org.profession);
   if (!practitionerId) {
     throw new AppError('Utilisateur non rattaché à un praticien actif dans cette organisation', 403, 'CLINICAL_ACCESS_FORBIDDEN');
   }

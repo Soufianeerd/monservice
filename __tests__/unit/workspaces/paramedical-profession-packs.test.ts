@@ -20,11 +20,11 @@ import {
 import { WORKSPACE_CAPABILITY_CODES } from '@/lib/workspaces/types';
 
 describe('Paramedical Profession Packs Registry', () => {
-  it('contains exactly the 7 canonical profession codes', () => {
+  it('contains exactly the 11 canonical profession codes', () => {
     const keys = Object.keys(PARAMEDICAL_PROFESSION_PACKS).sort();
     const expected = [...PARAMEDICAL_PROFESSION_CODES].sort();
     expect(keys).toEqual(expected);
-    expect(keys).toHaveLength(7);
+    expect(keys).toHaveLength(11);
   });
 
   it('every pack matches its canonical profession code and has required fields', () => {
@@ -33,8 +33,9 @@ describe('Paramedical Profession Packs Registry', () => {
       expect(pack.profession).toBe(code);
       expect(pack.label).toBeTruthy();
       expect(pack.clinicalHeaderTitle).toBeTruthy();
-      expect(pack.terminology.customerSingular).toBe('Patient');
-      expect(pack.terminology.customerPlural).toBe('Patients');
+      // Professions de santé : « Patient » ; coach, nutritionniste, massage bien-être : « Client ».
+      expect(['Patient', 'Client']).toContain(pack.terminology.customerSingular);
+      expect(['Patients', 'Clients']).toContain(pack.terminology.customerPlural);
       expect(pack.terminology.appointmentSingular).toBeTruthy();
       expect(pack.terminology.serviceSingular).toBeTruthy();
       expect(pack.terminology.assessmentLabel).toBeTruthy();
@@ -112,13 +113,13 @@ describe('Workspace Resolver with Profession Packs', () => {
   });
 });
 
-describe('Total Presets Aggregations Across 7 Packs', () => {
-  it('has exactly 23 total measurement presets across all 7 packs', () => {
+describe('Total Presets Aggregations Across 11 Packs', () => {
+  it('has exactly 32 total measurement presets across all 11 packs', () => {
     const totalMeasurements = PARAMEDICAL_PROFESSION_CODES.reduce((acc, code) => {
       return acc + PARAMEDICAL_PROFESSION_PACKS[code].measurementPresets.length;
     }, 0);
 
-    expect(totalMeasurements).toBe(23);
+    expect(totalMeasurements).toBe(32);
   });
 });
 

@@ -29,9 +29,6 @@ vi.mock('@/app/actions/notification', () => ({
   generateNotificationsAction: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('@/components/layout/LanguageSwitcher', () => ({
-  LanguageSwitcher: () => <div data-testid="language-switcher">Lang</div>,
-}));
 
 describe('Header Workspace Dynamic', () => {
   beforeEach(() => {
@@ -46,6 +43,7 @@ describe('Header Workspace Dynamic', () => {
     signOut: vi.fn(),
     refresh: vi.fn(),
     updateUser: vi.fn(),
+    seed: vi.fn(),
   });
 
   it('affiche la recherche globale et l\'industrie pour un professionnel générique', () => {

@@ -16,9 +16,9 @@ export default function RespondToRequestForm({ request, onSubmit, loading }: { r
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Montant de la prestation (HT en €) *</label>
+        <label htmlFor="fld-05a253ef" className="block text-sm font-medium text-gray-700">Montant de la prestation (HT en €) *</label>
         <div className="mt-1 relative rounded-md shadow-sm">
-          <input
+          <input id="fld-05a253ef"
             type="number"
             required
             min="0"
@@ -34,9 +34,9 @@ export default function RespondToRequestForm({ request, onSubmit, loading }: { r
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Message au client</label>
+        <label htmlFor="fld-1250a17f" className="block text-sm font-medium text-gray-700">Message au client</label>
         <div className="mt-1">
-          <textarea
+          <textarea id="fld-1250a17f"
             rows={5}
             className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md py-2 px-3"
             placeholder="Décrivez votre proposition, votre approche..."

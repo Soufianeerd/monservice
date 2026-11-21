@@ -11,7 +11,7 @@ interface FAQItem {
 const faqData: FAQItem[] = [
   {
     question: 'Puis-je utiliser MonService gratuitement ?',
-    answer: 'Oui, notre plan Gratuit est 100% gratuit et vous permet de gérer jusqu\'à 50 clients et créer 10 devis par mois. Idéal pour tester notre solution ou si vous démarrez votre activité.',
+    answer: 'Oui. Pendant la période de lancement, toutes les fonctionnalités sont gratuites et sans carte bancaire. Si une offre payante est introduite plus tard, vous serez prévenu à l\'avance et rien ne sera facturé sans votre accord.',
   },
   {
     question: 'Dois-je installer un logiciel sur mon ordinateur ?',
@@ -23,11 +23,11 @@ const faqData: FAQItem[] = [
   },
   {
     question: 'Comment sont protégées mes données ?',
-    answer: 'Vos données sont sécurisées, chiffrées et sauvegardées régulièrement. Nous utilisons les mêmes standards de sécurité que les applications bancaires pour garantir la confidentialité de vos informations.',
+    answer: 'Votre base de données est stockée dans l\'Union européenne (Francfort) et les échanges sont chiffrés. Chaque organisation est cloisonnée au niveau de la base : personne d\'autre que vous et vos collaborateurs autorisés n\'accède à vos clients, devis et factures.',
   },
   {
-    question: 'Puis-je résilier mon abonnement à tout moment ?',
-    answer: 'Absolument. Nos offres sont sans engagement de durée. Vous pouvez annuler votre abonnement d\'un simple clic depuis les paramètres de votre compte, sans aucun frais de résiliation.',
+    question: 'Suis-je engagé ?',
+    answer: 'Non. Il n\'y a ni abonnement ni engagement pendant le lancement. Vous pouvez demander l\'export ou la suppression de vos données à tout moment.',
   }
 ];
 

@@ -1,3 +1,5 @@
+import { productUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { products } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -46,17 +48,14 @@ export const productService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const partialSchema = productSchema.partial();
-    const validated = partialSchema.parse(data);
-
-    const updated = {
-      ...validated,
-      updatedAt: new Date().toISOString(),
-    };
-    await db.update(products)
-      .set(updated)
-      .where(and(eq(products.id, id), eq(products.organizationId, organizationId)));
-    return await this.findById(id, organizationId);
+    const validated = productUpdateSchema.parse(data);
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx.select().from(products).where(and(eq(products.id,id),eq(products.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) return null;
+      await tx.update(products).set({ ...validated, updatedAt: new Date().toISOString() }).where(and(eq(products.id,id),eq(products.organizationId,organizationId)));
+    });
+    return this.findById(id, organizationId);
   },
 
   async delete(id: string, organizationId: string, userId: string): Promise<void> {

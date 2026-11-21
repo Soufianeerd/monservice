@@ -126,16 +126,16 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
                   </button>
                 )}
                 {invoice.status === 'overdue' && invoice.type !== 'quote' && (
-                  <button onClick={() => { alert('Relance envoyée au client avec succès !'); }} className="text-orange-600 hover:text-orange-900 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 rounded px-2 py-1 text-sm">
+                  <Link href={`/facturation/factures/${invoice.id}`} className="text-orange-600 hover:text-orange-900 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 rounded px-2 py-1 text-sm" title="Ouvrir la facture pour la renvoyer par e-mail">
                     Relancer
-                  </button>
+                  </Link>
                 )}
                 {invoice.type === 'quote' && onConvertQuote && (
                   <button onClick={() => onConvertQuote(invoice.id)} className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 text-sm font-medium">
                     Convertir
                   </button>
                 )}
-                {onDelete && (
+                {onDelete && invoice.status === 'draft' && !invoice.lockedAt && (
                   <button onClick={() => onDelete(invoice.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded px-2 py-1 text-sm font-medium">
                     Supprimer
                   </button>
@@ -204,16 +204,16 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
                       </button>
                     )}
                     {invoice.status === 'overdue' && invoice.type !== 'quote' && (
-                      <button onClick={() => { alert('Relance envoyée au client avec succès !'); }} className="text-orange-600 hover:text-orange-900 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1">
+                      <Link href={`/facturation/factures/${invoice.id}`} className="text-orange-600 hover:text-orange-900 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 rounded p-1" title="Ouvrir la facture pour la renvoyer par e-mail">
                         Relancer
-                      </button>
+                      </Link>
                     )}
                     {invoice.type === 'quote' && onConvertQuote && (
                       <button onClick={() => onConvertQuote(invoice.id)} className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1">
                         Convertir
                       </button>
                     )}
-                    {onDelete && (
+                    {onDelete && invoice.status === 'draft' && !invoice.lockedAt && (
                       <button onClick={() => onDelete(invoice.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1">
                         Supprimer
                       </button>

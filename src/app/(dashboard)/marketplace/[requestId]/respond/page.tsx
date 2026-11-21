@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { useEffect, useState, use } from 'react';
@@ -68,7 +69,7 @@ export default function RespondToRequestPage({ params }: { params: Promise<{ req
         requestTitle: request.title,
       }, lines);
       
-      alert("Devis envoyé avec succès au client !");
+      toast.success("Devis envoyé avec succès au client !");
       router.push('/facturation/devis');
     } catch (err) {
       console.error(err);

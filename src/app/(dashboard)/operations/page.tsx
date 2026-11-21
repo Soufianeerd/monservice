@@ -2,22 +2,24 @@ import { requireFieldServiceContext } from '@/lib/workspaces/field-service/conte
 import { listFieldServiceWorkOrders } from '@/lib/services/field-service-operations.service';
 import { getFieldServiceWorkspaceConfig } from '@/lib/workspaces/field-service/config';
 import { db } from '@/lib/db/server';
+import { withReadScope } from '@/lib/db/read-scope';
 import { clients } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import OperationsListClient from './OperationsListClient';
 
 export default async function OperationsPage() {
   const ctx = await requireFieldServiceContext();
-  const workspace = getFieldServiceWorkspaceConfig(ctx.profession);
-
-  const [rawOperations, clientsList] = await Promise.all([
+  // Interventions et clients dans une seule transaction de lecture : les deux
+  // listes partent en pipeline sur la même connexion.
+  const [rawOperations, clientsList] = await withReadScope(() => Promise.all([
     listFieldServiceWorkOrders(ctx.organizationId, { limit: 100 }),
     db
       .select({ id: clients.id, name: clients.name })
       .from(clients)
       .where(eq(clients.organizationId, ctx.organizationId))
       .orderBy(asc(clients.name)),
-  ]);
+  ]));
+  const workspace = getFieldServiceWorkspaceConfig(ctx.profession);
 
   const operations = rawOperations.map(op => ({
     id: op.id,

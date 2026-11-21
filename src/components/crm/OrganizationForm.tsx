@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { Organization } from '@/lib/data/interfaces';
 import { organizationSchema } from '@/utils/validation';
 import { countries } from '@/lib/constants/countries';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { industries } from '@/lib/constants/industries';
+import { REGISTRATION_SECTORS, type RegistrationSectorCode } from '@/lib/registration/options';
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
@@ -18,6 +20,7 @@ interface OrganizationFormProps {
 }
 
 export default function OrganizationForm({ initialData, onSubmit, isSubmitting }: OrganizationFormProps) {
+  const isPractice = useWorkspace()?.type === "paramedical";
   const [logo, setLogo] = useState<string | undefined>(initialData.logo);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<OrganizationFormData>({
@@ -29,12 +32,19 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
       country: initialData.country || '',
       address: initialData.address || '',
       city: initialData.city || '',
-      zipCode: initialData.zipCode || '',
+      zipCode: initialData.postalCode || initialData.zipCode || '',
       email: initialData.email || '',
       phone: initialData.phone || '',
       website: initialData.website || '',
       taxId: initialData.taxId || '',
       currency: initialData.currency || 'EUR',
+      legalForm: initialData.legalForm || '',
+      siret: initialData.siret || '',
+      vatNumber: initialData.vatNumber || '',
+      vatExempt: initialData.vatExempt ?? false,
+      iban: initialData.iban || '',
+      bic: initialData.bic || '',
+      paymentTerms: initialData.paymentTerms || '',
     }
   });
 
@@ -56,11 +66,11 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
   };
 
   return (
-    <form onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
+    <form data-guide-form="organisation" onSubmit={handleSubmit(submitForm)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
       {/* Logo */}
       <div>
-        <label className="block text-sm font-medium text-gray-700">Logo de l'entreprise</label>
+        <label className="block text-sm font-medium text-gray-700">Logo de votre activité (facultatif)</label>
         <div className="mt-1 flex items-center space-x-4">
           <div className="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden border border-gray-300">
             {logo ? (
@@ -89,7 +99,7 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
       {/* Informations Générales */}
       <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom de l'entreprise *</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom de l'activité *</label>
           <input
             type="text"
             id="name"
@@ -99,7 +109,7 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
           {errors.name && <p role="alert" className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
         </div>
 
-        <div>
+        {!isPractice && <div>
           <label htmlFor="industry" className="block text-sm font-medium text-gray-700">Secteur d'activité</label>
           <select
             id="industry"
@@ -107,12 +117,18 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
             className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
           >
             <option value="">Sélectionner un secteur...</option>
+            {initialData.industry && !industries.includes(initialData.industry) && (
+              // Valeur posée à l'inscription (code du secteur) : affichée avec son libellé.
+              <option value={initialData.industry}>
+                {initialData.industry in REGISTRATION_SECTORS ? REGISTRATION_SECTORS[initialData.industry as RegistrationSectorCode].label : initialData.industry}
+              </option>
+            )}
             {industries.map(ind => (
               <option key={ind} value={ind}>{ind}</option>
             ))}
           </select>
           {errors.industry && <p role="alert" className="mt-1 text-sm text-red-600">{errors.industry.message}</p>}
-        </div>
+        </div>}
 
         {selectedIndustry === 'Autre' && (
           <div className="sm:col-span-2">
@@ -197,12 +213,92 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
             {errors.country && <p role="alert" className="mt-1 text-sm text-red-600">{errors.country.message}</p>}
           </div>
 
+
+        </div>
+      </div>
+
+      {/* Mentions obligatoires des factures et devis (S-02) */}
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900">Informations légales et bancaires</h3>
+        <p className="mt-1 mb-4 text-sm text-gray-500">Reprises sur vos devis, vos factures et vos relances de paiement.</p>
+        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="website" className="block text-sm font-medium text-gray-700">Site Web</label>
+            <label htmlFor="legalForm" className="block text-sm font-medium text-gray-700">Forme juridique</label>
+            <select
+              id="legalForm"
+              {...register('legalForm')}
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
+            >
+              <option value="">Sélectionner…</option>
+              <option value="Entrepreneur individuel (micro-entreprise)">Entrepreneur individuel (micro-entreprise)</option>
+              <option value="Entrepreneur individuel">Entrepreneur individuel</option>
+              <option value="EURL">EURL</option>
+              <option value="SARL">SARL</option>
+              <option value="SASU">SASU</option>
+              <option value="SAS">SAS</option>
+              <option value="SA">SA</option>
+              <option value="SCI">SCI</option>
+              <option value="Association">Association</option>
+              <option value="Profession libérale (BNC)">Profession libérale (BNC)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="siret" className="block text-sm font-medium text-gray-700">SIRET</label>
             <input
               type="text"
-              id="website"
-              {...register('website')}
+              id="siret"
+              {...register('siret')}
+              placeholder="123 456 789 00012"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.siret && <p className="mt-1 text-sm text-red-600">{errors.siret.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700">N° de TVA intracommunautaire</label>
+            <input
+              type="text"
+              id="vatNumber"
+              {...register('vatNumber')}
+              placeholder="FR12345678901"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.vatNumber && <p className="mt-1 text-sm text-red-600">{errors.vatNumber.message}</p>}
+          </div>
+          <div className="flex items-start gap-3 sm:col-span-2">
+            <input type="checkbox" id="vatExempt" {...register('vatExempt')} className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600" />
+            <label htmlFor="vatExempt" className="text-sm text-gray-700">
+              Je ne facture pas la TVA (franchise en base) : la mention « TVA non applicable, article 293 B du CGI » figurera sur mes factures.
+            </label>
+          </div>
+          <div>
+            <label htmlFor="iban" className="block text-sm font-medium text-gray-700">IBAN</label>
+            <input
+              type="text"
+              id="iban"
+              {...register('iban')}
+              placeholder="FR76 3000 6000 0112 3456 7890 189"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.iban && <p className="mt-1 text-sm text-red-600">{errors.iban.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="bic" className="block text-sm font-medium text-gray-700">BIC</label>
+            <input
+              type="text"
+              id="bic"
+              {...register('bic')}
+              placeholder="AGRIFRPP"
+              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+            {errors.bic && <p className="mt-1 text-sm text-red-600">{errors.bic.message}</p>}
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="paymentTerms" className="block text-sm font-medium text-gray-700">Conditions de paiement</label>
+            <textarea
+              id="paymentTerms"
+              rows={2}
+              {...register('paymentTerms')}
+              placeholder="Paiement à 30 jours à réception de facture, par virement."
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
@@ -211,18 +307,8 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
 
       {/* Informations Légales */}
       <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Légal & Facturation</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Documents de facturation</h3>
         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="taxId" className="block text-sm font-medium text-gray-700">N° TVA / SIRET</label>
-            <input
-              type="text"
-              id="taxId"
-              {...register('taxId')}
-              className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-
           <div>
             <label htmlFor="currency" className="block text-sm font-medium text-gray-700">Devise par défaut</label>
             <select
@@ -246,7 +332,7 @@ export default function OrganizationForm({ initialData, onSubmit, isSubmitting }
           disabled={isSubmitting}
           className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isSubmitting ? 'Enregistrement...' : 'Mettre à jour le profil'}
+          {isSubmitting ? 'Enregistrement...' : 'Enregistrer les coordonnées'}
         </button>
       </div>
     </form>

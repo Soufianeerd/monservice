@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, Copy, MessageCircle, FileText, CheckSquare, Calendar, Clock, Check } from 'lucide-react';
+import { Mail, Phone, Copy, MessageCircle, CheckSquare, Check } from 'lucide-react';
 import Link from 'next/link';
 import { Client, Contact } from '@/lib/data/interfaces';
 
@@ -41,10 +41,6 @@ export default function QuickActions({ entityType, entity }: QuickActionsProps) 
     }
   };
 
-  const handleToast = (message: string) => {
-    // In a real app we'd use a toast library like sonner or react-hot-toast
-    alert(message);
-  };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-2">
@@ -98,13 +94,6 @@ export default function QuickActions({ entityType, entity }: QuickActionsProps) 
       <div className="h-6 border-l border-gray-300 mx-1 self-center hidden sm:block"></div>
 
       {/* Actions CRM */}
-      <button 
-        onClick={() => handleToast('Fonctionnalité Notes à venir')}
-        className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
-      >
-        <FileText className="h-4 w-4 mr-1.5 text-indigo-500" />
-        Note
-      </button>
 
       <Link 
         href={`/tasks/new?entityType=${entityType}&entityId=${entity.id}`}
@@ -113,22 +102,6 @@ export default function QuickActions({ entityType, entity }: QuickActionsProps) 
         <CheckSquare className="h-4 w-4 mr-1.5 text-indigo-500" />
         Tâche
       </Link>
-
-      <button 
-        onClick={() => handleToast('Fonctionnalité Calendrier à venir')}
-        className="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
-      >
-        <Calendar className="h-4 w-4 mr-1.5 text-indigo-500" />
-        Rendez-vous
-      </button>
-
-      <button 
-        onClick={() => handleToast('Fonctionnalité Historique à venir')}
-        className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none ml-auto"
-      >
-        <Clock className="h-4 w-4 mr-1.5 text-gray-500" />
-        Historique
-      </button>
 
     </div>
   );

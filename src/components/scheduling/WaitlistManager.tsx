@@ -1,5 +1,7 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -27,6 +29,7 @@ const RESOLUTION_LABELS: Record<WaitlistResolutionCode, string> = {
 };
 
 export function WaitlistManager({ bootstrap }: Props) {
+  const t = useCareVocabulary();
   const [entries, setEntries] = useState<WaitlistEntryDTO[]>([]);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -125,7 +128,7 @@ export function WaitlistManager({ bootstrap }: Props) {
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Liste d&apos;attente des patients</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t("Liste d'attente des patients")}</h2>
             <p className="text-xs text-gray-500">
               Gérez les demandes de rendez-vous en attente et faites correspondre les créneaux libérés.
             </p>
@@ -134,17 +137,17 @@ export function WaitlistManager({ bootstrap }: Props) {
             onClick={handleOpenCreate}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            + Inscrire un patient
+            {t("+ Inscrire un patient")}
           </button>
         </div>
 
         {/* Filters grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-4 border-t border-gray-100">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-7e3b9a40" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Statut
             </label>
-            <select
+            <select id="fld-7e3b9a40"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as WaitlistStatus | 'all')}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -156,10 +159,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-1605fbea" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Lieu
             </label>
-            <select
+            <select id="fld-1605fbea"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -174,10 +177,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-6e3c5bc5" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Praticien
             </label>
-            <select
+            <select id="fld-6e3c5bc5"
               value={practitionerFilter}
               onChange={(e) => setPractitionerFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -192,10 +195,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-a7125bbe" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Type de séance
             </label>
-            <select
+            <select id="fld-a7125bbe"
               value={appointmentTypeFilter}
               onChange={(e) => setAppointmentTypeFilter(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500"
@@ -210,10 +213,10 @@ export function WaitlistManager({ bootstrap }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            <label htmlFor="fld-acab73c7" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Recherche patient
             </label>
-            <input
+            <input id="fld-acab73c7"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,7 +345,7 @@ export function WaitlistManager({ bootstrap }: Props) {
 
       {/* CREATE / EDIT MODAL */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsFormOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <WaitlistForm
             bootstrap={bootstrap}
             initialData={selectedEntryForEdit}
@@ -352,12 +355,12 @@ export function WaitlistManager({ bootstrap }: Props) {
             }}
             onCancel={() => setIsFormOpen(false)}
           />
-        </div>
+        </ModalOverlay>
       )}
 
       {/* RESOLVE MODAL */}
       {isResolveModalOpen && entryToResolve && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsResolveModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-900">
               Résoudre l&apos;inscription de {entryToResolve.patientName}
@@ -368,10 +371,10 @@ export function WaitlistManager({ bootstrap }: Props) {
 
             <form onSubmit={handleConfirmResolve} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fld-a595ad37" className="block text-sm font-medium text-gray-700 mb-1">
                   Motif de résolution *
                 </label>
-                <select
+                <select id="fld-a595ad37"
                   value={resolutionCode}
                   onChange={(e) => setResolutionCode(e.target.value as WaitlistResolutionCode)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -387,10 +390,10 @@ export function WaitlistManager({ bootstrap }: Props) {
 
               {resolutionCode === 'booked' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fld-faa9a11b" className="block text-sm font-medium text-gray-700 mb-1">
                     Identifiant de la séance planifiée *
                   </label>
-                  <input
+                  <input id="fld-faa9a11b"
                     type="text"
                     required
                     value={resolvedAppointmentId}
@@ -421,7 +424,7 @@ export function WaitlistManager({ bootstrap }: Props) {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

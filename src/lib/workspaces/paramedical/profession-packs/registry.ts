@@ -8,6 +8,10 @@ import { PODIATRIST_PACK } from './podiatrist';
 import { OCCUPATIONAL_THERAPIST_PACK } from './occupational-therapist';
 import { PSYCHOMOTOR_THERAPIST_PACK } from './psychomotor-therapist';
 import { DIETITIAN_PACK } from './dietitian';
+import { PSYCHOLOGIST_PACK } from './psychologist';
+import { SPORT_COACH_PACK } from './sport-coach';
+import { NUTRITIONIST_PACK } from './nutritionist';
+import { WELLNESS_MASSAGE_PACK } from './wellness-massage';
 import { AppError } from '@/lib/errors';
 
 export const PARAMEDICAL_PROFESSION_PACKS = {
@@ -18,6 +22,10 @@ export const PARAMEDICAL_PROFESSION_PACKS = {
   occupational_therapist: OCCUPATIONAL_THERAPIST_PACK,
   psychomotor_therapist: PSYCHOMOTOR_THERAPIST_PACK,
   dietitian: DIETITIAN_PACK,
+  psychologist: PSYCHOLOGIST_PACK,
+  sport_coach: SPORT_COACH_PACK,
+  nutritionist: NUTRITIONIST_PACK,
+  wellness_massage: WELLNESS_MASSAGE_PACK,
 } as const satisfies Record<ParamedicalProfessionCode, ParamedicalProfessionPack>;
 
 export function getParamedicalProfessionPack(

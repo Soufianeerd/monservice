@@ -94,4 +94,11 @@ export const organizationSchema = z.object({
   website: z.string().trim().optional(),
   taxId: z.string().trim().optional(),
   currency: z.string().trim().optional(),
+  legalForm: z.string().trim().optional(),
+  siret: z.string().trim().refine((value) => !value || /^[0-9]{14}$/.test(value.replace(/\s/g, '')), 'Le SIRET compte 14 chiffres').optional(),
+  vatNumber: z.string().trim().refine((value) => !value || /^[A-Z]{2}[A-Z0-9]{2,13}$/.test(value.replace(/\s/g, '').toUpperCase()), 'Numéro de TVA invalide (ex. FR12345678901)').optional(),
+  vatExempt: z.boolean().optional(),
+  iban: z.string().trim().refine((value) => !value || /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(value.replace(/\s/g, '').toUpperCase()), 'IBAN invalide').optional(),
+  bic: z.string().trim().refine((value) => !value || /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(value.replace(/\s/g, '').toUpperCase()), 'BIC invalide').optional(),
+  paymentTerms: z.string().trim().max(2000).optional(),
 });

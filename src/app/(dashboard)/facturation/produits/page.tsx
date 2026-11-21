@@ -1,10 +1,12 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Edit, Trash2, Plus, Package } from 'lucide-react';
 import * as productActions from '@/app/actions/product.actions';
 import { Product } from '@/lib/data/interfaces';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/components/auth/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '@/components/ui/Table';
@@ -12,6 +14,7 @@ import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card';
 
 export default function ProductsPage() {
   const { user } = useAuth();
+  const isPractice = useWorkspace()?.type === 'paramedical';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,7 +38,7 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string) => {
     if (!user?.organizationId) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit/service ?")) return;
+    if (!await askConfirm("Êtes-vous sûr de vouloir supprimer ce produit/service ?")) return;
     try {
       await productActions.deleteAction(id, user.organizationId);
       await loadData();
@@ -50,10 +53,10 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div data-tour="service-catalog" className="space-y-6">
       <div className="flex justify-end">
         <Link href="/facturation/produits/new" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-          + Nouveau Produit
+          {isPractice ? '+ Nouvelle prestation' : '+ Nouveau produit ou service'}
         </Link>
       </div>
 
@@ -61,7 +64,7 @@ export default function ProductsPage() {
         <div className="p-4 border-b border-gray-200">
           <Input
             type="text"
-            placeholder="Rechercher un produit..."
+            placeholder={isPractice ? 'Rechercher une prestation…' : 'Rechercher un produit…'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"

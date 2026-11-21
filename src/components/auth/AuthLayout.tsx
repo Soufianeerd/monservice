@@ -28,9 +28,9 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
           <div className="mt-8 text-center text-xs text-gray-500">
             <p>
               En continuant, vous acceptez nos{' '}
-              <Link href="/conditions" className="font-medium text-primary-600 hover:text-primary-500 hover:underline">Conditions d'utilisation</Link>
+              <Link href="/conditions" target="_blank" rel="noopener noreferrer" className="font-medium text-primary-600 hover:text-primary-500 hover:underline">Conditions d'utilisation</Link>
               {' '}et notre{' '}
-              <Link href="/confidentialite" className="font-medium text-primary-600 hover:text-primary-500 hover:underline">Politique de confidentialité</Link>.
+              <Link href="/confidentialite" target="_blank" rel="noopener noreferrer" className="font-medium text-primary-600 hover:text-primary-500 hover:underline">Politique de confidentialité</Link>.
             </p>
           </div>
         </div>
@@ -59,23 +59,10 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
             </li>
             <li className="flex items-center gap-3 text-primary-100 text-lg">
               <CheckCircle2 className="w-6 h-6 text-primary-400" />
-              <span>Agenda et rappels automatiques</span>
+              <span>Agenda et rappels de rendez-vous</span>
             </li>
           </ul>
 
-          <div className="glass-dark rounded-2xl p-6 shadow-2xl transform hover:scale-[1.02] transition-transform duration-300">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-white font-bold border border-white/20">
-                MS
-              </div>
-              <div>
-                <p className="text-white font-medium mb-1">
-                  "MonService m'a fait gagner un temps précieux sur l'administratif. Je peux me concentrer sur mon cœur de métier."
-                </p>
-                <p className="text-primary-300 text-sm">Marie D., Consultante indépendante</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

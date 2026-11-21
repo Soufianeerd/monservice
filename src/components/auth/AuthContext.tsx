@@ -1,14 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { authClient } from '@/lib/auth/client';
 import { User, Organization } from '@/lib/data/interfaces';
 
 /**
- * Contexte d'authentification — Supabase Auth.
+ * Contexte d'authentification — Neon Auth.
  *
  * Le profil applicatif (`profileType`, `organizationId`, onboarding) ne vit
- * pas dans Supabase Auth mais dans la table `public.users`. Il est chargé via
+ * pas dans Neon Auth mais dans la table `public.users`. Il est chargé via
  * une server action après authentification.
  *
  * ⚠️ Ce contexte sert UNIQUEMENT à l'affichage. Aucune décision de sécurité
@@ -24,6 +24,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
+  /** Profil déjà lu par le layout serveur : évite deux Server Actions au démarrage. */
+  seed: (user: User, organization: Organization | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,7 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = useMemo(() => createClient(), []);
+  const providerSession = authClient.useSession();
+  // Quand le layout serveur a fourni le profil, inutile de le relire :
+  // seuls une connexion, une mise à jour ou un refresh explicite le rechargent.
+  const seeded = useRef(false);
+
+  const seed = useCallback((nextUser: User, nextOrganization: Organization | null) => {
+    seeded.current = true;
+    setUser(nextUser);
+    setOrganization(nextOrganization);
+    setIsLoading(false);
+  }, []);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -57,35 +69,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (seeded.current) return;
     const timer = setTimeout(() => {
-      void loadProfile();
+      if (!seeded.current) void loadProfile();
     }, 0);
 
-    // Recharge le profil à chaque changement d'état d'authentification
-    // (connexion, déconnexion, rafraîchissement de jeton).
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setOrganization(null);
-        setIsLoading(false);
-        return;
-      }
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        void loadProfile();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timer);
-    };
-  }, [supabase, loadProfile]);
+    return () => clearTimeout(timer);
+  }, [providerSession.data?.user?.id, loadProfile]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      try {
+      const { error } = await authClient.signIn.email({
         email: email.trim().toLowerCase(),
         password,
       });
@@ -99,33 +94,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await loadProfile();
       return { error: null };
-    },
-    [supabase, loadProfile],
-  );
-
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setOrganization(null);
-    window.location.href = '/login';
-  }, [supabase]);
-
-  const updateUser = useCallback(
-    async (data: Partial<User>) => {
-      try {
-        const { updateUserAction } = await import('@/app/actions/session');
-        await updateUserAction(data as Record<string, unknown>);
-        await loadProfile();
-      } catch (err) {
-        console.error('Erreur lors de la mise à jour du profil:', err);
+      } catch {
+        return { error: 'Email ou mot de passe incorrect' };
       }
     },
     [loadProfile],
   );
 
+  const signOut = useCallback(async () => {
+    await authClient.signOut();
+    setUser(null);
+    setOrganization(null);
+    window.location.href = '/login';
+  }, []);
+
+  const updateUser = useCallback(
+    async (data: Partial<User>) => {
+      const { updateUserAction } = await import('@/app/actions/session');
+      await updateUserAction(data as Record<string, unknown>);
+      await loadProfile();
+    },
+    [loadProfile],
+  );
+
   const value = useMemo(
-    () => ({ user, organization, isLoading, signIn, signOut, refresh: loadProfile, updateUser }),
-    [user, organization, isLoading, signIn, signOut, loadProfile, updateUser],
+    () => ({ user, organization, isLoading, signIn, signOut, refresh: loadProfile, updateUser, seed }),
+    [user, organization, isLoading, signIn, signOut, loadProfile, updateUser, seed],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -136,3 +130,15 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
+
+/**
+ * Transmet au contexte client le profil lu côté serveur par le layout.
+ * Données d'affichage uniquement : la sécurité reste vérifiée côté serveur.
+ */
+export function SessionSeed({ user, organization }: { user: User; organization: Organization | null }) {
+  const { seed } = useAuth();
+  useLayoutEffect(() => {
+    seed(user, organization);
+  }, [seed, user, organization]);
+  return null;
+}

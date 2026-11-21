@@ -1,4 +1,6 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
@@ -126,6 +128,8 @@ const statusBadgeStyles: Record<string, { label: string; bg: string; text: strin
   completed: { label: 'Terminé', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2 },
   cancelled: { label: 'Annulé', bg: 'bg-rose-50 text-rose-700 border-rose-200', text: 'text-rose-700', icon: XCircle },
 };
+
+const statusLabel = (status: string) => statusBadgeStyles[status]?.label ?? status;
 
 const roleLabels: Record<string, string> = {
   lead: 'Responsable / Chef de chantier',
@@ -372,8 +376,8 @@ export default function OperationDetailClient({
     });
   };
 
-  const handleFinalizeReport = (reportId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir finaliser ce compte-rendu ? Il deviendra permanent et non modifiable.')) {
+  const handleFinalizeReport = async (reportId: string) => {
+    if (!await askConfirm('Il deviendra permanent et non modifiable.', { title: 'Finaliser le compte-rendu ?', confirmLabel: 'Finaliser', tone: 'default' })) {
       return;
     }
 
@@ -898,7 +902,7 @@ export default function OperationDetailClient({
                   <div className="w-2.5 h-2.5 rounded-full bg-primary-600 mt-1.5 flex-shrink-0" />
                   <div className="text-xs space-y-0.5">
                     <div className="font-semibold text-gray-900">
-                      {h.fromStatus ? `${h.fromStatus} → ${h.toStatus}` : `Statut : ${h.toStatus}`}
+                      {h.fromStatus ? `${statusLabel(h.fromStatus)} → ${statusLabel(h.toStatus)}` : `Statut : ${statusLabel(h.toStatus)}`}
                     </div>
                     <div className="text-gray-400">
                       {new Date(h.createdAt).toLocaleDateString('fr-FR', {
@@ -909,7 +913,7 @@ export default function OperationDetailClient({
                       })}
                       {h.changedByName && ` • par ${h.changedByName}`}
                     </div>
-                    {h.reason && <div className="text-gray-600 italic mt-0.5">{h.reason}</div>}
+                    {h.reason && <div className="text-gray-600 italic mt-0.5">{h.reason === 'Initial creation' ? 'Création' : h.reason}</div>}
                   </div>
                 </div>
               ))}
@@ -920,7 +924,7 @@ export default function OperationDetailClient({
 
       {/* Cancellation Modal */}
       {isCancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsCancelModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -938,10 +942,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleConfirmCancel} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-99833cef" className="block text-xs font-semibold text-gray-700 mb-1">
                   Motif d’annulation *
                 </label>
-                <select
+                <select id="fld-99833cef"
                   required
                   value={cancellationReason}
                   onChange={e => setCancellationReason(e.target.value)}
@@ -958,10 +962,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-9687088e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Notes explicatives
                 </label>
-                <textarea
+                <textarea id="fld-9687088e"
                   rows={3}
                   value={cancellationNotes}
                   onChange={e => setCancellationNotes(e.target.value)}
@@ -988,12 +992,12 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Assign Worker Modal */}
       {isAssignModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsAssignModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1011,10 +1015,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleAssignWorker} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-2a9b1f76" className="block text-xs font-semibold text-gray-700 mb-1">
                   Professionnel de l’entreprise *
                 </label>
-                <select
+                <select id="fld-2a9b1f76"
                   required
                   value={assignUserId}
                   onChange={e => setAssignUserId(e.target.value)}
@@ -1029,10 +1033,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-9bb9386a" className="block text-xs font-semibold text-gray-700 mb-1">
                   Rôle sur le chantier
                 </label>
-                <select
+                <select id="fld-9bb9386a"
                   value={assignRole}
                   onChange={e => setAssignRole(e.target.value as 'lead' | 'technician' | 'assistant' | 'observer')}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1063,12 +1067,12 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Report Modal */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsReportModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1086,10 +1090,10 @@ export default function OperationDetailClient({
 
             <form onSubmit={handleSaveReport} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-56853d0e" className="block text-xs font-semibold text-gray-700 mb-1">
                   Résumé synthétique *
                 </label>
-                <input
+                <input id="fld-56853d0e"
                   type="text"
                   required
                   placeholder="Ex: Remplacement vanne générale effectué avec succès"
@@ -1100,10 +1104,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-410bfcaf" className="block text-xs font-semibold text-gray-700 mb-1">
                   Travaux réalisés
                 </label>
-                <textarea
+                <textarea id="fld-410bfcaf"
                   rows={3}
                   placeholder="Détails des opérations techniques menées..."
                   value={reportWorkPerformed}
@@ -1113,10 +1117,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-93f91e6c" className="block text-xs font-semibold text-gray-700 mb-1">
                   Problèmes constatés
                 </label>
-                <textarea
+                <textarea id="fld-93f91e6c"
                   rows={2}
                   placeholder="Points de blocage, vétusté, imprévus..."
                   value={reportIssuesFound}
@@ -1126,10 +1130,10 @@ export default function OperationDetailClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label htmlFor="fld-b2ae9f76" className="block text-xs font-semibold text-gray-700 mb-1">
                   Recommandations
                 </label>
-                <textarea
+                <textarea id="fld-b2ae9f76"
                   rows={2}
                   placeholder="Préconisations d'entretien futur, travaux à prévoir..."
                   value={reportRecommendations}
@@ -1157,7 +1161,7 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

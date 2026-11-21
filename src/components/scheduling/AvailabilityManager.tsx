@@ -1,5 +1,9 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
+import Link from 'next/link';
 import React, { useState, useTransition } from 'react';
 import {
   AvailabilityRuleDTO,
@@ -40,13 +44,15 @@ export function AvailabilityManager({
   initialRules,
   initialExceptions,
 }: Props) {
+  const initialPractitioner = practitioners.find(p => locations.some(l => p.assignedLocationIds.includes(l.id))) || practitioners[0];
   const [selectedPractitionerId, setSelectedPractitionerId] = useState<string>(
-    practitioners[0]?.id || ''
+    initialPractitioner?.id || ''
   );
   const [selectedLocationId, setSelectedLocationId] = useState<string>(
-    locations[0]?.id || ''
+    locations.find(l => initialPractitioner?.assignedLocationIds.includes(l.id))?.id || ''
   );
 
+  const availableLocations = locations.filter(l => practitioners.find(p => p.id === selectedPractitionerId)?.assignedLocationIds.includes(l.id));
   const selectedLocation = locations.find((l) => l.id === selectedLocationId);
   const selectedTimezone = selectedLocation?.timezone || 'Europe/Paris';
 
@@ -163,6 +169,7 @@ export function AvailabilityManager({
           });
           setRules((prev) => [...prev, created]);
         }
+        announceGuideSaved('Les horaires sont enregistrés.');
         setIsRuleModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -247,6 +254,7 @@ export function AvailabilityManager({
           });
           setExceptions((prev) => [...prev, created]);
         }
+        announceGuideSaved('L’absence ou l’ouverture exceptionnelle est enregistrée.');
         setIsExceptionModalOpen(false);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -258,19 +266,30 @@ export function AvailabilityManager({
     });
   };
 
+  if (!practitioners.length || !locations.length || !practitioners.some(p => locations.some(l => p.assignedLocationIds.includes(l.id)))) {
+    return <section data-tour="availability-setup" className="rounded-xl border border-indigo-200 bg-white p-6 space-y-4">
+      <h2 className="text-xl font-semibold text-gray-900">Préparez votre planning</h2>
+      <p className="text-sm text-gray-600">Pour définir vos horaires, ajoutez un lieu de consultation et associez-y un praticien dans « Lieux et équipe ».</p>
+      <ol className="list-decimal pl-5 text-sm text-gray-600 space-y-2"><li>Créez votre lieu de consultation (cabinet, domicile…).</li><li>Ajoutez votre fiche de praticien et associez-la à ce lieu.</li><li>Revenez ici pour indiquer vos horaires habituels et vos absences.</li></ol>
+      <Link href="/parametres/cabinet" className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Configurer les lieux et l’équipe</Link>
+    </section>;
+  }
+
   return (
     <div className="space-y-8">
+      <p className="text-sm text-gray-600">Vos horaires habituels indiquent quand des rendez-vous peuvent être proposés. Ajoutez une absence pour bloquer une journée ou une plage horaire.</p>
       {/* Filter Bar */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+      <div data-tour="availability-controls" className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col 2xl:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 w-full 2xl:w-auto">
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
               Praticien
             </label>
             <select
+              aria-label="Praticien"
               value={selectedPractitionerId}
-              onChange={(e) => setSelectedPractitionerId(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
+              onChange={(e) => { setSelectedPractitionerId(e.target.value); setSelectedLocationId(locations.find(l => practitioners.find(p => p.id === e.target.value)?.assignedLocationIds.includes(l.id))?.id || ''); }}
+              className="w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
             >
               {practitioners.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -285,11 +304,13 @@ export function AvailabilityManager({
               Lieu de consultation
             </label>
             <select
+              aria-label="Lieu de consultation"
               value={selectedLocationId}
               onChange={(e) => setSelectedLocationId(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
+              className="w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 bg-white font-medium"
             >
-              {locations.map((loc) => (
+              {!availableLocations.length && <option value="">Aucun lieu associé à ce praticien</option>}
+              {availableLocations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name} ({loc.timezone})
                 </option>
@@ -298,18 +319,20 @@ export function AvailabilityManager({
           </div>
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto justify-end">
+        <div className="flex flex-wrap gap-3 w-full 2xl:w-auto justify-end">
           <button
+            disabled={!selectedLocationId || isPending}
             onClick={openCreateRuleModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            + Règle hebdomadaire
+            + Ajouter des horaires
           </button>
           <button
+            disabled={!selectedLocationId || isPending}
             onClick={openCreateExceptionModal}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            + Exception ponctuelle
+            + Absence ou ouverture exceptionnelle
           </button>
         </div>
       </div>
@@ -324,7 +347,7 @@ export function AvailabilityManager({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Disponibilités hebdomadaires récurrentes</h3>
+            <h3 className="text-lg font-bold text-gray-900">Horaires habituels</h3>
             <p className="text-xs text-gray-500 mt-1">
               Définit les plages d&apos;ouverture standard du praticien sur chaque jour de la semaine.
             </p>
@@ -333,7 +356,7 @@ export function AvailabilityManager({
 
         {filteredRules.length === 0 ? (
           <div className="p-8 text-center text-gray-500 text-sm">
-            Aucune règle récurrente configurée pour ce praticien sur ce lieu.
+            Aucun horaire défini. Cliquez sur « Ajouter des horaires », puis choisissez un jour et une plage horaire.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -401,7 +424,7 @@ export function AvailabilityManager({
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Exceptions ponctuelles & Fermetures</h3>
+            <h3 className="text-lg font-bold text-gray-900">Absences et ouvertures exceptionnelles</h3>
             <p className="text-xs text-gray-500 mt-1">
               Fermeture de cabinet, congés ou ouvertures exceptionnelles. Les fermetures priment toujours sur les ouvertures.
             </p>
@@ -483,19 +506,19 @@ export function AvailabilityManager({
 
       {/* RULE MODAL */}
       {isRuleModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsRuleModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingRule ? 'Modifier la règle récurrente' : 'Nouvelle règle hebdomadaire'}
             </h3>
 
-            <form onSubmit={handleRuleSubmit} className="space-y-4">
+            <form data-guide-form="horaires" onSubmit={handleRuleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Jour de la semaine *</label>
-                <select
+                <label htmlFor="fld-396127d9" className="block text-sm font-medium text-gray-700">Jour de la semaine *</label>
+                <select id="fld-396127d9"
                   value={ruleFormData.weekday}
                   onChange={(e) => setRuleFormData({ ...ruleFormData, weekday: Number(e.target.value) })}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {WEEKDAYS.map((w) => (
                     <option key={w.id} value={w.id}>
@@ -507,45 +530,45 @@ export function AvailabilityManager({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Heure de début *</label>
-                  <input
+                  <label htmlFor="fld-c734b735" className="block text-sm font-medium text-gray-700">Heure de début *</label>
+                  <input id="fld-c734b735"
                     type="time"
                     required
                     value={ruleFormData.startTime}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, startTime: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Heure de fin *</label>
-                  <input
+                  <label htmlFor="fld-28699297" className="block text-sm font-medium text-gray-700">Heure de fin *</label>
+                  <input id="fld-28699297"
                     type="time"
                     required
                     value={ruleFormData.endTime}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, endTime: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Valide à partir du *</label>
-                  <input
+                  <label htmlFor="fld-f145059f" className="block text-sm font-medium text-gray-700">Valide à partir du *</label>
+                  <input id="fld-f145059f"
                     type="date"
                     required
                     value={ruleFormData.validFrom}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, validFrom: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Valide jusqu&apos;au (optionnel)</label>
-                  <input
+                  <label htmlFor="fld-aff53a16" className="block text-sm font-medium text-gray-700">Valide jusqu&apos;au (optionnel)</label>
+                  <input id="fld-aff53a16"
                     type="date"
                     value={ruleFormData.validUntil}
                     onChange={(e) => setRuleFormData({ ...ruleFormData, validUntil: e.target.value })}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -568,28 +591,28 @@ export function AvailabilityManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* EXCEPTION MODAL */}
       {isExceptionModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsExceptionModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingException ? 'Modifier l’exception ponctuelle' : 'Nouvelle exception ponctuelle'}
             </h3>
 
-            <form onSubmit={handleExceptionSubmit} className="space-y-4">
+            <form data-guide-form="horaires" onSubmit={handleExceptionSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date concernée *</label>
-                <input
+                <label htmlFor="fld-174e6028" className="block text-sm font-medium text-gray-700">Date concernée *</label>
+                <input id="fld-174e6028"
                   type="date"
                   required
                   value={exceptionFormData.localDate}
                   onChange={(e) =>
                     setExceptionFormData({ ...exceptionFormData, localDate: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
@@ -638,27 +661,27 @@ export function AvailabilityManager({
               {!exceptionFormData.isAllDay && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Heure de début *</label>
-                    <input
+                    <label htmlFor="fld-da5ff7fb" className="block text-sm font-medium text-gray-700">Heure de début *</label>
+                    <input id="fld-da5ff7fb"
                       type="time"
                       required={!exceptionFormData.isAllDay}
                       value={exceptionFormData.startTime}
                       onChange={(e) =>
                         setExceptionFormData({ ...exceptionFormData, startTime: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Heure de fin *</label>
-                    <input
+                    <label htmlFor="fld-5634a3fb" className="block text-sm font-medium text-gray-700">Heure de fin *</label>
+                    <input id="fld-5634a3fb"
                       type="time"
                       required={!exceptionFormData.isAllDay}
                       value={exceptionFormData.endTime}
                       onChange={(e) =>
                         setExceptionFormData({ ...exceptionFormData, endTime: e.target.value })
                       }
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full w-full min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -682,7 +705,7 @@ export function AvailabilityManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

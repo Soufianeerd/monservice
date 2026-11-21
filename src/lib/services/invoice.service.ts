@@ -1,3 +1,5 @@
+import { invoiceUpdateSchema } from '@/lib/validation/core-update.schemas';
+import { requireCoreUpdateActor, requireCoreRelation } from './core-update-authorization';
 import { db } from '../db/server';
 import { invoices, invoiceLines, invoiceSections, clients } from '../db/schema';
 import { eq, and, sql, desc, or, inArray, asc } from 'drizzle-orm';
@@ -9,7 +11,9 @@ import { userService } from './user.service';
 import { TaxService } from './tax.service';
 import { InvoiceTaxData } from './tax.types';
 import { calculateDocumentTotals, calculateLine } from './billing-calculator';
+import { requireClientBillingAuthority } from '@/lib/billing/authorization';
 import { allocateBillingNumber } from './quote.service';
+import { isOpenInvoiceStatus, validatePaymentDate, type ManualPaymentMethod } from '@/lib/growth/payment';
 
 type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -25,22 +29,47 @@ function mapDbInvoice(inv: typeof invoices.$inferSelect, lines: InvoiceLine[], s
   };
 }
 
+/** Numéro provisoire d'un brouillon de facture (le définitif est attribué à l'émission). */
+export const PROVISIONAL_NUMBER_PREFIX = 'BROUILLON-';
+export function isProvisionalNumber(number: string | null | undefined): boolean {
+  return Boolean(number?.startsWith(PROVISIONAL_NUMBER_PREFIX));
+}
+
+/**
+ * Lignes et sections de plusieurs factures en deux requêtes au total (et non deux
+ * par facture) : chaque aller-retour vers la base compte.
+ */
+async function withLinesAndSections(invs: (typeof invoices.$inferSelect)[]): Promise<Invoice[]> {
+  const ids = invs.map((inv) => inv.id);
+  const [lines, sections] = await Promise.all([
+    db.select().from(invoiceLines).where(inArray(invoiceLines.invoiceId, ids)).orderBy(asc(invoiceLines.position)),
+    db.select().from(invoiceSections).where(inArray(invoiceSections.invoiceId, ids)).orderBy(asc(invoiceSections.position)),
+  ]);
+  const linesByInvoice = new Map<string, (typeof lines)[number][]>();
+  for (const line of lines) {
+    const bucket = linesByInvoice.get(line.invoiceId) ?? [];
+    bucket.push(line);
+    linesByInvoice.set(line.invoiceId, bucket);
+  }
+  const sectionsByInvoice = new Map<string, (typeof sections)[number][]>();
+  for (const section of sections) {
+    const bucket = sectionsByInvoice.get(section.invoiceId) ?? [];
+    bucket.push(section);
+    sectionsByInvoice.set(section.invoiceId, bucket);
+  }
+  return invs.map((inv) => mapDbInvoice(inv, linesByInvoice.get(inv.id) ?? [], (sectionsByInvoice.get(inv.id) ?? []).map((s) => ({
+    ...s,
+    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
+    updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
+  }))));
+}
+
 export const invoiceService = {
   async findAll(organizationId: string): Promise<Invoice[]> {
     const invs = await db.select().from(invoices).where(eq(invoices.organizationId, organizationId));
     if (invs.length === 0) return [];
     
-    const result: Invoice[] = [];
-    for (const inv of invs) {
-      const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-      const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
-      result.push(mapDbInvoice(inv, lines, sections.map(s => ({
-        ...s,
-        createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
-        updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
-      }))));
-    }
-    return result;
+    return withLinesAndSections(invs);
   },
 
   async findByClient(userId: string): Promise<Invoice[]> {
@@ -54,17 +83,7 @@ export const invoiceService = {
     const invs = await db.select().from(invoices).where(condition);
     if (invs.length === 0) return [];
     
-    const result: Invoice[] = [];
-    for (const inv of invs) {
-      const lines = await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, inv.id)).orderBy(asc(invoiceLines.position));
-      const sections = await db.select().from(invoiceSections).where(eq(invoiceSections.invoiceId, inv.id)).orderBy(asc(invoiceSections.position));
-      result.push(mapDbInvoice(inv, lines, sections.map(s => ({
-        ...s,
-        createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : String(s.createdAt),
-        updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : String(s.updatedAt),
-      }))));
-    }
-    return result;
+    return withLinesAndSections(invs);
   },
 
   async findByProfessional(organizationId: string): Promise<Invoice[]> {
@@ -102,38 +121,19 @@ export const invoiceService = {
   },
 
   async updateStatusAsClient(id: string, clientUserId: string, status: InvoiceStatus): Promise<void> {
+    // Compatibility commands only. Never forward caller status to an UPDATE.
+    if (!['viewed', 'rejected', 'cancelled'].includes(status)) {
+      throw new AppError('Transition client interdite', 403, 'FORBIDDEN_TRANSITION');
+    }
     const inv = await this.getById(id);
-    if (!inv) throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-
-    let isAuthorized = inv.recipientUserId === clientUserId;
-    if (!isAuthorized) {
-      const [crmClient] = await db
-        .select({ id: clients.id })
-        .from(clients)
-        .where(and(eq(clients.id, inv.clientId), eq(clients.userId, clientUserId)))
-        .limit(1);
-      if (crmClient) isAuthorized = true;
+    if (!inv) throw new AppError('Document introuvable', 404);
+    await requireClientBillingAuthority(inv, clientUserId);
+    if (inv.type !== 'quote') {
+      throw new AppError('Transition client interdite pour une facture', 403, 'FORBIDDEN_TRANSITION');
     }
-
-    if (!isAuthorized) {
-      throw new AppError('Accès refusé à ce document', 403, 'FORBIDDEN');
-    }
-
-    // Clients can only mark quotes as viewed or cancelled/rejected, not arbitrary status
-    if (inv.type === 'quote') {
-      if (status === 'viewed') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.markQuoteViewed(id, clientUserId);
-        return;
-      }
-      if (status === 'cancelled' || status === 'rejected') {
-        const { quoteService } = await import('./quote.service');
-        await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
-        return;
-      }
-    }
-
-    await db.update(invoices).set({ status, updatedAt: new Date().toISOString() }).where(eq(invoices.id, id));
+    const { quoteService } = await import('./quote.service');
+    if (status === 'viewed') await quoteService.markQuoteViewed(id, clientUserId);
+    else await quoteService.rejectQuote(id, 'Refusé par le client', clientUserId);
   },
 
   async signInvoice(
@@ -201,6 +201,7 @@ export const invoiceService = {
         status: 'paid',
         paidAt: now,
         paymentIntentId,
+        paymentMethod: 'stripe',
         amountDue: 0,
         updatedAt: now,
       })
@@ -211,13 +212,49 @@ export const invoiceService = {
     return this.getById(id);
   },
 
+  /**
+   * Règlement reçu hors ligne (virement, chèque, espèces…), saisi par le
+   * professionnel. Sans cette saisie, une facture ne passait « payée » que par
+   * le webhook Stripe, désactivé au lancement : trésorerie, relances et avis
+   * restaient faux.
+   */
+  async recordManualPayment(
+    id: string,
+    organizationId: string,
+    userId: string,
+    input: { paidOn: string; method: ManualPaymentMethod },
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await requireCoreUpdateActor(tx, organizationId, userId);
+      const [existing] = await tx
+        .select({ type: invoices.type, status: invoices.status, date: invoices.date })
+        .from(invoices)
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)))
+        .limit(1)
+        .for('update');
+      if (!existing || existing.type !== 'invoice') throw new AppError('Facture introuvable', 404, 'INVOICE_NOT_FOUND');
+      if (existing.status === 'paid') throw new AppError('Cette facture est déjà réglée.', 409, 'INVOICE_ALREADY_PAID');
+      if (!isOpenInvoiceStatus(existing.status)) {
+        throw new AppError('Seule une facture émise et non annulée peut être réglée.', 409, 'INVOICE_NOT_OPEN');
+      }
+      const dateError = validatePaymentDate(input.paidOn, existing.date);
+      if (dateError) throw new AppError(dateError, 400, 'INVALID_PAYMENT_DATE');
+      const now = new Date().toISOString();
+      await tx
+        .update(invoices)
+        .set({ status: 'paid', paidAt: `${input.paidOn}T12:00:00.000Z`, paymentMethod: input.method, amountDue: 0, updatedAt: now })
+        .where(and(eq(invoices.id, id), eq(invoices.organizationId, organizationId)));
+      console.info('[audit] invoice.paid.manual', { invoiceId: id, organizationId, userId, method: input.method, at: now });
+    });
+  },
+
   async generateNumber(type: 'invoice' | 'quote', organizationId: string): Promise<string> {
     return await db.transaction(async (tx) => allocateBillingNumber(tx, organizationId, type));
   },
 
-  async calculateTotals(invoiceId: string, organizationId: string) {
+  async calculateTotals(invoiceId: string, organizationId: string, connection: typeof db | DbTx = db) {
     // Tenant check first
-    const [inv] = await db
+    const [inv] = await connection
       .select()
       .from(invoices)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
@@ -225,7 +262,7 @@ export const invoiceService = {
 
     if (!inv) throw new AppError('Document introuvable dans cette organisation', 404);
 
-    const lines = await db
+    const lines = await connection
       .select()
       .from(invoiceLines)
       .where(and(eq(invoiceLines.invoiceId, invoiceId), eq(invoiceLines.organizationId, organizationId)))
@@ -240,7 +277,7 @@ export const invoiceService = {
 
     for (const l of totals.lines) {
       if (l.id) {
-        await db
+        await connection
           .update(invoiceLines)
           .set({
             totalHT: l.totalHT,
@@ -252,7 +289,7 @@ export const invoiceService = {
       }
     }
 
-    await db
+    await connection
       .update(invoices)
       .set({
         totalHT: totals.totalHT,
@@ -369,7 +406,7 @@ export const invoiceService = {
         });
       }
 
-      const created = await this.findById(invoiceId, validated.organizationId);
+      const created = await this.findById(invoiceId, validated.organizationId, tx);
       if (!created) throw new AppError('Erreur de création de document', 500);
       return created;
     });
@@ -381,24 +418,20 @@ export const invoiceService = {
       throw new AppError('Unauthorized access to this organization', 403, 'UNAUTHORIZED');
     }
 
-    const existing = await this.findById(id, organizationId);
-    if (!existing) {
-      throw new AppError('Document not found', 404);
-    }
-    if (existing.lockedAt) {
-      throw new AppError('Cannot modify a locked document', 403);
-    }
-
+    const { lines, ...validated } = invoiceUpdateSchema.parse(data);
     return await db.transaction(async (tx) => {
-      const { lines, signature, ...invoiceData } = data;
-      
-      const partialSchema = invoiceSchema.partial();
-      const validated = partialSchema.parse(invoiceData);
-      
+      await requireCoreUpdateActor(tx,organizationId,userId);
+      const [existing] = await tx.select().from(invoices).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId))).limit(1).for('update');
+      if (!existing) throw new AppError('Document not found',404);
+      if (existing.lockedAt || existing.status !== 'draft') throw new AppError('Cannot modify an issued document',403);
+      if (validated.clientId) await requireCoreRelation(tx,organizationId,'client',validated.clientId);
+      const [client] = await tx.select({ userId: clients.userId }).from(clients).where(and(eq(clients.id,validated.clientId ?? existing.clientId),eq(clients.organizationId,organizationId))).limit(1).for('share');
+      for (const line of lines ?? []) if (line.productId) await requireCoreRelation(tx,organizationId,'product',line.productId);
       const updated = {
         ...validated,
-        status: validated.status ? (validated.status as InvoiceStatus) : undefined,
-        signature: signature !== undefined ? (signature ? JSON.stringify(signature) : null) : undefined,
+        recipientUserId: validated.clientId && validated.clientId !== existing.clientId
+          ? client?.userId ?? null : existing.recipientUserId,
+        status: undefined,
         updatedAt: new Date().toISOString(),
       };
       
@@ -412,7 +445,7 @@ export const invoiceService = {
         for (let i = 0; i < calculatedLines.length; i++) {
           const line = calculatedLines[i];
           await tx.insert(invoiceLines).values({
-            id: line.id || generateId(),
+            id: generateId(),
             organizationId,
             invoiceId: id,
             productId: line.productId || null,
@@ -432,14 +465,22 @@ export const invoiceService = {
         }
       }
 
-      await this.calculateTotals(id, organizationId);
+      await this.calculateTotals(id, organizationId, tx);
 
-      if (validated.status === 'sent' || validated.status === 'paid') {
+      // Numérotation continue (S-08) : un brouillon de facture porte un numéro
+      // provisoire ; le numéro définitif et la date d'émission sont attribués
+      // à l'émission, si bien qu'un brouillon supprimé ne laisse aucun trou.
+      if (validated.status === 'sent' && existing.type !== 'quote' && isProvisionalNumber(existing.number)) {
+        const number = await allocateBillingNumber(tx, organizationId, 'invoice');
+        await tx.update(invoices).set({ number, date: new Date().toISOString().slice(0, 10) }).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId)));
+      }
+      if (validated.status) await tx.update(invoices).set({ status: validated.status }).where(and(eq(invoices.id,id),eq(invoices.organizationId,organizationId)));
+      if (validated.status === 'sent') {
         const { retentionService } = await import('./retention.service');
-        await retentionService.lockDocument(id, existing.type);
+        await retentionService.lockDocument(id, existing.type === 'quote' ? 'quote' : 'invoice', tx);
       }
 
-      const updatedDoc = await this.findById(id, organizationId);
+      const updatedDoc = await this.findById(id, organizationId, tx);
       if (!updatedDoc) throw new AppError('Erreur de mise à jour du document', 500);
       return updatedDoc;
     });

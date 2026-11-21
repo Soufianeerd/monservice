@@ -33,9 +33,11 @@ describe('LegalService', () => {
   });
 
   describe('getSiteMentions', () => {
-    it('should return publisher details', async () => {
+    it('ne contient plus aucune identité d’éditeur inventée', async () => {
+      // L'identité réelle vient de la configuration (src/lib/legal/publisher.ts).
       const site = await legalService.getSiteMentions('FR');
-      expect(site.publisher).toBe('MonService SAS');
+      expect(site.publisher).toBe('');
+      expect(site.registrationNumber).toBe('');
       expect(site.hosting).toBe('Netlify, Inc.');
     });
   });

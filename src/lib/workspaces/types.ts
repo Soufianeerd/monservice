@@ -56,6 +56,8 @@ export interface BaseWorkspaceConfig {
 
 export interface GenericWorkspaceConfig extends BaseWorkspaceConfig {
   type: 'generic';
+  profession?: import('./generic/professions').GenericProfessionCode;
+  professionFamily?: import('./generic/professions').GenericProfessionFamilyCode;
 }
 
 export interface ParamedicalWorkspaceConfig extends BaseWorkspaceConfig {

@@ -1,4 +1,5 @@
 import { db } from '../db/server';
+import { withReadScope } from '../db/read-scope';
 import { tasks } from '../db/schema';
 import { and, eq, notInArray, sql, asc } from 'drizzle-orm';
 import { AppError } from '../errors';
@@ -54,10 +55,11 @@ export const practiceDashboardService = {
       )
       .limit(5);
 
-    const [[{ count }], nextTasks] = await Promise.all([
+    // Une transaction pour les deux lectures : elles partent en pipeline.
+    const [[{ count }], nextTasks] = await withReadScope(() => Promise.all([
       countQuery,
       topTasksQuery
-    ]);
+    ]));
 
     return {
       openTaskCount: count,

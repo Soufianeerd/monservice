@@ -1,5 +1,8 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useEffect } from 'react';
 import { AppointmentCalendarEventDTO, APPOINTMENT_CANCELLATION_REASON_CODES, AppointmentCancellationReasonCode, WaitlistMatchDTO } from '@/lib/scheduling/types';
 import { cancelAppointmentAction, markAppointmentNoShowAction, listMatchingWaitlistForAppointmentAction } from '@/app/actions/scheduling.actions';
@@ -29,6 +32,7 @@ export function AppointmentDetailsModal({
   onReschedule,
   onRefresh,
 }: AppointmentDetailsModalProps) {
+  const t = useCareVocabulary();
   const [isCancelling, setIsCancelling] = useState(false);
   const [selectedReason, setSelectedReason] = useState<AppointmentCancellationReasonCode>('patient_request');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +86,7 @@ export function AppointmentDetailsModal({
 
   const handleNoShowSubmit = async () => {
     if (!appointment) return;
-    const confirm = window.confirm('Marquer le patient comme absent pour cette séance ?');
+    const confirm = await askConfirm(t('Marquer le patient comme absent pour cette séance ?'));
     if (!confirm) return;
 
     setIsSubmitting(true);
@@ -104,7 +108,7 @@ export function AppointmentDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <ModalOverlay onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start border-b pb-4">
@@ -160,7 +164,7 @@ export function AppointmentDetailsModal({
         {/* Appointment Metadata Grid */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="block text-gray-500 font-medium">Patient</span>
+            <span className="block text-gray-500 font-medium">{t("Patient")}</span>
             <span className="text-gray-900 font-semibold">{appointment.patientName}</span>
           </div>
           <div>
@@ -213,7 +217,7 @@ export function AppointmentDetailsModal({
         {appointment.status === 'no_show' && (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-1 text-sm">
             <div className="text-gray-500 font-medium">Statut :</div>
-            <div className="text-amber-800 font-semibold">Absence constatée du patient</div>
+            <div className="text-amber-800 font-semibold">{t("Absence constatée du patient")}</div>
             {appointment.noShowAt && (
               <div className="text-xs text-gray-500 mt-1">
                 Marqué absent le : {new Date(appointment.noShowAt).toLocaleString('fr-FR')}
@@ -318,6 +322,6 @@ export function AppointmentDetailsModal({
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

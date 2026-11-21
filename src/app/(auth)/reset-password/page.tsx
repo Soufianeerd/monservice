@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
+import { authClient } from '@/lib/auth/client';
+import { isAuthApiError } from '@neondatabase/auth/next';
+import PasswordField from '@/components/auth/PasswordField';
+import AuthLayout from '@/components/auth/AuthLayout';
+import { authButtonClass, authMessageClass } from '@/components/auth/auth-styles';
+import { passwordSchema } from '@/lib/validation/schemas';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -12,77 +17,76 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  useEffect(() => {
-    // Supabase gère le code via l'URL de callback. Si l'utilisateur arrive directement ici,
-    // il doit passer par le callback qui met à jour la session.
-    async function verifySession() {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login');
-      }
-    }
-    verifySession();
-  }, [router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setMessage({ text: 'Les mots de passe ne correspondent pas.', type: 'error' });
       return;
     }
-    if (password.length < 12) {
-      setMessage({ text: 'Le mot de passe doit faire au moins 12 caractères.', type: 'error' });
+    const policy = passwordSchema.safeParse(password);
+    if (!policy.success) {
+      setMessage({ text: policy.error.issues[0]?.message ?? 'Mot de passe non conforme.', type: 'error' });
       return;
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    const token = searchParams.get('token');
+    if (!token) { setLoading(false); setMessage({ text: 'Lien invalide ou expiré.', type: 'error' }); return; }
+    try {
+      const { error } = await authClient.resetPassword({ newPassword: password, token });
 
-    if (error) {
-      setMessage({ text: 'Erreur lors de la mise à jour.', type: 'error' });
-    } else {
-      setMessage({ text: 'Mot de passe mis à jour avec succès.', type: 'success' });
-      setTimeout(() => router.push('/dashboard'), 2000);
-    }
+      if (error) {
+        setMessage({ text: 'Erreur lors de la mise à jour.', type: 'error' });
+      } else {
+        setMessage({ text: 'Mot de passe mis à jour avec succès.', type: 'success' });
+        setTimeout(() => router.push('/login'), 2000);
+      }
+    } catch (error) {
+      // Neon normalizes INVALID_TOKEN to bad_jwt (401), even when the
+      // upstream reset endpoint answered 400. It remains a rejected link.
+      setMessage({ text: isAuthApiError(error) && (error.status === 400 || error.code === 'bad_jwt') ? 'Erreur lors de la mise à jour.' : 'Mise à jour indisponible. Réessayez.', type: 'error' });
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow">
-      <h1 className="text-xl font-bold mb-4">Créer un nouveau mot de passe</h1>
+    <AuthLayout title="Nouveau mot de passe" subtitle="Choisissez un mot de passe que vous n’utilisez nulle part ailleurs.">
       <form onSubmit={handleSubmit}>
-        <label className="block mb-2">Nouveau mot de passe (12 caractères min)</label>
-        <input
-          type="password"
+        <PasswordField
+          id="reset-password"
+          label="Nouveau mot de passe"
+          name="password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          showRequirements
           required
+          className="mb-4"
         />
-        <label className="block mb-2">Confirmer le mot de passe</label>
-        <input
-          type="password"
+        <PasswordField
+          id="reset-password-confirm"
+          label="Confirmer le mot de passe"
+          name="confirmPassword"
+          autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          error={confirmPassword && confirmPassword !== password ? 'Les deux mots de passe ne correspondent pas.' : undefined}
           required
+          className="mb-4"
         />
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+          className={authButtonClass}
         >
-          {loading ? 'Mise à jour...' : 'Réinitialiser'}
+          {loading ? 'Mise à jour…' : 'Réinitialiser'}
         </button>
       </form>
       {message && (
-        <div className={`mt-4 p-2 text-sm rounded ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <div role="status" className={`mt-5 ${authMessageClass(message.type)}`}>
           {message.text}
         </div>
       )}
-    </div>
+    </AuthLayout>
   );
 }
 

@@ -1,3 +1,4 @@
+import type { InvoicePaymentMethod } from '@/lib/db/schema';
 import { InvoiceLine } from './invoice-line.interface';
 import { InvoiceSection } from './invoice-section.interface';
 
@@ -35,6 +36,7 @@ export interface Invoice {
   date: string;
   dueDate?: string | null;
   paidAt?: string | null;
+  paymentMethod?: InvoicePaymentMethod | null;
   paymentLink?: string | null;
   stripePaymentIntentId?: string | null;
   paymentIntentId?: string | null;

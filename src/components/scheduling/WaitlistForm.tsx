@@ -1,5 +1,8 @@
 'use client';
 
+import { useCareVocabulary } from '@/hooks/useCareVocabulary';
+import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
+
 import React, { useState, useEffect, useTransition } from 'react';
 import {
   SchedulingBootstrapDTO,
@@ -25,6 +28,7 @@ export function WaitlistForm({
   onSuccess,
   onCancel,
 }: Props) {
+  const t = useCareVocabulary();
   const isEditing = Boolean(initialData);
 
   // Form Fields
@@ -101,7 +105,7 @@ export function WaitlistForm({
     setErrorMessage(null);
 
     if (!patientId) {
-      setErrorMessage('Veuillez sélectionner un patient');
+      setErrorMessage(t('Veuillez sélectionner un patient'));
       return;
     }
 
@@ -134,6 +138,7 @@ export function WaitlistForm({
             preferredStartTime: preferredStartTime || null,
             preferredEndTime: preferredEndTime || null,
           });
+          announceGuideSaved('La demande en liste d’attente est enregistrée.');
           onSuccess(updated);
         } else {
           const created = await createWaitlistEntryAction({
@@ -146,6 +151,7 @@ export function WaitlistForm({
             preferredStartTime: preferredStartTime || null,
             preferredEndTime: preferredEndTime || null,
           });
+          announceGuideSaved('La demande en liste d’attente est enregistrée.');
           onSuccess(created);
         }
       } catch (err: unknown) {
@@ -162,7 +168,7 @@ export function WaitlistForm({
     <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-gray-100 max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold text-gray-900">
-          {isEditing ? "Modifier l'inscription en attente" : "Inscrire un patient en liste d'attente"}
+          {isEditing ? "Modifier l'inscription en attente" : t("Inscrire un patient en liste d’attente")}
         </h3>
         <button
           onClick={onCancel}
@@ -179,10 +185,10 @@ export function WaitlistForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form data-guide-form="liste-attente" onSubmit={handleSubmit} className="space-y-4">
         {/* PATIENT SELECTION */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient *</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Patient *")}</label>
           {selectedPatientDisplay ? (
             <div className="mt-1 flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <span className="text-sm font-semibold text-blue-900">{selectedPatientDisplay}</span>
@@ -233,8 +239,8 @@ export function WaitlistForm({
         {/* LOCATION & PRACTITIONER */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Lieu de consultation *</label>
-            <select
+            <label htmlFor="fld-5daaf66e" className="block text-sm font-medium text-gray-700">Lieu de consultation *</label>
+            <select id="fld-5daaf66e"
               value={locationId}
               onChange={(e) => setLocationId(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -251,8 +257,8 @@ export function WaitlistForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Praticien souhaité</label>
-            <select
+            <label htmlFor="fld-9e6d055b" className="block text-sm font-medium text-gray-700">Praticien souhaité</label>
+            <select id="fld-9e6d055b"
               value={practitionerId}
               onChange={(e) => setPractitionerId(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -269,8 +275,8 @@ export function WaitlistForm({
 
         {/* APPOINTMENT TYPE */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Type de séance souhaité *</label>
-          <select
+          <label htmlFor="fld-cd6ce91d" className="block text-sm font-medium text-gray-700">Type de séance souhaité *</label>
+          <select id="fld-cd6ce91d"
             value={appointmentTypeId}
             onChange={(e) => setAppointmentTypeId(e.target.value)}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
@@ -286,8 +292,8 @@ export function WaitlistForm({
         {/* DATE INTERVAL */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Disponible à partir du *</label>
-            <input
+            <label htmlFor="fld-290d90ef" className="block text-sm font-medium text-gray-700">Disponible à partir du *</label>
+            <input id="fld-290d90ef"
               type="date"
               required
               value={preferredDateFrom}
@@ -297,8 +303,8 @@ export function WaitlistForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Jusqu'au</label>
-            <input
+            <label htmlFor="fld-5a1a2148" className="block text-sm font-medium text-gray-700">Jusqu'au</label>
+            <input id="fld-5a1a2148"
               type="date"
               value={preferredDateUntil}
               onChange={(e) => setPreferredDateUntil(e.target.value)}
@@ -310,8 +316,8 @@ export function WaitlistForm({
         {/* TIME PREFERENCE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Heure de début préférée</label>
-            <input
+            <label htmlFor="fld-72e34615" className="block text-sm font-medium text-gray-700">Heure de début préférée</label>
+            <input id="fld-72e34615"
               type="time"
               value={preferredStartTime}
               onChange={(e) => setPreferredStartTime(e.target.value)}
@@ -320,8 +326,8 @@ export function WaitlistForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Heure de fin préférée</label>
-            <input
+            <label htmlFor="fld-34f6b148" className="block text-sm font-medium text-gray-700">Heure de fin préférée</label>
+            <input id="fld-34f6b148"
               type="time"
               value={preferredEndTime}
               onChange={(e) => setPreferredEndTime(e.target.value)}

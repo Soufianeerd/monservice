@@ -1,5 +1,6 @@
 'use server';
 
+import { recordAudit } from '@/lib/audit/record';
 import { requireProfessional } from '@/lib/auth/session';
 import { assertFeature } from '@/lib/billing/quota';
 import { invoiceService } from '@/lib/services/invoice.service';
@@ -9,6 +10,9 @@ import { organizationService } from '@/lib/services/organization.service';
 import { sendEmail } from '@/lib/email';
 import { invoiceSentTemplate, quoteSentTemplate } from '@/lib/email/templates';
 import { AppError } from '@/lib/errors';
+import { quoteService } from '@/lib/services/quote.service';
+import { renderBillingDocumentPdf, billingDocumentFilename } from '@/lib/pdf/billing-document.server';
+import { issuerBankLine } from '@/lib/legal/issuer';
 
 /**
  * Envoi de documents par e-mail.
@@ -20,80 +24,75 @@ import { AppError } from '@/lib/errors';
  * (anomalie MS-015).
  */
 
-function appUrl(path: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return `${base}${path}`;
-}
 
 export async function sendDocumentByEmailAction(
   documentId: string,
 ): Promise<{ sent: boolean; message: string }> {
   const ctx = await requireProfessional();
 
-  const invoice = await invoiceService.findById(documentId, ctx.organizationId);
-  if (!invoice) throw new AppError('Document introuvable', 404, 'NOT_FOUND');
+  let document = await invoiceService.findById(documentId, ctx.organizationId);
+  if (!document) throw new AppError('Document introuvable', 404, 'NOT_FOUND');
 
   const [client, organization] = await Promise.all([
-    clientService.findById(invoice.clientId, ctx.organizationId),
+    clientService.findById(document.clientId, ctx.organizationId),
     organizationService.getById(ctx.organizationId),
   ]);
+  if (!organization) throw new AppError('Organisation introuvable', 404, 'NOT_FOUND');
 
   const recipient = client?.email;
-  if (!recipient) {
-    return {
-      sent: false,
-      message: "Ce client n'a pas d'adresse e-mail renseignée.",
-    };
+  if (!client || !recipient) {
+    return { sent: false, message: "Ce client n'a pas d'adresse e-mail renseignée." };
+  }
+  if (!process.env.RESEND_API_KEY) {
+    return { sent: false, message: "L'envoi d'e-mails n'est pas encore configuré sur MonService." };
   }
 
-  const isQuote = invoice.type === 'quote';
+  const isQuote = document.type === 'quote';
 
+  // Une facture brouillon est d'abord émise : le PDF joint porte son numéro
+  // définitif. Un devis brouillon passe « envoyé » après l'envoi réussi.
+  if (!isQuote && document.status === 'draft') {
+    document = await invoiceService.update(document.id, ctx.organizationId, { status: 'sent' }, ctx.userId);
+  }
+
+  const pdf = await renderBillingDocumentPdf(document, organization, client);
   const template = isQuote
     ? quoteSentTemplate({
         clientName: client.name,
-        organizationName: organization?.name ?? 'Votre prestataire',
-        quoteNumber: invoice.number,
-        totalTTC: invoice.totalTTC,
-        url: appUrl(`/client/quotes/${invoice.id}`),
-        message: invoice.message ?? undefined,
+        organizationName: organization.name,
+        quoteNumber: document.number,
+        totalTTC: document.totalTTC,
+        message: document.message ?? undefined,
       })
     : invoiceSentTemplate({
         clientName: client.name,
-        organizationName: organization?.name ?? 'Votre prestataire',
-        invoiceNumber: invoice.number,
-        totalTTC: invoice.totalTTC,
-        dueDate: invoice.dueDate,
-        url: appUrl(`/client/invoices/${invoice.id}`),
+        organizationName: organization.name,
+        invoiceNumber: document.number,
+        totalTTC: document.totalTTC,
+        dueDate: document.dueDate,
+        paymentDetails: issuerBankLine(organization),
       });
 
   const result = await sendEmail({
     to: recipient,
     subject: template.subject,
     html: template.html,
-    replyTo: organization?.email ?? undefined,
+    replyTo: organization.email ?? undefined,
     tag: isQuote ? 'quote.sent' : 'invoice.sent',
+    onBehalfOf: organization.name,
+    attachments: [{ filename: billingDocumentFilename(document), content: pdf.toString('base64'), contentType: 'application/pdf' }],
   });
 
   if (!result.sent) {
-    return {
-      sent: false,
-      message: result.skipped
-        ? "L'envoi d'e-mails n'est pas encore configuré sur ce compte."
-        : "L'e-mail n'a pas pu être envoyé. Réessayez dans un instant.",
-    };
+    return { sent: false, message: "L'e-mail n'a pas pu être envoyé. Réessayez dans un instant." };
   }
 
-  // Le document passe en « envoyé » uniquement si l'e-mail est réellement parti.
-  if (invoice.status === 'draft') {
-    await invoiceService.update(
-      invoice.id,
-      ctx.organizationId,
-      { status: 'sent' } as never,
-      ctx.userId,
-    );
+  if (isQuote && document.status === 'draft') {
+    await quoteService.sendQuote(document.id, ctx.organizationId, ctx.userId);
   }
 
-  return { sent: true, message: `Document envoyé à ${recipient}.` };
+  await recordAudit({ userId: ctx.userId, organizationId: ctx.organizationId, action: 'document.emailed', entityType: isQuote ? 'quote' : 'invoice', entityId: documentId });
+  return { sent: true, message: `${isQuote ? 'Devis' : 'Facture'} envoyé${isQuote ? '' : 'e'} à ${recipient}, avec le PDF en pièce jointe.` };
 }
 
 /** Envoi d'un deal (opportunité commerciale) sous forme de devis. */
@@ -121,7 +120,6 @@ export async function sendDealByEmailAction(
     organizationName: organization?.name ?? 'Votre prestataire',
     quoteNumber: deal.name,
     totalTTC: deal.value,
-    url: appUrl(`/deals/${deal.id}`),
     message: deal.description ?? undefined,
   });
 

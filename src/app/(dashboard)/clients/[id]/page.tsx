@@ -8,6 +8,7 @@ import * as clientActions from '@/app/actions/client.actions';
 import { Client } from '@/lib/data/interfaces';
 import { useAuth } from '@/components/auth/AuthContext';
 import QuickActions from '@/components/crm/QuickActions';
+import ClientPortalAccessPanel from '@/components/crm/ClientPortalAccessPanel';
 
 export default function ClientDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
@@ -77,6 +78,8 @@ export default function ClientDetailPage(props: { params: Promise<{ id: string }
           </dl>
         </div>
       </div>
+
+      <ClientPortalAccessPanel clientId={client.id} defaultEmail={client.email || client.contactEmail || null} />
     </div>
   );
 }

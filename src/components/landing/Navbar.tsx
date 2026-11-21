@@ -35,7 +35,7 @@ export default async function Navbar() {
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-gray-600 hover:text-gray-900 font-semibold hidden sm:block transition-colors">Se connecter</Link>
+                <Link href="/login" className="text-gray-600 hover:text-gray-900 font-semibold text-sm sm:text-base transition-colors">Se connecter</Link>
                 <Link href="/register" className="bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 font-semibold transition-all shadow-lg shadow-gray-200 hover:shadow-xl transform hover:scale-105">
                   S&apos;inscrire
                 </Link>

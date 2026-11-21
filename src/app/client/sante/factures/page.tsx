@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { requirePatientPortalAccess } from '@/lib/patient-portal/auth';
 import { patientBillingService } from '@/lib/services/patient-billing.service';
 import { CreditCard, ChevronLeft, CheckCircle2, Clock, AlertCircle, FileText } from 'lucide-react';
-import InvoicePaymentButton from '@/components/client/InvoicePaymentButton';
 
 export default async function PatientPortalInvoicesPage() {
   const portalCtx = await requirePatientPortalAccess();
@@ -45,6 +44,7 @@ export default async function PatientPortalInvoicesPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6 lg:p-8">
+      <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">Pour régler votre facture, utilisez les moyens de paiement convenus avec votre professionnel.</p>
       {/* Back button & Header */}
       <div>
         <Link
@@ -55,7 +55,7 @@ export default async function PatientPortalInvoicesPage() {
         </Link>
         <h1 className="text-2xl font-bold text-slate-900">Mes Factures de Soins</h1>
         <p className="text-sm text-slate-500">
-          Consultez vos notes d’honoraires, attestations de paiement pour mutuelle et réglez vos soins en ligne par carte bancaire.
+          Consultez vos factures et notes d’honoraires. Le règlement se fait directement auprès de votre praticien.
         </p>
       </div>
 
@@ -139,9 +139,7 @@ export default async function PatientPortalInvoicesPage() {
                 >
                   <FileText className="w-3.5 h-3.5" /> Détails & Télécharger PDF
                 </Link>
-                {inv.status !== 'paid' && (
-                  <InvoicePaymentButton invoiceId={inv.id} />
-                )}
+
               </div>
             </div>
           ))}
