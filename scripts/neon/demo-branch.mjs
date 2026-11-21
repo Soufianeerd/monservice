@@ -86,14 +86,19 @@ const netlify = async (method, path, body) => {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`Netlify API ${method} ${path.split('?')[0]} failed with status ${response.status}`);
+  if (!response.ok) {
+    // Les réponses d'erreur de Netlify ne contiennent pas les valeurs envoyées.
+    const detail = (await response.text()).slice(0, 300);
+    throw new Error(`Netlify API ${method} ${path.split('?')[0]} failed with status ${response.status}: ${detail}`);
+  }
   return response.status === 204 ? null : response.json();
 };
 const siteName = process.env.NETLIFY_SITE_NAME ?? 'monservicecrm';
 const sites = await netlify('GET', `/sites?name=${encodeURIComponent(siteName)}&filter=all`);
 const site = sites.find((candidate) => candidate.name === siteName);
 if (!site) throw new Error(`Netlify site ${siteName} not found`);
-const account = site.account_id ?? site.account_slug;
+const account = site.account_slug ?? site.account_id;
+console.log(`Netlify site found (account ${account})`);
 const existing = new Set((await netlify('GET', `/accounts/${account}/env?site_id=${site.id}`)).map((variable) => variable.key));
 const scopes = ['builds', 'functions', 'runtime'];
 for (const [key, value] of Object.entries(out)) {
