@@ -58,3 +58,4 @@ database.sqlite-journal
 playwright-report/
 test-results/
 recette-output/
+demo-output/
