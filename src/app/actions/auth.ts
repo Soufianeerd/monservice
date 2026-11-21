@@ -1,4 +1,6 @@
 'use server';
+import { headers } from 'next/headers';
+import { allowAttempt, clientIpFrom } from '@/lib/auth/shared-rate-limit';
 import { auth } from '@/lib/auth/server';
 import { db } from '@/lib/db/server';
 import { registerSchema } from '@/lib/validation/schemas';
@@ -21,6 +23,10 @@ export async function registerAction(data: {
   const input = parsed.data;
   if (input.profileType !== 'professional' && !isClientAccessEnabled()) return { success: false, error: CLIENT_ACCESS_CLOSED_MESSAGE };
   if (input.profileType === 'professional' && !isSectorOpenForRegistration(input.sector)) return { success: false, error: CLOSED_SECTOR_MESSAGE };
+  // Limite partagée : 5 créations de compte par heure et par adresse IP.
+  if (!(await allowAttempt('sign-up:ip', clientIpFrom(await headers()), 5, 60 * 60))) {
+    return { success: false, error: 'Trop de créations de compte depuis cette connexion. Réessayez dans une heure.' };
+  }
   try {
     const { data: created, error } = await auth.signUp.email({
       email: input.email.trim().toLowerCase(), name: input.name, password: input.password,

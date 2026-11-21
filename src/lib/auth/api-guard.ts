@@ -1,4 +1,5 @@
 import { passwordSchema } from '@/lib/validation/schemas';
+import { allowAttempt, clientIpFrom } from './shared-rate-limit';
 
 /**
  * Contrôles appliqués au relais public /api/auth/* avant transmission à Neon Auth.
@@ -18,10 +19,38 @@ function json(status: number, message: string): Response {
   return Response.json({ code: 'FORBIDDEN_BY_POLICY', message }, { status });
 }
 
+async function readEmail(request: Request): Promise<string | null> {
+  try {
+    const body: unknown = await request.clone().json();
+    const email: unknown = body && typeof body === 'object' ? Reflect.get(body, 'email') : undefined;
+    return typeof email === 'string' ? email : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function guardAuthRequest(method: string, path: string[], request: Request): Promise<Response | null> {
   if (method !== 'POST') return null;
   const [first] = path;
   if (first === 'sign-up') return json(403, 'La création de compte se fait depuis la page d’inscription.');
+
+  // Limites partagées par toutes les instances : par compte (blocage temporaire
+  // après trop d'échecs ou de demandes) et par adresse IP.
+  if (first === 'sign-in' || first === 'forget-password' || first === 'request-password-reset') {
+    const email = await readEmail(request);
+    const ip = clientIpFrom(request.headers);
+    const perAccount = first === 'sign-in' ? { max: 10, window: 15 * 60 } : { max: 5, window: 60 * 60 };
+    const [accountOk, ipOk] = await Promise.all([
+      email ? allowAttempt(`${first}:email`, email, perAccount.max, perAccount.window) : Promise.resolve(true),
+      allowAttempt(`${first}:ip`, ip, 30, 15 * 60),
+    ]);
+    if (!accountOk || !ipOk) {
+      return json(429, first === 'sign-in'
+        ? 'Trop de tentatives de connexion. Par sécurité, réessayez dans 15 minutes.'
+        : 'Trop de demandes. Réessayez dans une heure.');
+    }
+    return null;
+  }
   const field = first ? PASSWORD_ENDPOINTS[first] : undefined;
   if (!field) return null;
   let body: unknown;
