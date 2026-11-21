@@ -55,6 +55,8 @@ beforeAll(async()=>{
 });
 afterAll(async()=>{
   await withFixtureMaintenance(sql, async tx => {
+    // Journal d'audit (exports, fermetures de compte) : supprimé avant les comptes qu'il référence.
+    await tx`DELETE FROM audit_logs WHERE organization_id IN (${org},${otherOrg}) OR user_id IN (SELECT id FROM users WHERE organization_id IN (${org},${otherOrg}))`;
     for(const table of ['user_roles','practice_practitioners','invoice_lines','invoices','tasks','products','deals','contacts','clients','messages','users']) await tx`DELETE FROM ${sql(table)} WHERE organization_id IN (${org},${otherOrg})`;
     await tx`DELETE FROM requests WHERE client_id IN (${actors.client},${actors.other})`;
     await tx`DELETE FROM role_permissions WHERE role_id=${role}`; await tx`DELETE FROM roles WHERE id=${role}`; await tx`DELETE FROM permissions WHERE id=${perm}`;
