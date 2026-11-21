@@ -102,6 +102,7 @@ async function fillOrganisation(page: Page) {
 
 async function createClient(page: Page, name: string) {
   await page.goto('/clients/new');
+  await page.getByText('Entreprise', { exact: true }).click();
   await page.locator('#name').fill(name);
   await page.locator('#email').fill(`${slug(name)}@exemple-client.fr`);
   await page.locator('#address').fill('8 place d’Armes');

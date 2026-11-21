@@ -171,7 +171,7 @@ export default function PublicProfileEditor({ initial, portfolio, isAdmin, organ
       <section className="bg-white shadow sm:rounded-lg border border-gray-200 p-6 space-y-4">
         <div>
           <h3 className="text-lg font-medium text-gray-900">Réalisations</h3>
-          <p className="text-sm text-gray-500">Vos chantiers et prestations marquantes, du plus récent au plus ancien. N’y mentionnez pas le nom de vos clients sans leur accord.</p>
+          <p className="text-sm text-gray-500">Vos réalisations et prestations marquantes, du plus récent au plus ancien. N’y mentionnez pas le nom de vos clients sans leur accord.</p>
         </div>
         {portfolio.length > 0 && (
           <ul className="divide-y divide-gray-100">

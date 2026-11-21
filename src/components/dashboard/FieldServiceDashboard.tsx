@@ -90,7 +90,7 @@ export default function FieldServiceDashboard({
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-primary-600 hover:bg-primary-700 shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4 mr-1.5" />
-            Nouvelle {opSingular.toLowerCase()}
+            {/(ion|ence)$/i.test(opSingular) ? 'Nouvelle' : 'Nouveau'} {opSingular.toLowerCase()}
           </Link>
           <Link
             href="/facturation/devis/nouveau"

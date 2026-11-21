@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
@@ -21,7 +21,12 @@ interface ClientFormProps {
 export default function ClientForm({ initialData, onSubmit, isSubmitting }: ClientFormProps) {
   const router = useRouter();
   
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<ClientFormData>({
+  // Particulier (la plupart des clients d'un artisan, d'un coach…) ou entreprise.
+  // Le mode n'est pas stocké : il ne change que les champs demandés.
+  const [kind, setKind] = useState<'individual' | 'company'>(
+    initialData ? 'company' : 'individual',
+  );
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       name: initialData?.name || '',
@@ -43,15 +48,53 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
   });
 
   const selectedIndustry = watch('industry');
+  const individualFirst = watch('contactFirstName');
+  const individualLast = watch('contactLastName');
+  useEffect(() => {
+    if (kind !== 'individual') return;
+    const fullName = `${individualFirst ?? ''} ${individualLast ?? ''}`.trim();
+    setValue('name', fullName, { shouldValidate: false });
+  }, [kind, individualFirst, individualLast, setValue]);
+
+  const inputClass = 'text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm';
 
   return (
     <form data-guide-form="client" onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow border border-gray-200">
       
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-700 mb-2">Type de client</legend>
+        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50" role="radiogroup">
+          {([['individual', 'Particulier'], ['company', 'Entreprise']] as const).map(([value, label]) => (
+            <label key={value} className={`cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium ${kind === value ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600'}`}>
+              <input type="radio" name="client-kind" value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {kind === 'individual' && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Identité et coordonnées</h3>
+          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="individual-first-name" className="block text-sm font-medium text-gray-700">Prénom *</label>
+              <input type="text" id="individual-first-name" data-tour="client-form-name" autoComplete="off" required {...register('contactFirstName')} className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor="individual-last-name" className="block text-sm font-medium text-gray-700">Nom *</label>
+              <input type="text" id="individual-last-name" autoComplete="off" required {...register('contactLastName')} className={inputClass} />
+              {errors.name && <p role="alert" className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Informations Générales */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Informations de l&apos;entreprise</h3>
+        {kind === 'company' && <h3 className="text-lg font-medium text-gray-900 mb-4">Informations de l&apos;entreprise</h3>}
         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-          <div>
+          {kind === 'company' && <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom de l&apos;entreprise *</label>
             <input
               type="text"
@@ -61,9 +104,9 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
             {errors.name && <p role="alert" className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
-          </div>
+          </div>}
 
-          <div>
+          {kind === 'company' && <div>
             <label htmlFor="industry" className="block text-sm font-medium text-gray-700">Secteur d&apos;activité</label>
             <select
               id="industry"
@@ -76,9 +119,9 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
               ))}
             </select>
             {errors.industry && <p role="alert" className="mt-1 text-sm text-red-600">{errors.industry.message}</p>}
-          </div>
+          </div>}
 
-          {selectedIndustry === 'Autre' && (
+          {kind === 'company' && selectedIndustry === 'Autre' && (
             <div className="sm:col-span-2">
               <label htmlFor="customIndustry" className="block text-sm font-medium text-gray-700">Précisez le secteur</label>
               <input
@@ -97,7 +140,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
         <h3 className="text-lg font-medium text-gray-900 mb-4">Coordonnées</h3>
         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email générique</label>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">{kind === 'company' ? 'Email générique' : 'Email'}</label>
             <input
               type="email"
               id="email"
@@ -108,7 +151,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
           </div>
 
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Téléphone standard</label>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">{kind === 'company' ? 'Téléphone standard' : 'Téléphone'}</label>
             <input
               type="text"
               id="phone"
@@ -162,7 +205,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
             {errors.country && <p role="alert" className="mt-1 text-sm text-red-600">{errors.country.message}</p>}
           </div>
 
-          <div>
+          {kind === 'company' && <div>
             <label htmlFor="website" className="block text-sm font-medium text-gray-700">Site Web</label>
             <input
               type="text"
@@ -170,12 +213,12 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
               {...register('website')}
               className="text-gray-900 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
-          </div>
+          </div>}
         </div>
       </div>
 
       {/* Contact Principal */}
-      <div className="border-t border-gray-200 pt-6">
+      {kind === 'company' && <div className="border-t border-gray-200 pt-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Principal</h3>
         <p className="text-sm text-gray-500 mb-4">Informations sur la personne de référence pour ce client.</p>
         
@@ -231,7 +274,7 @@ export default function ClientForm({ initialData, onSubmit, isSubmitting }: Clie
             />
           </div>
         </div>
-      </div>
+      </div>}
 
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button

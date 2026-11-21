@@ -21,7 +21,7 @@ export default function NewDealPage() {
     setIsSubmitting(true);
     try {
       const newDeal = await dealActions.createAction({
-        name: data.name || 'Nouveau Deal',
+        name: data.name || 'Nouvelle opportunité',
         value: data.value || 0,
         status: data.status || 'prospect',
         expectedCloseDate: data.expectedCloseDate || new Date().toISOString(),

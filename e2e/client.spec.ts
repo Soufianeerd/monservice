@@ -35,6 +35,7 @@ test.describe('Client Management', () => {
   test('should create a new client and display it in the list', async ({ page }) => {
     await page.goto('/clients/new');
     await dismissSetupGuideIfPresent(page);
+    await page.getByText('Entreprise', { exact: true }).click();
     await expect(page.locator('input[name="name"]')).toBeVisible({ timeout: 15000 });
     
     const timestamp = Date.now();

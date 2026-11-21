@@ -48,10 +48,10 @@ export default function QuotesDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-600" />
-            Devis &amp; Chiffrages
+            Devis
           </h1>
           <p className="text-sm text-gray-500">
-            Chiffrez vos chantiers, suivez les signatures électroniques et convertissez en interventions.
+            Préparez vos devis, suivez leur acceptation et transformez-les en factures.
           </p>
         </div>
 

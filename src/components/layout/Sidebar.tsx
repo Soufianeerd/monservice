@@ -64,10 +64,6 @@ export default function Sidebar({ isOpen = false, setIsOpen, clientAccess = true
       
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const toggleExpand = (id: string) => {
-    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
   return (
     <>
       {/* Mobile Sidebar Overlay */}
@@ -108,36 +104,47 @@ export default function Sidebar({ isOpen = false, setIsOpen, clientAccess = true
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const Icon = item.icon;
 
+              // Une rubrique avec sous-menu ouvre directement sa première page
+              // (sans page de redirection) ; la flèche seule plie ou déplie.
+              const targetHref = hasSubItems ? item.subItems![0].href : item.href;
+              const submenuId = `submenu-${itemKey}`;
+
               return (
                 <div key={itemKey}>
-                  <Link
-                    href={item.href}
-                    onClick={(e) => {
-                      if (hasSubItems) {
-                        e.preventDefault();
-                        toggleExpand(itemKey);
-                      } else {
-                        setIsOpen?.(false);
-                      }
-                    }}
-                    data-tour={item.dataTour}
-                    className={`${
+                  <div className={`${
                       isActive
                         ? 'bg-gray-800 text-white'
                         : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                    } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                  >
-                    <div className="flex items-center">
+                    } group flex items-center justify-between rounded-md transition-colors`}>
+                    <Link
+                      href={targetHref}
+                      onClick={() => {
+                        if (hasSubItems) setExpandedItems((prev) => ({ ...prev, [itemKey]: true }));
+                        setIsOpen?.(false);
+                      }}
+                      aria-current={isActive && !hasSubItems ? 'page' : undefined}
+                      data-tour={item.dataTour}
+                      className="flex flex-1 items-center px-2 py-2 text-sm font-medium rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    >
                       <Icon className="mr-3 flex-shrink-0 h-5 w-5" aria-hidden="true" />
                       {item.name}
-                    </div>
+                    </Link>
                     {hasSubItems && (
-                      isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                      <button
+                        type="button"
+                        onClick={() => setExpandedItems((prev) => ({ ...prev, [itemKey]: !isExpanded }))}
+                        aria-expanded={isExpanded}
+                        aria-controls={submenuId}
+                        aria-label={`${isExpanded ? 'Replier' : 'Déplier'} ${item.name}`}
+                        className="p-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                      >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
+                      </button>
                     )}
-                  </Link>
+                  </div>
 
                   {hasSubItems && isExpanded && (
-                    <div className="ml-8 mt-1 space-y-1">
+                    <div id={submenuId} className="ml-8 mt-1 space-y-1">
                       {item.subItems!.map((subItem) => {
                         const isSubActive = pathname === subItem.href || pathname.startsWith(`${subItem.href}/`);
                         return (
