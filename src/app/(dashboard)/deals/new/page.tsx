@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
@@ -32,7 +33,7 @@ export default function NewDealPage() {
 
       // activityLog disabled
 
-      alert('Opportunité créée !');
+      toast.success('Opportunité créée !');
       announceGuideSaved('L’opportunité est enregistrée.');
       router.push(`/deals/${newDeal.id}`);
     } catch (error) {

@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
@@ -244,7 +245,7 @@ export default function NewQuotePage() {
 
   const removeLine = (lineId: string) => {
     if (lines.length <= 1) {
-      alert('Un devis doit contenir au moins une ligne.');
+      toast.error('Un devis doit contenir au moins une ligne.');
       return;
     }
     setLines(lines.filter((l) => l.id !== lineId));

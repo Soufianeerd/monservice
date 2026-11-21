@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,12 +25,12 @@ export default function NewTemplatePage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-      alert('Modèle créé avec succès !');
+      toast.success('Modèle créé avec succès !');
       router.push('/templates');
       router.refresh();
     } catch (error) {
       console.error('Erreur lors de la création du modèle', error);
-      alert('Une erreur est survenue.');
+      toast.error('Une erreur est survenue.');
     } finally {
       setIsSubmitting(false);
     }

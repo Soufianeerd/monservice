@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
@@ -52,7 +53,7 @@ export default function NewInvoicePage() {
       // activityLog disabled
       
       announceGuideSaved(data.type === 'invoice' ? 'La facture est enregistrée.' : 'Le devis est enregistré.');
-      alert(data.type === 'invoice' ? 'Facture créée avec succès !' : 'Devis créé avec succès !');
+      toast.success(data.type === 'invoice' ? 'Facture créée avec succès !' : 'Devis créé avec succès !');
       if (data.type === 'invoice') {
         router.push(`/facturation/factures/${newInvoice.id}`);
       } else {

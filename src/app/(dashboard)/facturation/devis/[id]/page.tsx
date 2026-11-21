@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -210,7 +211,7 @@ export default function ProfessionalQuoteDetailPage({
     try {
       const org = await getByIdAction(quote.organizationId);
       if (!org) {
-        alert('Organisation introuvable');
+        toast.error('Organisation introuvable');
         return;
       }
       const clientInfo = {
@@ -236,7 +237,7 @@ export default function ProfessionalQuoteDetailPage({
       downloadPDF(blob, `Devis_${quote.number}.pdf`);
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de la génération du PDF');
+      toast.error('Erreur lors de la génération du PDF');
     }
   };
 

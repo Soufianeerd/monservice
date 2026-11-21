@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 import { getByIdAction } from '@/app/actions/organization.actions';
 import { updateAction as updateInvoiceAction } from '@/app/actions/invoice.actions';
 import { sendDocumentByEmailAction } from '@/app/actions/email.actions';
@@ -124,7 +125,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
                   downloadPDF(blob, `${isQuote ? 'Devis' : 'Facture'}_${invoice.number}.pdf`);
                 } catch (err) {
                   console.error(err);
-                  alert('Erreur lors de la génération du PDF');
+                  toast.error('Erreur lors de la génération du PDF');
                 }
               }}
               className="px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -255,7 +256,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
           onClick={async () => {
             if (window.confirm('Voulez-vous vraiment supprimer ce document ?')) {
               await onDelete();
-              alert('Document supprimé');
+              toast.success('Document supprimé');
               router.push('/invoices');
             }
           }}

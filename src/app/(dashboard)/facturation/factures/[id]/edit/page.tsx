@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -57,12 +58,12 @@ export default function EditInvoicePage(props: { params: Promise<{ id: string }>
 
       // activityLog disabled
       
-      alert('Document mis à jour avec succès !');
+      toast.success('Document mis à jour avec succès !');
       router.push(`/invoices/${invoice.id}`);
       router.refresh();
     } catch (error) {
       console.error('Erreur lors de la mise à jour', error);
-      alert('Une erreur est survenue.');
+      toast.error('Une erreur est survenue.');
     } finally {
       setIsSubmitting(false);
     }

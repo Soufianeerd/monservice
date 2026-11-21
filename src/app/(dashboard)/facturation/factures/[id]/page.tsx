@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,7 +55,7 @@ export default function InvoiceDetailPage(props: { params: Promise<{ id: string 
     if (!user?.organizationId || !invoice) return;
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       await invoiceActions.deleteAction(invoice.id, user.organizationId);
-      alert('Document supprimé');
+      toast.success('Document supprimé');
       router.push('/invoices');
     }
   };
