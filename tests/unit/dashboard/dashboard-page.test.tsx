@@ -12,8 +12,8 @@ vi.mock('@/app/actions/dashboard.actions', () => ({
   getProfessionalStatsAction: vi.fn(),
 }));
 
-vi.mock('@/app/actions/deal.actions', () => ({
-  findAllAction: vi.fn(),
+vi.mock('@/lib/services/dashboard.service', () => ({
+  dashboardService: { getWonDealsRevenueByMonth: vi.fn() },
 }));
 
 vi.mock('@/app/actions/practice-dashboard.actions', () => ({
@@ -35,7 +35,7 @@ vi.mock('@/components/dashboard/ParamedicalPracticeDashboard', () => ({
 
 import { getSessionAction, getOrganizationAction } from '@/app/actions/session';
 import { getProfessionalStatsAction } from '@/app/actions/dashboard.actions';
-import { findAllAction as getDealsAction } from '@/app/actions/deal.actions';
+import { dashboardService } from '@/lib/services/dashboard.service';
 import { getPracticeDashboardAction } from '@/app/actions/practice-dashboard.actions';
 import type { User } from '@/lib/data/interfaces/user.interface';
 import type { Organization } from '@/lib/data/interfaces/organization.interface';
@@ -99,7 +99,7 @@ describe('DashboardPage', () => {
     vi.mocked(getSessionAction).mockResolvedValue({ user: mockUser });
     vi.mocked(getOrganizationAction).mockResolvedValue(genericOrg);
     vi.mocked(getProfessionalStatsAction).mockResolvedValue(genericStats);
-    vi.mocked(getDealsAction).mockResolvedValue([]);
+    vi.mocked(dashboardService.getWonDealsRevenueByMonth).mockResolvedValue([]);
 
     const Page = await DashboardPage();
     render(Page);
@@ -109,7 +109,7 @@ describe('DashboardPage', () => {
     expect(screen.queryByTestId('paramedical-dashboard')).not.toBeInTheDocument();
 
     expect(getProfessionalStatsAction).toHaveBeenCalled();
-    expect(getDealsAction).toHaveBeenCalled();
+    expect(dashboardService.getWonDealsRevenueByMonth).toHaveBeenCalled();
     expect(getPracticeDashboardAction).not.toHaveBeenCalled();
   });
 
@@ -127,7 +127,7 @@ describe('DashboardPage', () => {
 
     expect(getPracticeDashboardAction).toHaveBeenCalled();
     expect(getProfessionalStatsAction).not.toHaveBeenCalled();
-    expect(getDealsAction).not.toHaveBeenCalled();
+    expect(dashboardService.getWonDealsRevenueByMonth).not.toHaveBeenCalled();
   });
 
   it('renders neutral state and skips data actions when organization is null', async () => {
@@ -141,6 +141,6 @@ describe('DashboardPage', () => {
     
     expect(getPracticeDashboardAction).not.toHaveBeenCalled();
     expect(getProfessionalStatsAction).not.toHaveBeenCalled();
-    expect(getDealsAction).not.toHaveBeenCalled();
+    expect(dashboardService.getWonDealsRevenueByMonth).not.toHaveBeenCalled();
   });
 });

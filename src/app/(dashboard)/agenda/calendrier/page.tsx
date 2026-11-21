@@ -6,6 +6,7 @@ import { requireProfessional } from '@/lib/auth/session';
 import { schedulingService } from '@/lib/services/scheduling.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { getEventsAction } from '@/app/actions/calendar.actions';
+import { defaultCalendarWindow } from '@/lib/services/calendar.service';
 import { notFound } from 'next/navigation';
 
 export interface CalendarEvent {
@@ -50,28 +51,20 @@ export default async function CalendarPage() {
     );
   }
 
-  // Generic CRM Calendar branch
-  const dStart = new Date();
-  dStart.setFullYear(dStart.getFullYear() - 1);
-  const dEnd = new Date();
-  dEnd.setFullYear(dEnd.getFullYear() + 2);
-
-  const initialEvents = await getEventsAction(
-    organization.id,
-    dStart.toISOString(),
-    dEnd.toISOString()
-  );
+  // Generic CRM Calendar branch — fenêtre bornée ; le calendrier charge le reste
+  // à la demande quand on navigue au-delà.
+  const range = defaultCalendarWindow();
+  const initialEvents = await getEventsAction(organization.id, range.start, range.end);
 
   return (
     <div className="space-y-6">
-      <div className="mt-6">
-        {initialEvents.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 bg-white rounded-lg shadow border border-gray-200">
-            Aucun événement à afficher.
+      <div className="mt-6 space-y-4">
+        {initialEvents.length === 0 && (
+          <div className="p-4 text-center text-sm text-gray-500 bg-white rounded-lg shadow border border-gray-200">
+            Aucun événement sur les prochains mois.
           </div>
-        ) : (
-          <CalendarView initialEvents={initialEvents} />
         )}
+        <CalendarView initialEvents={initialEvents} initialRange={range} />
       </div>
     </div>
   );

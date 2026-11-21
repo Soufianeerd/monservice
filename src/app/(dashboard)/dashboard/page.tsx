@@ -3,8 +3,7 @@ import { getSessionAction, getOrganizationAction } from '@/app/actions/session';
 import DashboardStats from '@/components/crm/DashboardStats';
 import DashboardChart from '@/components/crm/DashboardChart';
 import { getProfessionalStatsAction } from '@/app/actions/dashboard.actions';
-import { findAllAction as getDealsAction } from '@/app/actions/deal.actions';
-import { Deal } from '@/lib/data/interfaces';
+import { dashboardService } from '@/lib/services/dashboard.service';
 import { resolveWorkspace } from '@/lib/workspaces/resolver';
 import { getPracticeDashboardAction } from '@/app/actions/practice-dashboard.actions';
 import { getFieldServiceDashboardMetrics } from '@/lib/services/field-service-operations.service';
@@ -45,9 +44,10 @@ export default async function DashboardPage() {
     );
   }
 
-  const [dashboardStats, deals, operationsMetrics] = await Promise.all([
+  const [dashboardStats, months, operationsMetrics] = await Promise.all([
     getProfessionalStatsAction(user.organizationId),
-    getDealsAction(user.organizationId),
+    // Graphique calculé en SQL (6 derniers mois) : plus de chargement de toutes les affaires.
+    dashboardService.getWonDealsRevenueByMonth(user.organizationId),
     workspace.type === 'field_service'
       ? getFieldServiceDashboardMetrics(user.organizationId)
       : Promise.resolve(undefined),
@@ -60,24 +60,6 @@ export default async function DashboardPage() {
     revenue: dashboardStats.totalRevenue,
     paidInvoicesCount: dashboardStats.paidInvoices,
   };
-
-  const wonDeals = deals.filter((d: Deal) => d.status === 'won');
-  
-  const months = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    const monthStr = d.toLocaleDateString('fr-FR', { month: 'short' });
-    const year = d.getFullYear();
-    const monthIdx = d.getMonth();
-
-    const monthRevenue = wonDeals.filter((deal: Deal) => {
-      const dealDate = new Date(deal.updatedAt);
-      return dealDate.getMonth() === monthIdx && dealDate.getFullYear() === year;
-    }).reduce((sum: number, deal: Deal) => sum + deal.value, 0);
-
-    months.push({ month: monthStr, revenue: monthRevenue });
-  }
 
   if (workspace.type === 'field_service') {
     return (

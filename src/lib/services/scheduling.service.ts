@@ -989,51 +989,71 @@ export const schedulingService = {
   // BOOTSTRAP & PATIENT SEARCH
   // ==========================================
   async getSchedulingBootstrap(organizationId: string): Promise<SchedulingBootstrapDTO> {
-    // 1. Locations
-    const locRows = await db
-      .select({
-        id: practiceLocations.id,
-        name: practiceLocations.name,
-        timezone: practiceLocations.timezone,
-        isActive: practiceLocations.isActive,
-      })
-      .from(practiceLocations)
-      .where(
-        and(
-          eq(practiceLocations.organizationId, organizationId),
-          eq(practiceLocations.isActive, true)
+    // Cinq lectures indépendantes émises ensemble : à l'intérieur d'une même
+    // transaction (withReadScope), elles partent en pipeline sur la connexion.
+    const [locRows, pracRows, assignRows, roomRows, types] = await Promise.all([
+      // 1. Locations
+      db
+        .select({
+          id: practiceLocations.id,
+          name: practiceLocations.name,
+          timezone: practiceLocations.timezone,
+          isActive: practiceLocations.isActive,
+        })
+        .from(practiceLocations)
+        .where(
+          and(
+            eq(practiceLocations.organizationId, organizationId),
+            eq(practiceLocations.isActive, true)
+          )
         )
-      )
-      .orderBy(asc(practiceLocations.name));
-
-    // 2. Practitioners + assigned location IDs
-    const pracRows = await db
-      .select({
-        id: practicePractitioners.id,
-        displayName: practicePractitioners.displayName,
-        isActive: practicePractitioners.isActive,
-      })
-      .from(practicePractitioners)
-      .where(
-        and(
-          eq(practicePractitioners.organizationId, organizationId),
-          eq(practicePractitioners.isActive, true)
+        .orderBy(asc(practiceLocations.name)),
+      // 2. Practitioners + assigned location IDs
+      db
+        .select({
+          id: practicePractitioners.id,
+          displayName: practicePractitioners.displayName,
+          isActive: practicePractitioners.isActive,
+        })
+        .from(practicePractitioners)
+        .where(
+          and(
+            eq(practicePractitioners.organizationId, organizationId),
+            eq(practicePractitioners.isActive, true)
+          )
         )
-      )
-      .orderBy(asc(practicePractitioners.displayName));
-
-    const assignRows = await db
-      .select({
-        practitionerId: practitionerLocations.practitionerId,
-        locationId: practitionerLocations.locationId,
-      })
-      .from(practitionerLocations)
-      .where(
-        and(
-          eq(practitionerLocations.organizationId, organizationId),
-          eq(practitionerLocations.isActive, true)
+        .orderBy(asc(practicePractitioners.displayName)),
+      db
+        .select({
+          practitionerId: practitionerLocations.practitionerId,
+          locationId: practitionerLocations.locationId,
+        })
+        .from(practitionerLocations)
+        .where(
+          and(
+            eq(practitionerLocations.organizationId, organizationId),
+            eq(practitionerLocations.isActive, true)
+          )
+        ),
+      // 3. Rooms
+      db
+        .select({
+          id: practiceRooms.id,
+          locationId: practiceRooms.locationId,
+          name: practiceRooms.name,
+          isActive: practiceRooms.isActive,
+        })
+        .from(practiceRooms)
+        .where(
+          and(
+            eq(practiceRooms.organizationId, organizationId),
+            eq(practiceRooms.isActive, true)
+          )
         )
-      );
+        .orderBy(asc(practiceRooms.name)),
+      // 4. Appointment Types
+      this.listAppointmentTypes(organizationId),
+    ]);
 
     const pracAssignmentsMap = new Map<string, string[]>();
     for (const a of assignRows) {
@@ -1049,25 +1069,6 @@ export const schedulingService = {
       assignedLocationIds: pracAssignmentsMap.get(p.id) || [],
     }));
 
-    // 3. Rooms
-    const roomRows = await db
-      .select({
-        id: practiceRooms.id,
-        locationId: practiceRooms.locationId,
-        name: practiceRooms.name,
-        isActive: practiceRooms.isActive,
-      })
-      .from(practiceRooms)
-      .where(
-        and(
-          eq(practiceRooms.organizationId, organizationId),
-          eq(practiceRooms.isActive, true)
-        )
-      )
-      .orderBy(asc(practiceRooms.name));
-
-    // 4. Appointment Types
-    const types = await this.listAppointmentTypes(organizationId);
     const activeTypes = types.filter((t) => t.isActive);
 
     return {
