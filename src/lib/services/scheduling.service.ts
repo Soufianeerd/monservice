@@ -1,4 +1,5 @@
 import { db } from '@/lib/db/server';
+import { withReadScope } from '@/lib/db/read-scope';
 import {
   appointmentTypes,
   practitionerAvailabilityRules,
@@ -989,9 +990,9 @@ export const schedulingService = {
   // BOOTSTRAP & PATIENT SEARCH
   // ==========================================
   async getSchedulingBootstrap(organizationId: string): Promise<SchedulingBootstrapDTO> {
-    // Cinq lectures indépendantes émises ensemble : à l'intérieur d'une même
-    // transaction (withReadScope), elles partent en pipeline sur la connexion.
-    const [locRows, pracRows, assignRows, roomRows, types] = await Promise.all([
+    // Cinq lectures indépendantes émises ensemble dans une même transaction
+    // (withReadScope) : elles partent en pipeline sur la connexion.
+    const [locRows, pracRows, assignRows, roomRows, types] = await withReadScope(() => Promise.all([
       // 1. Locations
       db
         .select({
@@ -1053,7 +1054,7 @@ export const schedulingService = {
         .orderBy(asc(practiceRooms.name)),
       // 4. Appointment Types
       this.listAppointmentTypes(organizationId),
-    ]);
+    ]));
 
     const pracAssignmentsMap = new Map<string, string[]>();
     for (const a of assignRows) {

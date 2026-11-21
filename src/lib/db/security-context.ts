@@ -4,6 +4,12 @@ import type postgres from 'postgres';
 type TransactionClient = postgres.TransactionSql;
 const transactions = new AsyncLocalStorage<{ client: postgres.Sql; tx: TransactionClient }>();
 
+/** True when the caller already runs inside a security-scoped transaction, whose
+ * connection every query issued through the global db reuses. Read-only probe. */
+export function hasActiveTransaction(): boolean {
+  return transactions.getStore() !== undefined;
+}
+
 /** Every Drizzle query and transaction uses the restricted connection. Identity is
  * resolved by a trusted server callback and installed only inside BEGIN/COMMIT.
  * Queries issued through the global db inside a transaction reuse that connection.

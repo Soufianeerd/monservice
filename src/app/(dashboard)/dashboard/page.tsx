@@ -10,19 +10,19 @@ import { getFieldServiceDashboardMetrics } from '@/lib/services/field-service-op
 import ParamedicalPracticeDashboard from '@/components/dashboard/ParamedicalPracticeDashboard';
 import FieldServiceDashboard from '@/components/dashboard/FieldServiceDashboard';
 
-export default async function DashboardPage() {
+/** Données de la page. Pas de transaction de lecture commune ici : les actions
+ * appelées résolvent elles-mêmes l'identité (requireProfessional), ce qui ne doit
+ * pas se faire à l'intérieur d'un lot partagé (voir src/lib/db/read-scope.ts). */
+async function loadDashboard() {
+  // Identité et organisation d'abord, hors transaction : ce sont des promesses
+  // partagées (cache de requête) avec le layout.
   const [{ user }, organization] = await Promise.all([
     getSessionAction(),
     getOrganizationAction(),
   ]);
-  
-  if (!user?.organizationId) {
-    return <div className="p-8 text-center text-gray-500">Chargement du dashboard...</div>;
-  }
-
-  if (!organization) {
-    return <div className="p-8 text-center text-gray-500">Organisation indisponible.</div>;
-  }
+  if (!user?.organizationId) return { kind: 'loading' as const };
+  if (!organization) return { kind: 'unavailable' as const };
+  const organizationId = user.organizationId;
 
   const workspace = resolveWorkspace({
     sector: organization.sector,
@@ -31,28 +31,46 @@ export default async function DashboardPage() {
   });
 
   if (workspace.type === 'paramedical') {
+    return { kind: 'paramedical' as const, user, organization, workspace, data: await getPracticeDashboardAction() };
+  }
+
+  const [dashboardStats, months, operationsMetrics] = await Promise.all([
+    getProfessionalStatsAction(organizationId),
+    // Graphique calculé en SQL (6 derniers mois) : plus de chargement de toutes les affaires.
+    dashboardService.getWonDealsRevenueByMonth(organizationId),
+    workspace.type === 'field_service'
+      ? getFieldServiceDashboardMetrics(organizationId)
+      : Promise.resolve(undefined),
+  ]);
+  return { kind: 'business' as const, organization, workspace, dashboardStats, months, operationsMetrics };
+}
+
+export default async function DashboardPage() {
+  const loaded = await loadDashboard();
+
+  if (loaded.kind === 'loading') {
+    return <div className="p-8 text-center text-gray-500">Chargement du dashboard...</div>;
+  }
+
+  if (loaded.kind === 'unavailable') {
+    return <div className="p-8 text-center text-gray-500">Organisation indisponible.</div>;
+  }
+
+  if (loaded.kind === 'paramedical') {
     // Agenda prêt dès la première connexion (lieu, séances types, horaires).
-    await prepareStarterPractice(organization.id, user.id);
-    const data = await getPracticeDashboardAction();
-    
+    // Écriture : hors de la transaction de lecture.
+    await prepareStarterPractice(loaded.organization.id, loaded.user.id);
+
     return (
       <ParamedicalPracticeDashboard 
-        workspace={workspace}
-        organization={organization}
-        data={data}
+        workspace={loaded.workspace}
+        organization={loaded.organization}
+        data={loaded.data}
       />
     );
   }
 
-  const [dashboardStats, months, operationsMetrics] = await Promise.all([
-    getProfessionalStatsAction(user.organizationId),
-    // Graphique calculé en SQL (6 derniers mois) : plus de chargement de toutes les affaires.
-    dashboardService.getWonDealsRevenueByMonth(user.organizationId),
-    workspace.type === 'field_service'
-      ? getFieldServiceDashboardMetrics(user.organizationId)
-      : Promise.resolve(undefined),
-  ]);
-  
+  const { organization, workspace, dashboardStats, months, operationsMetrics } = loaded;
   const stats = {
     clients: dashboardStats.clients,
     activeDeals: dashboardStats.activeDeals,

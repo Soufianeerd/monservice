@@ -24,6 +24,8 @@ export interface CalendarEvent {
 }
 
 export default async function CalendarPage() {
+  // Identité et organisation sont résolues hors transaction : ce sont des promesses
+  // partagées (cache de requête) avec le layout.
   const context = await requireProfessional();
   if (!context.organizationId) {
     notFound();
@@ -51,8 +53,8 @@ export default async function CalendarPage() {
     );
   }
 
-  // Generic CRM Calendar branch — fenêtre bornée ; le calendrier charge le reste
-  // à la demande quand on navigue au-delà.
+  // Generic CRM Calendar branch — fenêtre bornée (une seule requête UNION ALL) ;
+  // le calendrier charge le reste à la demande quand on navigue au-delà.
   const range = defaultCalendarWindow();
   const initialEvents = await getEventsAction(organization.id, range.start, range.end);
 
