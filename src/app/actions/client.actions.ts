@@ -1,5 +1,6 @@
 'use server';
 
+import { recordAudit } from '@/lib/audit/record';
 import { clientService } from '@/lib/services/client.service';
 import { requireProfessional } from '@/lib/auth/session';
 import { assertQuota } from '@/lib/billing/quota';
@@ -51,5 +52,7 @@ export async function deleteWithCascadeAction(
   _legacyUserId?: unknown,
 ) {
   const { organizationId, userId } = await requireProfessional();
-  return clientService.deleteWithCascade(id, organizationId, userId);
+  const result = await clientService.deleteWithCascade(id, organizationId, userId);
+  await recordAudit({ userId, organizationId, action: 'client.deleted', entityType: 'client', entityId: id });
+  return result;
 }

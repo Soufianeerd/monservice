@@ -7,7 +7,7 @@ import type { SQL } from 'drizzle-orm';
 export class AuditService {
   async log(
     userId: string,
-    organizationId: string,
+    organizationId: string | null,
     action: string,
     entityType: string,
     entityId?: string,

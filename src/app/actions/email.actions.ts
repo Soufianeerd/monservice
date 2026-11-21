@@ -1,5 +1,6 @@
 'use server';
 
+import { recordAudit } from '@/lib/audit/record';
 import { requireProfessional } from '@/lib/auth/session';
 import { assertFeature } from '@/lib/billing/quota';
 import { invoiceService } from '@/lib/services/invoice.service';
@@ -90,6 +91,7 @@ export async function sendDocumentByEmailAction(
     await quoteService.sendQuote(document.id, ctx.organizationId, ctx.userId);
   }
 
+  await recordAudit({ userId: ctx.userId, organizationId: ctx.organizationId, action: 'document.emailed', entityType: isQuote ? 'quote' : 'invoice', entityId: documentId });
   return { sent: true, message: `${isQuote ? 'Devis' : 'Facture'} envoyé${isQuote ? '' : 'e'} à ${recipient}, avec le PDF en pièce jointe.` };
 }
 

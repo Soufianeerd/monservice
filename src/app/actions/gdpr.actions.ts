@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/auth/session';
 import { accountPrivacyService } from '@/lib/services/account-privacy.service';
 import { auth } from '@/lib/auth/server';
 import { AppError } from '@/lib/errors';
+import { recordAudit } from '@/lib/audit/record';
 
 function jsonExport(scope: string, payload: unknown) {
   return { filename:`monservice-${scope}-${new Date().toISOString().slice(0,10)}.json`,contentType:'application/json',data:JSON.stringify(payload,null,2) };
@@ -11,12 +12,14 @@ export async function exportMyDataAction() {
   const ctx=await requireSession();
   const payload=await accountPrivacyService.exportPersonal(ctx);
   console.info('[audit] privacy.personal_export',{ userId:ctx.userId });
+  await recordAudit({ userId:ctx.userId, organizationId:ctx.organizationId, action:'privacy.personal_export', entityType:'user', entityId:ctx.userId });
   return jsonExport('donnees-personnelles',payload);
 }
 export async function exportOrganizationDataAction() {
   const ctx=await requireSession();
   const payload=await accountPrivacyService.exportOrganization(ctx);
   console.info('[audit] privacy.organization_export',{ userId:ctx.userId,organizationId:ctx.organizationId });
+  await recordAudit({ userId:ctx.userId, organizationId:ctx.organizationId, action:'privacy.organization_export', entityType:'organization', entityId:ctx.organizationId ?? undefined });
   return jsonExport('organisation',payload);
 }
 export async function getAccountDeletionPreviewAction() {
@@ -25,6 +28,8 @@ export async function getAccountDeletionPreviewAction() {
 }
 export async function deleteMyAccountAction(confirmationEmail:string): Promise<{success:boolean;error?:string}> {
   const ctx=await requireSession();
+  // Journalisé avant la fermeture : ensuite, le compte ne peut plus écrire.
+  await recordAudit({ userId:ctx.userId, organizationId:ctx.organizationId, action:'privacy.account_close_requested', entityType:'user', entityId:ctx.userId });
   try {
     const result=await accountPrivacyService.closePersonalAccount(ctx,confirmationEmail);
     console.info('[audit] privacy.account_closed',{ userId:ctx.userId });

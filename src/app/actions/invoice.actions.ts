@@ -1,5 +1,6 @@
 'use server';
 
+import { recordAudit } from '@/lib/audit/record';
 import { invoiceService } from '@/lib/services/invoice.service';
 import { requireProfessional, requireSession, requireProfileType } from '@/lib/auth/session';
 import { AppError } from '@/lib/errors';
@@ -166,12 +167,17 @@ export async function updateAction(
   _legacyUserId?: unknown,
 ): Promise<Invoice> {
   const { organizationId, userId } = await requireProfessional();
-  return invoiceService.update(id, organizationId, data, userId);
+  const updated = await invoiceService.update(id, organizationId, data, userId);
+  if (data.status) {
+    await recordAudit({ userId, organizationId, action: `document.status.${data.status}`, entityType: updated.type ?? 'invoice', entityId: id, details: { number: updated.number } });
+  }
+  return updated;
 }
 
 export async function deleteAction(id: string, _legacyOrganizationId?: unknown, _legacyUserId?: unknown): Promise<void> {
   const { organizationId, userId } = await requireProfessional();
-  return invoiceService.delete(id, organizationId, userId);
+  await invoiceService.delete(id, organizationId, userId);
+  await recordAudit({ userId, organizationId, action: 'document.deleted', entityType: 'invoice', entityId: id });
 }
 
 /**
