@@ -94,7 +94,23 @@ export async function ensureStarterPractice(organizationId: string, userId: stri
  * l'affichage (au-delà de 8 s, la page s'affiche et la configuration se
  * termine en arrière-plan).
  */
+/** Vrai si le cabinet a déjà un lieu ou un type de séance : une seule lecture,
+ * sans verrou, pour le cas courant (toutes les visites après la première). */
+async function starterAlreadyPrepared(organizationId: string): Promise<boolean> {
+  const [row] = await db.select({
+    ready: sql<boolean>`(exists (select 1 from ${practiceLocations} where ${practiceLocations.organizationId} = ${organizationId})
+      or exists (select 1 from ${appointmentTypes} where ${appointmentTypes.organizationId} = ${organizationId}))`,
+  }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+  return row?.ready === true;
+}
+
 export async function prepareStarterPractice(organizationId: string, userId: string): Promise<void> {
+  // Chemin rapide : rien à préparer, aucune transaction verrouillée.
+  try {
+    if (await starterAlreadyPrepared(organizationId)) return;
+  } catch (error) {
+    console.error('Vérification de la configuration de départ impossible', error);
+  }
   const setup = ensureStarterPractice(organizationId, userId).catch((error) => {
     console.error('Configuration de départ du cabinet impossible', error);
   });

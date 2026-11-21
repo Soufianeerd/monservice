@@ -135,7 +135,7 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
                     Convertir
                   </button>
                 )}
-                {onDelete && (
+                {onDelete && invoice.status === 'draft' && !invoice.lockedAt && (
                   <button onClick={() => onDelete(invoice.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded px-2 py-1 text-sm font-medium">
                     Supprimer
                   </button>
@@ -213,7 +213,7 @@ export default function InvoiceList({ invoices, clients, onDelete, onMarkAsPaid,
                         Convertir
                       </button>
                     )}
-                    {onDelete && (
+                    {onDelete && invoice.status === 'draft' && !invoice.lockedAt && (
                       <button onClick={() => onDelete(invoice.id)} className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 rounded p-1">
                         Supprimer
                       </button>
