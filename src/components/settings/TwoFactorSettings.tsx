@@ -133,7 +133,7 @@ export default function TwoFactorSettings({ initiallyEnabled, available }: { ini
               <input id="two-factor-setup-code" required inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(event) => setCode(event.target.value)} className={inputClass} />
             </li>
           </ol>
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" data-testid="two-factor-error" className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
             <button type="submit" className={primary} disabled={busy}>{busy ? 'Vérification…' : 'Activer'}</button>
             <button type="button" className={secondary} onClick={() => setStep({ kind: 'idle' })}>Annuler</button>
@@ -168,7 +168,7 @@ export default function TwoFactorSettings({ initiallyEnabled, available }: { ini
             Pour désactiver, saisissez un code de votre application (ou un code de secours) :
           </label>
           <input id="two-factor-disable-code" required autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} className={inputClass} />
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" data-testid="two-factor-error" className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
             <button type="submit" className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50" disabled={busy}>
               {busy ? 'Vérification…' : 'Désactiver'}

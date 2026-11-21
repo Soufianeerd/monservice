@@ -39,7 +39,7 @@ test.describe.serial('Double authentification', () => {
     expect(secret).toMatch(/^[A-Z2-7]{32}$/);
     await page.getByLabel(/code à 6 chiffres/).fill('000000');
     await page.getByRole('button', { name: 'Activer', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('Code incorrect');
+    await expect(page.getByTestId('two-factor-error')).toContainText('Code incorrect');
     await page.getByLabel(/code à 6 chiffres/).fill(totp(secret));
     await page.getByRole('button', { name: 'Activer', exact: true }).click();
     const codes = page.getByTestId('recovery-codes').locator('li');
@@ -58,7 +58,7 @@ test.describe.serial('Double authentification', () => {
     await expect(page).toHaveURL(/\/verification-2fa/);
     await page.getByLabel('Code de vérification').fill('123456');
     await page.getByRole('button', { name: 'Vérifier' }).click();
-    await expect(page.getByRole('alert')).toContainText('Code incorrect');
+    await expect(page.getByTestId('second-factor-error')).toContainText('Code incorrect');
     // Pas suivant (dérive tolérée) : le code d'activation ne peut pas resservir.
     await page.getByLabel('Code de vérification').fill(totp(secret, 1));
     await page.getByRole('button', { name: 'Vérifier' }).click();
@@ -76,7 +76,7 @@ test.describe.serial('Double authentification', () => {
     await page.getByRole('button', { name: 'Utiliser un code de secours' }).click();
     await page.getByLabel('Code de secours').fill(recoveryCodes[0]);
     await page.getByRole('button', { name: 'Vérifier' }).click();
-    await expect(page.getByRole('alert')).toContainText('déjà utilisé');
+    await expect(page.getByTestId('second-factor-error')).toContainText('déjà utilisé');
   });
 
   test('désactivation avec un code de secours', async ({ page }) => {

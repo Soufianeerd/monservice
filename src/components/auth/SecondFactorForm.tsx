@@ -52,7 +52,7 @@ export default function SecondFactorForm({ destination }: { destination: string 
             : { inputMode: 'numeric' as const, autoComplete: 'one-time-code', pattern: '[0-9 ]{6,7}', maxLength: 7, placeholder: '123456' })}
         />
       </div>
-      {error && <div role="alert" className={authMessageClass('error')}>{error}</div>}
+      {error && <div role="alert" data-testid="second-factor-error" className={authMessageClass('error')}>{error}</div>}
       <button type="submit" disabled={pending} className={authButtonClass}>
         {pending ? 'Vérification…' : 'Vérifier'}
       </button>
