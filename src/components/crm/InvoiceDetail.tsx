@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 import { getByIdAction } from '@/app/actions/organization.actions';
 import { updateAction as updateInvoiceAction } from '@/app/actions/invoice.actions';
@@ -50,7 +51,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
   // Émission (S-03) : verrouille la facture, attribue son numéro définitif et
   // sa date. Elle peut ensuite être réglée, relancée et suivie en trésorerie.
   const issueInvoice = async () => {
-    if (!window.confirm('Émettre la facture ? Elle recevra son numéro définitif et ne pourra plus être modifiée.')) return;
+    if (!await askConfirm('Elle recevra son numéro définitif et ne pourra plus être modifiée.', { title: 'Émettre la facture ?', confirmLabel: 'Émettre', tone: 'default' })) return;
     setIssuing(true);
     setIssueError(null);
     try {
@@ -254,7 +255,7 @@ export default function InvoiceDetail({ invoice, client, products, onDelete }: I
       {invoice.status === 'draft' && <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
         <button
           onClick={async () => {
-            if (window.confirm('Voulez-vous vraiment supprimer ce document ?')) {
+            if (await askConfirm('Voulez-vous vraiment supprimer ce document ?')) {
               await onDelete();
               toast.success('Document supprimé');
               router.push('/invoices');

@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React from 'react';
 
@@ -29,7 +30,7 @@ export default function ClientDeleteModal({
   const total = associatedCounts.contacts + associatedCounts.deals + associatedCounts.invoices + associatedCounts.tasks;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <ModalOverlay onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-gray-900">Confirmer la suppression</h2>
         <p className="mt-2 text-gray-600">
@@ -71,6 +72,6 @@ export default function ClientDeleteModal({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

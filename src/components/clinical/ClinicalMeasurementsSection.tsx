@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React, { useState, useTransition } from 'react';
 import {
@@ -229,7 +230,7 @@ export default function ClinicalMeasurementsSection({
 
       {/* New Measurement Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowNewModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               Enregistrer une mesure clinique
@@ -410,7 +411,7 @@ export default function ClinicalMeasurementsSection({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

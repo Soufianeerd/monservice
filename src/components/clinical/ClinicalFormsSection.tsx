@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React, { useState, useTransition } from 'react';
 import {
@@ -731,7 +732,7 @@ export default function ClinicalFormsSection({
 
       {/* Confirmation Finalize Modal */}
       {confirmFinalizeResponseId && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setConfirmFinalizeResponseId(null)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
               <Lock className="w-5 h-5 text-emerald-600" />
@@ -760,12 +761,12 @@ export default function ClinicalFormsSection({
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* New Template Modal */}
       {showNewTemplateModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowNewTemplateModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               Créer un modèle de formulaire clinique
@@ -857,7 +858,7 @@ export default function ClinicalFormsSection({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

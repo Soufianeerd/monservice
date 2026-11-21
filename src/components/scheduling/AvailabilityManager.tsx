@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
@@ -505,7 +506,7 @@ export function AvailabilityManager({
 
       {/* RULE MODAL */}
       {isRuleModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsRuleModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingRule ? 'Modifier la règle récurrente' : 'Nouvelle règle hebdomadaire'}
@@ -590,12 +591,12 @@ export function AvailabilityManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* EXCEPTION MODAL */}
       {isExceptionModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsExceptionModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingException ? 'Modifier l’exception ponctuelle' : 'Nouvelle exception ponctuelle'}
@@ -704,7 +705,7 @@ export function AvailabilityManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 
 import { cookies } from "next/headers";
 import { Toaster } from "react-hot-toast";
+import { ConfirmHost } from "@/components/ui/ConfirmDialog";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
 
@@ -45,6 +46,7 @@ export default async function RootLayout({
           <AuthProvider>
             {children}
             <Toaster position="top-right" />
+            <ConfirmHost />
           </AuthProvider>
         </NextIntlClientProvider>
       </body>

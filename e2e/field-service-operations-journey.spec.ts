@@ -122,13 +122,11 @@ test.describe('Field Service Operations Journey E2E (Session 17)', () => {
     await expect(page.locator('text=Brouillon')).toBeVisible();
 
     // 10. Finalize Report
-    page.on('dialog', async (dialog) => {
-      await dialog.accept();
-    });
     const finalizeBtn = page.locator('[data-testid="finalize-report-button"]');
     await expect(finalizeBtn).toBeVisible();
     await expect(finalizeBtn).toBeEnabled();
     await finalizeBtn.click();
+    await page.getByRole('alertdialog').getByRole('button').last().click();
     await expect(page.locator('text=Finalisé (Immuable)')).toBeVisible();
 
     // 11. Complete Work Order: In Progress -> Completed

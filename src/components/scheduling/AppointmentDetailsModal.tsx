@@ -1,4 +1,6 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useEffect } from 'react';
@@ -84,7 +86,7 @@ export function AppointmentDetailsModal({
 
   const handleNoShowSubmit = async () => {
     if (!appointment) return;
-    const confirm = window.confirm(t('Marquer le patient comme absent pour cette séance ?'));
+    const confirm = await askConfirm(t('Marquer le patient comme absent pour cette séance ?'));
     if (!confirm) return;
 
     setIsSubmitting(true);
@@ -106,7 +108,7 @@ export function AppointmentDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <ModalOverlay onClose={onClose} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-start border-b pb-4">
@@ -320,6 +322,6 @@ export function AppointmentDetailsModal({
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

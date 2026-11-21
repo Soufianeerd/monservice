@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
@@ -1059,7 +1060,7 @@ export default function ClinicalRecordManager({
 
       {/* Modal: New Care Episode */}
       {showNewEpisodeModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowNewEpisodeModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-base font-bold text-gray-900 mb-1">
               Ouvrir un nouvel épisode de prise en charge
@@ -1102,12 +1103,12 @@ export default function ClinicalRecordManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal: New Clinical Encounter */}
       {showNewEncounterModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowNewEncounterModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-base font-bold text-gray-900 mb-1">
               Ajouter une séance clinique
@@ -1170,7 +1171,7 @@ export default function ClinicalRecordManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

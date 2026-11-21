@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -21,7 +22,7 @@ export default function ClientRequestsPage() {
   }, [user]);
 
   const handleDelete = async (id: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
+    if (await askConfirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) {
       await requestActions.deleteAction(id);
       setRequests(requests.filter(r => r.id !== id));
     }

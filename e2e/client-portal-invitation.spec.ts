@@ -66,7 +66,7 @@ test('CLIENT_INVITE_01: a professional invites a client who accepts, then access
   await openFiche(page);
   await expect(panel.locator('[data-testid="client-portal-linked"]')).toContainText(INVITEE);
   await dismissGuide(page);
-  page.once('dialog', (dialog) => dialog.accept());
   await panel.getByRole('button', { name: 'Retirer l’accès' }).click();
+  await page.getByRole('alertdialog').getByRole('button').last().click();
   await expect(panel.locator('[data-testid="client-portal-invite"]')).toBeVisible();
 });

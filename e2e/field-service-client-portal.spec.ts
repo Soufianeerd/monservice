@@ -56,8 +56,8 @@ test('CLIENT_PORTAL_01a: the professional finalizes a report for a portal client
   await page.fill('textarea[placeholder="Détails des opérations techniques menées..."]', 'Remplacement du mitigeur de cuisine.');
   await page.click('[data-testid="submit-report-button"]');
   await expect(page.locator(`text=${summary}`)).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.click('[data-testid="finalize-report-button"]');
+  await page.getByRole('alertdialog').getByRole('button').last().click();
   await expect(page.locator('text=Finalisé (Immuable)')).toBeVisible();
   await expect(page.locator('[data-testid="client-acknowledgements"]')).toContainText('Aucune réception signée');
   fs.writeFileSync(stateFile, JSON.stringify({ title, summary, operationUrl } satisfies PortalState));

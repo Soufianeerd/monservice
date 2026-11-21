@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useEffect, useTransition } from 'react';
@@ -344,7 +345,7 @@ export function WaitlistManager({ bootstrap }: Props) {
 
       {/* CREATE / EDIT MODAL */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsFormOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <WaitlistForm
             bootstrap={bootstrap}
             initialData={selectedEntryForEdit}
@@ -354,12 +355,12 @@ export function WaitlistManager({ bootstrap }: Props) {
             }}
             onCancel={() => setIsFormOpen(false)}
           />
-        </div>
+        </ModalOverlay>
       )}
 
       {/* RESOLVE MODAL */}
       {isResolveModalOpen && entryToResolve && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsResolveModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 space-y-4">
             <h3 className="text-lg font-bold text-gray-900">
               Résoudre l&apos;inscription de {entryToResolve.patientName}
@@ -423,7 +424,7 @@ export function WaitlistManager({ bootstrap }: Props) {
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

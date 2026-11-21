@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import { announceGuideSaved } from '@/components/onboarding/definitions/workflows';
 
@@ -332,7 +333,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editingType ? 'Modifier le type de séance' : 'Nouveau type de séance'}
@@ -448,7 +449,7 @@ export function AppointmentTypeManager({ initialTypes, professionPack }: Props) 
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

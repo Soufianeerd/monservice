@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import React, { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
@@ -250,7 +251,7 @@ function NewAssetDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="new-asset-title">
+    <ModalOverlay onClose={onClose} className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" labelledBy="new-asset-title">
       <form onSubmit={submit} className="bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-6 space-y-4" data-testid="new-asset-form">
         <div className="flex items-center justify-between">
           <h2 id="new-asset-title" className="text-lg font-bold text-gray-900">Nouvel équipement</h2>
@@ -312,7 +313,7 @@ function NewAssetDialog({
           </button>
         </div>
       </form>
-    </div>
+    </ModalOverlay>
   );
 }
 

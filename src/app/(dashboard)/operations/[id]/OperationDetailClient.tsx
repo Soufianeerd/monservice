@@ -1,4 +1,6 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
@@ -374,8 +376,8 @@ export default function OperationDetailClient({
     });
   };
 
-  const handleFinalizeReport = (reportId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir finaliser ce compte-rendu ? Il deviendra permanent et non modifiable.')) {
+  const handleFinalizeReport = async (reportId: string) => {
+    if (!await askConfirm('Il deviendra permanent et non modifiable.', { title: 'Finaliser le compte-rendu ?', confirmLabel: 'Finaliser', tone: 'default' })) {
       return;
     }
 
@@ -922,7 +924,7 @@ export default function OperationDetailClient({
 
       {/* Cancellation Modal */}
       {isCancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsCancelModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -990,12 +992,12 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Assign Worker Modal */}
       {isAssignModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsAssignModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1065,12 +1067,12 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Report Modal */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <ModalOverlay onClose={() => setIsReportModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-gray-100 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
               <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1159,7 +1161,7 @@ export default function OperationDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

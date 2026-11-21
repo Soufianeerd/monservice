@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ export default function InvoicesPageClient({ initialInvoices, clients }: { initi
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Supprimer ce brouillon ? Cette action est définitive.')) return;
+    if (!await askConfirm('Supprimer ce brouillon ? Cette action est définitive.')) return;
     try {
       await invoiceActions.deleteAction(id);
       setInvoices((current) => current.filter((invoice) => invoice.id !== id));
@@ -26,7 +27,7 @@ export default function InvoicesPageClient({ initialInvoices, clients }: { initi
   };
 
   const handleConvertQuote = async (id: string) => {
-    if (!window.confirm('Convertir ce devis en facture ?')) return;
+    if (!await askConfirm('Une facture brouillon sera créée à partir de ce devis.', { title: 'Convertir en facture ?', confirmLabel: 'Convertir', tone: 'default' })) return;
     try {
       const { convertQuoteToInvoiceAction } = await import('@/app/actions/quote.actions');
       await convertQuoteToInvoiceAction({ quoteId: id });

@@ -1,4 +1,6 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import React, { useState, useRef, useTransition } from 'react';
 import {
@@ -116,8 +118,8 @@ export default function ClinicalDocumentsSection({
     });
   };
 
-  const handleArchiveClick = (docId: string) => {
-    if (!window.confirm('Voulez-vous archiver ce document clinique ?')) return;
+  const handleArchiveClick = async (docId: string) => {
+    if (!await askConfirm('Voulez-vous archiver ce document clinique ?')) return;
     setErrorMessage(null);
     setSuccessMessage(null);
     startTransition(async () => {
@@ -278,7 +280,7 @@ export default function ClinicalDocumentsSection({
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setShowUploadModal(false)} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               Téléverser un document clinique
@@ -370,7 +372,7 @@ export default function ClinicalDocumentsSection({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

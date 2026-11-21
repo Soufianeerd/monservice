@@ -98,8 +98,8 @@ test.describe('Field Service customer assets (Session 19)', () => {
     // 6. Out of service, then decommissioned: the record becomes read-only.
     await page.click('[data-testid="asset-mark-out-of-service"]');
     await expect(page.locator('[data-testid="asset-status-badge"]')).toHaveText('Hors service');
-    page.once('dialog', (dialog) => dialog.accept());
     await page.click('[data-testid="asset-decommission"]');
+    await page.getByRole('alertdialog').getByRole('button').last().click();
     await expect(page.locator('[data-testid="asset-status-badge"]')).toHaveText('Retiré / mis au rebut');
     await page.reload();
     await expect(page.locator('[data-testid="asset-detail"]')).toContainText('lecture seule');

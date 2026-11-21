@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
@@ -53,7 +54,7 @@ export default function InvoiceDetailPage(props: { params: Promise<{ id: string 
 
   const handleDelete = async () => {
     if (!user?.organizationId || !invoice) return;
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
+    if (await askConfirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       await invoiceActions.deleteAction(invoice.id, user.organizationId);
       toast.success('Document supprimé');
       router.push('/invoices');

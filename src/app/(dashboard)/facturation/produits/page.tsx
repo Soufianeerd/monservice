@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -37,7 +38,7 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string) => {
     if (!user?.organizationId) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit/service ?")) return;
+    if (!await askConfirm("Êtes-vous sûr de vouloir supprimer ce produit/service ?")) return;
     try {
       await productActions.deleteAction(id, user.organizationId);
       await loadData();

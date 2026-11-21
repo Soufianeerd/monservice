@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { Card, CardBody } from '@/components/ui/Card';
@@ -44,7 +45,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
           {request.status !== 'published' && (
             <button 
               onClick={async () => {
-                if(window.confirm('Voulez-vous vraiment publier cette demande ?')) {
+                if(await askConfirm('Elle sera visible par les professionnels.', { title: 'Publier la demande ?', confirmLabel: 'Publier', tone: 'default' })) {
                   await requestActions.publishAction(request.id, user?.id || '');
                   alert('Demande publiée !');
                   window.location.reload();

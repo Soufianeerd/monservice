@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
@@ -38,7 +39,7 @@ export default function ClientContactsPage(props: { params: Promise<{ id: string
   }, [user?.organizationId, params.id]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) return;
+    if (!await askConfirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) return;
     setLoading(true);
     try {
       await contactActions.deleteAction(id);

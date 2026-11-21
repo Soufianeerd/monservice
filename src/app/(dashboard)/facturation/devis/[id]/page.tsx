@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 
 import { useState, useEffect, use } from 'react';
@@ -137,7 +138,7 @@ export default function ProfessionalQuoteDetailPage({
 
   const handleDelete = async () => {
     if (!quote) return;
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce brouillon de devis ?')) return;
+    if (!await askConfirm('Êtes-vous sûr de vouloir supprimer ce brouillon de devis ?')) return;
     setActionLoading(true);
     try {
       await deleteDraftQuoteAction(quote.id);

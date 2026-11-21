@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import { useCareVocabulary } from '@/hooks/useCareVocabulary';
 import React, { useState, useTransition } from 'react';
@@ -430,7 +431,7 @@ export default function RepresentativeManager({
 
       {/* Modal: Create & Link New Representative */}
       {modalMode === 'create' && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={resetForm} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-semibold text-gray-900">
@@ -590,12 +591,12 @@ export default function RepresentativeManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal: Link Existing Representative */}
       {modalMode === 'link_existing' && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={resetForm} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-semibold text-gray-900">
@@ -713,12 +714,12 @@ export default function RepresentativeManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal: Edit Link Metadata */}
       {modalMode === 'edit_link' && selectedRep && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={resetForm} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-semibold text-gray-900">
@@ -818,12 +819,12 @@ export default function RepresentativeManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal: Edit Representative Coordinates */}
       {modalMode === 'edit_rep' && selectedRep && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={resetForm} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-base font-semibold text-gray-900">
@@ -960,7 +961,7 @@ export default function RepresentativeManager({
               </div>
             </form>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

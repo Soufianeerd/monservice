@@ -1,4 +1,5 @@
 'use client';
+import { ModalOverlay } from '@/components/ui/ModalOverlay';
 
 import Link from 'next/link';
 import React, { useState, useEffect, useTransition } from 'react';
@@ -543,14 +544,14 @@ export function ParamedicalCalendar({ bootstrap }: Props) {
 
       {/* MODAL (NEW / RESCHEDULE APPOINTMENT) */}
       {isBookingModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <ModalOverlay onClose={() => setIsBookingModalOpen(false)} className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <AppointmentForm
             bootstrap={bootstrap}
             initialData={modalInitialData}
             onSuccess={handleModalSuccess}
             onCancel={() => setIsBookingModalOpen(false)}
           />
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

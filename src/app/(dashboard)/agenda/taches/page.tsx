@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import * as taskActions from '@/app/actions/task.actions';
 import { useState, useEffect } from 'react';
@@ -88,7 +89,7 @@ export default function TasksPage() {
   }, [user?.organizationId]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?") || !user?.organizationId) return;
+    if (!await askConfirm("Êtes-vous sûr de vouloir supprimer cette tâche ?") || !user?.organizationId) return;
     await taskActions.deleteAction(id, user.organizationId);
     loadData();
   };

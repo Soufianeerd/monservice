@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { toast } from 'react-hot-toast';
 import { getByIdAction, updateAction } from '@/app/actions/organization.actions';
@@ -47,7 +48,7 @@ export default function DealDetailPage(props: { params: Promise<{ id: string }> 
 
   const handleDelete = async () => {
     if (!user?.organizationId) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce deal ?")) return;
+    if (!await askConfirm("Êtes-vous sûr de vouloir supprimer ce deal ?")) return;
     try {
       await dealActions.deleteAction(params.id as string, user.organizationId);
       router.push('/deals');

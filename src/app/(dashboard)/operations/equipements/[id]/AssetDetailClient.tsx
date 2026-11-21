@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
@@ -86,8 +87,8 @@ export default function AssetDetailClient({ asset, sites, today }: { asset: Asse
     });
   };
 
-  const changeStatus = (status: FieldServiceAssetStatus) => {
-    if (status === 'decommissioned' && !window.confirm('Retirer définitivement cet équipement ? Sa fiche et son historique resteront consultables mais ne pourront plus être modifiés.')) return;
+  const changeStatus = async (status: FieldServiceAssetStatus) => {
+    if (status === 'decommissioned' && !await askConfirm('Retirer définitivement cet équipement ? Sa fiche et son historique resteront consultables mais ne pourront plus être modifiés.')) return;
     save({ status });
   };
 

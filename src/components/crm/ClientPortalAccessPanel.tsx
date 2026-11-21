@@ -1,4 +1,5 @@
 'use client';
+import { askConfirm } from '@/components/ui/ConfirmDialog';
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -67,7 +68,7 @@ export default function ClientPortalAccessPanel({ clientId, defaultEmail }: { cl
   }
 
   async function unlink() {
-    if (!window.confirm('Retirer l’accès de ce client à son espace ? Il ne verra plus ses devis, factures ni interventions.')) return;
+    if (!await askConfirm('Retirer l’accès de ce client à son espace ? Il ne verra plus ses devis, factures ni interventions.')) return;
     setBusy(true);
     try {
       const result = await unlinkClientPortalAccountAction({ clientId });
